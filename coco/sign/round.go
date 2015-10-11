@@ -1,6 +1,6 @@
 package sign
 
-import "github.com/dedis/crypto/abstract"
+import "github.com/lbarman/crypto/abstract"
 import "github.com/dedis/prifi/coco/hashid"
 import "github.com/dedis/prifi/coco/proof"
 

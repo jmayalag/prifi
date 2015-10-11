@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/dedis/crypto/nist"
-	"github.com/dedis/crypto/random"
+	"github.com/lbarman/crypto/nist"
+	"github.com/lbarman/crypto/random"
 	"github.com/dedis/prifi/coco/sign"
 )
 

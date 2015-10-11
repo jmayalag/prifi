@@ -1,9 +1,9 @@
 package insure
 
 import (
-	"github.com/dedis/crypto/abstract"
-	"github.com/dedis/crypto/edwards"
-	"github.com/dedis/crypto/nist"
+	"github.com/lbarman/crypto/abstract"
+	"github.com/lbarman/crypto/edwards"
+	"github.com/lbarman/crypto/nist"
 )
 
 const (

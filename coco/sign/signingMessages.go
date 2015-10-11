@@ -3,8 +3,8 @@ package sign
 import (
 	"reflect"
 
-	"github.com/dedis/crypto/abstract"
-	"github.com/dedis/crypto/nist"
+	"github.com/lbarman/crypto/abstract"
+	"github.com/lbarman/crypto/nist"
 	"github.com/dedis/prifi/coco/hashid"
 	"github.com/dedis/prifi/coco/proof"
 	"github.com/dedis/protobuf"

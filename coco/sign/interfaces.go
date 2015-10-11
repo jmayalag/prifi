@@ -1,7 +1,7 @@
 package sign
 
 import (
-	"github.com/dedis/crypto/abstract"
+	"github.com/lbarman/crypto/abstract"
 	"github.com/dedis/prifi/coco/hashid"
 	"github.com/dedis/prifi/coco/proof"
 )

@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dedis/crypto/abstract"
-	"github.com/dedis/crypto/edwards/ed25519"
-	"github.com/dedis/crypto/nist"
+	"github.com/lbarman/crypto/abstract"
+	"github.com/lbarman/crypto/edwards/ed25519"
+	"github.com/lbarman/crypto/nist"
 	_ "github.com/dedis/prifi/coco"
 	"github.com/dedis/prifi/coco/coconet"
 	"github.com/dedis/prifi/coco/sign"

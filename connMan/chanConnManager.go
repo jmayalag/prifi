@@ -1,7 +1,7 @@
 package connMan
 
 import (
-	"github.com/dedis/crypto/abstract"
+	"github.com/lbarman/crypto/abstract"
 	"github.com/dedis/prifi/coconet"
 )
 

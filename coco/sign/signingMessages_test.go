@@ -7,7 +7,7 @@ import (
 
 	"log"
 
-	"github.com/dedis/crypto/nist"
+	"github.com/lbarman/crypto/nist"
 	"github.com/dedis/prifi/coco/hashid"
 	"github.com/dedis/prifi/coco/proof"
 	"github.com/dedis/prifi/coco/sign"

@@ -6,7 +6,7 @@ import (
 	"errors"
 	"hash"
 
-	"github.com/dedis/crypto/abstract"
+	"github.com/lbarman/crypto/abstract"
 )
 
 // MerklePath represents a downward path from a (root) node in a Merkle tree

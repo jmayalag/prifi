@@ -8,8 +8,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/dedis/crypto/nist"
-	"github.com/dedis/crypto/random"
+	"github.com/lbarman/crypto/nist"
+	"github.com/lbarman/crypto/random"
 )
 
 var testSuite = nist.NewAES128SHA256P256()

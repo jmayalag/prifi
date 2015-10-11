@@ -9,7 +9,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"golang.org/x/net/context"
 
-	"github.com/dedis/crypto/abstract"
+	"github.com/lbarman/crypto/abstract"
 	"github.com/dedis/prifi/coco/coconet"
 	"github.com/dedis/prifi/coco/hashid"
 	// "strconv"

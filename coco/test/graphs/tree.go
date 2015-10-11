@@ -4,7 +4,7 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	"github.com/dedis/crypto/abstract"
+	"github.com/lbarman/crypto/abstract"
 )
 
 // tree easy to deal with

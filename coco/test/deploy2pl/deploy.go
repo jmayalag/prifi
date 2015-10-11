@@ -18,7 +18,7 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 
-	"github.com/dedis/crypto/nist"
+	"github.com/lbarman/crypto/nist"
 	"github.com/dedis/prifi/coco/test/cliutils"
 	"github.com/dedis/prifi/coco/test/config"
 	"github.com/dedis/prifi/coco/test/graphs"

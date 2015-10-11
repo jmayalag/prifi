@@ -3,7 +3,7 @@ package dcnet
 import (
 	"bytes"
 	"crypto/rand"
-	"github.com/dedis/crypto/abstract"
+	"github.com/lbarman/crypto/abstract"
 )
 
 type ownedCoder struct {

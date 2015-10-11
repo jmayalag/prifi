@@ -9,7 +9,7 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/dedis/crypto/abstract"
+	"github.com/lbarman/crypto/abstract"
 	"golang.org/x/net/context"
 )
 

@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
-	"github.com/dedis/crypto/abstract"
+	"github.com/lbarman/crypto/abstract"
 	"github.com/dedis/prifi/coco/hashid"
 	"hash"
 	"strconv"

@@ -6,7 +6,7 @@ import (
 	"errors"
 	"hash"
 
-	"github.com/dedis/crypto/abstract"
+	"github.com/lbarman/crypto/abstract"
 )
 
 type hashContext struct {

@@ -1,7 +1,7 @@
 package coconet
 
 import (
-	"github.com/dedis/crypto/abstract"
+	"github.com/lbarman/crypto/abstract"
 )
 
 // Conn is an abstract bidirectonal connection.

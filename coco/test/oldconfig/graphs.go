@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/dedis/crypto/abstract"
+	"github.com/lbarman/crypto/abstract"
 	"github.com/dedis/prifi/coco/coconet"
 	"github.com/dedis/prifi/coco/sign"
 )

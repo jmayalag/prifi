@@ -18,8 +18,8 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 
-	"github.com/dedis/crypto/abstract"
-	"github.com/dedis/crypto/nist"
+	"github.com/lbarman/crypto/abstract"
+	"github.com/lbarman/crypto/nist"
 	"github.com/dedis/prifi/coco/coconet"
 	"github.com/dedis/prifi/coco/sign"
 	"github.com/dedis/prifi/coco/stamp"

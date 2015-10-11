@@ -3,9 +3,9 @@ package insure
 import (
 	"testing"
 
-	"github.com/dedis/crypto/config"
-	"github.com/dedis/crypto/poly"
-	"github.com/dedis/crypto/random"
+	"github.com/lbarman/crypto/config"
+	"github.com/lbarman/crypto/poly"
+	"github.com/lbarman/crypto/random"
 )
 
 var n int = 20

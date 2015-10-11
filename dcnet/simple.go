@@ -1,7 +1,7 @@
 package dcnet
 
 import (
-	"github.com/dedis/crypto/abstract"
+	"github.com/lbarman/crypto/abstract"
 )
 
 type simpleCoder struct {

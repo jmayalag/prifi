@@ -10,7 +10,7 @@ import (
 	"bytes"
 	"crypto/cipher"
 	"encoding/binary"
-	"github.com/dedis/crypto/abstract"
+	"github.com/lbarman/crypto/abstract"
 )
 
 

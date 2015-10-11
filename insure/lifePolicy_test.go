@@ -3,9 +3,9 @@ package insure
 import (
 	"testing"
 
-	"github.com/dedis/crypto/abstract"
-	"github.com/dedis/crypto/config"
-	"github.com/dedis/crypto/random"
+	"github.com/lbarman/crypto/abstract"
+	"github.com/lbarman/crypto/config"
+	"github.com/lbarman/crypto/random"
 
 	"github.com/dedis/prifi/connMan"
 	"github.com/dedis/prifi/coconet"

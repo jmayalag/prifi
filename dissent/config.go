@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/dedis/crypto/config"
-	"github.com/dedis/crypto/suites"
+	"github.com/lbarman/crypto/config"
+	"github.com/lbarman/crypto/suites"
 )
 
 var configFile config.File

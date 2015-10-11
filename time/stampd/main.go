@@ -1,9 +1,9 @@
 package main
 
 import (
-	"github.com/dedis/crypto/config"
-	"github.com/dedis/crypto/suites"
-	"github.com/dedis/crypto/nist"
+	"github.com/lbarman/crypto/config"
+	"github.com/lbarman/crypto/suites"
+	"github.com/lbarman/crypto/nist"
 )
 
 type ConfigData struct {

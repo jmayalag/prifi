@@ -12,8 +12,8 @@ import (
 	"os/signal"
 	//"encoding/hex"
 	"encoding/binary"
-	"github.com/dedis/crypto/nist"
-	//"github.com/dedis/crypto/openssl"
+	"github.com/lbarman/crypto/nist"
+	//"github.com/lbarman/crypto/openssl"
 	"github.com/dedis/prifi/dcnet"
 	//"github.com/elazarl/goproxy"
 )

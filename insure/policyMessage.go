@@ -5,12 +5,12 @@ import (
 	"math"
 	"math/big"
 
-	"github.com/dedis/crypto/abstract"
-	"github.com/dedis/crypto/anon"
-	"github.com/dedis/crypto/config"
-	"github.com/dedis/crypto/nist"
-	"github.com/dedis/crypto/poly"
-	"github.com/dedis/crypto/random"
+	"github.com/lbarman/crypto/abstract"
+	"github.com/lbarman/crypto/anon"
+	"github.com/lbarman/crypto/config"
+	"github.com/lbarman/crypto/nist"
+	"github.com/lbarman/crypto/poly"
+	"github.com/lbarman/crypto/random"
 
 	"github.com/dedis/protobuf"
 )
