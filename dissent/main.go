@@ -118,7 +118,255 @@ const (
 
 var errAddressTypeNotSupported = errors.New("SOCKS5 address type not supported")
 
-// Read an IPv4 or IPv6 address from an io.Reader and return it as a string
+/*
+ * MAIN
+ */
+
+func interceptCtrlC() {
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	go func() {
+		for sig := range c {
+			panic("signal: " + sig.String()) // with stacktrace
+		}
+	}()
+}
+
+func main() {
+	interceptCtrlC()
+
+	isrel := flag.Bool("relay", false, "Start relay node")
+	iscli := flag.Int("client", -1, "Start client node")
+	istru := flag.Int("trustee", -1, "Start trustee node")
+	flag.Parse()
+
+	readConfig()
+
+	if *isrel {
+		startRelay()
+	} else if *iscli >= 0 {
+		startClient(*iscli)
+	} else if *istru >= 0 {
+		startTrustee(*istru)
+	} else {
+		println("Error: must specify -relay, -client=n, or -trustee=n")
+	}
+}
+
+
+/*
+ * CLIENT
+ */
+
+func clientListen(listenport string, newconn chan<- net.Conn) {
+	log.Printf("Listening on port %s\n", listenport)
+	lsock, err := net.Listen("tcp", listenport)
+	if err != nil {
+		log.Printf("Can't open listen socket at port %s: %s",
+			listenport, err.Error())
+		return
+	}
+	for {
+		conn, err := lsock.Accept()
+		log.Printf("Accept on port %s\n", listenport)
+		if err != nil {
+			//log.Printf("Accept error: %s", err.Error())
+			lsock.Close()
+			return
+		}
+		newconn <- conn
+	}
+}
+
+func clientConnRead(cno int, conn net.Conn, upload chan<- []byte,
+	close chan<- int) {
+
+	for {
+		// Read up to a cell worth of data to send upstream
+		buf := make([]byte, payloadlen)
+		n, err := conn.Read(buf[proxyhdrlen:])
+
+		// Encode the connection number and actual data length
+		binary.BigEndian.PutUint32(buf[0:4], uint32(cno))
+		binary.BigEndian.PutUint16(buf[4:6], uint16(n))
+
+		// Send it upstream!
+		upload <- buf
+		//fmt.Printf("read %d bytes from client %d\n", n, cno)
+
+		// Connection error or EOF?
+		if n == 0 {
+			if err == io.EOF {
+				println("clientUpload: EOF, closing")
+			} else {
+				println("clientUpload: " + err.Error())
+			}
+			conn.Close()
+			close <- cno // signal that channel is closed
+			return
+		}
+	}
+}
+
+func clientReadRelay(rconn net.Conn, fromrelay chan<- connbuf) {
+	hdr := [6]byte{}
+	totcells := uint64(0)
+	totbytes := uint64(0)
+	for {
+		// Read the next downstream/broadcast cell from the relay
+		n, err := io.ReadFull(rconn, hdr[:])
+		if n != len(hdr) {
+			panic("clientReadRelay: " + err.Error())
+		}
+		cno := int(binary.BigEndian.Uint32(hdr[0:4]))
+		dlen := int(binary.BigEndian.Uint16(hdr[4:6]))
+		//if cno != 0 || dlen != 0 {
+		//	fmt.Printf("clientReadRelay: cno %d dlen %d\n",
+		//			cno, dlen)
+		//}
+
+		// Read the downstream data itself
+		buf := make([]byte, dlen)
+		n, err = io.ReadFull(rconn, buf)
+		if n != dlen {
+			panic("clientReadRelay: " + err.Error())
+		}
+
+		// Pass the downstream cell to the main loop
+		fromrelay <- connbuf{cno, buf}
+
+		totcells++
+		totbytes += uint64(dlen)
+		//fmt.Printf("read %d downstream cells, %d bytes\n",
+		//		totcells, totbytes)
+	}
+}
+
+func startClient(clino int) {
+	fmt.Printf("startClient %d\n", clino)
+
+	tg := dcnet.TestSetup(nil, suite, factory, nclients, ntrustees)
+	me := tg.Clients[clino]
+	clisize := me.Coder.ClientCellSize(payloadlen)
+
+	rconn := openRelay(clino)
+	fromrelay := make(chan connbuf)
+	go clientReadRelay(rconn, fromrelay)
+	println("client", clino, "connected")
+
+	// We're the "slot owner" - start an HTTP proxy
+	newconn := make(chan net.Conn)
+	upload := make(chan []byte)
+	close := make(chan int)
+	conns := make([]net.Conn, 1) // reserve conns[0]
+	if clino == 0 {
+		go clientListen(":1080", newconn)
+		//go clientListen(":8080",newconn)
+	}
+
+	// Client/proxy main loop
+	upq := make([][]byte, 0)
+	totupcells := uint64(0)
+	totupbytes := uint64(0)
+	for {
+		select {
+		case conn := <-newconn: // New TCP connection
+			cno := len(conns)
+			conns = append(conns, conn)
+			//fmt.Printf("new conn %d %p %p\n", cno, conn, conns[cno])
+			go clientConnRead(cno, conn, upload, close)
+
+		case buf := <-upload: // Upstream data from client
+			upq = append(upq, buf)
+
+		case cno := <-close: // Connection closed
+			conns[cno] = nil
+
+		case cbuf := <-fromrelay: // Downstream cell from relay
+			print(".")
+
+			cno := cbuf.cno
+			if cno != 0 || len(cbuf.buf) != 0 {
+				fmt.Printf("v %d (conn %d)\n",
+						len(cbuf.buf), cno)
+			}
+			if cno > 0 && cno < len(conns) && conns[cno] != nil {
+				buf := cbuf.buf
+				blen := len(buf)
+				//println(hex.Dump(buf))
+				if blen > 0 {
+					// Data from relay for this connection
+					n, err := conns[cno].Write(buf)
+					if n < blen {
+						panic("Write to client: " +
+							err.Error())
+					}
+				} else {
+					// Relay indicating EOF on this conn
+					fmt.Printf("upstream closed conn %d",
+						cno)
+					conns[cno].Close()
+				}
+			}
+
+			// XXX account for downstream cell in history
+
+			// Produce and ship the next upstream cell
+			var p []byte
+			if len(upq) > 0 {
+				p = upq[0]
+				upq = upq[1:]
+				fmt.Printf("\n^ %v (len : %d)\n", p)
+			}
+			slice := me.Coder.ClientEncode(p, payloadlen, me.History)
+			//println("client slice")
+			//println(hex.Dump(slice))
+			if len(slice) != clisize {
+				panic("client slice wrong size")
+			}
+			n, err := rconn.Write(slice)
+			if n != len(slice) {
+				panic("Write to relay conn: " + err.Error())
+			}
+
+			totupcells++
+			totupbytes += uint64(payloadlen)
+			//fmt.Printf("sent %d upstream cells, %d bytes\n",
+			//		totupcells, totupbytes)
+		}
+	}
+}
+
+/*
+ * TRUSTEE
+ */
+
+func startTrustee(tno int) {
+	tg := dcnet.TestSetup(nil, suite, factory, nclients, ntrustees)
+	me := tg.Trustees[tno]
+
+	conn := openRelay(tno | 0x80)
+	println("trustee", tno, "connected")
+
+	// Just generate ciphertext cells and stream them to the server.
+	for {
+		// Produce a cell worth of trustee ciphertext
+		tslice := me.Coder.TrusteeEncode(payloadlen)
+
+		// Send it to the relay
+		//println("trustee slice")
+		//println(hex.Dump(tslice))
+		n, err := conn.Write(tslice)
+		if n < len(tslice) || err != nil {
+			panic("can't write to socket: " + err.Error())
+		}
+	}
+}
+
+/*
+ * SOCKS UTILS
+ */
+ // Read an IPv4 or IPv6 address from an io.Reader and return it as a string
 func readIP(r io.Reader, len int) (string, error) {
 	addr := make([]byte, len)
 	_, err := io.ReadFull(r, addr)
@@ -262,7 +510,7 @@ func socks5Reply(cno int, err error, addr net.Addr) connbuf {
 	return connbuf{cno, buf}
 }
 
-// Main loop of our socks relay-side SOCKS proxy.
+// Main loop of our relay-side SOCKS proxy.
 func relaySocksProxy(cno int, upstream <-chan []byte,
 	downstream chan<- connbuf) {
 
@@ -281,6 +529,10 @@ func relaySocksProxy(cno int, upstream <-chan []byte,
 		log.Printf("SOCKS: no version/method header: " + err.Error())
 		return
 	}
+	
+	fmt.Println("Ver Number and Method %v", vernmeth)
+	fmt.Println("Ver Number and Method as int %v", int(vernmeth[0]))
+
 	//log.Printf("SOCKS proxy: version %d nmethods %d \n",
 	//	vernmeth[0], vernmeth[1])
 	ver := int(vernmeth[0])
@@ -387,242 +639,11 @@ func openRelay(ctno int) net.Conn {
 	// Tell the relay our client or trustee number
 	b := make([]byte, 1)
 	b[0] = byte(ctno)
+	fmt.Printf("\nRelay is writing %v\n", b)
 	n, err := conn.Write(b)
 	if n < 1 || err != nil {
 		panic("Error writing to socket:" + err.Error())
 	}
 
 	return conn
-}
-
-func clientListen(listenport string, newconn chan<- net.Conn) {
-	log.Printf("Listening on port %s\n", listenport)
-	lsock, err := net.Listen("tcp", listenport)
-	if err != nil {
-		log.Printf("Can't open listen socket at port %s: %s",
-			listenport, err.Error())
-		return
-	}
-	for {
-		conn, err := lsock.Accept()
-		log.Printf("Accept on port %s\n", listenport)
-		if err != nil {
-			//log.Printf("Accept error: %s", err.Error())
-			lsock.Close()
-			return
-		}
-		newconn <- conn
-	}
-}
-
-func clientConnRead(cno int, conn net.Conn, upload chan<- []byte,
-	close chan<- int) {
-
-	for {
-		// Read up to a cell worth of data to send upstream
-		buf := make([]byte, payloadlen)
-		n, err := conn.Read(buf[proxyhdrlen:])
-
-		// Encode the connection number and actual data length
-		binary.BigEndian.PutUint32(buf[0:4], uint32(cno))
-		binary.BigEndian.PutUint16(buf[4:6], uint16(n))
-
-		// Send it upstream!
-		upload <- buf
-		//fmt.Printf("read %d bytes from client %d\n", n, cno)
-
-		// Connection error or EOF?
-		if n == 0 {
-			if err == io.EOF {
-				println("clientUpload: EOF, closing")
-			} else {
-				println("clientUpload: " + err.Error())
-			}
-			conn.Close()
-			close <- cno // signal that channel is closed
-			return
-		}
-	}
-}
-
-func clientReadRelay(rconn net.Conn, fromrelay chan<- connbuf) {
-	hdr := [6]byte{}
-	totcells := uint64(0)
-	totbytes := uint64(0)
-	for {
-		// Read the next downstream/broadcast cell from the relay
-		n, err := io.ReadFull(rconn, hdr[:])
-		if n != len(hdr) {
-			panic("clientReadRelay: " + err.Error())
-		}
-		cno := int(binary.BigEndian.Uint32(hdr[0:4]))
-		dlen := int(binary.BigEndian.Uint16(hdr[4:6]))
-		//if cno != 0 || dlen != 0 {
-		//	fmt.Printf("clientReadRelay: cno %d dlen %d\n",
-		//			cno, dlen)
-		//}
-
-		// Read the downstream data itself
-		buf := make([]byte, dlen)
-		n, err = io.ReadFull(rconn, buf)
-		if n != dlen {
-			panic("clientReadRelay: " + err.Error())
-		}
-
-		// Pass the downstream cell to the main loop
-		fromrelay <- connbuf{cno, buf}
-
-		totcells++
-		totbytes += uint64(dlen)
-		//fmt.Printf("read %d downstream cells, %d bytes\n",
-		//		totcells, totbytes)
-	}
-}
-
-func startClient(clino int) {
-	fmt.Printf("startClient %d\n", clino)
-
-	tg := dcnet.TestSetup(nil, suite, factory, nclients, ntrustees)
-	me := tg.Clients[clino]
-	clisize := me.Coder.ClientCellSize(payloadlen)
-
-	rconn := openRelay(clino)
-	fromrelay := make(chan connbuf)
-	go clientReadRelay(rconn, fromrelay)
-	println("client", clino, "connected")
-
-	// We're the "slot owner" - start an HTTP proxy
-	newconn := make(chan net.Conn)
-	upload := make(chan []byte)
-	close := make(chan int)
-	conns := make([]net.Conn, 1) // reserve conns[0]
-	if clino == 0 {
-		go clientListen(":1080", newconn)
-		//go clientListen(":8080",newconn)
-	}
-
-	// Client/proxy main loop
-	upq := make([][]byte, 0)
-	totupcells := uint64(0)
-	totupbytes := uint64(0)
-	for {
-		select {
-		case conn := <-newconn: // New TCP connection
-			cno := len(conns)
-			conns = append(conns, conn)
-			//fmt.Printf("new conn %d %p %p\n", cno, conn, conns[cno])
-			go clientConnRead(cno, conn, upload, close)
-
-		case buf := <-upload: // Upstream data from client
-			upq = append(upq, buf)
-
-		case cno := <-close: // Connection closed
-			conns[cno] = nil
-
-		case cbuf := <-fromrelay: // Downstream cell from relay
-			//print(".")
-
-			cno := cbuf.cno
-			//if cno != 0 || len(cbuf.buf) != 0 {
-			//	fmt.Printf("v %d (conn %d)\n",
-			//			len(cbuf.buf), cno)
-			//}
-			if cno > 0 && cno < len(conns) && conns[cno] != nil {
-				buf := cbuf.buf
-				blen := len(buf)
-				//println(hex.Dump(buf))
-				if blen > 0 {
-					// Data from relay for this connection
-					n, err := conns[cno].Write(buf)
-					if n < blen {
-						panic("Write to client: " +
-							err.Error())
-					}
-				} else {
-					// Relay indicating EOF on this conn
-					fmt.Printf("upstream closed conn %d",
-						cno)
-					conns[cno].Close()
-				}
-			}
-
-			// XXX account for downstream cell in history
-
-			// Produce and ship the next upstream cell
-			var p []byte
-			if len(upq) > 0 {
-				p = upq[0]
-				upq = upq[1:]
-				//fmt.Printf("^ %d\n", len(p))
-			}
-			slice := me.Coder.ClientEncode(p, payloadlen, me.History)
-			//println("client slice")
-			//println(hex.Dump(slice))
-			if len(slice) != clisize {
-				panic("client slice wrong size")
-			}
-			n, err := rconn.Write(slice)
-			if n != len(slice) {
-				panic("Write to relay conn: " + err.Error())
-			}
-
-			totupcells++
-			totupbytes += uint64(payloadlen)
-			//fmt.Printf("sent %d upstream cells, %d bytes\n",
-			//		totupcells, totupbytes)
-		}
-	}
-}
-
-func startTrustee(tno int) {
-	tg := dcnet.TestSetup(nil, suite, factory, nclients, ntrustees)
-	me := tg.Trustees[tno]
-
-	conn := openRelay(tno | 0x80)
-	println("trustee", tno, "connected")
-
-	// Just generate ciphertext cells and stream them to the server.
-	for {
-		// Produce a cell worth of trustee ciphertext
-		tslice := me.Coder.TrusteeEncode(payloadlen)
-
-		// Send it to the relay
-		//println("trustee slice")
-		//println(hex.Dump(tslice))
-		n, err := conn.Write(tslice)
-		if n < len(tslice) || err != nil {
-			panic("can't write to socket: " + err.Error())
-		}
-	}
-}
-
-func interceptCtrlC() {
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
-	go func() {
-		for sig := range c {
-			panic("signal: " + sig.String()) // with stacktrace
-		}
-	}()
-}
-
-func main() {
-	interceptCtrlC()
-
-	isrel := flag.Bool("relay", false, "Start relay node")
-	iscli := flag.Int("client", -1, "Start client node")
-	istru := flag.Int("trustee", -1, "Start trustee node")
-	flag.Parse()
-
-	readConfig()
-
-	if *isrel {
-		startRelay()
-	} else if *iscli >= 0 {
-		startClient(*iscli)
-	} else if *istru >= 0 {
-		startTrustee(*istru)
-	} else {
-		println("Error: must specify -relay, -client=n, or -trustee=n")
-	}
 }
