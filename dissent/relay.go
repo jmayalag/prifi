@@ -104,6 +104,8 @@ func startRelay() {
 	nulldown := connbuf{} // default empty downstream cell
 	window := 2           // Maximum cells in-flight
 	inflight := 0         // Current cells in-flight
+
+
 	for {
 		//print(".")
 
@@ -125,7 +127,8 @@ func startRelay() {
 		var downbuf connbuf
 		select {
 		case downbuf = <-downstream: // some data to forward downstream
-			//fmt.Printf("v %d\n", len(dbuf)-6)
+			//fmt.Println("Downstream data...")
+			//fmt.Printf("v %d\n", len(downbuf)-6)
 		default: // nothing at the moment to forward
 			downbuf = nulldown
 		}
@@ -210,6 +213,9 @@ func startRelay() {
 			log.Printf("upstream cell invalid length %d", 6+uplen)
 			continue
 		}
+
+		//fmt.Printf("\nReceived byte %v (len: %d)\n", outb, len(outb))
+
 		conn <- outb[6 : 6+uplen]
 	}
 }
