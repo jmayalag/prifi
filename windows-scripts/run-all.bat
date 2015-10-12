@@ -21,4 +21,3 @@ ping -n 2 127.0.0.1 >nul
 
 ECHO Starting the client 0... [might prompt for UAC, please accept]
 start client0.bat
-pause
