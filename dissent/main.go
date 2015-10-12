@@ -529,15 +529,15 @@ func relaySocksProxy(cno int, upstream <-chan []byte,
 		log.Printf("SOCKS: no version/method header: " + err.Error())
 		return
 	}
-	
-	fmt.Println("Ver Number and Method %v", vernmeth)
-	fmt.Println("Ver Number and Method as int %v", int(vernmeth[0]))
-
 	//log.Printf("SOCKS proxy: version %d nmethods %d \n",
 	//	vernmeth[0], vernmeth[1])
 	ver := int(vernmeth[0])
 	if ver != 5 {
 		log.Printf("SOCKS: unsupported version number %d", ver)
+
+		if ver == 71 {
+			log.Printf("Tips : 71 is for HTTP, but this is a SOCKS proxy, not an HTTP proxy !", ver)
+		}
 		return
 	}
 	nmeth := int(vernmeth[1])
