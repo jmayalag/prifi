@@ -9,6 +9,7 @@ import (
 	"log"
 	"net"
 	"time"
+	log2 "github.com/lbarman/prifi/log"
 )
 
 type Trustee struct {
@@ -37,16 +38,33 @@ func repoting() {
 	now := time.Now()
 	if now.After(report) {
 		duration := now.Sub(begin).Seconds()
+
+		instantUpSpeed := (float64(parupbytes)/period.Seconds())
+
 		fmt.Printf("@ %fs; cell %f (%f) /sec, up %f (%f) B/s, down %f (%f) B/s\n",
 			duration,
 			 float64(totupcells)/duration, float64(parupcells)/period.Seconds(),
-			 float64(totupbytes)/duration, float64(parupbytes)/period.Seconds(),
+			 float64(totupbytes)/duration, instantUpSpeed,
 			 float64(totdownbytes)/duration, float64(pardownbytes)/period.Seconds())
 
 			// Next report time
 		parupcells = 0
 		parupbytes = 0
 		pardownbytes = 0
+
+		//log2.BenchmarkFloat(fmt.Sprintf("cellsize-%d-upstream-bytes", payloadlen), instantUpSpeed)
+
+		data := struct {
+		    Experiment string
+		    CellSize int
+		    Speed float64
+		}{
+		    "upstream-speed-given-cellsize",
+		    payloadlen,
+		    instantUpSpeed,
+		}
+
+		log2.JsonDump(data)
 
 		report = now.Add(period)
 	}

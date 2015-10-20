@@ -17,6 +17,8 @@ import (
 	//"github.com/lbarman/crypto/openssl"
 	"github.com/dedis/prifi/dcnet"
 	//"github.com/elazarl/goproxy"
+
+	log2 "github.com/lbarman/prifi/log"
 )
 
 var suite = nist.NewAES128SHA256P256() // XXX should only have defaultSuite
@@ -33,7 +35,7 @@ const relayhost = "localhost:9876" // XXX
 const bindport = ":9876"
 
 //const payloadlen = 1200			// upstream cell size
-const payloadlen = 256 // upstream cell size
+const payloadlen = 512 // upstream cell size
 
 const downcellmax = 16 * 1024 // downstream cell max size
 
@@ -135,6 +137,8 @@ func interceptCtrlC() {
 
 func main() {
 	interceptCtrlC()
+
+	log2.StringDump("New run...")
 
 	isrel := flag.Bool("relay", false, "Start relay node")
 	iscli := flag.Int("client", -1, "Start client node")

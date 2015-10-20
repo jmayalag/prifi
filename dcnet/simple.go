@@ -68,7 +68,8 @@ func (c *simpleCoder) TrusteeSetup(suite abstract.Suite,
 }
 
 func (c *simpleCoder) TrusteeEncode(payloadlen int) []byte {
-	return c.ClientEncode(nil, payloadlen, nil)
+	emptyCode := abstract.Cipher{}
+	return c.ClientEncode(nil, payloadlen, emptyCode)
 }
 
 ///// Relay methods /////
