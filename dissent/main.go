@@ -35,7 +35,7 @@ const relayhost = "localhost:9876" // XXX
 const bindport = ":9876"
 
 //const payloadlen = 1200			// upstream cell size
-const payloadlen = 512 // upstream cell size
+var payloadlen = 512 // upstream cell size
 
 const downcellmax = 16 * 1024 // downstream cell max size
 
@@ -144,9 +144,12 @@ func main() {
 	iscli := flag.Int("client", -1, "Start client node")
 	socks := flag.Bool("socks", true, "Starts a socks proxy for the client")
 	istru := flag.Int("trustee", -1, "Start trustee node")
+	cellsize := flag.Int("cellsize", 1024, "Sets the size of one cell, in bytes.")
 	flag.Parse()
 
 	readConfig()
+
+	payloadlen = *cellsize
 
 	if *isrel {
 		startRelay()
