@@ -29,17 +29,25 @@ var totupbytes = int64(0)
 var totdowncells = int64(0)
 var totdownbytes = int64(0)
 
+var parupcells = int64(0)
+var parupbytes = int64(0)
+var pardownbytes = int64(0)
+
 func repoting() {
 	now := time.Now()
 	if now.After(report) {
 		duration := now.Sub(begin).Seconds()
-		fmt.Printf("@ %f sec: %d cells, %f cells/sec, %d upbytes, %f upbytes/sec, %d downbytes, %f downbytes/sec\n",
+		fmt.Printf("@ %fs; cell %f (%f) /sec, up %f (%f) B/s, down %f (%f) B/s\n",
 			duration,
-			totupcells, float64(totupcells)/duration,
-			totupbytes, float64(totupbytes)/duration,
-			totdownbytes, float64(totdownbytes)/duration)
+			 float64(totupcells)/duration, float64(parupcells)/period.Seconds(),
+			 float64(totupbytes)/duration, float64(parupbytes)/period.Seconds(),
+			 float64(totdownbytes)/duration, float64(pardownbytes)/period.Seconds())
 
 			// Next report time
+		parupcells = 0
+		parupbytes = 0
+		pardownbytes = 0
+
 		report = now.Add(period)
 	}
 }
@@ -152,6 +160,7 @@ func startRelay() {
 		}
 		totdowncells++
 		totdownbytes += int64(dlen)
+		pardownbytes += int64(dlen)
 		//fmt.Printf("sent %d downstream cells, %d bytes \n",
 		//		totdowncells, totdownbytes)
 
@@ -164,7 +173,6 @@ func startRelay() {
 
 		// Collect a cell ciphertext from each trustee
 		for i := 0; i < ntrustees; i++ {
-			fmt.Println("t",i)
 			n, err := io.ReadFull(tsock[i], tslice[i])
 			if n < trusize {
 				panic("Read from client: " + err.Error())
@@ -177,7 +185,6 @@ func startRelay() {
 		// Collect an upstream ciphertext from each client
 		for i := 0; i < nclients; i++ {
 			n, err := io.ReadFull(csock[i], cslice[i])
-			fmt.Println("c",i)
 			if n < clisize {
 				panic("Read from client: " + err.Error())
 			}
@@ -191,6 +198,8 @@ func startRelay() {
 
 		totupcells++
 		totupbytes += int64(payloadlen)
+		parupcells++
+		parupbytes += int64(payloadlen)
 		//fmt.Printf("received %d upstream cells, %d bytes\n",
 		//		totupcells, totupbytes)
 
