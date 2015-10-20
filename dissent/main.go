@@ -138,6 +138,7 @@ func main() {
 
 	isrel := flag.Bool("relay", false, "Start relay node")
 	iscli := flag.Int("client", -1, "Start client node")
+	socks := flag.Bool("socks", true, "Starts a socks proxy for the client")
 	istru := flag.Int("trustee", -1, "Start trustee node")
 	flag.Parse()
 
@@ -146,7 +147,7 @@ func main() {
 	if *isrel {
 		startRelay()
 	} else if *iscli >= 0 {
-		startClient(*iscli)
+		startClient(*iscli, *socks)
 	} else if *istru >= 0 {
 		startTrustee(*istru)
 	} else {
@@ -243,7 +244,7 @@ func clientReadRelay(rconn net.Conn, fromrelay chan<- connbuf) {
 	}
 }
 
-func startClient(clino int) {
+func startClient(clino int, socks bool) {
 	fmt.Printf("startClient %d\n", clino)
 
 	tg := dcnet.TestSetup(nil, suite, factory, nclients, ntrustees)
@@ -262,8 +263,9 @@ func startClient(clino int) {
 	conns := make([]net.Conn, 1) // reserve conns[0]
 	
 	addr := ":" + strconv.Itoa(1080+clino)
-	go clientListen(addr, newconn)
-	//go clientListen(":8080",newconn)
+	if(socks){
+		go clientListen(addr, newconn)
+	}
 
 	// Client/proxy main loop
 	upq := make([][]byte, 0)
