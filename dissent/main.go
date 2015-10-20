@@ -8,6 +8,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"strconv"
 	//"net/http"
 	"os/signal"
 	//"encoding/hex"
@@ -25,7 +26,7 @@ var factory = dcnet.OwnedCoderFactory
 
 var defaultSuite = suite
 
-const nclients = 1
+const nclients = 2
 const ntrustees = 3
 
 const relayhost = "localhost:9876" // XXX
@@ -259,10 +260,10 @@ func startClient(clino int) {
 	upload := make(chan []byte)
 	close := make(chan int)
 	conns := make([]net.Conn, 1) // reserve conns[0]
-	if clino == 0 {
-		go clientListen(":1080", newconn)
-		//go clientListen(":8080",newconn)
-	}
+	
+	addr := ":" + strconv.Itoa(1080+clino)
+	go clientListen(addr, newconn)
+	//go clientListen(":8080",newconn)
 
 	// Client/proxy main loop
 	upq := make([][]byte, 0)

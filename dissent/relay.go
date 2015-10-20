@@ -20,6 +20,30 @@ type AnonSet struct {
 	trustees []Trustee
 }
 
+// Periodic stats reporting
+var begin = time.Now()
+var report = begin
+var period, _ = time.ParseDuration("3s")
+var totupcells = int64(0)
+var totupbytes = int64(0)
+var totdowncells = int64(0)
+var totdownbytes = int64(0)
+
+func repoting() {
+	now := time.Now()
+	if now.After(report) {
+		duration := now.Sub(begin).Seconds()
+		fmt.Printf("@ %f sec: %d cells, %f cells/sec, %d upbytes, %f upbytes/sec, %d downbytes, %f downbytes/sec\n",
+			duration,
+			totupcells, float64(totupcells)/duration,
+			totupbytes, float64(totupbytes)/duration,
+			totdownbytes, float64(totdownbytes)/duration)
+
+			// Next report time
+		report = now.Add(period)
+	}
+}
+
 func startRelay() {
 	tg := dcnet.TestSetup(nil, suite, factory, nclients, ntrustees)
 	me := tg.Relay
@@ -90,15 +114,6 @@ func startRelay() {
 		tslice[i] = make([]byte, trusize)
 	}
 
-	// Periodic stats reporting
-	begin := time.Now()
-	report := begin
-	period, _ := time.ParseDuration("3s")
-	totupcells := int64(0)
-	totupbytes := int64(0)
-	totdowncells := int64(0)
-	totdownbytes := int64(0)
-
 	conns := make(map[int]chan<- []byte)
 	downstream := make(chan connbuf)
 	nulldown := connbuf{} // default empty downstream cell
@@ -107,30 +122,18 @@ func startRelay() {
 
 
 	for {
-		//print(".")
 
 		// Show periodic reports
-		now := time.Now()
-		if now.After(report) {
-			duration := now.Sub(begin).Seconds()
-			fmt.Printf("@ %f sec: %d cells, %f cells/sec, %d upbytes, %f upbytes/sec, %d downbytes, %f downbytes/sec\n",
-				duration,
-				totupcells, float64(totupcells)/duration,
-				totupbytes, float64(totupbytes)/duration,
-				totdownbytes, float64(totdownbytes)/duration)
-
-			// Next report time
-			report = now.Add(period)
-		}
+		repoting()
 
 		// See if there's any downstream data to forward.
 		var downbuf connbuf
 		select {
-		case downbuf = <-downstream: // some data to forward downstream
-			//fmt.Println("Downstream data...")
-			//fmt.Printf("v %d\n", len(downbuf)-6)
-		default: // nothing at the moment to forward
-			downbuf = nulldown
+			case downbuf = <-downstream: // some data to forward downstream
+				//fmt.Println("Downstream data...")
+				//fmt.Printf("v %d\n", len(downbuf)-6)
+			default: // nothing at the moment to forward
+				downbuf = nulldown
 		}
 		dlen := len(downbuf.buf)
 		dbuf := make([]byte, 6+dlen)
@@ -161,6 +164,7 @@ func startRelay() {
 
 		// Collect a cell ciphertext from each trustee
 		for i := 0; i < ntrustees; i++ {
+			fmt.Println("t",i)
 			n, err := io.ReadFull(tsock[i], tslice[i])
 			if n < trusize {
 				panic("Read from client: " + err.Error())
@@ -173,6 +177,7 @@ func startRelay() {
 		// Collect an upstream ciphertext from each client
 		for i := 0; i < nclients; i++ {
 			n, err := io.ReadFull(csock[i], cslice[i])
+			fmt.Println("c",i)
 			if n < clisize {
 				panic("Read from client: " + err.Error())
 			}
