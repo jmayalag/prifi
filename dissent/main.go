@@ -145,6 +145,7 @@ func main() {
 	socks := flag.Bool("socks", true, "Starts a socks proxy for the client")
 	istru := flag.Int("trustee", -1, "Start trustee node")
 	cellsize := flag.Int("cellsize", 1024, "Sets the size of one cell, in bytes.")
+	relayReceiveLimit := flag.Int("reportlimit", -1, "Sets the limit of cells to receive before stopping the relay")
 	flag.Parse()
 
 	readConfig()
@@ -152,7 +153,7 @@ func main() {
 	payloadlen = *cellsize
 
 	if *isrel {
-		startRelay()
+		startRelay(*relayReceiveLimit)
 	} else if *iscli >= 0 {
 		startClient(*iscli, *socks)
 	} else if *istru >= 0 {

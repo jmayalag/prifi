@@ -24,6 +24,7 @@ type AnonSet struct {
 // Periodic stats reporting
 var begin = time.Now()
 var report = begin
+var numberOfReports = 0
 var period, _ = time.ParseDuration("3s")
 var totupcells = int64(0)
 var totupbytes = int64(0)
@@ -34,7 +35,7 @@ var parupcells = int64(0)
 var parupbytes = int64(0)
 var pardownbytes = int64(0)
 
-func repoting() {
+func repoting(reportingLimit int) bool {
 	now := time.Now()
 	if now.After(report) {
 		duration := now.Sub(begin).Seconds()
@@ -67,10 +68,17 @@ func repoting() {
 		log2.JsonDump(data)
 
 		report = now.Add(period)
+		numberOfReports += 1
+
+		if(reportingLimit > -1 && numberOfReports >= reportingLimit) {
+			return false
+		}
 	}
+
+	return true
 }
 
-func startRelay() {
+func startRelay(reportingLimit int) {
 	tg := dcnet.TestSetup(nil, suite, factory, nclients, ntrustees)
 	me := tg.Relay
 
@@ -150,7 +158,10 @@ func startRelay() {
 	for {
 
 		// Show periodic reports
-		repoting()
+		if(!repoting(reportingLimit)) {
+			println("Reporting limit matched; exiting the relay")
+			break;
+		}
 
 		// See if there's any downstream data to forward.
 		var downbuf connbuf
