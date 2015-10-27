@@ -35,7 +35,7 @@ const relayhost = "localhost:9876" // XXX
 const bindport = ":9876"
 
 //const payloadlen = 1200			// upstream cell size
-var payloadlen = 512 // upstream cell size
+var payloadlen = 7680 // upstream cell size
 
 const downcellmax = 16 * 1024 // downstream cell max size
 
@@ -144,13 +144,15 @@ func main() {
 	iscli := flag.Int("client", -1, "Start client node")
 	socks := flag.Bool("socks", true, "Starts a socks proxy for the client")
 	istru := flag.Int("trustee", -1, "Start trustee node")
-	cellsize := flag.Int("cellsize", 1024, "Sets the size of one cell, in bytes.")
+	cellsize := flag.Int("cellsize", -1, "Sets the size of one cell, in bytes.")
 	relayReceiveLimit := flag.Int("reportlimit", -1, "Sets the limit of cells to receive before stopping the relay")
 	flag.Parse()
 
 	readConfig()
 
-	payloadlen = *cellsize
+	if(*cellsize > -1) {
+		payloadlen = *cellsize
+	}
 
 	if *isrel {
 		startRelay(*relayReceiveLimit)
@@ -185,6 +187,28 @@ func clientListen(listenport string, newconn chan<- net.Conn) {
 			return
 		}
 		newconn <- conn
+	}
+}
+
+func trusteeConnRead(conn net.Conn, readChan chan<- []byte) {
+
+	for {
+		// Read up to a cell worth of data to send upstream
+		buf := make([]byte, payloadlen)
+		n, err := conn.Read(buf[proxyhdrlen:])
+
+		// Connection error or EOF?
+		if n == 0 {
+			if err == io.EOF {
+				println("trusteeConnRead: EOF from relay, closing")
+			} else {
+				println("trusteeConnRead: " + err.Error())
+			}
+			conn.Close()
+			return
+		} else {
+			readChan <- buf
+		}
 	}
 }
 
@@ -359,17 +383,27 @@ func startTrustee(tno int) {
 	conn := openRelay(tno | 0x80)
 	println("trustee", tno, "connected")
 
+	upload := make(chan []byte)
+	go trusteeConnRead(conn, upload)
+
 	// Just generate ciphertext cells and stream them to the server.
 	for {
-		// Produce a cell worth of trustee ciphertext
-		tslice := me.Coder.TrusteeEncode(payloadlen)
+		select {
+			case readByte := <- upload:
+				fmt.Println("Received byte ! ", readByte)
 
-		// Send it to the relay
-		//println("trustee slice")
-		//println(hex.Dump(tslice))
-		n, err := conn.Write(tslice)
-		if n < len(tslice) || err != nil {
-			panic("can't write to socket: " + err.Error())
+			default:
+				// Produce a cell worth of trustee ciphertext
+				tslice := me.Coder.TrusteeEncode(payloadlen)
+
+				// Send it to the relay
+				//println("trustee slice")
+				//println(hex.Dump(tslice))
+				n, err := conn.Write(tslice)
+				if n < len(tslice) || err != nil {
+					panic("can't write to socket: " + err.Error())
+				}
+
 		}
 	}
 }
