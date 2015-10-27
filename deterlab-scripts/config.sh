@@ -1,2 +1,2 @@
-maxclient=3
-maxtrustee=2
+maxclient=2
+maxtrustee=3
