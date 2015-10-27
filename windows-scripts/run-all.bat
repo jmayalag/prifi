@@ -5,7 +5,7 @@ ECHO ...
 
 ECHO Starting the relay... [might prompt for UAC, please accept]
 start relay.bat
-pause
+ping -n 10 127.0.0.1 >nul
 
 ECHO Starting the trustee 0...
 start trustee0.bat
