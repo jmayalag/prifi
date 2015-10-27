@@ -204,12 +204,14 @@ func startRelay(reportingLimit int) {
 		// Collect a cell ciphertext from each trustee
 		for i := 0; i < ntrustees; i++ {
 			//say hello to the trustees
+			/*
 			msg := make([]byte, 4)
 			binary.BigEndian.PutUint32(msg[0:4], uint32(1))
 			_, err2 := tsock[i].Write(msg)
 			if err2 != nil {
 				panic("can't say hello to trustee: " + err2.Error())
 			}
+			*/
 			n, err := io.ReadFull(tsock[i], tslice[i])
 			if n < trusize {
 				panic("Read from trustee: " + err.Error())

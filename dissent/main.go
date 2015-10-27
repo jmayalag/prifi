@@ -384,7 +384,7 @@ func startTrustee(tno int) {
 	println("trustee", tno, "connected")
 
 	upload := make(chan []byte)
-	go trusteeConnRead(conn, upload)
+	//go trusteeConnRead(conn, upload)
 
 	// Just generate ciphertext cells and stream them to the server.
 	for {
