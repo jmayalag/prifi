@@ -35,7 +35,7 @@ var parupcells = int64(0)
 var parupbytes = int64(0)
 var pardownbytes = int64(0)
 
-func repoting(reportingLimit int) bool {
+func reportStatistics(reportingLimit int) bool {
 	now := time.Now()
 	if now.After(report) {
 		duration := now.Sub(begin).Seconds()
@@ -158,7 +158,7 @@ func startRelay(reportingLimit int) {
 	for {
 
 		// Show periodic reports
-		if(!repoting(reportingLimit)) {
+		if(!reportStatistics(reportingLimit)) {
 			println("Reporting limit matched; exiting the relay")
 			break;
 		}

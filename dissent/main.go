@@ -28,6 +28,8 @@ var factory = dcnet.OwnedCoderFactory
 
 var defaultSuite = suite
 
+const LLD_PROTOCOL_VERSION = 1
+
 const nclients = 2
 const ntrustees = 3
 
@@ -144,6 +146,8 @@ func main() {
 	iscli := flag.Int("client", -1, "Start client node")
 	socks := flag.Bool("socks", true, "Starts a socks proxy for the client")
 	istru := flag.Int("trustee", -1, "Start trustee node")
+	issrv := flag.Bool("trusteesrv", false, "Start a trustee server")
+
 	cellsize := flag.Int("cellsize", -1, "Sets the size of one cell, in bytes.")
 	relayReceiveLimit := flag.Int("reportlimit", -1, "Sets the limit of cells to receive before stopping the relay")
 	flag.Parse()
@@ -158,6 +162,8 @@ func main() {
 		startRelay(*relayReceiveLimit)
 	} else if *iscli >= 0 {
 		startClient(*iscli, *socks)
+	} else if *issrv {
+		startTrusteeSrv()
 	} else if *istru >= 0 {
 		startTrustee(*istru)
 	} else {
