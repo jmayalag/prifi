@@ -1,3 +1,3 @@
 @echo off
 cd ..\\dissent\\
-go run main.go config.go relay.go -trusteesrv -reportlimit=10
+go run main.go config.go relay.go trusteeServer.go -trusteesrv

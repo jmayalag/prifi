@@ -142,15 +142,28 @@ func main() {
 
 	log2.StringDump("New run...")
 
+	//roles...
 	isrel := flag.Bool("relay", false, "Start relay node")
 	iscli := flag.Int("client", -1, "Start client node")
 	socks := flag.Bool("socks", true, "Starts a socks proxy for the client")
 	istru := flag.Int("trustee", -1, "Start trustee node")
 	issrv := flag.Bool("trusteesrv", false, "Start a trustee server")
 
+	//parameters config
+	nclients := flag.Int("nclients", nclients, "The number of clients.")
+	ntrustees := flag.Int("ntrustees", ntrustees, "The number of trustees.")
 	cellsize := flag.Int("cellsize", -1, "Sets the size of one cell, in bytes.")
 	relayReceiveLimit := flag.Int("reportlimit", -1, "Sets the limit of cells to receive before stopping the relay")
+	trustee1Host := flag.String("t1host", "localhost", "The Ip address of the 1st trustee, or localhost")
+	trustee2Host := flag.String("t2host", "localhost", "The Ip address of the 2nd trustee, or localhost")
+	trustee3Host := flag.String("t3host", "localhost", "The Ip address of the 3rd trustee, or localhost")
+	trustee4Host := flag.String("t4host", "localhost", "The Ip address of the 4th trustee, or localhost")
+	trustee5Host := flag.String("t5host", "localhost", "The Ip address of the 5th trustee, or localhost")
+
 	flag.Parse()
+	trusteesIp := []string{*trustee1Host, *trustee2Host, *trustee3Host, *trustee4Host, *trustee5Host}
+
+	fmt.Println(*trustee1Host)
 
 	readConfig()
 
@@ -158,8 +171,14 @@ func main() {
 		payloadlen = *cellsize
 	}
 
+	//exception
+	if(*ntrustees > 5) {
+		fmt.Println("Only up to 5 trustees are supported")
+		os.Exit(1)
+	}
+
 	if *isrel {
-		startRelay(*relayReceiveLimit)
+		startRelay(*relayReceiveLimit, *nclients, *ntrustees, trusteesIp)
 	} else if *iscli >= 0 {
 		startClient(*iscli, *socks)
 	} else if *issrv {

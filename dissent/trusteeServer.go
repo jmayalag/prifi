@@ -10,7 +10,7 @@ import (
 )
 
 
-const srvListenPort = ":9001"
+const srvListenPort = ":9000"
 
 func startTrusteeSrv() {
 

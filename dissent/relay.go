@@ -6,7 +6,9 @@ import (
 	"github.com/lbarman/crypto/abstract"
 	"github.com/dedis/prifi/dcnet"
 	"io"
+	//"os"
 	"log"
+	"strings"
 	"net"
 	"time"
 	log2 "github.com/lbarman/prifi/log"
@@ -78,7 +80,10 @@ func reportStatistics(reportingLimit int) bool {
 	return true
 }
 
-func startRelay(reportingLimit int) {
+func startRelay(reportingLimit int, nclients int, ntrustees int,
+	trusteesIp []string) {
+
+	//the crypto parameters are static
 	tg := dcnet.TestSetup(nil, suite, factory, nclients, ntrustees)
 	me := tg.Relay
 
@@ -92,6 +97,40 @@ func startRelay(reportingLimit int) {
 		}()
 	*/
 
+	//connect to the trustees
+	ctru := 0
+	tsock := make([]net.Conn, ntrustees)
+
+	for ctru < ntrustees 	{
+		truip := strings.Replace(trusteesIp[ctru], "_", ":", -1)
+
+		//connect
+		fmt.Println("Relay connecting to trustee", ctru, "on address", truip)
+		conn, err := net.Dial("tcp", truip)
+		if err != nil {
+			panic("Can't connect to trustee:" + err.Error())
+		}
+
+		//tell the trustee server our parameters
+		buf := make([]byte, 20)
+		binary.BigEndian.PutUint32(buf[0:4], uint32(LLD_PROTOCOL_VERSION))
+		binary.BigEndian.PutUint32(buf[4:8], uint32(payloadlen))
+		binary.BigEndian.PutUint32(buf[8:12], uint32(nclients))
+		binary.BigEndian.PutUint32(buf[12:16], uint32(ntrustees))
+		binary.BigEndian.PutUint32(buf[16:20], uint32(ctru))
+
+		fmt.Println("Writing", LLD_PROTOCOL_VERSION, "setup is", nclients, ntrustees, "role is", ctru, "cellSize ", payloadlen)
+
+		n, err := conn.Write(buf)
+
+		if n < 1 || err != nil {
+			panic("Error writing to socket:" + err.Error())
+		}
+
+		ctru++
+	}
+
+	//listen for clients
 	lsock, err := net.Listen("tcp", bindport)
 	if err != nil {
 		panic("Can't open listen socket:" + err.Error())
@@ -99,9 +138,8 @@ func startRelay(reportingLimit int) {
 
 	// Wait for all the clients and trustees to connect
 	ccli := 0
-	ctru := 0
 	csock := make([]net.Conn, nclients)
-	tsock := make([]net.Conn, ntrustees)
+	
 	for ccli < nclients || ctru < ntrustees {
 		fmt.Printf("Waiting for %d clients, %d trustees\n",
 			nclients-ccli, ntrustees-ctru)
