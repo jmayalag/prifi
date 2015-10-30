@@ -186,7 +186,7 @@ func main() {
 	} else if *istru >= 0 {
 		startTrustee(*istru)
 	} else {
-		println("Error: must specify -relay, -client=n, or -trustee=n")
+		println("Error: must specify -relay, -trusteesrv, -client=n, or -trustee=n")
 	}
 }
 

@@ -103,7 +103,8 @@ func startTrusteeSlave(conn net.Conn, tno int, nclients int, ntrustees int, cell
 	//go trusteeConnRead(conn, upload)
 
 	// Just generate ciphertext cells and stream them to the server.
-	for {
+	exit := false
+	for !exit {
 		select {
 			case readByte := <- upload:
 				fmt.Println("Received byte ! ", readByte)
@@ -116,8 +117,13 @@ func startTrusteeSlave(conn net.Conn, tno int, nclients int, ntrustees int, cell
 				//println("trustee slice")
 				//println(hex.Dump(tslice))
 				n, err := conn.Write(tslice)
+
+				print(tno)
+				
 				if n < len(tslice) || err != nil {
-					panic("can't write to socket: " + err.Error())
+					fmt.Println("can't write to socket: " + err.Error())
+					fmt.Println("Shutting down handler", tno, "of conn", conn)
+					exit = true
 				}
 
 		}

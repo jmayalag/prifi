@@ -127,6 +127,8 @@ func startRelay(reportingLimit int, nclients int, ntrustees int,
 			panic("Error writing to socket:" + err.Error())
 		}
 
+		fmt.Println("Trustee", ctru, "is connected.")
+		tsock[ctru] = conn
 		ctru++
 	}
 
@@ -136,13 +138,12 @@ func startRelay(reportingLimit int, nclients int, ntrustees int,
 		panic("Can't open listen socket:" + err.Error())
 	}
 
-	// Wait for all the clients and trustees to connect
+	// Wait for all the clients to connect
 	ccli := 0
 	csock := make([]net.Conn, nclients)
 	
-	for ccli < nclients || ctru < ntrustees {
-		fmt.Printf("Waiting for %d clients, %d trustees\n",
-			nclients-ccli, ntrustees-ctru)
+	for ccli < nclients {
+		fmt.Printf("Waiting for %d clients\n", nclients-ccli)
 
 		conn, err := lsock.Accept()
 		if err != nil {
@@ -162,17 +163,11 @@ func startRelay(reportingLimit int, nclients int, ntrustees int,
 			}
 			csock[node] = conn
 			ccli++
-		} else if b[0]&0x80 != 0 && node < ntrustees {
-			if tsock[node] != nil {
-				panic("Oops, trustee connected twice")
-			}
-			tsock[node] = conn
-			ctru++
 		} else {
 			panic("illegal node number")
 		}
 	}
-	println("All clients and trustees connected")
+	println("All clients and trustees connected.")
 
 	// Create ciphertext slice buffers for all clients and trustees
 	clisize := me.Coder.ClientCellSize(payloadlen)
