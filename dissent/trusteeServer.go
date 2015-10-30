@@ -121,8 +121,8 @@ func startTrusteeSlave(conn net.Conn, tno int, nclients int, ntrustees int, cell
 				print(tno)
 				
 				if n < len(tslice) || err != nil {
-					fmt.Println("can't write to socket: " + err.Error())
-					fmt.Println("Shutting down handler", tno, "of conn", conn)
+					//fmt.Println("can't write to socket: " + err.Error())
+					fmt.Println("\nShutting down handler", tno, "of conn", conn.RemoteAddr())
 					exit = true
 				}
 

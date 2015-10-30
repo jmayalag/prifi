@@ -1,3 +1,3 @@
 @echo off
 cd ..\\dissent\\
-go run main.go config.go relay.go -trustee=0
+go run main.go config.go relay.go trusteeServer.go -trustee=0
