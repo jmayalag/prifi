@@ -9,10 +9,10 @@ import (
 	"github.com/lbarman/crypto/abstract"
 	"github.com/lbarman/crypto/edwards/ed25519"
 	"github.com/lbarman/crypto/nist"
-	"github.com/dedis/prifi/coco"
-	"github.com/dedis/prifi/coco/sign"
-	"github.com/dedis/prifi/coco/test/logutils"
-	"github.com/dedis/prifi/coco/test/oldconfig"
+	"github.com/lbarman/prifi/coco"
+	"github.com/lbarman/prifi/coco/sign"
+	"github.com/lbarman/prifi/coco/test/logutils"
+	"github.com/lbarman/prifi/coco/test/oldconfig"
 )
 
 func GetSuite(suite string) abstract.Suite {

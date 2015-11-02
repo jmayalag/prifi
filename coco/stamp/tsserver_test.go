@@ -9,10 +9,10 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 
-	"github.com/dedis/prifi/coco/coconet"
-	"github.com/dedis/prifi/coco/sign"
-	"github.com/dedis/prifi/coco/stamp"
-	"github.com/dedis/prifi/coco/test/oldconfig"
+	"github.com/lbarman/prifi/coco/coconet"
+	"github.com/lbarman/prifi/coco/sign"
+	"github.com/lbarman/prifi/coco/stamp"
+	"github.com/lbarman/prifi/coco/test/oldconfig"
 )
 
 // TODO: messages should be sent hashed eventually

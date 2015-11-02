@@ -8,9 +8,9 @@ import (
 	"log"
 
 	"github.com/lbarman/crypto/nist"
-	"github.com/dedis/prifi/coco/hashid"
-	"github.com/dedis/prifi/coco/proof"
-	"github.com/dedis/prifi/coco/sign"
+	"github.com/lbarman/prifi/coco/hashid"
+	"github.com/lbarman/prifi/coco/proof"
+	"github.com/lbarman/prifi/coco/sign"
 )
 
 func init() {

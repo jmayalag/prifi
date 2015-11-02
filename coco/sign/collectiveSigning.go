@@ -10,8 +10,8 @@ import (
 	"golang.org/x/net/context"
 
 	"github.com/lbarman/crypto/abstract"
-	"github.com/dedis/prifi/coco/coconet"
-	"github.com/dedis/prifi/coco/hashid"
+	"github.com/lbarman/prifi/coco/coconet"
+	"github.com/lbarman/prifi/coco/hashid"
 	// "strconv"
 	// "os"
 )

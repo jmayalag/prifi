@@ -8,11 +8,11 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 
-	"github.com/dedis/prifi/coco/coconet"
-	"github.com/dedis/prifi/coco/hashid"
-	"github.com/dedis/prifi/coco/proof"
-	"github.com/dedis/prifi/coco/sign"
-	"github.com/dedis/prifi/coco/test/logutils"
+	"github.com/lbarman/prifi/coco/coconet"
+	"github.com/lbarman/prifi/coco/hashid"
+	"github.com/lbarman/prifi/coco/proof"
+	"github.com/lbarman/prifi/coco/sign"
+	"github.com/lbarman/prifi/coco/test/logutils"
 )
 
 type Server struct {

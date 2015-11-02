@@ -6,7 +6,7 @@ import (
 
 	"github.com/lbarman/crypto/nist"
 	"github.com/lbarman/crypto/random"
-	"github.com/dedis/prifi/coco/sign"
+	"github.com/lbarman/prifi/coco/sign"
 )
 
 func TestTreeFromRandomGraph(t *testing.T) {

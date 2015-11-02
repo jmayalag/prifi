@@ -1,7 +1,7 @@
 package coconet
 
 import (
-	"github.com/dedis/protobuf"
+	"github.com/lbarman/protobuf"
 )
 
 type NetworkMessg struct {

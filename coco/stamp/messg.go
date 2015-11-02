@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"encoding/gob"
 
-	"github.com/dedis/prifi/coco/hashid"
-	"github.com/dedis/prifi/coco/proof"
+	"github.com/lbarman/prifi/coco/hashid"
+	"github.com/lbarman/prifi/coco/proof"
 )
 
 type SeqNo byte

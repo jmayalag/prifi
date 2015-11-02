@@ -3,9 +3,10 @@ package main
 import (
 	"encoding/binary"
 	"fmt"
-	"github.com/dedis/prifi/dcnet"
+	//"github.com/lbarman/prifi/dcnet"
 	//"log"
 	"net"
+	"github.com/lbarman/prifi/dcnet"
 	//log2 "github.com/lbarman/prifi/log"
 )
 
@@ -25,7 +26,6 @@ func startTrusteeSrv() {
 
 	//handler warns us when a connection closes
 	close := make(chan int)
-
 
 	for {
 		select {
@@ -98,6 +98,8 @@ func handleConnection(cno int, conn net.Conn, close chan<- int){
 func startTrusteeSlave(conn net.Conn, tno int, nclients int, ntrustees int, cellSize int) {
 	tg := dcnet.TestSetup(nil, suite, factory, nclients, ntrustees)
 	me := tg.Trustees[tno]
+
+	me.Dump(tno)
 
 	upload := make(chan []byte)
 	//go trusteeConnRead(conn, upload)

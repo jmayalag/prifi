@@ -5,9 +5,9 @@ import (
 
 	"github.com/lbarman/crypto/abstract"
 	"github.com/lbarman/crypto/nist"
-	"github.com/dedis/prifi/coco/hashid"
-	"github.com/dedis/prifi/coco/proof"
-	"github.com/dedis/protobuf"
+	"github.com/lbarman/prifi/coco/hashid"
+	"github.com/lbarman/prifi/coco/proof"
+	"github.com/lbarman/protobuf"
 )
 
 // All message structures defined in this package are used in the

@@ -35,6 +35,10 @@ type TestNode struct {
 	History abstract.Cipher
 }
 
+func (n *TestNode) Dump(tno int) {
+	fmt.Println("[", tno, ": pub ", n.pub, ", pri ", n.pri, ", opub ", n.opub, " opri", n.opri, "]")
+}
+
 type TestGroup struct {
 	Relay    *TestNode
 	Clients  []*TestNode

@@ -2,7 +2,7 @@ package connMan
 
 import (
 	"github.com/lbarman/crypto/abstract"
-	"github.com/dedis/prifi/coconet"
+	"github.com/lbarman/prifi/coconet"
 )
 
 /* The ConnManager is responsible for managing multiple connections. It allows

@@ -5,7 +5,7 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 
-	"github.com/dedis/prifi/coco/test/graphs"
+	"github.com/lbarman/prifi/coco/test/graphs"
 )
 
 type ConfigFile struct {

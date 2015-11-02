@@ -12,10 +12,10 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 
-	"github.com/dedis/prifi/coco/coconet"
-	"github.com/dedis/prifi/coco/hashid"
-	"github.com/dedis/prifi/coco/stamp"
-	"github.com/dedis/prifi/coco/test/logutils"
+	"github.com/lbarman/prifi/coco/coconet"
+	"github.com/lbarman/prifi/coco/hashid"
+	"github.com/lbarman/prifi/coco/stamp"
+	"github.com/lbarman/prifi/coco/test/logutils"
 )
 
 func genRandomMessages(n int) [][]byte {

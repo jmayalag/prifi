@@ -4,7 +4,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"github.com/lbarman/crypto/abstract"
-	"github.com/dedis/prifi/dcnet"
+	"github.com/lbarman/prifi/dcnet"
 	"io"
 	//"os"
 	"log"

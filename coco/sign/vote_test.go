@@ -4,9 +4,9 @@ import (
 	"testing"
 	"time"
 
-	_ "github.com/dedis/prifi/coco"
-	"github.com/dedis/prifi/coco/sign"
-	"github.com/dedis/prifi/coco/test/oldconfig"
+	_ "github.com/lbarman/prifi/coco"
+	"github.com/lbarman/prifi/coco/sign"
+	"github.com/lbarman/prifi/coco/test/oldconfig"
 )
 
 // Configuration file data/exconf.json

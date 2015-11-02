@@ -7,7 +7,7 @@ import (
 
 	"github.com/lbarman/crypto/abstract"
 	"github.com/lbarman/crypto/nist"
-	"github.com/dedis/protobuf"
+	"github.com/lbarman/protobuf"
 )
 
 type VoteType int

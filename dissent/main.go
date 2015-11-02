@@ -15,7 +15,7 @@ import (
 	"encoding/binary"
 	"github.com/lbarman/crypto/nist"
 	//"github.com/lbarman/crypto/openssl"
-	"github.com/dedis/prifi/dcnet"
+	"github.com/lbarman/prifi/dcnet"
 	//"github.com/elazarl/goproxy"
 
 	log2 "github.com/lbarman/prifi/log"

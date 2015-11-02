@@ -3,7 +3,7 @@ package stamp
 import (
 	"time"
 
-	"github.com/dedis/prifi/coco/sign"
+	"github.com/lbarman/prifi/coco/sign"
 )
 
 // time we wait between rounds

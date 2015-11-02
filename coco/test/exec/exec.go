@@ -23,8 +23,8 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 
-	"github.com/dedis/prifi/coco/test/exec/timestamper"
-	"github.com/dedis/prifi/coco/test/logutils"
+	"github.com/lbarman/prifi/coco/test/exec/timestamper"
+	"github.com/lbarman/prifi/coco/test/logutils"
 )
 
 var hostname string

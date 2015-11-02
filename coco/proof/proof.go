@@ -7,7 +7,7 @@ import (
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"github.com/lbarman/crypto/abstract"
-	"github.com/dedis/prifi/coco/hashid"
+	"github.com/lbarman/prifi/coco/hashid"
 	"hash"
 	"strconv"
 )

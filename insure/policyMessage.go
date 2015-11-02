@@ -12,7 +12,7 @@ import (
 	"github.com/lbarman/crypto/poly"
 	"github.com/lbarman/crypto/random"
 
-	"github.com/dedis/protobuf"
+	"github.com/lbarman/protobuf"
 )
 
 /* Modelled off coco/signingMessage.go, this file is responsible for encoding/

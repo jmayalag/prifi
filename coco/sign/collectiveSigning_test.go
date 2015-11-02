@@ -10,10 +10,10 @@ import (
 	"github.com/lbarman/crypto/abstract"
 	"github.com/lbarman/crypto/edwards/ed25519"
 	"github.com/lbarman/crypto/nist"
-	_ "github.com/dedis/prifi/coco"
-	"github.com/dedis/prifi/coco/coconet"
-	"github.com/dedis/prifi/coco/sign"
-	"github.com/dedis/prifi/coco/test/oldconfig"
+	_ "github.com/lbarman/prifi/coco"
+	"github.com/lbarman/prifi/coco/coconet"
+	"github.com/lbarman/prifi/coco/sign"
+	"github.com/lbarman/prifi/coco/test/oldconfig"
 )
 
 // NOTE: when announcing must provide round numbers

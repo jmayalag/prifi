@@ -19,9 +19,9 @@ import (
 	log "github.com/Sirupsen/logrus"
 
 	"github.com/lbarman/crypto/nist"
-	"github.com/dedis/prifi/coco/test/cliutils"
-	"github.com/dedis/prifi/coco/test/config"
-	"github.com/dedis/prifi/coco/test/graphs"
+	"github.com/lbarman/prifi/coco/test/cliutils"
+	"github.com/lbarman/prifi/coco/test/config"
+	"github.com/lbarman/prifi/coco/test/graphs"
 )
 
 var hostfile string

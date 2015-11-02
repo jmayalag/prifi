@@ -9,8 +9,8 @@ import (
 	"os"
 
 	"github.com/lbarman/crypto/abstract"
-	"github.com/dedis/prifi/coco/coconet"
-	"github.com/dedis/prifi/coco/sign"
+	"github.com/lbarman/prifi/coco/coconet"
+	"github.com/lbarman/prifi/coco/sign"
 )
 
 // var testSuite = openssl.NewAES128SHA256P256()

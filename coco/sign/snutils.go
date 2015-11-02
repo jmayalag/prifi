@@ -10,8 +10,8 @@ import (
 	"github.com/lbarman/crypto/abstract"
 	"golang.org/x/net/context"
 
-	"github.com/dedis/prifi/coco/coconet"
-	"github.com/dedis/prifi/coco/test/logutils"
+	"github.com/lbarman/prifi/coco/coconet"
+	"github.com/lbarman/prifi/coco/test/logutils"
 )
 
 func (sn *Node) multiplexOnChildren(view int, sm *SigningMessage) {

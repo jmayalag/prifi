@@ -15,7 +15,7 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 
-	"github.com/dedis/prifi/coco/test/oldconfig"
+	"github.com/lbarman/prifi/coco/test/oldconfig"
 )
 
 // deploy usage:

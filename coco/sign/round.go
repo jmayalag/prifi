@@ -1,8 +1,8 @@
 package sign
 
 import "github.com/lbarman/crypto/abstract"
-import "github.com/dedis/prifi/coco/hashid"
-import "github.com/dedis/prifi/coco/proof"
+import "github.com/lbarman/prifi/coco/hashid"
+import "github.com/lbarman/prifi/coco/proof"
 
 const FIRST_ROUND int = 1 // start counting rounds at 1
 

@@ -7,7 +7,7 @@ import (
 	"golang.org/x/net/context"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/dedis/prifi/coco/coconet"
+	"github.com/lbarman/prifi/coco/coconet"
 )
 
 func (sn *Node) SetupProposal(view int, am *AnnouncementMessage, from string) error {

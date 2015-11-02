@@ -5,7 +5,7 @@ import (
 	"encoding/gob"
 
 	"github.com/lbarman/crypto/abstract"
-	"github.com/dedis/prifi/coco/hashid"
+	"github.com/lbarman/prifi/coco/hashid"
 )
 
 // Signing Node Log for a round

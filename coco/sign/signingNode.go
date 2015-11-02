@@ -17,9 +17,9 @@ import (
 	log "github.com/Sirupsen/logrus"
 
 	"github.com/lbarman/crypto/abstract"
-	"github.com/dedis/prifi/coco/coconet"
-	"github.com/dedis/prifi/coco/hashid"
-	"github.com/dedis/prifi/coco/test/logutils"
+	"github.com/lbarman/prifi/coco/coconet"
+	"github.com/lbarman/prifi/coco/hashid"
+	"github.com/lbarman/prifi/coco/test/logutils"
 )
 
 type Type int // used by other modules as sign.Type

@@ -7,8 +7,8 @@ import (
 	"github.com/lbarman/crypto/config"
 	"github.com/lbarman/crypto/random"
 
-	"github.com/dedis/prifi/connMan"
-	"github.com/dedis/prifi/coconet"
+	"github.com/lbarman/prifi/connMan"
+	"github.com/lbarman/prifi/coconet"
 )
 
 var goDir = coconet.NewGoDirectory()
