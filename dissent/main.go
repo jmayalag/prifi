@@ -24,7 +24,7 @@ import (
 var suite = nist.NewAES128SHA256P256() // XXX should only have defaultSuite
 //var suite = openssl.NewAES128SHA256P256()
 //var suite = ed25519.NewAES128SHA256Ed25519()
-var factory = dcnet.OwnedCoderFactory
+var factory = dcnet.SimpleCoderFactory
 
 var defaultSuite = suite
 
@@ -306,6 +306,7 @@ func startClient(clino int, socks bool) {
 
 	tg := dcnet.TestSetup(nil, suite, factory, nclients, ntrustees)
 	me := tg.Clients[clino]
+
 	clisize := me.Coder.ClientCellSize(payloadlen)
 
 	rconn := openRelay(clino)
