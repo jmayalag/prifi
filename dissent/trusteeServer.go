@@ -11,92 +11,99 @@ import (
 )
 
 
-const srvListenPort = ":9000"
+const listeningPort = ":9000"
 
-func startTrusteeSrv() {
+func startTrusteeServer() {
 
 	fmt.Printf("Starting Trustee Server \n")
 
 	//async listen for incoming connections
-	newconn := make(chan net.Conn)
-	go srvListen(srvListenPort, newconn)
+	newConnections := make(chan net.Conn)
+	go startListening(listeningPort, newConnections)
 
 	//active connections will be hold there
-	conns := make([]net.Conn, 0)
+	activeConnections := make([]net.Conn, 0)
 
-	//handler warns us when a connection closes
-	close := make(chan int)
+	//handler warns us when a connection closedConnectionss
+	closedConnections := make(chan int)
 
 	for {
 		select {
-			case conn := <-newconn: // New TCP connection
-				cno := len(conns)
-				conns = append(conns, conn)
 
-				go handleConnection(cno, conn, close)
+			// New TCP connection
+			case newConn := <-newConnections:
+				newConnId := len(activeConnections)
+				activeConnections = append(activeConnections, newConn)
+
+				go handleConnection(newConnectionsId, newConn, closedConnections)
+
+			//Maybe should handle stuff from closedConnections
 		}
 	}
 }
 
 
-func srvListen(listenport string, newconn chan<- net.Conn) {
+func startListening(listenport string, newConnections chan<- net.Conn) {
 	fmt.Printf("Listening on port %s\n", listenport)
+
 	lsock, err := net.Listen("tcp", listenport)
+
 	if err != nil {
-		fmt.Printf("Can't open listen socket at port %s: %s",
-			listenport, err.Error())
+		fmt.Printf("Can't open listen socket at port %s: %s", listenport, err.Error())
 		return
 	}
 	for {
 		conn, err := lsock.Accept()
-		fmt.Printf("Accept on port %s\n", listenport)
+		fmt.Printf("Accepted on port %s\n", listenport)
+
 		if err != nil {
-			//log.Printf("Accept error: %s", err.Error())
+			fmt.Printf("Accept error: %s", err.Error())
 			lsock.Close()
 			return
 		}
-		newconn <- conn
+		newConnections <- conn
 	}
 }
 
-func handleConnection(cno int, conn net.Conn, close chan<- int){
+func handleConnection(connId int, conn net.Conn, closedConnections chan<- int){
 	
-	buf := make([]byte, 1024)
+	buffer := make([]byte, 1024)
 	
-	// Read the incoming connection into the buffer.
-	reqLen, err := conn.Read(buf)
+	// Read the incoming connection into the bufferfer.
+	reqLen, err := conn.Read(buffer)
 	if err != nil {
-	    fmt.Println("Handler", cno, "error reading:", err.Error())
+	    fmt.Println("Handler", connId, "error reading:", err.Error())
 	}
 
-	fmt.Println("Handler", cno, "len", reqLen)
+	fmt.Println("Handler", connId, "len", reqLen)
 
-	ver := int(binary.BigEndian.Uint32(buf[0:4]))
+	ver := int(binary.BigEndian.Uint32(buffer[0:4]))
 
 	if(ver != LLD_PROTOCOL_VERSION) {
-		fmt.Println("Handler", cno, "client version", ver, "!= server version", LLD_PROTOCOL_VERSION)
-
+		fmt.Println("Handler", connId, "client version", ver, "!= server version", LLD_PROTOCOL_VERSION)
 		conn.Close()
-		close <- cno
+		closedConnections <- connId
 	}
 
-	cellsize := int(binary.BigEndian.Uint32(buf[4:8]))
-	nClients := int(binary.BigEndian.Uint32(buf[8:12]))
-	nTrustees := int(binary.BigEndian.Uint32(buf[12:16]))
-	trusteeId := int(binary.BigEndian.Uint32(buf[16:20]))
+	cellSize := int(binary.BigEndian.Uint32(buffer[4:8]))
+	nClients := int(binary.BigEndian.Uint32(buffer[8:12]))
+	nTrustees := int(binary.BigEndian.Uint32(buffer[12:16]))
+	trusteeId := int(binary.BigEndian.Uint32(buffer[16:20]))
 
 
-	fmt.Println("Handler", cno, "setup is", nClients, nTrustees, "role is", trusteeId, "cellSize ", cellsize)
+	fmt.Println("Handler", connId, "setup is", nClients, nTrustees, "role is", trusteeId, "cellSize ", cellSize)
 
-	startTrusteeSlave(conn, trusteeId, nClients, nTrustees, cellsize)
+	//TODO : wait for crypto parameters from clients
 
-	fmt.Println("Handler", cno, "shutting down.")
+	startTrusteeSlave(conn, trusteeId, nClients, nTrustees, cellSize)
+
+	fmt.Println("Handler", connId, "shutting down.")
 	conn.Close()
 }
 
 
-func startTrusteeSlave(conn net.Conn, tno int, nclients int, ntrustees int, cellSize int) {
-	tg := dcnet.TestSetup(nil, suite, factory, nclients, ntrustees)
+func startTrusteeSlave(conn net.Conn, tno int, nClients int, nTrustees int, cellSize int) {
+	tg := dcnet.TestSetup(nil, suite, factory, nClients, nTrustees)
 	me := tg.Trustees[tno]
 
 	me.Dump(tno)
