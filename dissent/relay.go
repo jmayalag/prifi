@@ -106,7 +106,7 @@ func startRelay(payloadLength int, relayPort string, nClients int, nTrustees int
 	clientsConnections := make([]net.Conn, nClients)
 
 	for j := 0; j < nClients; j++ {
-		fmt.Printf("Waiting for %d clients\n", nClients-j)
+		fmt.Printf("Waiting for %d clients (on port %d)\n", nClients-j, relayPort)
 
 		conn, err := lsock.Accept()
 		if err != nil {

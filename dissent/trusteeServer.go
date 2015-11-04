@@ -66,7 +66,7 @@ func startListening(listenport string, newConnections chan<- net.Conn) {
 	}
 }
 
-func handleConnection(connId int, conn net.Conn, closedConnections chan<- int){
+func handleConnection(connId int,conn net.Conn, closedConnections chan int){
 	
 	buffer := make([]byte, 1024)
 	
@@ -96,21 +96,21 @@ func handleConnection(connId int, conn net.Conn, closedConnections chan<- int){
 
 	//TODO : wait for crypto parameters from clients
 
-	startTrusteeSlave(conn, trusteeId, nClients, nTrustees, cellSize)
+	startTrusteeSlave(conn, trusteeId, cellSize, nClients, nTrustees, cellSize, closedConnections)
 
 	fmt.Println("Handler", connId, "shutting down.")
 	conn.Close()
 }
 
 
-func startTrusteeSlave(conn net.Conn, tno int, nClients int, nTrustees int, cellSize int) {
+func startTrusteeSlave(conn net.Conn, tno int, payloadLength int, nClients int, nTrustees int, cellSize int, closedConnections chan int) {
 	tg := dcnet.TestSetup(nil, suite, factory, nClients, nTrustees)
 	me := tg.Trustees[tno]
 
 	me.Dump(tno)
 
 	upload := make(chan []byte)
-	//go trusteeConnRead(conn, upload)
+	go trusteeConnRead(tno, payloadLength, conn, upload, closedConnections)
 
 	// Just generate ciphertext cells and stream them to the server.
 	exit := false
@@ -118,6 +118,12 @@ func startTrusteeSlave(conn net.Conn, tno int, nClients int, nTrustees int, cell
 		select {
 			case readByte := <- upload:
 				fmt.Println("Received byte ! ", readByte)
+
+			case connClosed := <- closedConnections:
+				if connClosed == tno {
+					println("stopping handler")
+					return;
+				}
 
 			default:
 				// Produce a cell worth of trustee ciphertext
@@ -141,7 +147,7 @@ func startTrusteeSlave(conn net.Conn, tno int, nClients int, nTrustees int, cell
 }
 
 
-func trusteeConnRead(payloadLength int, conn net.Conn, readChan chan<- []byte) {
+func trusteeConnRead(tno int, payloadLength int, conn net.Conn, readChan chan<- []byte, closedConnections chan<- int) {
 
 	for {
 		// Read up to a cell worth of data to send upstream
