@@ -1,11 +1,8 @@
 package main
 
 import (
-	"errors"
 	"flag"
 	"fmt"
-	"io"
-	"net"
 	"strconv"
 	"os"
 	"os/signal"
@@ -15,33 +12,14 @@ import (
 	log2 "github.com/lbarman/prifi/log"
 )
 
-var suite = nist.NewAES128SHA256P256() // XXX should only have defaultSuite
-//var suite = openssl.NewAES128SHA256P256()
-//var suite = ed25519.NewAES128SHA256Ed25519()
+//used to make sure everybody has the same version of the software. must be updated manually
+const LLD_PROTOCOL_VERSION = 2
+
+//sets the crypto suite used
+var suite = nist.NewAES128SHA256P256()
+
+//sets the factory for the dcnet's cell encoder/decoder
 var factory = dcnet.SimpleCoderFactory
-
-var defaultSuite = suite
-
-const LLD_PROTOCOL_VERSION = 1
-
-const nClients = 2
-const nTrustees = 3
-
-const relayhost = "localhost:9876" // XXX
-const bindport = ":9876"
-
-//const payloadlen = 1200			// upstream cell size
-var payloadlen = 7680 // upstream cell size
-
-const downcellmax = 16 * 1024 // downstream cell max size
-
-// Number of bytes of cell payload to reserve for connection header, length
-const proxyhdrlen = 6
-
-type connbuf struct {
-	cno int    // connection number
-	buf []byte // data buffer
-}
 
 type dataWithConnectionId struct {
 	connectionId 	int    // connection number
@@ -53,36 +31,6 @@ func min(x, y int) int {
 		return x
 	}
 	return y
-}
-
-type chanreader struct {
-	b   []byte
-	c   <-chan []byte
-	eof bool
-}
-
-func (cr *chanreader) Read(p []byte) (n int, err error) {
-	if cr.eof {
-		return 0, io.EOF
-	}
-	blen := len(cr.b)
-	if blen == 0 {
-		cr.b = <-cr.c // read next block from channel
-		blen = len(cr.b)
-		if blen == 0 { // channel sender signaled EOF
-			cr.eof = true
-			return 0, io.EOF
-		}
-	}
-
-	act := min(blen, len(p))
-	copy(p, cr.b[:act])
-	cr.b = cr.b[act:]
-	return act, nil
-}
-
-func newChanReader(c <-chan []byte) *chanreader {
-	return &chanreader{[]byte{}, c, false}
 }
 
 // Authentication methods
@@ -120,7 +68,6 @@ const (
 	repAddressTypeNotSupported
 )
 
-var errAddressTypeNotSupported = errors.New("SOCKS5 address type not supported")
 
 /*
  * MAIN
@@ -148,9 +95,9 @@ func main() {
 	isTrusteeServer   := flag.Bool("trusteesrv", false, "Start a trustee server")
 
 	//parameters config
-	nClients          := flag.Int("nClients", nClients, "The number of clients.")
-	nTrustees         := flag.Int("nTrustees", nTrustees, "The number of trustees.")
-	cellSize          := flag.Int("cellSize", -1, "Sets the size of one cell, in bytes.")
+	nClients          := flag.Int("nClients", 2, "The number of clients.")
+	nTrustees         := flag.Int("nTrustees", 2, "The number of trustees.")
+	cellSize          := flag.Int("cellSize", 128, "Sets the size of one cell, in bytes.")
 	relayPort         := flag.Int("relayPort", 9876, "Sets listening port of the relay, waiting for clients.")
 	relayReceiveLimit := flag.Int("reportlimit", -1, "Sets the limit of cells to receive before stopping the relay")
 	trustee1Host      := flag.String("t1host", "localhost", "The Ip address of the 1st trustee, or localhost")
@@ -166,10 +113,6 @@ func main() {
 
 	readConfig()
 
-	if(*cellSize > -1) {
-		payloadlen = *cellSize
-	}
-
 	//exception
 	if(*nTrustees > 5) {
 		fmt.Println("Only up to 5 trustees are supported")
@@ -181,38 +124,10 @@ func main() {
 	if *isRelay {
 		startRelay(*cellSize, relayPortAddr, *nClients, *nTrustees, trusteesIp, *relayReceiveLimit)
 	} else if *clientId >= 0 {
-		startClient(*clientId, relayPortAddr, *nClients, *nTrustees, *useSocksProxy)
+		startClient(*clientId, relayPortAddr, *nClients, *nTrustees, *cellSize, *useSocksProxy)
 	} else if *isTrusteeServer {
 		startTrusteeServer()
 	} else {
 		println("Error: must specify -relay, -trusteesrv, -client=n, or -trustee=n")
 	}
-}
-
-
-/*
- * CLIENT
- */
-
-
-/*
- * TRUSTEE
- */
-
-func openRelay(connectionId int) net.Conn {
-	conn, err := net.Dial("tcp", relayhost)
-	if err != nil {
-		panic("Can't connect to relay:" + err.Error())
-	}
-
-	// Tell the relay our client or trustee number
-	b := make([]byte, 1)
-	b[0] = byte(connectionId)
-	n, err := conn.Write(b)
-
-	if n < 1 || err != nil {
-		panic("Error writing to socket:" + err.Error())
-	}
-
-	return conn
 }

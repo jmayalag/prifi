@@ -13,13 +13,13 @@ import (
 // Number of bytes of cell payload to reserve for connection header, length
 const socksHeaderLength = 6
 
-func startClient(clientId int, relayHostAddr string, nClients int, nTrustees int, useSocksProxy bool) {
+func startClient(clientId int, relayHostAddr string, nClients int, nTrustees int, payloadLength int, useSocksProxy bool) {
 	fmt.Printf("startClient %d\n", clientId)
 
 	//crypto parameters
 	tg := dcnet.TestSetup(nil, suite, factory, nClients, nTrustees)
 	me := tg.Clients[clientId]
-	clientPayloadSize := me.Coder.ClientCellSize(payloadlen)
+	clientPayloadSize := me.Coder.ClientCellSize(payloadLength)
 
 	relayConn := connectToRelay(relayHostAddr, clientId)
 
@@ -54,7 +54,7 @@ func startClient(clientId int, relayHostAddr string, nClients int, nTrustees int
 			case conn := <-socksProxyNewConnections: 
 				newClientId := len(socksProxyActiveConnections)
 				socksProxyActiveConnections = append(socksProxyActiveConnections, conn)
-				go readDataFromSocksProxy(newClientId, conn, socksProxyData, socksProxyConnClosed)
+				go readDataFromSocksProxy(newClientId, payloadLength, conn, socksProxyData, socksProxyConnClosed)
 
 			// Data to anonymize from SOCKS proxy
 			case data := <-socksProxyData: 
@@ -94,11 +94,11 @@ func startClient(clientId int, relayHostAddr string, nClients int, nTrustees int
 				// Should account the downstream cell in the history
 
 				// Produce and ship the next upstream slice
-				writeNextUpstreamSlice(dataForRelayBuffer, clientPayloadSize, relayConn, me)
+				writeNextUpstreamSlice(dataForRelayBuffer, payloadLength, clientPayloadSize, relayConn, me)
 
 				//statistics
 				totupcells++
-				totupbytes += uint64(payloadlen)
+				totupbytes += uint64(payloadLength)
 				//fmt.Printf("sent %d upstream cells, %d bytes\n", totupcells, totupbytes)
 			}
 	}
@@ -108,7 +108,7 @@ func startClient(clientId int, relayHostAddr string, nClients int, nTrustees int
  * Creates the next cell
  */
 
-func writeNextUpstreamSlice(dataForRelayBuffer [][]byte, clientPayloadSize int, relayConn net.Conn, me *dcnet.TestNode) {
+func writeNextUpstreamSlice(dataForRelayBuffer [][]byte, payloadLength int, clientPayloadSize int, relayConn net.Conn, me *dcnet.TestNode) {
 	var nextUpstreamBytes []byte
 	if len(dataForRelayBuffer) > 0 {
 		nextUpstreamBytes  = dataForRelayBuffer[0]
@@ -117,7 +117,7 @@ func writeNextUpstreamSlice(dataForRelayBuffer [][]byte, clientPayloadSize int, 
 	}
 
 	//produce the next upstream cell
-	upstreamSlice := me.Coder.ClientEncode(nextUpstreamBytes, payloadlen, me.History)
+	upstreamSlice := me.Coder.ClientEncode(nextUpstreamBytes, payloadLength, me.History)
 
 	if len(upstreamSlice) != clientPayloadSize {
 		panic("Client slice wrong size, expected "+strconv.Itoa(clientPayloadSize)+", but got "+strconv.Itoa(len(upstreamSlice)))
@@ -210,10 +210,10 @@ func startSocksProxy(port string, newConnections chan<- net.Conn) {
 }
 
 
-func readDataFromSocksProxy(clientId int, conn net.Conn, data chan<- []byte, closed chan<- int) {
+func readDataFromSocksProxy(clientId int, payloadLength int, conn net.Conn, data chan<- []byte, closed chan<- int) {
 	for {
 		// Read up to a cell worth of data to send upstream
-		buffer := make([]byte, payloadlen)
+		buffer := make([]byte, payloadLength)
 		n, err := conn.Read(buffer[socksHeaderLength:])
 
 		// Encode the connection number and actual data length

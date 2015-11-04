@@ -9,6 +9,42 @@ import (
 	"encoding/binary"
 )
 
+const downcellmax = 16 * 1024 // downstream cell max size
+var errAddressTypeNotSupported = errors.New("SOCKS5 address type not supported")
+
+
+
+type chanreader struct {
+	b   []byte
+	c   <-chan []byte
+	eof bool
+}
+
+func (cr *chanreader) Read(p []byte) (n int, err error) {
+	if cr.eof {
+		return 0, io.EOF
+	}
+	blen := len(cr.b)
+	if blen == 0 {
+		cr.b = <-cr.c // read next block from channel
+		blen = len(cr.b)
+		if blen == 0 { // channel sender signaled EOF
+			cr.eof = true
+			return 0, io.EOF
+		}
+	}
+
+	act := min(blen, len(p))
+	copy(p, cr.b[:act])
+	cr.b = cr.b[act:]
+	return act, nil
+}
+
+func newChanReader(c <-chan []byte) *chanreader {
+	return &chanreader{[]byte{}, c, false}
+}
+
+
 // Read an IPv4 or IPv6 address from an io.Reader and return it as a string
 func readIP(r io.Reader, len int) (string, error) {
 	addr := make([]byte, len)

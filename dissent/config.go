@@ -21,8 +21,7 @@ func readConfig() error {
 	configFile.Load("dissent", &configData)
 
 	// Read or create our public/private keypairs
-	pairs, err := configFile.Keys(&configData.Keys, suites.All(),
-		defaultSuite)
+	pairs, err := configFile.Keys(&configData.Keys, suites.All(), suite)
 	if err != nil {
 		return err
 	}

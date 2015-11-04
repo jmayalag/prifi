@@ -141,12 +141,12 @@ func startTrusteeSlave(conn net.Conn, tno int, nClients int, nTrustees int, cell
 }
 
 
-func trusteeConnRead(conn net.Conn, readChan chan<- []byte) {
+func trusteeConnRead(payloadLength int, conn net.Conn, readChan chan<- []byte) {
 
 	for {
 		// Read up to a cell worth of data to send upstream
-		buf := make([]byte, payloadlen)
-		n, err := conn.Read(buf[proxyhdrlen:])
+		buf := make([]byte, payloadLength)
+		n, err := conn.Read(buf[6:])
 
 		// Connection error or EOF?
 		if n == 0 {
