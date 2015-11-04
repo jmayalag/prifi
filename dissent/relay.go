@@ -88,39 +88,12 @@ func startRelay(payloadLength int, relayPort string, nClients int, nTrustees int
 	me := tg.Relay
 
 	//connect to the trustees
-
 	trusteesConnections := make([]net.Conn, nTrustees)
 
 	for i:= 0; i < nTrustees; i++ {
-		currentTrusteeIp := strings.Replace(trusteesIp[i], "_", ":", -1)
-
-		//connect
-		fmt.Println("Relay connecting to trustee", i, "on address", currentTrusteeIp)
-		conn, err := net.Dial("tcp", currentTrusteeIp)
-		if err != nil {
-			panic("Can't connect to trustee:" + err.Error())
-
-			//TODO : maybe code something less brutal here
-		}
-
-		//tell the trustee server our parameters
-		buffer := make([]byte, 20)
-		binary.BigEndian.PutUint32(buffer[0:4], uint32(LLD_PROTOCOL_VERSION))
-		binary.BigEndian.PutUint32(buffer[4:8], uint32(payloadLength))
-		binary.BigEndian.PutUint32(buffer[8:12], uint32(nClients))
-		binary.BigEndian.PutUint32(buffer[12:16], uint32(nTrustees))
-		binary.BigEndian.PutUint32(buffer[16:20], uint32(i))
-
-		fmt.Println("Writing", LLD_PROTOCOL_VERSION, "setup is", nClients, nTrustees, "role is", i, "cellSize ", payloadLength)
-
-		n, err := conn.Write(buffer)
-
-		if n < 1 || err != nil {
-			panic("Error writing to socket:" + err.Error())
-		}
-
-		fmt.Println("Trustee", i, "is connected.")
-		trusteesConnections[i] = conn
+		currentTrusteeIp := strings.Replace(trusteesIp[i], "_", ":", -1) //trick for windows shell, where ":" separates args
+		newConn := connectToTrustee(i, currentTrusteeIp, nClients, nTrustees, payloadLength)
+		trusteesConnections[i] = newConn
 	}
 
 	//starts the client server
@@ -299,4 +272,33 @@ func relayNewConn(connId int, downstreamData chan<- dataWithConnectionId) chan<-
 	upstreamData := make(chan []byte)
 	go relaySocksProxy(connId, upstreamData, downstreamData)
 	return upstreamData
+}
+
+func connectToTrustee(trusteeId int, trusteeHostAddr string, nClients int, nTrustees int, payloadLength int) net.Conn {
+	//connect
+	fmt.Println("Relay connecting to trustee", trusteeId, "on address", trusteeHostAddr)
+	conn, err := net.Dial("tcp", trusteeHostAddr)
+	if err != nil {
+		panic("Can't connect to trustee:" + err.Error())
+		//TODO : maybe code something less brutal here
+	}
+
+	//tell the trustee server our parameters
+	buffer := make([]byte, 20)
+	binary.BigEndian.PutUint32(buffer[0:4], uint32(LLD_PROTOCOL_VERSION))
+	binary.BigEndian.PutUint32(buffer[4:8], uint32(payloadLength))
+	binary.BigEndian.PutUint32(buffer[8:12], uint32(nClients))
+	binary.BigEndian.PutUint32(buffer[12:16], uint32(nTrustees))
+	binary.BigEndian.PutUint32(buffer[16:20], uint32(trusteeId))
+
+	fmt.Println("Writing", LLD_PROTOCOL_VERSION, "setup is", nClients, nTrustees, "role is", trusteeId, "cellSize ", payloadLength)
+
+	n, err := conn.Write(buffer)
+
+	if n < 1 || err != nil {
+		panic("Error writing to socket:" + err.Error())
+	}
+
+	fmt.Println("Trustee", trusteeId, "is connected.")
+	return conn
 }
