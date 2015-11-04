@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/binary"
 	"fmt"
+	"io"
 	//"github.com/lbarman/prifi/dcnet"
 	//"log"
 	"net"
@@ -35,7 +36,7 @@ func startTrusteeServer() {
 				newConnId := len(activeConnections)
 				activeConnections = append(activeConnections, newConn)
 
-				go handleConnection(newConnectionsId, newConn, closedConnections)
+				go handleConnection(newConnId, newConn, closedConnections)
 
 			//Maybe should handle stuff from closedConnections
 		}
@@ -135,6 +136,29 @@ func startTrusteeSlave(conn net.Conn, tno int, nClients int, nTrustees int, cell
 					exit = true
 				}
 
+		}
+	}
+}
+
+
+func trusteeConnRead(conn net.Conn, readChan chan<- []byte) {
+
+	for {
+		// Read up to a cell worth of data to send upstream
+		buf := make([]byte, payloadlen)
+		n, err := conn.Read(buf[proxyhdrlen:])
+
+		// Connection error or EOF?
+		if n == 0 {
+			if err == io.EOF {
+				println("trusteeConnRead: EOF from relay, closing")
+			} else {
+				println("trusteeConnRead: " + err.Error())
+			}
+			conn.Close()
+			return
+		} else {
+			readChan <- buf
 		}
 	}
 }

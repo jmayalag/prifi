@@ -5,18 +5,12 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"log"
 	"net"
+	"strconv"
 	"os"
-	//"strconv"
-	//"net/http"
 	"os/signal"
-	//"encoding/hex"
-	"encoding/binary"
 	"github.com/lbarman/crypto/nist"
-	//"github.com/lbarman/crypto/openssl"
 	"github.com/lbarman/prifi/dcnet"
-	//"github.com/elazarl/goproxy"
 
 	log2 "github.com/lbarman/prifi/log"
 )
@@ -30,8 +24,8 @@ var defaultSuite = suite
 
 const LLD_PROTOCOL_VERSION = 1
 
-const nclients = 2
-const ntrustees = 3
+const nClients = 2
+const nTrustees = 3
 
 const relayhost = "localhost:9876" // XXX
 const bindport = ":9876"
@@ -47,6 +41,11 @@ const proxyhdrlen = 6
 type connbuf struct {
 	cno int    // connection number
 	buf []byte // data buffer
+}
+
+type dataWithConnectionId struct {
+	connectionId 	int    // connection number
+	data 			[]byte // data buffer
 }
 
 func min(x, y int) int {
@@ -143,22 +142,22 @@ func main() {
 	log2.StringDump("New run...")
 
 	//roles...
-	isrel := flag.Bool("relay", false, "Start relay node")
-	iscli := flag.Int("client", -1, "Start client node")
-	socks := flag.Bool("socks", true, "Starts a socks proxy for the client")
-	istru := flag.Int("trustee", -1, "Start trustee node")
-	issrv := flag.Bool("trusteesrv", false, "Start a trustee server")
+	isRelay           := flag.Bool("relay", false, "Start relay node")
+	clientId          := flag.Int("client", -1, "Start client node")
+	useSocksProxy     := flag.Bool("socks", true, "Starts a useSocksProxy proxy for the client")
+	isTrusteeServer   := flag.Bool("trusteesrv", false, "Start a trustee server")
 
 	//parameters config
-	nclients := flag.Int("nclients", nclients, "The number of clients.")
-	ntrustees := flag.Int("ntrustees", ntrustees, "The number of trustees.")
-	cellsize := flag.Int("cellsize", -1, "Sets the size of one cell, in bytes.")
+	nClients          := flag.Int("nClients", nClients, "The number of clients.")
+	nTrustees         := flag.Int("nTrustees", nTrustees, "The number of trustees.")
+	cellSize          := flag.Int("cellSize", -1, "Sets the size of one cell, in bytes.")
+	relayPort         := flag.Int("relayPort", 9876, "Sets listening port of the relay, waiting for clients.")
 	relayReceiveLimit := flag.Int("reportlimit", -1, "Sets the limit of cells to receive before stopping the relay")
-	trustee1Host := flag.String("t1host", "localhost", "The Ip address of the 1st trustee, or localhost")
-	trustee2Host := flag.String("t2host", "localhost", "The Ip address of the 2nd trustee, or localhost")
-	trustee3Host := flag.String("t3host", "localhost", "The Ip address of the 3rd trustee, or localhost")
-	trustee4Host := flag.String("t4host", "localhost", "The Ip address of the 4th trustee, or localhost")
-	trustee5Host := flag.String("t5host", "localhost", "The Ip address of the 5th trustee, or localhost")
+	trustee1Host      := flag.String("t1host", "localhost", "The Ip address of the 1st trustee, or localhost")
+	trustee2Host      := flag.String("t2host", "localhost", "The Ip address of the 2nd trustee, or localhost")
+	trustee3Host      := flag.String("t3host", "localhost", "The Ip address of the 3rd trustee, or localhost")
+	trustee4Host      := flag.String("t4host", "localhost", "The Ip address of the 4th trustee, or localhost")
+	trustee5Host      := flag.String("t5host", "localhost", "The Ip address of the 5th trustee, or localhost")
 
 	flag.Parse()
 	trusteesIp := []string{*trustee1Host, *trustee2Host, *trustee3Host, *trustee4Host, *trustee5Host}
@@ -167,24 +166,24 @@ func main() {
 
 	readConfig()
 
-	if(*cellsize > -1) {
-		payloadlen = *cellsize
+	if(*cellSize > -1) {
+		payloadlen = *cellSize
 	}
 
 	//exception
-	if(*ntrustees > 5) {
+	if(*nTrustees > 5) {
 		fmt.Println("Only up to 5 trustees are supported")
 		os.Exit(1)
 	}
 
-	if *isrel {
-		startRelay(*relayReceiveLimit, *nclients, *ntrustees, trusteesIp)
-	} else if *iscli >= 0 {
-		startClient(*iscli, *socks)
-	} else if *issrv {
-		startTrusteeSrv()
-	} else if *istru >= 0 {
-		startTrustee(*istru)
+	relayPortAddr := ":"+strconv.Itoa(*relayPort)
+
+	if *isRelay {
+		startRelay(*cellSize, relayPortAddr, *nClients, *nTrustees, trusteesIp, *relayReceiveLimit)
+	} else if *clientId >= 0 {
+		startClient(*clientId, relayPortAddr, *nClients, *nTrustees, *useSocksProxy)
+	} else if *isTrusteeServer {
+		startTrusteeServer()
 	} else {
 		println("Error: must specify -relay, -trusteesrv, -client=n, or -trustee=n")
 	}
@@ -195,27 +194,6 @@ func main() {
  * CLIENT
  */
 
-func trusteeConnRead(conn net.Conn, readChan chan<- []byte) {
-
-	for {
-		// Read up to a cell worth of data to send upstream
-		buf := make([]byte, payloadlen)
-		n, err := conn.Read(buf[proxyhdrlen:])
-
-		// Connection error or EOF?
-		if n == 0 {
-			if err == io.EOF {
-				println("trusteeConnRead: EOF from relay, closing")
-			} else {
-				println("trusteeConnRead: " + err.Error())
-			}
-			conn.Close()
-			return
-		} else {
-			readChan <- buf
-		}
-	}
-}
 
 /*
  * TRUSTEE
@@ -237,303 +215,4 @@ func openRelay(connectionId int) net.Conn {
 	}
 
 	return conn
-}
-
-func startTrustee(tno int) {
-	tg := dcnet.TestSetup(nil, suite, factory, nclients, ntrustees)
-	me := tg.Trustees[tno]
-
-	conn := openRelay(tno | 0x80)
-	println("trustee", tno, "connected")
-
-	upload := make(chan []byte)
-	//go trusteeConnRead(conn, upload)
-
-	// Just generate ciphertext cells and stream them to the server.
-	for {
-		select {
-			case readByte := <- upload:
-				fmt.Println("Received byte ! ", readByte)
-
-			default:
-				// Produce a cell worth of trustee ciphertext
-				tslice := me.Coder.TrusteeEncode(payloadlen)
-
-				// Send it to the relay
-				//println("trustee slice")
-				//println(hex.Dump(tslice))
-				n, err := conn.Write(tslice)
-				if n < len(tslice) || err != nil {
-					panic("can't write to socket: " + err.Error())
-				}
-
-		}
-	}
-}
-
-/*
- * SOCKS UTILS
- */
- // Read an IPv4 or IPv6 address from an io.Reader and return it as a string
-func readIP(r io.Reader, len int) (string, error) {
-	addr := make([]byte, len)
-	_, err := io.ReadFull(r, addr)
-	if err != nil {
-		return "", err
-	}
-	return net.IP(addr).String(), nil
-}
-
-func readSocksAddr(cr io.Reader, addrtype int) (string, error) {
-	switch addrtype {
-	case addrIPv4:
-		return readIP(cr, net.IPv4len)
-
-	case addrIPv6:
-		return readIP(cr, net.IPv6len)
-
-	case addrDomain:
-
-		// First read the 1-byte domain name length
-		dlen := [1]byte{}
-		_, err := io.ReadFull(cr, dlen[:])
-		if err != nil {
-			return "", err
-		}
-
-		// Now the domain name itself
-		domain := make([]byte, int(dlen[0]))
-		_, err = io.ReadFull(cr, domain)
-		if err != nil {
-			return "", err
-		}
-		log.Printf("SOCKS: domain '%s'\n", string(domain))
-
-		return string(domain), nil
-
-	default:
-		msg := fmt.Sprintf("unknown SOCKS address type %d", addrtype)
-		return "", errors.New(msg)
-	}
-}
-
-func socksRelayDown(cno int, conn net.Conn, downstream chan<- connbuf) {
-	//log.Printf("socksRelayDown: cno %d\n", cno)
-	for {
-		buf := make([]byte, downcellmax)
-		n, err := conn.Read(buf)
-		buf = buf[:n]
-		//fmt.Printf("socksRelayDown: %d bytes on cno %d\n", n, cno)
-		//fmt.Print(hex.Dump(buf[:n]))
-
-		// Forward the data (or close indication if n==0) downstream
-		downstream <- connbuf{cno, buf}
-
-		// Connection error or EOF?
-		if n == 0 {
-			log.Println("socksRelayDown: " + err.Error())
-			conn.Close()
-			return
-		}
-	}
-}
-
-func socksRelayUp(cno int, conn net.Conn, upstream <-chan []byte) {
-	//log.Printf("socksRelayUp: cno %d\n", cno)
-	for {
-		// Get the next upstream data buffer
-		buf := <-upstream
-		dlen := len(buf)
-		//fmt.Printf("socksRelayUp: %d bytes on cno %d\n", len(buf), cno)
-		//fmt.Print(hex.Dump(buf))
-
-		if dlen == 0 { // connection close indicator
-			log.Printf("socksRelayUp: closing stream %d\n", cno)
-			conn.Close()
-			return
-		}
-		//println(hex.Dump(buf))
-		n, err := conn.Write(buf)
-		if n != dlen {
-			log.Printf("socksRelayUp: " + err.Error())
-			conn.Close()
-			return
-		}
-	}
-}
-
-func socks5Reply(cno int, err error, addr net.Addr) connbuf {
-
-	buf := make([]byte, 4)
-	buf[0] = byte(5) // version
-
-	// buf[1]: Reply field
-	switch err {
-	case nil: // succeeded
-		buf[1] = repSucceeded
-	// XXX recognize some specific errors
-	default:
-		buf[1] = repGeneralFailure
-	}
-
-	// Address type
-	if addr != nil {
-		tcpaddr := addr.(*net.TCPAddr)
-		host4 := tcpaddr.IP.To4()
-		host6 := tcpaddr.IP.To16()
-		port := [2]byte{}
-		binary.BigEndian.PutUint16(port[:], uint16(tcpaddr.Port))
-		if host4 != nil { // it's an IPv4 address
-			buf[3] = addrIPv4
-			buf = append(buf, host4...)
-			buf = append(buf, port[:]...)
-		} else if host6 != nil { // it's an IPv6 address
-			buf[3] = addrIPv6
-			buf = append(buf, host6...)
-			buf = append(buf, port[:]...)
-		} else { // huh???
-			log.Printf("SOCKS: neither IPv4 nor IPv6 addr?")
-			addr = nil
-			err = errAddressTypeNotSupported
-		}
-	}
-	if addr == nil { // attach a null IPv4 address
-		buf[3] = addrIPv4
-		buf = append(buf, make([]byte, 4+2)...)
-	}
-
-	// Reply code
-	var rep int
-	switch err {
-	case nil:
-		rep = repSucceeded
-	case errAddressTypeNotSupported:
-		rep = repAddressTypeNotSupported
-	default:
-		rep = repGeneralFailure
-	}
-	buf[1] = byte(rep)
-
-	//log.Printf("SOCKS5 reply:\n" + hex.Dump(buf))
-	return connbuf{cno, buf}
-}
-
-// Main loop of our relay-side SOCKS proxy.
-func relaySocksProxy(cno int, upstream <-chan []byte,
-	downstream chan<- connbuf) {
-
-	// Send downstream close indication when we bail for whatever reason
-	defer func() {
-		downstream <- connbuf{cno, []byte{}}
-	}()
-
-	// Put a convenient I/O wrapper around the raw upstream channel
-	cr := newChanReader(upstream)
-
-	// Read the SOCKS client's version/methods header
-	vernmeth := [2]byte{}
-	_, err := io.ReadFull(cr, vernmeth[:])
-	if err != nil {
-		log.Printf("SOCKS: no version/method header: " + err.Error())
-		return
-	}
-	//log.Printf("SOCKS proxy: version %d nmethods %d \n",
-	//	vernmeth[0], vernmeth[1])
-	ver := int(vernmeth[0])
-	if ver != 5 {
-		log.Printf("SOCKS: unsupported version number %d", ver)
-
-		if ver == 71 {
-			log.Printf("Tips : 71 is for HTTP, but this is a SOCKS proxy, not an HTTP proxy !", ver)
-		}
-		return
-	}
-	nmeth := int(vernmeth[1])
-	methods := make([]byte, nmeth)
-	_, err = io.ReadFull(cr, methods)
-	if err != nil {
-		log.Printf("SOCKS: short version/method header: " + err.Error())
-		return
-	}
-
-	// Find a supported method (currently only NoAuth)
-	for i := 0; ; i++ {
-		if i >= len(methods) {
-			log.Printf("SOCKS: no supported method")
-			resp := [2]byte{byte(ver), byte(methNone)}
-			downstream <- connbuf{cno, resp[:]}
-			return
-		}
-		if methods[i] == methNoAuth {
-			break
-		}
-	}
-
-	// Reply with the chosen method
-	methresp := [2]byte{byte(ver), byte(methNoAuth)}
-	downstream <- connbuf{cno, methresp[:]}
-
-	// Receive client request
-	req := make([]byte, 4)
-	_, err = io.ReadFull(cr, req)
-	if err != nil {
-		log.Printf("SOCKS: missing client request: " + err.Error())
-		return
-	}
-	if req[0] != byte(ver) {
-		log.Printf("SOCKS: client changed versions")
-		return
-	}
-	host, err := readSocksAddr(cr, int(req[3]))
-	if err != nil {
-		log.Printf("SOCKS: invalid destination address: " + err.Error())
-		return
-	}
-	portb := [2]byte{}
-	_, err = io.ReadFull(cr, portb[:])
-	if err != nil {
-		log.Printf("SOCKS: invalid destination port: " + err.Error())
-		return
-	}
-	port := binary.BigEndian.Uint16(portb[:])
-	hostport := fmt.Sprintf("%s:%d", host, port)
-
-	// Process the command
-	cmd := int(req[1])
-	//log.Printf("SOCKS proxy: request %d for %s\n", cmd, hostport)
-	switch cmd {
-	case cmdConnect:
-		conn, err := net.Dial("tcp", hostport)
-		if err != nil {
-			log.Printf("SOCKS: error connecting to destionation: " +
-				err.Error())
-			downstream <- socks5Reply(cno, err, nil)
-			return
-		}
-
-		// Send success reply downstream
-		downstream <- socks5Reply(cno, nil, conn.LocalAddr())
-
-		// Commence forwarding raw data on the connection
-		go socksRelayDown(cno, conn, downstream)
-		socksRelayUp(cno, conn, upstream)
-
-	default:
-		log.Printf("SOCKS: unsupported command %d", cmd)
-	}
-}
-
-func relayNewConn(cno int, downstream chan<- connbuf) chan<- []byte {
-
-	/* connect to local HTTP proxy
-	conn,err := net.Dial("tcp", "localhost:8888")
-	if err != nil {
-		panic("error dialing proxy: "+err.Error())
-	}
-	go relayReadConn(cno, conn, downstream)
-	*/
-
-	upstream := make(chan []byte)
-	go relaySocksProxy(cno, upstream, downstream)
-	return upstream
 }

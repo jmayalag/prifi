@@ -13,16 +13,11 @@ import (
 // Number of bytes of cell payload to reserve for connection header, length
 const socksHeaderLength = 6
 
-type dataWithConnectionId struct {
-	connectionId 	int    // connection number
-	data 			[]byte // data buffer
-}
-
-func startClient(clientId int, relayHostAddr string, useSocksProxy bool) {
+func startClient(clientId int, relayHostAddr string, nClients int, nTrustees int, useSocksProxy bool) {
 	fmt.Printf("startClient %d\n", clientId)
 
 	//crypto parameters
-	tg := dcnet.TestSetup(nil, suite, factory, nclients, ntrustees)
+	tg := dcnet.TestSetup(nil, suite, factory, nClients, nTrustees)
 	me := tg.Clients[clientId]
 	clientPayloadSize := me.Coder.ClientCellSize(payloadlen)
 

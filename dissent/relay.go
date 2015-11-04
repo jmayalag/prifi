@@ -7,6 +7,7 @@ import (
 	"github.com/lbarman/prifi/dcnet"
 	"io"
 	//"os"
+	"strconv"
 	"log"
 	"strings"
 	"net"
@@ -37,7 +38,7 @@ var parupcells = int64(0)
 var parupbytes = int64(0)
 var pardownbytes = int64(0)
 
-func reportStatistics(reportingLimit int) bool {
+func reportStatistics(payloadLength int, reportingLimit int) bool {
 	now := time.Now()
 	if now.After(report) {
 		duration := now.Sub(begin).Seconds()
@@ -55,7 +56,7 @@ func reportStatistics(reportingLimit int) bool {
 		parupbytes = 0
 		pardownbytes = 0
 
-		//log2.BenchmarkFloat(fmt.Sprintf("cellsize-%d-upstream-bytes", payloadlen), instantUpSpeed)
+		//log2.BenchmarkFloat(fmt.Sprintf("cellsize-%d-upstream-bytes", payloadLength), instantUpSpeed)
 
 		data := struct {
 		    Experiment string
@@ -63,7 +64,7 @@ func reportStatistics(reportingLimit int) bool {
 		    Speed float64
 		}{
 		    "upstream-speed-given-cellsize",
-		    payloadlen,
+		    payloadLength,
 		    instantUpSpeed,
 		}
 
@@ -80,70 +81,59 @@ func reportStatistics(reportingLimit int) bool {
 	return true
 }
 
-func startRelay(reportingLimit int, nclients int, ntrustees int,
-	trusteesIp []string) {
+func startRelay(payloadLength int, relayPort string, nClients int, nTrustees int, trusteesIp []string, reportingLimit int) {
 
 	//the crypto parameters are static
-	tg := dcnet.TestSetup(nil, suite, factory, nclients, ntrustees)
+	tg := dcnet.TestSetup(nil, suite, factory, nClients, nTrustees)
 	me := tg.Relay
 
-	// Start our own local HTTP proxy for simplicity.
-	/*
-		go func() {
-			proxy := goproxy.NewProxyHttpServer()
-			proxy.Verbose = true
-			println("Starting HTTP proxy")
-			log.Fatal(http.ListenAndServe(":8888", proxy))
-		}()
-	*/
-
 	//connect to the trustees
-	ctru := 0
-	tsock := make([]net.Conn, ntrustees)
 
-	for ctru < ntrustees 	{
-		truip := strings.Replace(trusteesIp[ctru], "_", ":", -1)
+	trusteesConnections := make([]net.Conn, nTrustees)
+
+	for i:= 0; i < nTrustees; i++ {
+		currentTrusteeIp := strings.Replace(trusteesIp[i], "_", ":", -1)
 
 		//connect
-		fmt.Println("Relay connecting to trustee", ctru, "on address", truip)
-		conn, err := net.Dial("tcp", truip)
+		fmt.Println("Relay connecting to trustee", i, "on address", currentTrusteeIp)
+		conn, err := net.Dial("tcp", currentTrusteeIp)
 		if err != nil {
 			panic("Can't connect to trustee:" + err.Error())
+
+			//TODO : maybe code something less brutal here
 		}
 
 		//tell the trustee server our parameters
-		buf := make([]byte, 20)
-		binary.BigEndian.PutUint32(buf[0:4], uint32(LLD_PROTOCOL_VERSION))
-		binary.BigEndian.PutUint32(buf[4:8], uint32(payloadlen))
-		binary.BigEndian.PutUint32(buf[8:12], uint32(nclients))
-		binary.BigEndian.PutUint32(buf[12:16], uint32(ntrustees))
-		binary.BigEndian.PutUint32(buf[16:20], uint32(ctru))
+		buffer := make([]byte, 20)
+		binary.BigEndian.PutUint32(buffer[0:4], uint32(LLD_PROTOCOL_VERSION))
+		binary.BigEndian.PutUint32(buffer[4:8], uint32(payloadLength))
+		binary.BigEndian.PutUint32(buffer[8:12], uint32(nClients))
+		binary.BigEndian.PutUint32(buffer[12:16], uint32(nTrustees))
+		binary.BigEndian.PutUint32(buffer[16:20], uint32(i))
 
-		fmt.Println("Writing", LLD_PROTOCOL_VERSION, "setup is", nclients, ntrustees, "role is", ctru, "cellSize ", payloadlen)
+		fmt.Println("Writing", LLD_PROTOCOL_VERSION, "setup is", nClients, nTrustees, "role is", i, "cellSize ", payloadLength)
 
-		n, err := conn.Write(buf)
+		n, err := conn.Write(buffer)
 
 		if n < 1 || err != nil {
 			panic("Error writing to socket:" + err.Error())
 		}
 
-		fmt.Println("Trustee", ctru, "is connected.")
-		tsock[ctru] = conn
-		ctru++
+		fmt.Println("Trustee", i, "is connected.")
+		trusteesConnections[i] = conn
 	}
 
-	//listen for clients
-	lsock, err := net.Listen("tcp", bindport)
+	//starts the client server
+	lsock, err := net.Listen("tcp", relayPort)
 	if err != nil {
 		panic("Can't open listen socket:" + err.Error())
 	}
 
 	// Wait for all the clients to connect
-	ccli := 0
-	csock := make([]net.Conn, nclients)
-	
-	for ccli < nclients {
-		fmt.Printf("Waiting for %d clients\n", nclients-ccli)
+	clientsConnections := make([]net.Conn, nClients)
+
+	for j := 0; j < nClients; j++ {
+		fmt.Printf("Waiting for %d clients\n", nClients-j)
 
 		conn, err := lsock.Accept()
 		if err != nil {
@@ -156,152 +146,157 @@ func startRelay(reportingLimit int, nclients int, ntrustees int,
 			panic("Read error:" + err.Error())
 		}
 
-		node := int(b[0] & 0x7f)
-		if b[0]&0x80 == 0 && node < nclients {
-			if csock[node] != nil {
+		//TODO : not happy with this, reserve one byte for the client id
+		nodeId := int(b[0] & 0x7f)
+		if b[0]&0x80 == 0 && nodeId < nClients {
+			if clientsConnections[nodeId] != nil {
 				panic("Oops, client connected twice")
+				j -= 1
 			}
-			csock[node] = conn
-			ccli++
+			clientsConnections[nodeId] = conn
 		} else {
 			panic("illegal node number")
 		}
 	}
 	println("All clients and trustees connected.")
 
-	// Create ciphertext slice buffers for all clients and trustees
-	clisize := me.Coder.ClientCellSize(payloadlen)
-	cslice := make([][]byte, nclients)
-	for i := 0; i < nclients; i++ {
-		cslice[i] = make([]byte, clisize)
+	// Create ciphertext slice bufferfers for all clients and trustees
+	clientPayloadLength := me.Coder.ClientCellSize(payloadLength)
+	clientsPayloadData  := make([][]byte, nClients)
+	for i := 0; i < nClients; i++ {
+		clientsPayloadData[i] = make([]byte, clientPayloadLength)
 	}
-	trusize := me.Coder.TrusteeCellSize(payloadlen)
-	tslice := make([][]byte, ntrustees)
-	for i := 0; i < ntrustees; i++ {
-		tslice[i] = make([]byte, trusize)
+
+	trusteePayloadLength := me.Coder.TrusteeCellSize(payloadLength)
+	trusteesPayloadData  := make([][]byte, nTrustees)
+	for i := 0; i < nTrustees; i++ {
+		trusteesPayloadData[i] = make([]byte, trusteePayloadLength)
 	}
 
 	conns := make(map[int]chan<- []byte)
-	downstream := make(chan connbuf)
-	nulldown := connbuf{} // default empty downstream cell
+	downstream := make(chan dataWithConnectionId)
+	nulldown := dataWithConnectionId{} // default empty downstream cell
 	window := 2           // Maximum cells in-flight
 	inflight := 0         // Current cells in-flight
 
 
 	for {
 
+		//TODO: change this way of breaking the loop, it's not very elegant..
 		// Show periodic reports
-		if(!reportStatistics(reportingLimit)) {
+		if(!reportStatistics(payloadLength, reportingLimit)) {
 			println("Reporting limit matched; exiting the relay")
 			break;
 		}
 
+		//TODO : check if it is required to send empty cell
 		// See if there's any downstream data to forward.
-		var downbuf connbuf
+		var downbuffer dataWithConnectionId
 		select {
-			case downbuf = <-downstream: // some data to forward downstream
+			case downbuffer = <-downstream: // some data to forward downstream
 				//fmt.Println("Downstream data...")
-				//fmt.Printf("v %d\n", len(downbuf)-6)
+				//fmt.Printf("v %d\n", len(downbuffer)-6)
 			default: // nothing at the moment to forward
-				downbuf = nulldown
+				downbuffer = nulldown
 		}
-		dlen := len(downbuf.buf)
-		dbuf := make([]byte, 6+dlen)
-		binary.BigEndian.PutUint32(dbuf[0:4], uint32(downbuf.cno))
-		binary.BigEndian.PutUint16(dbuf[4:6], uint16(dlen))
-		copy(dbuf[6:], downbuf.buf)
+
+		downstreamDataPayloadLength := len(downbuffer.data)
+		downstreamData := make([]byte, 6+downstreamDataPayloadLength)
+		binary.BigEndian.PutUint32(downstreamData[0:4], uint32(downbuffer.connectionId))
+		binary.BigEndian.PutUint16(downstreamData[4:6], uint16(downstreamDataPayloadLength))
+		copy(downstreamData[6:], downbuffer.data)
 
 		// Broadcast the downstream data to all clients.
-		for i := 0; i < nclients; i++ {
-			//fmt.Printf("client %d -> %d downstream bytes\n",
-			//		i, len(dbuf)-6)
-			n, err := csock[i].Write(dbuf)
-			if n != 6+dlen {
-				panic("Write to client: " + err.Error())
+		for i := 0; i < nClients; i++ {
+			n, err := clientsConnections[i].Write(downstreamData)
+
+			if n != 6+downstreamDataPayloadLength {
+				panic("Relay : Write to client failed, wrote "+strconv.Itoa(downstreamDataPayloadLength+6)+" where "+strconv.Itoa(n)+" was expected : " + err.Error())
 			}
 		}
+
 		totdowncells++
-		totdownbytes += int64(dlen)
-		pardownbytes += int64(dlen)
-		//fmt.Printf("sent %d downstream cells, %d bytes \n",
-		//		totdowncells, totdownbytes)
+		totdownbytes += int64(downstreamDataPayloadLength)
+		pardownbytes += int64(downstreamDataPayloadLength)
 
 		inflight++
 		if inflight < window {
 			continue // Get more cells in flight
 		}
 
-		me.Coder.DecodeStart(payloadlen, me.History)
-
+		me.Coder.DecodeStart(payloadLength, me.History)
 
 		// Collect a cell ciphertext from each trustee
-		for i := 0; i < ntrustees; i++ {
-			//say hello to the trustees
-			/*
-			msg := make([]byte, 4)
-			binary.BigEndian.PutUint32(msg[0:4], uint32(1))
-			_, err2 := tsock[i].Write(msg)
-			if err2 != nil {
-				panic("can't say hello to trustee: " + err2.Error())
+		for i := 0; i < nTrustees; i++ {
+			
+			//TODO: this looks blocking
+			n, err := io.ReadFull(trusteesConnections[i], trusteesPayloadData[i])
+			if n < trusteePayloadLength {
+				panic("Relay : Read from trustee failed, read "+strconv.Itoa(n)+" where "+strconv.Itoa(trusteePayloadLength)+" was expected: " + err.Error())
 			}
-			*/
-			n, err := io.ReadFull(tsock[i], tslice[i])
-			if n < trusize {
-				panic("Read from trustee: " + err.Error())
-			}
-			//println("trustee slice")
-			//println(hex.Dump(tslice[i]))
-			me.Coder.DecodeTrustee(tslice[i])
+
+			me.Coder.DecodeTrustee(trusteesPayloadData[i])
 		}
 
 		// Collect an upstream ciphertext from each client
-		for i := 0; i < nclients; i++ {
-			n, err := io.ReadFull(csock[i], cslice[i])
-			if n < clisize {
-				panic("Read from client: " + err.Error())
+		for i := 0; i < nClients; i++ {
+
+			//TODO: this looks blocking
+			n, err := io.ReadFull(clientsConnections[i], clientsPayloadData[i])
+			if n < clientPayloadLength {
+				panic("Relay : Read from client failed, read "+strconv.Itoa(n)+" where "+strconv.Itoa(clientPayloadLength)+" was expected: " + err.Error())
 			}
-			//println("client slice")
-			//println(hex.Dump(cslice[i]))
-			me.Coder.DecodeClient(cslice[i])
+
+			me.Coder.DecodeClient(clientsPayloadData[i])
 		}
 
-		outb := me.Coder.DecodeCell()
+		upstreamPlaintext := me.Coder.DecodeCell()
 		inflight--
 
 		totupcells++
-		totupbytes += int64(payloadlen)
+		totupbytes += int64(payloadLength)
 		parupcells++
-		parupbytes += int64(payloadlen)
-		//fmt.Printf("received %d upstream cells, %d bytes\n",
-		//		totupcells, totupbytes)
+		parupbytes += int64(payloadLength)
 
 		// Process the decoded cell
-		if outb == nil {
+		if upstreamPlaintext == nil {
 			continue // empty or corrupt upstream cell
 		}
-		if len(outb) != payloadlen {
+		if len(upstreamPlaintext) != payloadLength {
 			panic("DecodeCell produced wrong-size payload")
 		}
 
 		// Decode the upstream cell header (may be empty, all zeros)
-		cno := int(binary.BigEndian.Uint32(outb[0:4]))
-		uplen := int(binary.BigEndian.Uint16(outb[4:6]))
-		//fmt.Printf("^ %d (conn %d)\n", uplen, cno)
-		if cno == 0 {
+		upstreamPlainTextConnId     := int(binary.BigEndian.Uint32(upstreamPlaintext[0:4]))
+		upstreamPlainTextDataLength := int(binary.BigEndian.Uint16(upstreamPlaintext[4:6]))
+
+		if upstreamPlainTextConnId == 0 {
 			continue // no upstream data
 		}
-		conn := conns[cno]
-		if conn == nil { // client initiating new connection
-			conn = relayNewConn(cno, downstream)
-			conns[cno] = conn
+
+		//check which connection it belongs to
+		//TODO: what is that ?? this is supposed to be anonymous
+		conn := conns[upstreamPlainTextConnId]
+
+		// client initiating new connection
+		if conn == nil { 
+			conn = relayNewConn(upstreamPlainTextConnId, downstream)
+			conns[upstreamPlainTextConnId] = conn
 		}
-		if 6+uplen > payloadlen {
-			log.Printf("upstream cell invalid length %d", 6+uplen)
+
+		if 6+upstreamPlainTextDataLength > payloadLength {
+			log.Printf("upstream cell invalid length %d", 6+upstreamPlainTextDataLength)
 			continue
 		}
 
-		//fmt.Printf("\nReceived byte %v (len: %d)\n", outb, len(outb))
-
-		conn <- outb[6 : 6+uplen]
+		conn <- upstreamPlaintext[6 : 6+upstreamPlainTextDataLength]
 	}
+}
+
+
+func relayNewConn(connId int, downstreamData chan<- dataWithConnectionId) chan<- []byte {
+
+	upstreamData := make(chan []byte)
+	go relaySocksProxy(connId, upstreamData, downstreamData)
+	return upstreamData
 }
