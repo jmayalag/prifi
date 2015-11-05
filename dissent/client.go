@@ -13,6 +13,16 @@ import (
 // Number of bytes of cell payload to reserve for connection header, length
 const socksHeaderLength = 6
 
+type ClientParams struct {
+
+	// Asymmetric keypair for this client
+	pub abstract.Point
+	pri abstract.Secret
+
+	trusteekeys      []abstract.Point  // each trustee's public key
+	sharedsecrets []abstract.Cipher // shared secrets
+}
+
 func startClient(clientId int, relayHostAddr string, nClients int, nTrustees int, payloadLength int, useSocksProxy bool) {
 	fmt.Printf("startClient %d\n", clientId)
 
