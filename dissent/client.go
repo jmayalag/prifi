@@ -7,38 +7,85 @@ import (
 	"io"
 	"net"
 	"github.com/lbarman/prifi/dcnet"
+	"github.com/lbarman/crypto/abstract"
 	//log2 "github.com/lbarman/prifi/log"
 )
 
 // Number of bytes of cell payload to reserve for connection header, length
 const socksHeaderLength = 6
 
-type ClientParams struct {
+type CryptoParams struct {
+	Name				string
 
-	// Asymmetric keypair for this client
-	pub abstract.Point
-	pri abstract.Secret
+	PublicKey			abstract.Point
+	privateKey			abstract.Secret
+	
+	TrusteePublicKey	[]abstract.Point
+	sharedSecrets		[]abstract.Cipher
+	
+	CellCoder			dcnet.CellCoder
+	
+	MessageHistory		abstract.Cipher
+}
 
-	trusteekeys      []abstract.Point  // each trustee's public key
-	sharedsecrets []abstract.Cipher // shared secrets
+func initateCrypto(clientId int, nTrustees int) *CryptoParams {
+
+	params := new(CryptoParams)
+
+	params.Name = "Client-"+strconv.Itoa(clientId)
+
+	//prepare the crypto parameters
+	rand 	:= suite.Cipher([]byte(params.Name))
+	base	:= suite.Point().Base()
+
+	//generate own parameters
+	params.privateKey       = suite.Secret().Pick(rand)
+	params.PublicKey        = suite.Point().Mul(base, params.privateKey)
+
+	//placeholders for pubkeys and secrets
+	params.TrusteePublicKey = make([]abstract.Point,  nTrustees)
+	params.sharedSecrets    = make([]abstract.Cipher, nTrustees)
+
+	//sets the cell coder, and the history
+	params.CellCoder = factory()
+
+	return params
 }
 
 func startClient(clientId int, relayHostAddr string, nClients int, nTrustees int, payloadLength int, useSocksProxy bool) {
 	fmt.Printf("startClient %d\n", clientId)
 
 	//crypto parameters
-	tg := dcnet.TestSetup(nil, suite, factory, nClients, nTrustees)
-	me := tg.Clients[clientId]
-	clientPayloadSize := me.Coder.ClientCellSize(payloadLength)
+	cryptoParams := initateCrypto(clientId, nClients)
+	clientPayloadSize := cryptoParams.CellCoder.ClientCellSize(payloadLength)
 
-	relayConn := connectToRelay(relayHostAddr, clientId)
+	//tg := dcnet.TestSetup(nil, suite, factory, nClients, nTrustees)
+	//me := tg.Clients[clientId]
+
+	relayConn := connectToRelay(relayHostAddr, clientId, cryptoParams)
 
 	//initiate downstream stream
 	dataFromRelay := make(chan dataWithConnectionId)
 	go readDataFromRelay(relayConn, dataFromRelay)
 
-
 	println("client", clientId, "connected")
+
+	//initiate the key exchange
+	buffer := make([]byte, 20)
+	binary.BigEndian.PutUint32(buffer[0:4], uint32(LLD_PROTOCOL_VERSION))
+	binary.BigEndian.PutUint32(buffer[4:8], uint32(payloadLength))
+	binary.BigEndian.PutUint32(buffer[8:12], uint32(nClients))
+	binary.BigEndian.PutUint32(buffer[12:16], uint32(nTrustees))
+	binary.BigEndian.PutUint32(buffer[16:20], uint32(clientId))
+
+	fmt.Println("Writing", LLD_PROTOCOL_VERSION, "setup is", nClients, nTrustees, "role is", clientId, "cellSize ", payloadLength)
+
+	n, err := relayConn.Write(buffer)
+
+	if n < 1 || err != nil {
+		panic("Error writing to socket:" + err.Error())
+	}
+
 
 	// We're the "slot owner" - start a socks relay
 	socksProxyNewConnections    := make(chan net.Conn)
@@ -104,7 +151,7 @@ func startClient(clientId int, relayHostAddr string, nClients int, nTrustees int
 				// Should account the downstream cell in the history
 
 				// Produce and ship the next upstream slice
-				writeNextUpstreamSlice(dataForRelayBuffer, payloadLength, clientPayloadSize, relayConn, me)
+				writeNextUpstreamSlice(dataForRelayBuffer, payloadLength, clientPayloadSize, relayConn, cryptoParams)
 
 				//statistics
 				totupcells++
@@ -118,7 +165,7 @@ func startClient(clientId int, relayHostAddr string, nClients int, nTrustees int
  * Creates the next cell
  */
 
-func writeNextUpstreamSlice(dataForRelayBuffer [][]byte, payloadLength int, clientPayloadSize int, relayConn net.Conn, me *dcnet.TestNode) {
+func writeNextUpstreamSlice(dataForRelayBuffer [][]byte, payloadLength int, clientPayloadSize int, relayConn net.Conn, cryptoParams *CryptoParams) {
 	var nextUpstreamBytes []byte
 	if len(dataForRelayBuffer) > 0 {
 		nextUpstreamBytes  = dataForRelayBuffer[0]
@@ -127,7 +174,7 @@ func writeNextUpstreamSlice(dataForRelayBuffer [][]byte, payloadLength int, clie
 	}
 
 	//produce the next upstream cell
-	upstreamSlice := me.Coder.ClientEncode(nextUpstreamBytes, payloadLength, me.History)
+	upstreamSlice := cryptoParams.CellCoder.ClientEncode(nextUpstreamBytes, payloadLength, cryptoParams.MessageHistory)
 
 	if len(upstreamSlice) != clientPayloadSize {
 		panic("Client slice wrong size, expected "+strconv.Itoa(clientPayloadSize)+", but got "+strconv.Itoa(len(upstreamSlice)))
@@ -144,18 +191,28 @@ func writeNextUpstreamSlice(dataForRelayBuffer [][]byte, payloadLength int, clie
  * RELAY CONNECTION
  */
 
-func connectToRelay(relayHost string, connectionId int) net.Conn {
+func connectToRelay(relayHost string, connectionId int, params *CryptoParams) net.Conn {
 	conn, err := net.Dial("tcp", relayHost)
 	if err != nil {
 		panic("Can't connect to relay:" + err.Error())
 	}
 
-	// Tell the relay our client or trustee number
-	b := make([]byte, 1)
-	b[0] = byte(connectionId)
-	n, err := conn.Write(b)
 
-	if n < 1 || err != nil {
+	//tell the relay our public key
+	publicKeyBytes, _ := params.PublicKey.MarshalBinary()
+	keySize := len(publicKeyBytes)
+
+	buffer2 := make([]byte, 12+keySize)
+	copy(buffer2[12:], publicKeyBytes)
+	binary.BigEndian.PutUint32(buffer2[0:4], uint32(LLD_PROTOCOL_VERSION))
+	binary.BigEndian.PutUint32(buffer2[4:8], uint32(connectionId))
+	binary.BigEndian.PutUint32(buffer2[8:12], uint32(keySize))
+
+	fmt.Println("Writing", LLD_PROTOCOL_VERSION, "client id", connectionId, "key of length", keySize, ", key is ", params.PublicKey)
+
+	n, err := conn.Write(buffer2)
+
+	if n < 12+keySize || err != nil {
 		panic("Error writing to socket:" + err.Error())
 	}
 

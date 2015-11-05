@@ -81,6 +81,11 @@ func reportStatistics(payloadLength int, reportingLimit int) bool {
 	return true
 }
 
+var clientsConnections  []net.Conn
+var trusteesConnections []net.Conn
+var trusteesPublicKeys  []abstract.Point
+var clientPublicKeys    []abstract.Point
+
 func startRelay(payloadLength int, relayPort string, nClients int, nTrustees int, trusteesIp []string, reportingLimit int) {
 
 	//the crypto parameters are static
@@ -88,12 +93,12 @@ func startRelay(payloadLength int, relayPort string, nClients int, nTrustees int
 	me := tg.Relay
 
 	//connect to the trustees
-	trusteesConnections := make([]net.Conn, nTrustees)
+	trusteesConnections = make([]net.Conn, nTrustees)
+	trusteesPublicKeys  = make([]abstract.Point, nTrustees)
 
 	for i:= 0; i < nTrustees; i++ {
 		currentTrusteeIp := strings.Replace(trusteesIp[i], "_", ":", -1) //trick for windows shell, where ":" separates args
-		newConn := connectToTrustee(i, currentTrusteeIp, nClients, nTrustees, payloadLength)
-		trusteesConnections[i] = newConn
+		connectToTrustee(i, currentTrusteeIp, nClients, nTrustees, payloadLength)
 	}
 
 	//starts the client server
@@ -103,25 +108,42 @@ func startRelay(payloadLength int, relayPort string, nClients int, nTrustees int
 	}
 
 	// Wait for all the clients to connect
-	clientsConnections := make([]net.Conn, nClients)
+	clientsConnections = make([]net.Conn, nClients)
+	clientPublicKeys   = make([]abstract.Point, nTrustees)
 
 	for j := 0; j < nClients; j++ {
-		fmt.Printf("Waiting for %d clients (on port %d)\n", nClients-j, relayPort)
+		fmt.Printf("Waiting for %d clients (on port %s)\n", nClients-j, relayPort)
 
 		conn, err := lsock.Accept()
 		if err != nil {
 			panic("Listen error:" + err.Error())
 		}
 
-		b := make([]byte, 1)
-		n, err := conn.Read(b)
-		if n < 1 || err != nil {
-			panic("Read error:" + err.Error())
+		buffer := make([]byte, 512)
+		_, err2 := conn.Read(buffer)
+		if err2 != nil {
+			panic("Read error:" + err2.Error())
 		}
 
-		//TODO : not happy with this, reserve one byte for the client id
-		nodeId := int(b[0] & 0x7f)
-		if b[0]&0x80 == 0 && nodeId < nClients {
+		ver := int(binary.BigEndian.Uint32(buffer[0:4]))
+
+		if(ver != LLD_PROTOCOL_VERSION) {
+			fmt.Println(">>>> Relay client version", ver, "!= relay version", LLD_PROTOCOL_VERSION)
+			panic("fatal error")
+		}
+
+		nodeId := int(binary.BigEndian.Uint32(buffer[4:8]))
+		keySize := int(binary.BigEndian.Uint32(buffer[8:12]))
+		keyBytes := buffer[12:(12+keySize)]
+
+		publicKey := suite.Point()
+		err3 := publicKey.UnmarshalBinary(keyBytes)
+
+		if err3 != nil {
+			panic(">>>>  Relay : can't unmarshal client key ! " + err3.Error())
+		}
+
+		if nodeId >= 0 && nodeId < nClients {
 			if clientsConnections[nodeId] != nil {
 				panic("Oops, client connected twice")
 				j -= 1
@@ -132,6 +154,16 @@ func startRelay(payloadLength int, relayPort string, nClients int, nTrustees int
 		}
 	}
 	println("All clients and trustees connected.")
+
+	//wait for key exchange (with the trustee) for clients
+	numKeyExchanges := 0
+	for numKeyExchanges < nClients {
+		//conn := clientsConnections[numKeyExchanges]
+
+		//buffer := make([]byte, payloadLength)
+		//n, err := conn.Read(buffer)
+
+	}
 
 	// Create ciphertext slice bufferfers for all clients and trustees
 	clientPayloadLength := me.Coder.ClientCellSize(payloadLength)
@@ -274,7 +306,7 @@ func relayNewConn(connId int, downstreamData chan<- dataWithConnectionId) chan<-
 	return upstreamData
 }
 
-func connectToTrustee(trusteeId int, trusteeHostAddr string, nClients int, nTrustees int, payloadLength int) net.Conn {
+func connectToTrustee(trusteeId int, trusteeHostAddr string, nClients int, nTrustees int, payloadLength int) {
 	//connect
 	fmt.Println("Relay connecting to trustee", trusteeId, "on address", trusteeHostAddr)
 	conn, err := net.Dial("tcp", trusteeHostAddr)
@@ -299,6 +331,30 @@ func connectToTrustee(trusteeId int, trusteeHostAddr string, nClients int, nTrus
 		panic("Error writing to socket:" + err.Error())
 	}
 
+	// Now read the public key
+	buffer2 := make([]byte, 1024)
+	
+	// Read the incoming connection into the buffer.
+	reqLen, err := conn.Read(buffer2)
+	if err != nil {
+	    fmt.Println(">>>> Relay : error reading:", err.Error())
+	}
+
+	fmt.Println(">>>>  Relay : reading public key", reqLen)
+	keySize := int(binary.BigEndian.Uint32(buffer2[4:8]))
+	keyBytes := buffer2[8:(8+keySize)]
+
+	publicKey := suite.Point()
+	err2 := publicKey.UnmarshalBinary(keyBytes)
+
+	if err2 != nil {
+		panic(">>>>  Relay : can't unmarshal trustee key ! " + err2.Error())
+	}
+
 	fmt.Println("Trustee", trusteeId, "is connected.")
-	return conn
+	
+
+	//side effects
+	trusteesConnections[trusteeId] = conn
+	trusteesPublicKeys[trusteeId]  = publicKey
 }

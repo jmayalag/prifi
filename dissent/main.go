@@ -119,7 +119,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	relayPortAddr := ":"+strconv.Itoa(*relayPort)
+	relayPortAddr := "localhost:"+strconv.Itoa(*relayPort)
 
 	if *isRelay {
 		startRelay(*cellSize, relayPortAddr, *nClients, *nTrustees, trusteesIp, *relayReceiveLimit)
