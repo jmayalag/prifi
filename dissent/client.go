@@ -21,7 +21,7 @@ type CryptoParams struct {
 	privateKey			abstract.Secret
 	
 	TrusteePublicKey	[]abstract.Point
-	sharedSecrets		[]abstract.Cipher
+	sharedSecrets		[]abstract.Point
 	
 	CellCoder			dcnet.CellCoder
 	
@@ -44,7 +44,7 @@ func initateCrypto(clientId int, nTrustees int) *CryptoParams {
 
 	//placeholders for pubkeys and secrets
 	params.TrusteePublicKey = make([]abstract.Point,  nTrustees)
-	params.sharedSecrets    = make([]abstract.Cipher, nTrustees)
+	params.sharedSecrets    = make([]abstract.Point, nTrustees)
 
 	//sets the cell coder, and the history
 	params.CellCoder = factory()
@@ -64,28 +64,31 @@ func startClient(clientId int, relayHostAddr string, nClients int, nTrustees int
 
 	relayConn := connectToRelay(relayHostAddr, clientId, cryptoParams)
 
+	//collect the public keys from the trustees
+	buffer := make([]byte, 32*nTrustees)
+	_, err2 := relayConn.Read(buffer)
+	if err2 != nil {
+		panic("Read error:" + err2.Error())
+	}
+
+	for i:=0; i<nTrustees; i++ {
+		keyBytes := buffer[32*i:32*(i+1)]
+		trusteePublicKey := suite.Point()
+		err3 := trusteePublicKey.UnmarshalBinary(keyBytes)
+		if err3 != nil {
+			panic(">>>>  Client : can't unmarshal server key n°"+strconv.Itoa(i)+" ! " + err3.Error())
+		}
+		cryptoParams.TrusteePublicKey[i] = trusteePublicKey
+		cryptoParams.sharedSecrets[i] = suite.Point().Mul(trusteePublicKey, cryptoParams.privateKey)
+	}
+
+	println("All crypto stuff exchanged !")
+
 	//initiate downstream stream
 	dataFromRelay := make(chan dataWithConnectionId)
 	go readDataFromRelay(relayConn, dataFromRelay)
 
 	println("client", clientId, "connected")
-
-	//initiate the key exchange
-	buffer := make([]byte, 20)
-	binary.BigEndian.PutUint32(buffer[0:4], uint32(LLD_PROTOCOL_VERSION))
-	binary.BigEndian.PutUint32(buffer[4:8], uint32(payloadLength))
-	binary.BigEndian.PutUint32(buffer[8:12], uint32(nClients))
-	binary.BigEndian.PutUint32(buffer[12:16], uint32(nTrustees))
-	binary.BigEndian.PutUint32(buffer[16:20], uint32(clientId))
-
-	fmt.Println("Writing", LLD_PROTOCOL_VERSION, "setup is", nClients, nTrustees, "role is", clientId, "cellSize ", payloadLength)
-
-	n, err := relayConn.Write(buffer)
-
-	if n < 1 || err != nil {
-		panic("Error writing to socket:" + err.Error())
-	}
-
 
 	// We're the "slot owner" - start a socks relay
 	socksProxyNewConnections    := make(chan net.Conn)
@@ -203,10 +206,10 @@ func connectToRelay(relayHost string, connectionId int, params *CryptoParams) ne
 	keySize := len(publicKeyBytes)
 
 	buffer2 := make([]byte, 12+keySize)
-	copy(buffer2[12:], publicKeyBytes)
 	binary.BigEndian.PutUint32(buffer2[0:4], uint32(LLD_PROTOCOL_VERSION))
 	binary.BigEndian.PutUint32(buffer2[4:8], uint32(connectionId))
 	binary.BigEndian.PutUint32(buffer2[8:12], uint32(keySize))
+	copy(buffer2[12:], publicKeyBytes)
 
 	fmt.Println("Writing", LLD_PROTOCOL_VERSION, "client id", connectionId, "key of length", keySize, ", key is ", params.PublicKey)
 

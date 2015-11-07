@@ -109,7 +109,7 @@ func startRelay(payloadLength int, relayPort string, nClients int, nTrustees int
 
 	// Wait for all the clients to connect
 	clientsConnections = make([]net.Conn, nClients)
-	clientPublicKeys   = make([]abstract.Point, nTrustees)
+	clientPublicKeys   = make([]abstract.Point, nClients)
 
 	for j := 0; j < nClients; j++ {
 		fmt.Printf("Waiting for %d clients (on port %s)\n", nClients-j, relayPort)
@@ -144,11 +144,8 @@ func startRelay(payloadLength int, relayPort string, nClients int, nTrustees int
 		}
 
 		if nodeId >= 0 && nodeId < nClients {
-			if clientsConnections[nodeId] != nil {
-				panic("Oops, client connected twice")
-				j -= 1
-			}
 			clientsConnections[nodeId] = conn
+			clientPublicKeys[nodeId] = publicKey
 		} else {
 			panic("illegal node number")
 		}
@@ -156,14 +153,23 @@ func startRelay(payloadLength int, relayPort string, nClients int, nTrustees int
 	println("All clients and trustees connected.")
 
 	//wait for key exchange (with the trustee) for clients
-	numKeyExchanges := 0
-	for numKeyExchanges < nClients {
-		//conn := clientsConnections[numKeyExchanges]
+	messageForClient := make([]byte, nTrustees*32)
 
-		//buffer := make([]byte, payloadLength)
-		//n, err := conn.Read(buffer)
-
+	for i:=0; i<nTrustees; i++ {
+		trusteePublicKeysBytes, _ := trusteesPublicKeys[i].MarshalBinary()
+		copy(messageForClient[8*i:8*i+32], trusteePublicKeysBytes)
 	}
+
+	fmt.Println("Writing", nTrustees, "public keys to the clients")
+
+	for i:=0; i<nClients; i++ {
+		n, err := clientsConnections[i].Write(messageForClient)
+
+		if n < nTrustees*32 || err != nil {
+			fmt.Println("Could not write to client", i)
+			panic("Error writing to socket:" + err.Error())
+		}
+	}	
 
 	// Create ciphertext slice bufferfers for all clients and trustees
 	clientPayloadLength := me.Coder.ClientCellSize(payloadLength)
