@@ -8,8 +8,10 @@ import (
 	//"github.com/lbarman/prifi/dcnet"
 	//"log"
 	"encoding/hex"
+	"time"
 	"net"
 	"github.com/lbarman/prifi/dcnet"
+	"github.com/lbarman/crypto/abstract"
 	//log2 "github.com/lbarman/prifi/log"
 )
 
@@ -67,6 +69,53 @@ func startListening(listenport string, newConnections chan<- net.Conn) {
 	}
 }
 
+type TrusteeCryptoParams struct {
+	Name				string
+
+	PublicKey			abstract.Point
+	privateKey			abstract.Secret
+	
+	ClientPublicKeys	[]abstract.Point
+	sharedSecrets		[]abstract.Point
+	
+	CellCoder			dcnet.CellCoder
+	
+	MessageHistory		abstract.Cipher
+}
+
+
+func initateTrusteeCrypto(trusteeId int, nClients int) *TrusteeCryptoParams {
+
+	params := new(TrusteeCryptoParams)
+
+	params.Name = "Trustee-"+strconv.Itoa(trusteeId)
+
+	//prepare the crypto parameters
+	rand 	:= suite.Cipher([]byte(params.Name))
+	base	:= suite.Point().Base()
+
+	//generate own parameters
+	params.privateKey       = suite.Secret().Pick(rand)
+	params.PublicKey        = suite.Point().Mul(base, params.privateKey)
+
+
+	fmt.Println("TrusteeSrv0 >>>>> keys are ", params.PublicKey)
+	d, err := params.PublicKey.Data()
+	fmt.Println(err)
+	fmt.Println(hex.Dump(d))
+
+	fmt.Println("This happens !!!")
+
+	//placeholders for pubkeys and secrets
+	params.ClientPublicKeys = make([]abstract.Point, nClients)
+	params.sharedSecrets    = make([]abstract.Point, nClients)
+
+	//sets the cell coder, and the history
+	params.CellCoder = factory()
+
+	return params
+}
+
 func handleConnection(connId int,conn net.Conn, closedConnections chan int){
 	
 	buffer := make([]byte, 1024)
@@ -95,11 +144,11 @@ func handleConnection(connId int,conn net.Conn, closedConnections chan int){
 
 	
 	//prepare the crypto parameters
-	rand 	:= suite.Cipher([]byte("trustee-"+strconv.Itoa(connId)))
-	base	:= suite.Point().Base()
-	privateKey  := suite.Secret().Pick(rand)
-	publicKey   := suite.Point().Mul(base, privateKey)
-	publicKeyBytes, _ := publicKey.MarshalBinary()
+
+	//crypto parameters
+	cryptoParams := initateTrusteeCrypto(trusteeId, nClients)
+
+	publicKeyBytes, _ := cryptoParams.PublicKey.Data()
 	keySize := len(publicKeyBytes)
 
 	fmt.Println("TrusteeSrv >>>>> keylen is ", keySize)
@@ -111,7 +160,7 @@ func handleConnection(connId int,conn net.Conn, closedConnections chan int){
 	binary.BigEndian.PutUint32(buffer2[0:4], uint32(LLD_PROTOCOL_VERSION))
 	binary.BigEndian.PutUint32(buffer2[4:8], uint32(keySize))
 
-	fmt.Println("Writing", LLD_PROTOCOL_VERSION, "key of length", keySize, ", key is ", publicKey)
+	fmt.Println("Writing", LLD_PROTOCOL_VERSION, "key of length", keySize)
 
 	n, err := conn.Write(buffer2)
 
@@ -120,6 +169,60 @@ func handleConnection(connId int,conn net.Conn, closedConnections chan int){
 	}
 
 	//TODO : wait for crypto parameters from clients
+
+	//parse message
+	currentByte := 0
+	currentClientId := 0
+	for {
+
+		keyLength := int(binary.BigEndian.Uint32(buffer[currentByte:currentByte+4]))
+
+		if keyLength == 0 {
+			break;
+		}
+
+		keyBytes := buffer[currentByte+4:currentByte+4+keyLength]
+
+		fmt.Println("Gonna unmarshall...")
+		fmt.Println(hex.Dump(keyBytes))
+
+		clientPublicKey := suite.Point()
+		err3 := clientPublicKey.UnmarshalBinary(keyBytes)
+		if err3 != nil {
+			panic(">>>>  Trustee : can't unmarshal client key n°"+strconv.Itoa(currentClientId)+" ! " + err3.Error())
+		}
+		cryptoParams.ClientPublicKeys[currentClientId] = clientPublicKey
+		cryptoParams.sharedSecrets[currentClientId] = suite.Point().Mul(clientPublicKey, cryptoParams.privateKey)
+
+		currentByte += 4 + keyLength
+		currentClientId += 1
+	}
+
+	//check that we got all keys
+	for i := 0; i<nClients; i++ {
+		if cryptoParams.ClientPublicKeys[i] == nil {
+			panic("Trustee : didn't get the public key from client "+strconv.Itoa(i))
+		}
+	}
+
+
+	//print all shared secrets
+	for i:=0; i<nClients; i++ {
+		fmt.Println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+		fmt.Println("            Client", i)
+		d1, _ := cryptoParams.ClientPublicKeys[i].Data()
+		d2, _ := cryptoParams.sharedSecrets[i].Data()
+		fmt.Println(hex.Dump(d1))
+		fmt.Println("+++")
+		fmt.Println(hex.Dump(d2))
+		fmt.Println("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
+	}
+
+	println("All crypto stuff exchanged !")
+
+	for {
+		time.Sleep(5000 * time.Millisecond)
+	}
 
 	startTrusteeSlave(conn, trusteeId, cellSize, nClients, nTrustees, cellSize, closedConnections)
 

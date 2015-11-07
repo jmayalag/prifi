@@ -95,8 +95,8 @@ func main() {
 	isTrusteeServer   := flag.Bool("trusteesrv", false, "Start a trustee server")
 
 	//parameters config
-	nClients          := flag.Int("nclients", 2, "The number of clients.")
-	nTrustees         := flag.Int("ntrustees", 2, "The number of trustees.")
+	nClients          := flag.Int("nclients", 1, "The number of clients.")
+	nTrustees         := flag.Int("ntrustees", 1, "The number of trustees.")
 	cellSize          := flag.Int("cellsize", 128, "Sets the size of one cell, in bytes.")
 	relayPort         := flag.Int("relayport", 9876, "Sets listening port of the relay, waiting for clients.")
 	relayReceiveLimit := flag.Int("reportlimit", -1, "Sets the limit of cells to receive before stopping the relay")

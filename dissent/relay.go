@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/binary"
 	"fmt"
+	"encoding/hex"
 	"github.com/lbarman/crypto/abstract"
 	"github.com/lbarman/prifi/dcnet"
 	"io"
@@ -153,11 +154,20 @@ func startRelay(payloadLength int, relayPort string, nClients int, nTrustees int
 	println("All clients and trustees connected.")
 
 	//wait for key exchange (with the trustee) for clients
-	messageForClient := make([]byte, nTrustees*32)
+	var messageForClient []byte
 
 	for i:=0; i<nTrustees; i++ {
-		trusteePublicKeysBytes, _ := trusteesPublicKeys[i].MarshalBinary()
-		copy(messageForClient[8*i:8*i+32], trusteePublicKeysBytes)
+		trusteePublicKeysBytes, err := trusteesPublicKeys[i].MarshalBinary()
+		trusteePublicKeyLength := make([]byte, 4)
+		binary.BigEndian.PutUint32(trusteePublicKeyLength, uint32(len(trusteePublicKeysBytes)))
+
+		messageForClient = append(messageForClient, trusteePublicKeyLength...)
+		messageForClient = append(messageForClient, trusteePublicKeysBytes...)
+
+		fmt.Println(hex.Dump(trusteePublicKeysBytes))
+		if err != nil{
+			panic("Relay : can't marshal trustee public key n°"+strconv.Itoa(i))
+		}
 	}
 
 	fmt.Println("Writing", nTrustees, "public keys to the clients")
@@ -165,11 +175,47 @@ func startRelay(payloadLength int, relayPort string, nClients int, nTrustees int
 	for i:=0; i<nClients; i++ {
 		n, err := clientsConnections[i].Write(messageForClient)
 
-		if n < nTrustees*32 || err != nil {
+		if n < len(messageForClient) || err != nil {
 			fmt.Println("Could not write to client", i)
 			panic("Error writing to socket:" + err.Error())
 		}
 	}	
+
+	//wait for key exchange (with the clients) for trustees
+	var messageForTrustees []byte
+
+	for i:=0; i<nClients; i++ {
+		clientPublicKeysBytes, err := clientPublicKeys[i].MarshalBinary()
+		clientPublicKeyLength := make([]byte, 4)
+		binary.BigEndian.PutUint32(clientPublicKeyLength, uint32(len(clientPublicKeysBytes)))
+
+		messageForTrustees = append(messageForTrustees, clientPublicKeyLength...)
+		messageForTrustees = append(messageForTrustees, clientPublicKeysBytes...)
+
+		fmt.Println(hex.Dump(clientPublicKeysBytes))
+		if err != nil{
+			panic("Relay : can't marshal client public key n°"+strconv.Itoa(i))
+		}
+	}
+
+	fmt.Println("Writing", nTrustees, "public keys to the trustees")
+
+	for i:=0; i<nTrustees; i++ {
+		n, err := trusteesConnections[i].Write(messageForTrustees)
+
+		if n < len(messageForTrustees) || err != nil {
+			fmt.Println("Could not write to trustee", i)
+			panic("Error writing to socket:" + err.Error())
+		}
+	}	
+
+	
+	println("All crypto stuff exchanged !")
+
+	for {
+		time.Sleep(5000 * time.Millisecond)
+	}
+
 
 	// Create ciphertext slice bufferfers for all clients and trustees
 	clientPayloadLength := me.Coder.ClientCellSize(payloadLength)
@@ -349,6 +395,9 @@ func connectToTrustee(trusteeId int, trusteeHostAddr string, nClients int, nTrus
 	fmt.Println(">>>>  Relay : reading public key", reqLen)
 	keySize := int(binary.BigEndian.Uint32(buffer2[4:8]))
 	keyBytes := buffer2[8:(8+keySize)]
+
+
+	fmt.Println(hex.Dump(keyBytes))
 
 	publicKey := suite.Point()
 	err2 := publicKey.UnmarshalBinary(keyBytes)
