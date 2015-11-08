@@ -88,7 +88,7 @@ func initateTrusteeCrypto(trusteeId int, nClients int) *TrusteeCryptoParams {
 
 	params := new(TrusteeCryptoParams)
 
-	params.Name = "trustee-"+strconv.Itoa(trusteeId)
+	params.Name = "Trustee-"+strconv.Itoa(trusteeId)
 
 	//prepare the crypto parameters
 	rand 	:= suite.Cipher([]byte(params.Name))
@@ -97,14 +97,6 @@ func initateTrusteeCrypto(trusteeId int, nClients int) *TrusteeCryptoParams {
 	//generate own parameters
 	params.privateKey       = suite.Secret().Pick(rand)
 	params.PublicKey        = suite.Point().Mul(base, params.privateKey)
-
-
-	fmt.Println("TrusteeSrv0 >>>>> keys are ", params.PublicKey)
-	d, err := params.PublicKey.MarshalBinary()
-	fmt.Println(err)
-	fmt.Println(hex.Dump(d))
-
-	fmt.Println("This happens !!!")
 
 	//placeholders for pubkeys and secrets
 	params.ClientPublicKeys = make([]abstract.Point, nClients)
@@ -118,92 +110,42 @@ func initateTrusteeCrypto(trusteeId int, nClients int) *TrusteeCryptoParams {
 
 func handleConnection(connId int,conn net.Conn, closedConnections chan int){
 	
+	defer conn.Close()
+
 	buffer := make([]byte, 1024)
 	
 	// Read the incoming connection into the bufferfer.
-	reqLen, err := conn.Read(buffer)
+	_, err := conn.Read(buffer)
 	if err != nil {
-	    fmt.Println(">>>> Handler", connId, "error reading:", err.Error())
+	    fmt.Println(">>>> Trustee", connId, "error reading:", err.Error())
+	    return;
 	}
 
-	fmt.Println(">>>> Handler", connId, "len", reqLen)
+	//Check the protocol version against ours
+	version := int(binary.BigEndian.Uint32(buffer[0:4]))
 
-	ver := int(binary.BigEndian.Uint32(buffer[0:4]))
-
-	if(ver != LLD_PROTOCOL_VERSION) {
-		fmt.Println(">>>> Handler", connId, "client version", ver, "!= server version", LLD_PROTOCOL_VERSION)
-		conn.Close()
-		closedConnections <- connId
+	if(version != LLD_PROTOCOL_VERSION) {
+		fmt.Println(">>>> Trustee", connId, "client version", version, "!= server version", LLD_PROTOCOL_VERSION)
+		return;
 	}
 
+	//Extract the global parameters
 	cellSize := int(binary.BigEndian.Uint32(buffer[4:8]))
 	nClients := int(binary.BigEndian.Uint32(buffer[8:12]))
 	nTrustees := int(binary.BigEndian.Uint32(buffer[12:16]))
 	trusteeId := int(binary.BigEndian.Uint32(buffer[16:20]))
-	fmt.Println(">>>> Handler", connId, "setup is", nClients, nTrustees, "role is", trusteeId, "cellSize ", cellSize)
+	fmt.Println(">>>> Trustee", connId, "setup is", nClients, "clients", nTrustees, "trustees, role is", trusteeId, "cellSize ", cellSize)
 
 	
 	//prepare the crypto parameters
-
-	//crypto parameters
 	cryptoParams := initateTrusteeCrypto(trusteeId, nClients)
+	tellPublicKey(conn, cryptoParams.PublicKey)
 
-	publicKeyBytes, _ := cryptoParams.PublicKey.MarshalBinary()
-	keySize := len(publicKeyBytes)
-
-	fmt.Println("TrusteeSrv >>>>> keylen is ", keySize)
-	fmt.Println(hex.Dump(publicKeyBytes))
-
-	//tell the relay our public key (assume user verify through second channel)
-	buffer2 := make([]byte, 8+keySize)
-	copy(buffer2[8:], publicKeyBytes)
-	binary.BigEndian.PutUint32(buffer2[0:4], uint32(LLD_PROTOCOL_VERSION))
-	binary.BigEndian.PutUint32(buffer2[4:8], uint32(keySize))
-
-	fmt.Println("Writing", LLD_PROTOCOL_VERSION, "key of length", keySize)
-
-	n, err := conn.Write(buffer2)
-
-	if n < 1 || err != nil {
-		panic("Error writing to socket:" + err.Error())
-	}
-
-	//TODO : wait for crypto parameters from clients
-
-
-	//collect the public keys from the trustees
-	buffer3 := make([]byte, 1024)
-	_, err2 := conn.Read(buffer3)
-	if err2 != nil {
-		panic("Read error:" + err2.Error())
-	}
-
-	//parse message
-	currentByte := 0
-	currentClientId := 0
-	for {
-
-		keyLength := int(binary.BigEndian.Uint32(buffer3[currentByte:currentByte+4]))
-
-		if keyLength == 0 {
-			break;
-		}
-
-		keyBytes := buffer3[currentByte+4:currentByte+4+keyLength]
-
-		fmt.Println("Gonna unmarshall...")
-		fmt.Println(hex.Dump(keyBytes))
-
-		clientPublicKey := suite.Point()
-		err3 := clientPublicKey.UnmarshalBinary(keyBytes)
-		if err3 != nil {
-			panic(">>>>  Trustee : can't unmarshal client key n°"+strconv.Itoa(currentClientId)+" ! " + err3.Error())
-		}
-		cryptoParams.ClientPublicKeys[currentClientId] = clientPublicKey
-		cryptoParams.sharedSecrets[currentClientId] = suite.Point().Mul(clientPublicKey, cryptoParams.privateKey)
-
-		currentByte += 4 + keyLength
-		currentClientId += 1
+	//Read the clients' public keys from the connection
+	clientsPublicKeys := UnMarshalPublicKeyArrayFromConnection(conn)
+	for i:=0; i<len(clientsPublicKeys); i++ {
+		cryptoParams.ClientPublicKeys[i] = clientsPublicKeys[i]
+		cryptoParams.sharedSecrets[i] = suite.Point().Mul(clientsPublicKeys[i], cryptoParams.privateKey)
 	}
 
 	//check that we got all keys
@@ -212,7 +154,6 @@ func handleConnection(connId int,conn net.Conn, closedConnections chan int){
 			panic("Trustee : didn't get the public key from client "+strconv.Itoa(i))
 		}
 	}
-
 
 	//print all shared secrets
 	for i:=0; i<nClients; i++ {
@@ -234,7 +175,7 @@ func handleConnection(connId int,conn net.Conn, closedConnections chan int){
 
 	startTrusteeSlave(conn, trusteeId, cellSize, nClients, nTrustees, cellSize, closedConnections)
 
-	fmt.Println(">>>> Handler", connId, "shutting down.")
+	fmt.Println(">>>> Trustee", connId, "shutting down.")
 	conn.Close()
 }
 

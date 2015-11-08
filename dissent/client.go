@@ -61,44 +61,13 @@ func startClient(clientId int, relayHostAddr string, nClients int, nTrustees int
 	cryptoParams := initateClientCrypto(clientId, nTrustees)
 	clientPayloadSize := cryptoParams.CellCoder.ClientCellSize(payloadLength)
 
-	//tg := dcnet.TestSetup(nil, suite, factory, nClients, nTrustees)
-	//me := tg.Clients[clientId]
-
 	relayConn := connectToRelay(relayHostAddr, clientId, cryptoParams)
 
-	//collect the public keys from the trustees
-	buffer := make([]byte, 1024)
-	_, err2 := relayConn.Read(buffer)
-	if err2 != nil {
-		panic("Read error:" + err2.Error())
-	}
-
-	//parse message
-	currentByte := 0
-	currentTrusteeId := 0
-	for {
-
-		keyLength := int(binary.BigEndian.Uint32(buffer[currentByte:currentByte+4]))
-
-		if keyLength == 0 {
-			break;
-		}
-
-		keyBytes := buffer[currentByte+4:currentByte+4+keyLength]
-
-		fmt.Println("Gonna unmarshall...")
-	fmt.Println(hex.Dump(keyBytes))
-
-		trusteePublicKey := suite.Point()
-		err3 := trusteePublicKey.UnmarshalBinary(keyBytes)
-		if err3 != nil {
-			panic(">>>>  Client : can't unmarshal server key n°"+strconv.Itoa(currentTrusteeId)+" ! " + err3.Error())
-		}
-		cryptoParams.TrusteePublicKey[currentTrusteeId] = trusteePublicKey
-		cryptoParams.sharedSecrets[currentTrusteeId] = suite.Point().Mul(trusteePublicKey, cryptoParams.privateKey)
-
-		currentByte += 4 + keyLength
-		currentTrusteeId += 1
+	//Read the trustee's public keys from the connection
+	trusteesPublicKeys := UnMarshalPublicKeyArrayFromConnection(relayConn)
+	for i:=0; i<len(trusteesPublicKeys); i++ {
+		cryptoParams.TrusteePublicKey[i] = trusteesPublicKeys[i]
+		cryptoParams.sharedSecrets[i] = suite.Point().Mul(trusteesPublicKeys[i], cryptoParams.privateKey)
 	}
 
 	//check that we got all keys
@@ -247,15 +216,13 @@ func connectToRelay(relayHost string, connectionId int, params *ClientCryptoPara
 	publicKeyBytes, _ := params.PublicKey.MarshalBinary()
 	keySize := len(publicKeyBytes)
 
-	buffer2 := make([]byte, 12+keySize)
-	binary.BigEndian.PutUint32(buffer2[0:4], uint32(LLD_PROTOCOL_VERSION))
-	binary.BigEndian.PutUint32(buffer2[4:8], uint32(connectionId))
-	binary.BigEndian.PutUint32(buffer2[8:12], uint32(keySize))
-	copy(buffer2[12:], publicKeyBytes)
+	buffer := make([]byte, 12+keySize)
+	binary.BigEndian.PutUint32(buffer[0:4], uint32(LLD_PROTOCOL_VERSION))
+	binary.BigEndian.PutUint32(buffer[4:8], uint32(connectionId))
+	binary.BigEndian.PutUint32(buffer[8:12], uint32(keySize))
+	copy(buffer[12:], publicKeyBytes)
 
-	fmt.Println("Writing", LLD_PROTOCOL_VERSION, "client id", connectionId, "key of length", keySize, ", key is ", params.PublicKey)
-
-	n, err := conn.Write(buffer2)
+	n, err := conn.Write(buffer)
 
 	if n < 12+keySize || err != nil {
 		panic("Error writing to socket:" + err.Error())

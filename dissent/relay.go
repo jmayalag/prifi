@@ -82,6 +82,50 @@ func reportStatistics(payloadLength int, reportingLimit int) bool {
 	return true
 }
 
+
+type RelayCryptoParams struct {
+	Name				string
+
+	PublicKey			abstract.Point
+	privateKey			abstract.Secret
+	
+	clientsConnections  []net.Conn
+	trusteesConnections []net.Conn
+	trusteesPublicKeys  []abstract.Point
+	clientPublicKeys    []abstract.Point
+	
+	CellCoder			dcnet.CellCoder
+	
+	MessageHistory		abstract.Cipher
+}
+
+func initateRelayCrypto(nTrustees int, nClients int) *RelayCryptoParams {
+
+	params := new(RelayCryptoParams)
+
+	params.Name = "Relay"
+
+	//prepare the crypto parameters
+	rand 	:= suite.Cipher([]byte(params.Name))
+	base	:= suite.Point().Base()
+
+	//generate own parameters
+	params.privateKey       = suite.Secret().Pick(rand)
+	params.PublicKey        = suite.Point().Mul(base, params.privateKey)
+
+	//placeholders for pubkeys and connections
+	params.trusteesPublicKeys = make([]abstract.Point, nTrustees)
+	params.clientPublicKeys   = make([]abstract.Point, nClients)
+
+	params.trusteesConnections = make([]net.Conn, nTrustees)
+	params.clientsConnections  = make([]net.Conn, nClients)
+
+	//sets the cell coder, and the history
+	params.CellCoder = factory()
+
+	return params
+}
+
 var clientsConnections  []net.Conn
 var trusteesConnections []net.Conn
 var trusteesPublicKeys  []abstract.Point
@@ -89,9 +133,7 @@ var clientPublicKeys    []abstract.Point
 
 func startRelay(payloadLength int, relayPort string, nClients int, nTrustees int, trusteesIp []string, reportingLimit int) {
 
-	//the crypto parameters are static
-	tg := dcnet.TestSetup(nil, suite, factory, nClients, nTrustees)
-	me := tg.Relay
+	cryptoParams := initateRelayCrypto(nTrustees, nClients)
 
 	//connect to the trustees
 	trusteesConnections = make([]net.Conn, nTrustees)
@@ -108,7 +150,7 @@ func startRelay(payloadLength int, relayPort string, nClients int, nTrustees int
 		panic("Can't open listen socket:" + err.Error())
 	}
 
-	// Wait for all the clients to connect
+	// Wait for all the clients to connect, and parse parameters
 	clientsConnections = make([]net.Conn, nClients)
 	clientPublicKeys   = make([]abstract.Point, nClients)
 
@@ -135,7 +177,7 @@ func startRelay(payloadLength int, relayPort string, nClients int, nTrustees int
 
 		nodeId := int(binary.BigEndian.Uint32(buffer[4:8]))
 		keySize := int(binary.BigEndian.Uint32(buffer[8:12]))
-		keyBytes := buffer[12:(12+keySize)]
+		keyBytes := buffer[12:(12+keySize)] 
 
 		publicKey := suite.Point()
 		err3 := publicKey.UnmarshalBinary(keyBytes)
@@ -153,62 +195,13 @@ func startRelay(payloadLength int, relayPort string, nClients int, nTrustees int
 	}
 	println("All clients and trustees connected.")
 
-	//wait for key exchange (with the trustee) for clients
-	var messageForClient []byte
+	//Prepare the messages
+	messageForClient   := MarshalPublicKeyArrayToByteArray(trusteesPublicKeys)
+	messageForTrustees := MarshalPublicKeyArrayToByteArray(clientPublicKeys)
 
-	for i:=0; i<nTrustees; i++ {
-		trusteePublicKeysBytes, err := trusteesPublicKeys[i].MarshalBinary()
-		trusteePublicKeyLength := make([]byte, 4)
-		binary.BigEndian.PutUint32(trusteePublicKeyLength, uint32(len(trusteePublicKeysBytes)))
-
-		messageForClient = append(messageForClient, trusteePublicKeyLength...)
-		messageForClient = append(messageForClient, trusteePublicKeysBytes...)
-
-		fmt.Println(hex.Dump(trusteePublicKeysBytes))
-		if err != nil{
-			panic("Relay : can't marshal trustee public key n°"+strconv.Itoa(i))
-		}
-	}
-
-	fmt.Println("Writing", nTrustees, "public keys to the clients")
-
-	for i:=0; i<nClients; i++ {
-		n, err := clientsConnections[i].Write(messageForClient)
-
-		if n < len(messageForClient) || err != nil {
-			fmt.Println("Could not write to client", i)
-			panic("Error writing to socket:" + err.Error())
-		}
-	}	
-
-	//wait for key exchange (with the clients) for trustees
-	var messageForTrustees []byte
-
-	for i:=0; i<nClients; i++ {
-		clientPublicKeysBytes, err := clientPublicKeys[i].MarshalBinary()
-		clientPublicKeyLength := make([]byte, 4)
-		binary.BigEndian.PutUint32(clientPublicKeyLength, uint32(len(clientPublicKeysBytes)))
-
-		messageForTrustees = append(messageForTrustees, clientPublicKeyLength...)
-		messageForTrustees = append(messageForTrustees, clientPublicKeysBytes...)
-
-		fmt.Println(hex.Dump(clientPublicKeysBytes))
-		if err != nil{
-			panic("Relay : can't marshal client public key n°"+strconv.Itoa(i))
-		}
-	}
-
-	fmt.Println("Writing", nTrustees, "public keys to the trustees")
-
-	for i:=0; i<nTrustees; i++ {
-		n, err := trusteesConnections[i].Write(messageForTrustees)
-
-		if n < len(messageForTrustees) || err != nil {
-			fmt.Println("Could not write to trustee", i)
-			panic("Error writing to socket:" + err.Error())
-		}
-	}	
-
+	//broadcast to the clients
+	broadcastMessage(clientsConnections, messageForClient)
+	broadcastMessage(trusteesConnections, messageForTrustees)
 	
 	println("All crypto stuff exchanged !")
 
@@ -218,13 +211,13 @@ func startRelay(payloadLength int, relayPort string, nClients int, nTrustees int
 
 
 	// Create ciphertext slice bufferfers for all clients and trustees
-	clientPayloadLength := me.Coder.ClientCellSize(payloadLength)
+	clientPayloadLength := cryptoParams.CellCoder.ClientCellSize(payloadLength)
 	clientsPayloadData  := make([][]byte, nClients)
 	for i := 0; i < nClients; i++ {
 		clientsPayloadData[i] = make([]byte, clientPayloadLength)
 	}
 
-	trusteePayloadLength := me.Coder.TrusteeCellSize(payloadLength)
+	trusteePayloadLength := cryptoParams.CellCoder.TrusteeCellSize(payloadLength)
 	trusteesPayloadData  := make([][]byte, nTrustees)
 	for i := 0; i < nTrustees; i++ {
 		trusteesPayloadData[i] = make([]byte, trusteePayloadLength)
@@ -281,7 +274,7 @@ func startRelay(payloadLength int, relayPort string, nClients int, nTrustees int
 			continue // Get more cells in flight
 		}
 
-		me.Coder.DecodeStart(payloadLength, me.History)
+		cryptoParams.CellCoder.DecodeStart(payloadLength, cryptoParams.MessageHistory)
 
 		// Collect a cell ciphertext from each trustee
 		for i := 0; i < nTrustees; i++ {
@@ -292,7 +285,7 @@ func startRelay(payloadLength int, relayPort string, nClients int, nTrustees int
 				panic("Relay : Read from trustee failed, read "+strconv.Itoa(n)+" where "+strconv.Itoa(trusteePayloadLength)+" was expected: " + err.Error())
 			}
 
-			me.Coder.DecodeTrustee(trusteesPayloadData[i])
+			cryptoParams.CellCoder.DecodeTrustee(trusteesPayloadData[i])
 		}
 
 		// Collect an upstream ciphertext from each client
@@ -304,10 +297,10 @@ func startRelay(payloadLength int, relayPort string, nClients int, nTrustees int
 				panic("Relay : Read from client failed, read "+strconv.Itoa(n)+" where "+strconv.Itoa(clientPayloadLength)+" was expected: " + err.Error())
 			}
 
-			me.Coder.DecodeClient(clientsPayloadData[i])
+			cryptoParams.CellCoder.DecodeClient(clientsPayloadData[i])
 		}
 
-		upstreamPlaintext := me.Coder.DecodeCell()
+		upstreamPlaintext := cryptoParams.CellCoder.DecodeCell()
 		inflight--
 
 		totupcells++
