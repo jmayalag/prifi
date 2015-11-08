@@ -88,7 +88,7 @@ func initateTrusteeCrypto(trusteeId int, nClients int) *TrusteeCryptoParams {
 
 	params := new(TrusteeCryptoParams)
 
-	params.Name = "Trustee-"+strconv.Itoa(trusteeId)
+	params.Name = "trustee-"+strconv.Itoa(trusteeId)
 
 	//prepare the crypto parameters
 	rand 	:= suite.Cipher([]byte(params.Name))
@@ -100,7 +100,7 @@ func initateTrusteeCrypto(trusteeId int, nClients int) *TrusteeCryptoParams {
 
 
 	fmt.Println("TrusteeSrv0 >>>>> keys are ", params.PublicKey)
-	d, err := params.PublicKey.Data()
+	d, err := params.PublicKey.MarshalBinary()
 	fmt.Println(err)
 	fmt.Println(hex.Dump(d))
 
@@ -148,7 +148,7 @@ func handleConnection(connId int,conn net.Conn, closedConnections chan int){
 	//crypto parameters
 	cryptoParams := initateTrusteeCrypto(trusteeId, nClients)
 
-	publicKeyBytes, _ := cryptoParams.PublicKey.Data()
+	publicKeyBytes, _ := cryptoParams.PublicKey.MarshalBinary()
 	keySize := len(publicKeyBytes)
 
 	fmt.Println("TrusteeSrv >>>>> keylen is ", keySize)
@@ -170,18 +170,26 @@ func handleConnection(connId int,conn net.Conn, closedConnections chan int){
 
 	//TODO : wait for crypto parameters from clients
 
+
+	//collect the public keys from the trustees
+	buffer3 := make([]byte, 1024)
+	_, err2 := conn.Read(buffer3)
+	if err2 != nil {
+		panic("Read error:" + err2.Error())
+	}
+
 	//parse message
 	currentByte := 0
 	currentClientId := 0
 	for {
 
-		keyLength := int(binary.BigEndian.Uint32(buffer[currentByte:currentByte+4]))
+		keyLength := int(binary.BigEndian.Uint32(buffer3[currentByte:currentByte+4]))
 
 		if keyLength == 0 {
 			break;
 		}
 
-		keyBytes := buffer[currentByte+4:currentByte+4+keyLength]
+		keyBytes := buffer3[currentByte+4:currentByte+4+keyLength]
 
 		fmt.Println("Gonna unmarshall...")
 		fmt.Println(hex.Dump(keyBytes))
@@ -210,8 +218,8 @@ func handleConnection(connId int,conn net.Conn, closedConnections chan int){
 	for i:=0; i<nClients; i++ {
 		fmt.Println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
 		fmt.Println("            Client", i)
-		d1, _ := cryptoParams.ClientPublicKeys[i].Data()
-		d2, _ := cryptoParams.sharedSecrets[i].Data()
+		d1, _ := cryptoParams.ClientPublicKeys[i].MarshalBinary()
+		d2, _ := cryptoParams.sharedSecrets[i].MarshalBinary()
 		fmt.Println(hex.Dump(d1))
 		fmt.Println("+++")
 		fmt.Println(hex.Dump(d2))

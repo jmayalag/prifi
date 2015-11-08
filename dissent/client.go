@@ -112,8 +112,8 @@ func startClient(clientId int, relayHostAddr string, nClients int, nTrustees int
 	for i:=0; i<nTrustees; i++ {
 		fmt.Println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
 		fmt.Println("            TRUSTEE", i)
-		d1, _ := cryptoParams.TrusteePublicKey[i].Data()
-		d2, _ := cryptoParams.sharedSecrets[i].Data()
+		d1, _ := cryptoParams.TrusteePublicKey[i].MarshalBinary()
+		d2, _ := cryptoParams.sharedSecrets[i].MarshalBinary()
 		fmt.Println(hex.Dump(d1))
 		fmt.Println("+++")
 		fmt.Println(hex.Dump(d2))
