@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"strconv"
 	"io"
-	"time"
 	"net"
 	"github.com/lbarman/prifi/dcnet"
 	"github.com/lbarman/crypto/abstract"
@@ -90,10 +89,6 @@ func startClient(clientId int, relayHostAddr string, nClients int, nTrustees int
 	}
 
 	println("All crypto stuff exchanged !")
-
-	for {
-		time.Sleep(5000 * time.Millisecond)
-	}
 
 	//initiate downstream stream
 	dataFromRelay := make(chan dataWithConnectionId)
