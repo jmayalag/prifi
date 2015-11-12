@@ -128,6 +128,7 @@ func (state *RelayState) processMessageLoop(newClientConnections chan net.Conn){
 
 	for {
 
+		tellClientsToResync := false
 		select{
 			//accept the TCP connection, and parse the parameters
 			case newClientConnection = <-newClientConnections: 
@@ -137,7 +138,7 @@ func (state *RelayState) processMessageLoop(newClientConnections chan net.Conn){
 			case newClientWithIdAndPk = <-newClientsToParse: 
 				fmt.Println("New client is ready !")
 				fmt.Println(newClientWithIdAndPk)
-				panic("Done")
+				tellClientsToResync = true
 			default: 
 		}
 
@@ -158,9 +159,15 @@ func (state *RelayState) processMessageLoop(newClientConnections chan net.Conn){
 				downbuffer = nulldown
 		}
 
+		msgType := 0
+		if tellClientsToResync{
+			msgType = 1
+		}
+
 		downstreamDataPayloadLength := len(downbuffer.data)
 		downstreamData := make([]byte, 6+downstreamDataPayloadLength)
-		binary.BigEndian.PutUint32(downstreamData[0:4], uint32(downbuffer.connectionId))
+		binary.BigEndian.PutUint32(downstreamData[0:4], uint32(msgType))
+		//binary.BigEndian.PutUint32(downstreamData[0:4], uint32(downbuffer.connectionId))
 		binary.BigEndian.PutUint16(downstreamData[4:6], uint16(downstreamDataPayloadLength))
 		copy(downstreamData[6:], downbuffer.data)
 
@@ -379,7 +386,7 @@ func relayParseClientParamsAux(conn net.Conn, relayState *RelayState) (int, net.
 	nodeId := int(binary.BigEndian.Uint32(buffer[4:8]))
 
 	//check that the node ID is not used
-	if(relayState.clientsConnections[nodeId] != nil) {
+	if(nodeId <= len(relayState.clientsConnections) && relayState.clientsConnections[nodeId] != nil) {
 		fmt.Println(nodeId, "is used")
 		newId := len(relayState.clientsConnections)
 		fmt.Println("Client with ID ", nodeId, "tried to connect, but some client already took that ID. changing ID to", newId)

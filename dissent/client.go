@@ -92,7 +92,7 @@ func startClient(clientId int, relayHostAddr string, nClients int, nTrustees int
 	println("All crypto stuff exchanged !")
 
 	//initiate downstream stream
-	dataFromRelay := make(chan dataWithConnectionId)
+	dataFromRelay := make(chan dataWithMessageType)
 	go readDataFromRelay(relayConn, dataFromRelay)
 
 	println("client", clientId, "connected")
@@ -135,10 +135,15 @@ func startClient(clientId int, relayHostAddr string, nClients int, nTrustees int
 			case dataWithConnId := <-dataFromRelay:
 				print(".")
 
-				connId := dataWithConnId.connectionId
+				messageType := dataWithConnId.messageType
 				
+				//Relay wants to re-sync
+				if messageType == 1 {
+					panic("Server wants to resync")
+				}
+
 				//Handle the connections, forwards the downstream slice to the SOCKS proxy
-				if connId > 0 && connId < len(socksProxyActiveConnections) && socksProxyActiveConnections[connId] != nil {
+				if messageType == 0 && socksProxyActiveConnections[clientId] != nil {
 					data       := dataWithConnId.data
 					dataLength := len(data)
 
@@ -153,7 +158,7 @@ func startClient(clientId int, relayHostAddr string, nClients int, nTrustees int
 						}
 					} else {
 						// Relay indicating EOF on this conn
-						fmt.Printf("Relay to client : closed conn %d", connId)
+						fmt.Printf("Relay to client : closed conn %d", clientId)
 						socksProxyActiveConnections[clientId].Close()
 					}
 				}
@@ -227,7 +232,7 @@ func connectToRelay(relayHost string, connectionId int, params *ClientCryptoPara
 	return conn
 }
 
-func readDataFromRelay(relayConn net.Conn, datadataFromRelay chan<- dataWithConnectionId) {
+func readDataFromRelay(relayConn net.Conn, dataFromRelay chan<- dataWithMessageType) {
 	header := [6]byte{}
 	totcells := uint64(0)
 	totbytes := uint64(0)
@@ -240,7 +245,7 @@ func readDataFromRelay(relayConn net.Conn, datadataFromRelay chan<- dataWithConn
 			panic("clientReadRelay: " + err.Error())
 		}
 
-		connectionId := int(binary.BigEndian.Uint32(header[0:4]))
+		messageType := int(binary.BigEndian.Uint32(header[0:4]))
 		dataLength := int(binary.BigEndian.Uint16(header[4:6]))
 
 		// Read the downstream data
@@ -251,7 +256,7 @@ func readDataFromRelay(relayConn net.Conn, datadataFromRelay chan<- dataWithConn
 			panic("readDataFromRelay: read data length ("+strconv.Itoa(n)+") not matching expected length ("+strconv.Itoa(dataLength)+")" + err.Error())
 		}
 
-		datadataFromRelay <- dataWithConnectionId{connectionId, data}
+		dataFromRelay <- dataWithMessageType{messageType, data}
 
 		totcells++
 		totbytes += uint64(dataLength)

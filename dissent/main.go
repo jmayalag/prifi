@@ -25,6 +25,11 @@ type dataWithConnectionId struct {
 	data 			[]byte // data buffer
 }
 
+type dataWithMessageType struct {
+	messageType 	int    
+	data 			[]byte
+}
+
 func min(x, y int) int {
 	if x < y {
 		return x
