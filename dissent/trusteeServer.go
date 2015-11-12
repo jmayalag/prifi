@@ -8,7 +8,6 @@ import (
 	//"github.com/lbarman/prifi/dcnet"
 	//"log"
 	"encoding/hex"
-	"time"
 	"net"
 	"github.com/lbarman/prifi/dcnet"
 	"github.com/lbarman/crypto/abstract"
@@ -69,12 +68,18 @@ func startListening(listenport string, newConnections chan<- net.Conn) {
 	}
 }
 
-type TrusteeCryptoParams struct {
+type TrusteeState struct {
 	Name				string
+	TrusteeId			int
+	PayloadLength		int
+	activeConnection	net.Conn
 
 	PublicKey			abstract.Point
 	privateKey			abstract.Secret
 	
+	nClients			int
+	nTrustees			int
+
 	ClientPublicKeys	[]abstract.Point
 	sharedSecrets		[]abstract.Point
 	
@@ -84,11 +89,15 @@ type TrusteeCryptoParams struct {
 }
 
 
-func initateTrusteeCrypto(trusteeId int, nClients int) *TrusteeCryptoParams {
+func initiateTrusteeState(trusteeId int, nClients int, nTrustees int, payloadLength int, conn net.Conn) *TrusteeState {
+	params := new(TrusteeState)
 
-	params := new(TrusteeCryptoParams)
-
-	params.Name = "Trustee-"+strconv.Itoa(trusteeId)
+	params.Name             = "Trustee-"+strconv.Itoa(trusteeId)
+	params.TrusteeId        = trusteeId
+	params.nClients         = nClients
+	params.nTrustees        = nTrustees
+	params.PayloadLength    = payloadLength
+	params.activeConnection = conn
 
 	//prepare the crypto parameters
 	rand 	:= suite.Cipher([]byte(params.Name))
@@ -138,19 +147,19 @@ func handleConnection(connId int,conn net.Conn, closedConnections chan int){
 
 	
 	//prepare the crypto parameters
-	cryptoParams := initateTrusteeCrypto(trusteeId, nClients)
-	tellPublicKey(conn, cryptoParams.PublicKey)
+	trusteeState := initiateTrusteeState(trusteeId, nClients, nTrustees, cellSize, conn)
+	tellPublicKey(conn, trusteeState.PublicKey)
 
 	//Read the clients' public keys from the connection
 	clientsPublicKeys := UnMarshalPublicKeyArrayFromConnection(conn)
 	for i:=0; i<len(clientsPublicKeys); i++ {
-		cryptoParams.ClientPublicKeys[i] = clientsPublicKeys[i]
-		cryptoParams.sharedSecrets[i] = suite.Point().Mul(clientsPublicKeys[i], cryptoParams.privateKey)
+		trusteeState.ClientPublicKeys[i] = clientsPublicKeys[i]
+		trusteeState.sharedSecrets[i] = suite.Point().Mul(clientsPublicKeys[i], trusteeState.privateKey)
 	}
 
 	//check that we got all keys
 	for i := 0; i<nClients; i++ {
-		if cryptoParams.ClientPublicKeys[i] == nil {
+		if trusteeState.ClientPublicKeys[i] == nil {
 			panic("Trustee : didn't get the public key from client "+strconv.Itoa(i))
 		}
 	}
@@ -159,8 +168,8 @@ func handleConnection(connId int,conn net.Conn, closedConnections chan int){
 	for i:=0; i<nClients; i++ {
 		fmt.Println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
 		fmt.Println("            Client", i)
-		d1, _ := cryptoParams.ClientPublicKeys[i].MarshalBinary()
-		d2, _ := cryptoParams.sharedSecrets[i].MarshalBinary()
+		d1, _ := trusteeState.ClientPublicKeys[i].MarshalBinary()
+		d2, _ := trusteeState.sharedSecrets[i].MarshalBinary()
 		fmt.Println(hex.Dump(d1))
 		fmt.Println("+++")
 		fmt.Println(hex.Dump(d2))
@@ -169,56 +178,48 @@ func handleConnection(connId int,conn net.Conn, closedConnections chan int){
 
 	println("All crypto stuff exchanged !")
 
-	for {
-		time.Sleep(5000 * time.Millisecond)
-	}
-
-	startTrusteeSlave(conn, trusteeId, cellSize, nClients, nTrustees, cellSize, closedConnections)
+	startTrusteeSlave(trusteeState, closedConnections)
 
 	fmt.Println(">>>> Trustee", connId, "shutting down.")
 	conn.Close()
 }
 
 
-func startTrusteeSlave(conn net.Conn, tno int, payloadLength int, nClients int, nTrustees int, cellSize int, closedConnections chan int) {
-	tg := dcnet.TestSetup(nil, suite, factory, nClients, nTrustees)
-	me := tg.Trustees[tno]
+func startTrusteeSlave(state *TrusteeState, closedConnections chan int) {
 
-	//me.Dump(tno)
-
-	upload := make(chan []byte)
-	go trusteeConnRead(tno, payloadLength, conn, upload, closedConnections)
+	incomingStream := make(chan []byte)
+	go trusteeConnRead(state, incomingStream, closedConnections)
 
 	// Just generate ciphertext cells and stream them to the server.
 	exit := false
 	i := 0
 	for !exit {
 		select {
-			case readByte := <- upload:
+			case readByte := <- incomingStream:
 				fmt.Println("Received byte ! ", readByte)
 
 			case connClosed := <- closedConnections:
-				if connClosed == tno {
-					fmt.Println("[safely stopping handler "+strconv.Itoa(tno)+"]")
+				if connClosed == state.TrusteeId {
+					fmt.Println("[safely stopping handler "+strconv.Itoa(state.TrusteeId)+"]")
 					return;
 				}
 
 			default:
 				// Produce a cell worth of trustee ciphertext
-				tslice := me.Coder.TrusteeEncode(cellSize)
+				tslice := state.CellCoder.TrusteeEncode(state.PayloadLength)
 
 				// Send it to the relay
 				//println("trustee slice")
 				//println(hex.Dump(tslice))
-				n, err := conn.Write(tslice)
+				n, err := state.activeConnection.Write(tslice)
 
 				i += 1
-				fmt.Printf("["+strconv.Itoa(i)+":"+strconv.Itoa(tno)+"/"+strconv.Itoa(nClients)+","+strconv.Itoa(nTrustees)+"]")
+				fmt.Printf("["+strconv.Itoa(i)+":"+strconv.Itoa(state.TrusteeId)+"/"+strconv.Itoa(state.nClients)+","+strconv.Itoa(state.nTrustees)+"]")
 				
 				if n < len(tslice) || err != nil {
 					//fmt.Println("can't write to socket: " + err.Error())
-					//fmt.Println("\nShutting down handler", tno, "of conn", conn.RemoteAddr())
-					fmt.Println("[error, stopping handler "+strconv.Itoa(tno)+"]")
+					//fmt.Println("\nShutting down handler", state.TrusteeId, "of conn", conn.RemoteAddr())
+					fmt.Println("[error, stopping handler "+strconv.Itoa(state.TrusteeId)+"]")
 					exit = true
 				}
 
@@ -227,24 +228,24 @@ func startTrusteeSlave(conn net.Conn, tno int, payloadLength int, nClients int, 
 }
 
 
-func trusteeConnRead(tno int, payloadLength int, conn net.Conn, readChan chan<- []byte, closedConnections chan<- int) {
+func trusteeConnRead(state *TrusteeState, incomingStream chan []byte, closedConnections chan<- int) {
 
 	for {
 		// Read up to a cell worth of data to send upstream
 		buf := make([]byte, 512)
-		n, err := conn.Read(buf)
+		n, err := state.activeConnection.Read(buf)
 
 		// Connection error or EOF?
 		if n == 0 {
 			if err == io.EOF {
-				fmt.Println("[read EOF, trustee "+strconv.Itoa(tno)+"]")
+				fmt.Println("[read EOF, trustee "+strconv.Itoa(state.TrusteeId)+"]")
 			} else {
-				fmt.Println("[read error, trustee "+strconv.Itoa(tno)+" ("+err.Error()+")]")
-				conn.Close()
+				fmt.Println("[read error, trustee "+strconv.Itoa(state.TrusteeId)+" ("+err.Error()+")]")
+				state.activeConnection.Close()
 				return
 			}
 		} else {
-			readChan <- buf
+			incomingStream <- buf
 		}
 	}
 }
