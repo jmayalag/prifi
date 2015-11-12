@@ -38,38 +38,6 @@ type RelayState struct {
 	ReportingLimit		int
 }
 
-func initiateRelayState(nTrustees int, nClients int, payloadLength int, reportingLimit int) *RelayState {
-
-	params := new(RelayState)
-
-	params.Name           = "Relay"
-	params.PayloadLength  = payloadLength
-	params.ReportingLimit = reportingLimit
-
-	//prepare the crypto parameters
-	rand 	:= suite.Cipher([]byte(params.Name))
-	base	:= suite.Point().Base()
-
-	//generate own parameters
-	params.privateKey       = suite.Secret().Pick(rand)
-	params.PublicKey        = suite.Point().Mul(base, params.privateKey)
-
-	params.nClients  = nClients
-	params.nTrustees = nTrustees
-
-	//placeholders for pubkeys and connections
-	params.trusteesPublicKeys = make([]abstract.Point, nTrustees)
-	params.clientPublicKeys   = make([]abstract.Point, nClients)
-
-	params.trusteesConnections = make([]net.Conn, nTrustees)
-	params.clientsConnections  = make([]net.Conn, nClients)
-
-	//sets the cell coder, and the history
-	params.CellCoder = factory()
-
-	return params
-}
-
 func startRelay(payloadLength int, relayPort string, nClients int, nTrustees int, trusteesIp []string, reportingLimit int) {
 
 	relayState := initiateRelayState(nTrustees, nClients, payloadLength, reportingLimit)
@@ -154,15 +122,9 @@ func startRelay(payloadLength int, relayPort string, nClients int, nTrustees int
 		binary.BigEndian.PutUint16(downstreamData[4:6], uint16(downstreamDataPayloadLength))
 		copy(downstreamData[6:], downbuffer.data)
 
+
 		// Broadcast the downstream data to all clients.
-		for i := 0; i < nClients; i++ {
-			n, err := relayState.clientsConnections[i].Write(downstreamData)
-
-			if n != 6+downstreamDataPayloadLength {
-				panic("Relay : Write to client failed, wrote "+strconv.Itoa(downstreamDataPayloadLength+6)+" where "+strconv.Itoa(n)+" was expected : " + err.Error())
-			}
-		}
-
+		broadcastMessage(relayState.clientsConnections, downstreamData)
 		stats.addDownstreamCell(int64(downstreamDataPayloadLength))
 
 		inflight++
@@ -236,9 +198,39 @@ func startRelay(payloadLength int, relayPort string, nClients int, nTrustees int
 	}
 }
 
+func initiateRelayState(nTrustees int, nClients int, payloadLength int, reportingLimit int) *RelayState {
+
+	params := new(RelayState)
+
+	params.Name           = "Relay"
+	params.PayloadLength  = payloadLength
+	params.ReportingLimit = reportingLimit
+
+	//prepare the crypto parameters
+	rand 	:= suite.Cipher([]byte(params.Name))
+	base	:= suite.Point().Base()
+
+	//generate own parameters
+	params.privateKey       = suite.Secret().Pick(rand)
+	params.PublicKey        = suite.Point().Mul(base, params.privateKey)
+
+	params.nClients  = nClients
+	params.nTrustees = nTrustees
+
+	//placeholders for pubkeys and connections
+	params.trusteesPublicKeys = make([]abstract.Point, nTrustees)
+	params.clientPublicKeys   = make([]abstract.Point, nClients)
+
+	params.trusteesConnections = make([]net.Conn, nTrustees)
+	params.clientsConnections  = make([]net.Conn, nClients)
+
+	//sets the cell coder, and the history
+	params.CellCoder = factory()
+
+	return params
+}
 
 func relayNewConn(connId int, downstreamData chan<- dataWithConnectionId) chan<- []byte {
-
 	upstreamData := make(chan []byte)
 	go relaySocksProxy(connId, upstreamData, downstreamData)
 	return upstreamData
@@ -347,13 +339,13 @@ type Statistics struct {
 	maxNReports		int
 	period			time.Duration
 
-	totupcells		int64
-	totupbytes 		int64
-	totdowncells 	int64
-	totdownbytes 	int64
-	parupcells		int64
-	parupbytes 		int64
-	pardownbytes	int64
+	totalUpstreamCells		int64
+	totalUpstreamBytes 		int64
+	totalDownstreamCells 	int64
+	totalDownstreamBytes 	int64
+	instantUpstreamCells		int64
+	instantUpstreamBytes 		int64
+	instantDownstreamBytes	int64
 }
 
 func emptyStatistics(reportingLimit int) *Statistics{
@@ -366,34 +358,34 @@ func (stats *Statistics) reportingDone() bool {
 }
 
 func (stats *Statistics) addDownstreamCell(nBytes int64) {
-	stats.totdowncells += 1
-	stats.totdownbytes += nBytes
-	stats.pardownbytes += nBytes
+	stats.totalDownstreamCells += 1
+	stats.totalDownstreamBytes += nBytes
+	stats.instantDownstreamBytes += nBytes
 }
 
 func (stats *Statistics) addUpstreamCell(nBytes int64) {
-	stats.totupcells += 1
-	stats.totupbytes += nBytes
-	stats.parupcells += 1
-	stats.parupbytes += nBytes
+	stats.totalUpstreamCells += 1
+	stats.totalUpstreamBytes += nBytes
+	stats.instantUpstreamCells += 1
+	stats.instantUpstreamBytes += nBytes
 }
 
 func (stats *Statistics) report(state *RelayState) {
 	now := time.Now()
 	if now.After(stats.nextReport) {
 		duration := now.Sub(stats.begin).Seconds()
-		instantUpSpeed := (float64(stats.parupbytes)/stats.period.Seconds())
+		instantUpSpeed := (float64(stats.instantUpstreamBytes)/stats.period.Seconds())
 
 		fmt.Printf("@ %fs; cell %f (%f) /sec, up %f (%f) B/s, down %f (%f) B/s\n",
 			duration,
-			 float64(stats.totupcells)/duration, float64(stats.parupcells)/stats.period.Seconds(),
-			 float64(stats.totupbytes)/duration, instantUpSpeed,
-			 float64(stats.totdownbytes)/duration, float64(stats.pardownbytes)/stats.period.Seconds())
+			 float64(stats.totalUpstreamCells)/duration, float64(stats.instantUpstreamCells)/stats.period.Seconds(),
+			 float64(stats.totalUpstreamBytes)/duration, instantUpSpeed,
+			 float64(stats.totalDownstreamBytes)/duration, float64(stats.instantDownstreamBytes)/stats.period.Seconds())
 
 		// Next report time
-		stats.parupcells = 0
-		stats.parupbytes = 0
-		stats.pardownbytes = 0
+		stats.instantUpstreamCells = 0
+		stats.instantUpstreamBytes = 0
+		stats.instantDownstreamBytes = 0
 
 		//log2.BenchmarkFloat(fmt.Sprintf("cellsize-%d-upstream-bytes", payloadLength), instantUpSpeed)
 
