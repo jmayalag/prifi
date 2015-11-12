@@ -14,3 +14,8 @@ keygen
 entry_tunnel
 exit_tunnel
 *.log
+dissent/main
+dissent/main.exe
+dissent/client
+dissent/client.exe
+*.exe
