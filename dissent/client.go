@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/binary"
 	"fmt"
+	"github.com/lbarman/prifi/util"
 	"encoding/hex"
 	"strconv"
 	"io"
@@ -63,7 +64,7 @@ func startClient(clientId int, relayHostAddr string, nClients int, nTrustees int
 	relayConn := connectToRelay(relayHostAddr, clientId, cryptoParams)
 
 	//Read the trustee's public keys from the connection
-	trusteesPublicKeys := UnMarshalPublicKeyArrayFromConnection(relayConn)
+	trusteesPublicKeys := util.UnMarshalPublicKeyArrayFromConnection(relayConn, suite)
 	for i:=0; i<len(trusteesPublicKeys); i++ {
 		cryptoParams.TrusteePublicKey[i] = trusteesPublicKeys[i]
 		cryptoParams.sharedSecrets[i] = suite.Point().Mul(trusteesPublicKeys[i], cryptoParams.privateKey)

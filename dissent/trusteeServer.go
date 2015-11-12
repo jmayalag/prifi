@@ -12,6 +12,7 @@ import (
 	"github.com/lbarman/prifi/dcnet"
 	"github.com/lbarman/crypto/abstract"
 	//log2 "github.com/lbarman/prifi/log"
+	"github.com/lbarman/prifi/util"
 )
 
 
@@ -148,10 +149,10 @@ func handleConnection(connId int,conn net.Conn, closedConnections chan int){
 	
 	//prepare the crypto parameters
 	trusteeState := initiateTrusteeState(trusteeId, nClients, nTrustees, cellSize, conn)
-	tellPublicKey(conn, trusteeState.PublicKey)
+	util.TellPublicKey(conn, LLD_PROTOCOL_VERSION, trusteeState.PublicKey)
 
 	//Read the clients' public keys from the connection
-	clientsPublicKeys := UnMarshalPublicKeyArrayFromConnection(conn)
+	clientsPublicKeys := util.UnMarshalPublicKeyArrayFromConnection(conn, suite)
 	for i:=0; i<len(clientsPublicKeys); i++ {
 		trusteeState.ClientPublicKeys[i] = clientsPublicKeys[i]
 		trusteeState.sharedSecrets[i] = suite.Point().Mul(clientsPublicKeys[i], trusteeState.privateKey)
