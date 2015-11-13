@@ -39,26 +39,10 @@ type RelayState struct {
 	ReportingLimit		int
 }
 
-func welcomeNewClients(newClientConnectionsChan chan net.Conn, newClientWithPkChan chan IdConnectionAndPublicKey, relayState *RelayState) {	
-	newClientsToParse := make(chan IdConnectionAndPublicKey)
-	var newClientConnection net.Conn
-	var newClientWithIdAndPk IdConnectionAndPublicKey
-
-	for {
-		select{
-			//accept the TCP connection, and parse the parameters
-			case newClientConnection = <-newClientConnectionsChan: 
-				go relayParseClientParamsAsync(newClientConnection, relayState, newClientsToParse)
-			
-			//once client is ready (we have params+pk), forward to the other channel
-			case newClientWithIdAndPk = <-newClientsToParse: 
-				fmt.Println("New client is ready !")
-				fmt.Println(newClientWithIdAndPk)
-				newClientWithPkChan <- newClientWithIdAndPk
-			default: 
-				time.Sleep(1000) //todo : check this duration
-		}
-	}
+type IdConnectionAndPublicKey struct{
+	Id 			int
+	Conn 		net.Conn
+	PublicKey 	abstract.Point
 }
 
 func startRelay(payloadLength int, relayPort string, nClients int, nTrustees int, trusteesIp []string, reportingLimit int) {
@@ -93,12 +77,12 @@ func startRelay(payloadLength int, relayPort string, nClients int, nTrustees int
 
 			case newClient = <- newClientWithIdAndPublicKeyChan:
 				//a new client has connected
-				//1. copy the previous state
+				//1. copy the previous relayState
 				//2. disconnect the trustees (but not the clients)
 				//3. compose new client list
 				//4. reconnect to trustees
 				//5. exchange the public keys 
-				//6. process message loop (on the new state)
+				//6. process message loop (on the new relayState)
 				fmt.Println(newClient)
 
 			default: 
@@ -108,52 +92,52 @@ func startRelay(payloadLength int, relayPort string, nClients int, nTrustees int
 	}
 }
 
-func (state *RelayState) connectToAllTrustees() {
+func (relayState *RelayState) connectToAllTrustees() {
 	//connect to the trustees
-	for i:= 0; i < state.nTrustees; i++ {
-		connectToTrustee(i, state.trusteesHosts[i], state)
+	for i:= 0; i < relayState.nTrustees; i++ {
+		connectToTrustee(i, relayState.trusteesHosts[i], relayState)
 	}
-	fmt.Println("Trustees connecting done, ", len(state.trusteesPublicKeys), "trustees connected")
+	fmt.Println("Trustees connecting done, ", len(relayState.trusteesPublicKeys), "trustees connected")
 }
 
-func (state *RelayState) disconnectFromAllTrustees() {
+func (relayState *RelayState) disconnectFromAllTrustees() {
 	//disconnect to the trustees
-	for i:= 0; i < state.nTrustees; i++ {
-		state.trusteesConnections[i].Close()
+	for i:= 0; i < relayState.nTrustees; i++ {
+		relayState.trusteesConnections[i].Close()
 	}
-	fmt.Println("Trustees connecting done, ", len(state.trusteesPublicKeys), "trustees connected")
+	fmt.Println("Trustees connecting done, ", len(relayState.trusteesPublicKeys), "trustees connected")
 }
 
-func (state *RelayState) waitForClientsToConnect(newClientConnectionsChan chan IdConnectionAndPublicKey) {
+func (relayState *RelayState) waitForClientsToConnect(newClientConnectionsChan chan IdConnectionAndPublicKey) {
 	currentClients := 0
 	var newClientConnection IdConnectionAndPublicKey
 
-	fmt.Printf("Waiting for %d clients (on port %s)\n", state.nClients - currentClients, state.RelayPort)
-	for currentClients < state.nClients {
+	fmt.Printf("Waiting for %d clients (on port %s)\n", relayState.nClients - currentClients, relayState.RelayPort)
+	for currentClients < relayState.nClients {
 		select{
 				case newClientConnection = <-newClientConnectionsChan: 
 
 					//todo : this needs to be done better
 					id := newClientConnection.Id
-					state.clientsConnections[id] = newClientConnection.Conn
-					state.clientPublicKeys[id] = newClientConnection.PublicKey
+					relayState.clientsConnections[id] = newClientConnection.Conn
+					relayState.clientPublicKeys[id] = newClientConnection.PublicKey
 
 					currentClients += 1
-					fmt.Printf("Waiting for %d clients (on port %s)\n", state.nClients - currentClients, state.RelayPort)
+					fmt.Printf("Waiting for %d clients (on port %s)\n", relayState.nClients - currentClients, relayState.RelayPort)
 				default: 
 					time.Sleep(100 * time.Millisecond)
 		}
 	}
-	fmt.Println("Client connecting done, ", len(state.clientPublicKeys), "clients connected")
+	fmt.Println("Client connecting done, ", len(relayState.clientPublicKeys), "clients connected")
 }
 
-func (state *RelayState) stateWithNewClient(newClient *IdConnectionAndPublicKey){
-	newNClients := state.nClients + 1
-	newRelayState := initiateRelayState(state.RelayPort, state.nTrustees, newNClients, state.PayloadLength, state.ReportingLimit, state.trusteesHosts)
+func (relayState *RelayState) stateWithNewClient(newClient *IdConnectionAndPublicKey){
+	newNClients := relayState.nClients + 1
+	newRelayState := initiateRelayState(relayState.RelayPort, relayState.nTrustees, newNClients, relayState.PayloadLength, relayState.ReportingLimit, relayState.trusteesHosts)
 
 	//we keep the previous client params
-	copy(newRelayState.clientPublicKeys, state.clientPublicKeys)
-	copy(newRelayState.clientsConnections, state.clientsConnections)
+	copy(newRelayState.clientPublicKeys, relayState.clientPublicKeys)
+	copy(newRelayState.clientsConnections, relayState.clientsConnections)
 
 	//we add the new client
 	newRelayState.clientPublicKeys = append(newRelayState.clientPublicKeys, newClient.PublicKey)
@@ -172,21 +156,21 @@ func (relayState *RelayState) advertisePublicKeys(){
 }
 
 
-func (state *RelayState) processMessageLoop(protocolFailed chan bool, indicateEndOfProtocol chan bool){
+func (relayState *RelayState) processMessageLoop(protocolFailed chan bool, indicateEndOfProtocol chan bool){
 	//TODO : if something fail, send true->protocolFailed
 
-	stats := emptyStatistics(state.ReportingLimit)
+	stats := emptyStatistics(relayState.ReportingLimit)
 
 	// Create ciphertext slice bufferfers for all clients and trustees
-	clientPayloadLength := state.CellCoder.ClientCellSize(state.PayloadLength)
-	clientsPayloadData  := make([][]byte, state.nClients)
-	for i := 0; i < state.nClients; i++ {
+	clientPayloadLength := relayState.CellCoder.ClientCellSize(relayState.PayloadLength)
+	clientsPayloadData  := make([][]byte, relayState.nClients)
+	for i := 0; i < relayState.nClients; i++ {
 		clientsPayloadData[i] = make([]byte, clientPayloadLength)
 	}
 
-	trusteePayloadLength := state.CellCoder.TrusteeCellSize(state.PayloadLength)
-	trusteesPayloadData  := make([][]byte, state.nTrustees)
-	for i := 0; i < state.nTrustees; i++ {
+	trusteePayloadLength := relayState.CellCoder.TrusteeCellSize(relayState.PayloadLength)
+	trusteesPayloadData  := make([][]byte, relayState.nTrustees)
+	for i := 0; i < relayState.nTrustees; i++ {
 		trusteesPayloadData[i] = make([]byte, trusteePayloadLength)
 	}
 
@@ -207,7 +191,7 @@ func (state *RelayState) processMessageLoop(protocolFailed chan bool, indicateEn
 		}
 
 		//we report the speed, bytes exchanged, etc
-		stats.report(state)
+		stats.report(relayState)
 		if stats.reportingDone() {
 			println("Reporting limit matched; exiting the relay")
 			break;
@@ -239,7 +223,7 @@ func (state *RelayState) processMessageLoop(protocolFailed chan bool, indicateEn
 		copy(downstreamData[6:], downbuffer.data)
 
 		// Broadcast the downstream data to all clients.
-		util.BroadcastMessage(state.clientsConnections, downstreamData)
+		util.BroadcastMessage(relayState.clientsConnections, downstreamData)
 		stats.addDownstreamCell(int64(downstreamDataPayloadLength))
 
 		inflight++
@@ -247,40 +231,40 @@ func (state *RelayState) processMessageLoop(protocolFailed chan bool, indicateEn
 			continue // Get more cells in flight
 		}
 
-		state.CellCoder.DecodeStart(state.PayloadLength, state.MessageHistory)
+		relayState.CellCoder.DecodeStart(relayState.PayloadLength, relayState.MessageHistory)
 
 		// Collect a cell ciphertext from each trustee
-		for i := 0; i < state.nTrustees; i++ {			
+		for i := 0; i < relayState.nTrustees; i++ {			
 			//TODO: this looks blocking
-			n, err := io.ReadFull(state.trusteesConnections[i], trusteesPayloadData[i])
+			n, err := io.ReadFull(relayState.trusteesConnections[i], trusteesPayloadData[i])
 			if n < trusteePayloadLength {
 				panic("Relay : Read from trustee failed, read "+strconv.Itoa(n)+" where "+strconv.Itoa(trusteePayloadLength)+" was expected: " + err.Error())
 			}
 
-			state.CellCoder.DecodeTrustee(trusteesPayloadData[i])
+			relayState.CellCoder.DecodeTrustee(trusteesPayloadData[i])
 		}
 
 		// Collect an upstream ciphertext from each client
-		for i := 0; i < state.nClients; i++ {
+		for i := 0; i < relayState.nClients; i++ {
 			//TODO: this looks blocking
-			n, err := io.ReadFull(state.clientsConnections[i], clientsPayloadData[i])
+			n, err := io.ReadFull(relayState.clientsConnections[i], clientsPayloadData[i])
 			if n < clientPayloadLength {
 				panic("Relay : Read from client failed, read "+strconv.Itoa(n)+" where "+strconv.Itoa(clientPayloadLength)+" was expected: " + err.Error())
 			}
 
-			state.CellCoder.DecodeClient(clientsPayloadData[i])
+			relayState.CellCoder.DecodeClient(clientsPayloadData[i])
 		}
 
-		upstreamPlaintext := state.CellCoder.DecodeCell()
+		upstreamPlaintext := relayState.CellCoder.DecodeCell()
 		inflight--
 
-		stats.addUpstreamCell(int64(state.PayloadLength))
+		stats.addUpstreamCell(int64(relayState.PayloadLength))
 
 		// Process the decoded cell
 		if upstreamPlaintext == nil {
 			continue // empty or corrupt upstream cell
 		}
-		if len(upstreamPlaintext) != state.PayloadLength {
+		if len(upstreamPlaintext) != relayState.PayloadLength {
 			panic("DecodeCell produced wrong-size payload")
 		}
 
@@ -302,7 +286,7 @@ func (state *RelayState) processMessageLoop(protocolFailed chan bool, indicateEn
 			conns[upstreamPlainTextConnId] = conn
 		}
 
-		if 6+upstreamPlainTextDataLength > state.PayloadLength {
+		if 6+upstreamPlainTextDataLength > relayState.PayloadLength {
 			log.Printf("upstream cell invalid length %d", 6+upstreamPlainTextDataLength)
 			continue
 		}
@@ -342,6 +326,28 @@ func initiateRelayState(relayPort string, nTrustees int, nClients int, payloadLe
 	params.CellCoder = factory()
 
 	return params
+}
+
+func welcomeNewClients(newClientConnectionsChan chan net.Conn, newClientWithPkChan chan IdConnectionAndPublicKey, relayState *RelayState) {	
+	newClientsToParse := make(chan IdConnectionAndPublicKey)
+	var newClientConnection net.Conn
+	var newClientWithIdAndPk IdConnectionAndPublicKey
+
+	for {
+		select{
+			//accept the TCP connection, and parse the parameters
+			case newClientConnection = <-newClientConnectionsChan: 
+				go relayParseClientParams(newClientConnection, relayState, newClientsToParse)
+			
+			//once client is ready (we have params+pk), forward to the other channel
+			case newClientWithIdAndPk = <-newClientsToParse: 
+				fmt.Println("New client is ready !")
+				fmt.Println(newClientWithIdAndPk)
+				newClientWithPkChan <- newClientWithIdAndPk
+			default: 
+				time.Sleep(1000) //todo : check this duration
+		}
+	}
 }
 
 func relayNewConn(connId int, downstreamData chan<- dataWithConnectionId) chan<- []byte {
@@ -458,13 +464,7 @@ func relayParseClientParamsAux(conn net.Conn, relayState *RelayState) (int, net.
 	return nodeId, conn, publicKey
 }
 
-type IdConnectionAndPublicKey struct{
-	Id 			int
-	Conn 		net.Conn
-	PublicKey 	abstract.Point
-}
-
-func relayParseClientParamsAsync(conn net.Conn, relayState *RelayState, newConnAndPk chan IdConnectionAndPublicKey) {
+func relayParseClientParams(conn net.Conn, relayState *RelayState, newConnAndPk chan IdConnectionAndPublicKey) {
 
 	nodeId, conn, publicKey := relayParseClientParamsAux(conn, relayState)
 	s := IdConnectionAndPublicKey{Id: nodeId, Conn: conn, PublicKey: publicKey}
