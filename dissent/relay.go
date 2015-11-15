@@ -146,7 +146,7 @@ func (relayState *RelayState) waitForDefaultNumberOfClients(newClientConnections
 	fmt.Println("Client connecting done, ", len(relayState.clientPublicKeys), "clients connected")
 }
 
-func (relayState *RelayState) copyStateAndAddNewClient(newClient *IdConnectionAndPublicKey){
+func (relayState *RelayState) copyStateAndAddNewClient(newClient IdConnectionAndPublicKey) *RelayState{
 	newNClients := relayState.nClients + 1
 	newRelayState := initiateRelayState(relayState.RelayPort, relayState.nTrustees, newNClients, relayState.PayloadLength, relayState.ReportingLimit, relayState.trusteesHosts)
 
@@ -157,6 +157,8 @@ func (relayState *RelayState) copyStateAndAddNewClient(newClient *IdConnectionAn
 	//we add the new client
 	newRelayState.clientPublicKeys = append(newRelayState.clientPublicKeys, newClient.PublicKey)
 	newRelayState.clientsConnections = append(newRelayState.clientsConnections, newClient.Conn)
+
+	return newRelayState
 }
 
 func (relayState *RelayState) advertisePublicKeys(){
@@ -171,7 +173,7 @@ func (relayState *RelayState) advertisePublicKeys(){
 }
 
 
-func (relayState *RelayState) processMessageLoop(protocolFailed chan bool, indicateEndOfProtocol chan bool){
+func (relayState *RelayState) processMessageLoop(protocolFailed chan bool, indicateEndOfProtocol chan int){
 	//TODO : if something fail, send true->protocolFailed
 
 	stats := emptyStatistics(relayState.ReportingLimit)
@@ -199,9 +201,13 @@ func (relayState *RelayState) processMessageLoop(protocolFailed chan bool, indic
 
 		//if the main thread tells us to stop (for re-setup)
 		tellClientsToResync := false
+		var mainThreadStatus int
 		select {
-			case tellClientsToResync = <- indicateEndOfProtocol:
-				//nothing to do, we updated the variable already
+			case mainThreadStatus = <- indicateEndOfProtocol:
+				if mainThreadStatus == 1 {
+					println("Main thread status is 1, gonna warn the clients")
+					tellClientsToResync = true
+				}
 			default:
 		}
 
