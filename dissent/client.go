@@ -63,6 +63,8 @@ func startClient(clientId int, relayHostAddr string, nClients int, nTrustees int
 
 	relayConn := connectToRelay(relayHostAddr, clientId, cryptoParams)
 
+	//TODO : On "resync", the client should jump back here
+
 	//Read the trustee's public keys from the connection
 	trusteesPublicKeys := util.UnMarshalPublicKeyArrayFromConnection(relayConn, suite)
 	for i:=0; i<len(trusteesPublicKeys); i++ {

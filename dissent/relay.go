@@ -465,7 +465,7 @@ func relayParseClientParamsAux(conn net.Conn, relayState *RelayState) (int, net.
 	nodeId := int(binary.BigEndian.Uint32(buffer[4:8]))
 
 	//check that the node ID is not used
-	if(nodeId <= len(relayState.clientsConnections) && relayState.clientsConnections[nodeId] != nil) {
+	if(nodeId < len(relayState.clientsConnections) && relayState.clientsConnections[nodeId] != nil) {
 		fmt.Println(nodeId, "is used")
 		newId := len(relayState.clientsConnections)
 		fmt.Println("Client with ID ", nodeId, "tried to connect, but some client already took that ID. changing ID to", newId)
