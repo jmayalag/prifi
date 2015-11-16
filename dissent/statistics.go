@@ -44,7 +44,7 @@ func (stats *Statistics) addUpstreamCell(nBytes int64) {
 	stats.instantUpstreamBytes += nBytes
 }
 
-func (stats *Statistics) report(state *RelayState) {
+func (stats *Statistics) reportRelay(state *RelayState) {
 	now := time.Now()
 	if now.After(stats.nextReport) {
 		duration := now.Sub(stats.begin).Seconds()
@@ -74,6 +74,28 @@ func (stats *Statistics) report(state *RelayState) {
 		    instantUpSpeed,
 		}
 		log2.JsonDump(data)
+
+		stats.nextReport = now.Add(stats.period)
+		stats.nReports += 1
+	}
+}
+
+func (stats *Statistics) report() {
+	now := time.Now()
+	if now.After(stats.nextReport) {
+		duration := now.Sub(stats.begin).Seconds()
+		instantUpSpeed := (float64(stats.instantUpstreamBytes)/stats.period.Seconds())
+
+		fmt.Printf("@ %fs; cell %f (%f) /sec, up %f (%f) B/s, down %f (%f) B/s\n",
+			duration,
+			 float64(stats.totalUpstreamCells)/duration, float64(stats.instantUpstreamCells)/stats.period.Seconds(),
+			 float64(stats.totalUpstreamBytes)/duration, instantUpSpeed,
+			 float64(stats.totalDownstreamBytes)/duration, float64(stats.instantDownstreamBytes)/stats.period.Seconds())
+
+		// Next report time
+		stats.instantUpstreamCells = 0
+		stats.instantUpstreamBytes = 0
+		stats.instantDownstreamBytes = 0
 
 		stats.nextReport = now.Add(stats.period)
 		stats.nReports += 1

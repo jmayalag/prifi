@@ -26,6 +26,7 @@ type ClientState struct {
 	nTrustees			int
 
 	PayloadLength		int
+	UsablePayloadLength	int
 	UseSocksProxy		bool
 	
 	TrusteePublicKey	[]abstract.Point
@@ -40,11 +41,11 @@ func initiateClientState(clientId int, nTrustees int, nClients int, payloadLengt
 
 	params := new(ClientState)
 
-	params.Name          = "Client-"+strconv.Itoa(clientId)
-	params.nClients      = nClients
-	params.nTrustees     = nTrustees
-	params.PayloadLength = payloadLength
-	params.UseSocksProxy = useSocksProxy
+	params.Name                = "Client-"+strconv.Itoa(clientId)
+	params.nClients            = nClients
+	params.nTrustees           = nTrustees
+	params.PayloadLength       = payloadLength
+	params.UseSocksProxy       = useSocksProxy
 
 	//prepare the crypto parameters
 	rand 	:= suite.Cipher([]byte(params.Name))
@@ -59,7 +60,8 @@ func initiateClientState(clientId int, nTrustees int, nClients int, payloadLengt
 	params.sharedSecrets    = make([]abstract.Point, nTrustees)
 
 	//sets the cell coder, and the history
-	params.CellCoder = factory()
+	params.CellCoder           = factory()
+	params.UsablePayloadLength = params.CellCoder.ClientCellSize(payloadLength)
 
 	return params
 }
@@ -82,7 +84,7 @@ func startClient(clientId int, relayHostAddr string, nClients int, nTrustees int
 	fmt.Printf("startClient %d\n", clientId)
 
 	clientState := initiateClientState(clientId, nTrustees, nClients, payloadLength, useSocksProxy)
-	clientPayloadSize := clientState.CellCoder.ClientCellSize(payloadLength)
+	stats := emptyStatistics(-1) //no limit
 
 	//connect to relay
 	relayConn := connectToRelay(relayHostAddr, clientId, clientState)
@@ -112,7 +114,7 @@ func startClient(clientId int, relayHostAddr string, nClients int, nTrustees int
 	}
 
 	//check that we got all keys
-	for i := 0; i<nTrustees; i++ {
+	for i := 0; i<clientState.nTrustees; i++ {
 		if clientState.TrusteePublicKey[i] == nil {
 			panic("Client : didn't get the public key from trustee "+strconv.Itoa(i))
 		}
@@ -121,9 +123,6 @@ func startClient(clientId int, relayHostAddr string, nClients int, nTrustees int
 	clientState.printSecrets()
 	println("All crypto stuff exchanged !")
 
-	// Client/proxy main loop
-	totupcells := uint64(0)
-	totupbytes := uint64(0)
 
 	for {
 		select {
@@ -132,23 +131,23 @@ func startClient(clientId int, relayHostAddr string, nClients int, nTrustees int
 				print(".")
 
 				switch dataWithTypeAndConnId.messageType {
-					case 1 :
+					case 1 : //relay wants to re-setup (new key exchanges)
 						panic("Server wants to resync")
 
-					case 0 :
+					case 0 : //data for SOCKS proxy, just hand it over to the dedicated thread
 						dataForSocksProxy <- dataWithTypeAndConnId
 				}
 
-				// Should account the downstream cell in the history
+				// TODO Should account the downstream cell in the history
 
 				// Produce and ship the next upstream slice
-				writeNextUpstreamSlice(dataForRelayBuffer, payloadLength, clientPayloadSize, relayConn, clientState)
+				writeNextUpstreamSlice(dataForRelayBuffer, relayConn, clientState)
 
-				//statistics
-				totupcells++
-				totupbytes += uint64(payloadLength)
-				//fmt.Printf("sent %d upstream cells, %d bytes\n", totupcells, totupbytes)
-			}
+
+				//we report the speed, bytes exchanged, etc
+				stats.report()
+
+		}
 	}
 }
 
@@ -156,7 +155,7 @@ func startClient(clientId int, relayHostAddr string, nClients int, nTrustees int
  * Creates the next cell
  */
 
-func writeNextUpstreamSlice(dataForRelayBuffer chan []byte, payloadLength int, clientPayloadSize int, relayConn net.Conn, clientState *ClientState) {
+func writeNextUpstreamSlice(dataForRelayBuffer chan []byte, relayConn net.Conn, clientState *ClientState) {
 	var nextUpstreamBytes []byte
 
 	select
@@ -167,10 +166,10 @@ func writeNextUpstreamSlice(dataForRelayBuffer chan []byte, payloadLength int, c
 	}
 
 	//produce the next upstream cell
-	upstreamSlice := clientState.CellCoder.ClientEncode(nextUpstreamBytes, payloadLength, clientState.MessageHistory)
+	upstreamSlice := clientState.CellCoder.ClientEncode(nextUpstreamBytes, clientState.PayloadLength, clientState.MessageHistory)
 
-	if len(upstreamSlice) != clientPayloadSize {
-		panic("Client slice wrong size, expected "+strconv.Itoa(clientPayloadSize)+", but got "+strconv.Itoa(len(upstreamSlice)))
+	if len(upstreamSlice) != clientState.UsablePayloadLength {
+		panic("Client slice wrong size, expected "+strconv.Itoa(clientState.UsablePayloadLength)+", but got "+strconv.Itoa(len(upstreamSlice)))
 	}
 
 	n, err := relayConn.Write(upstreamSlice)

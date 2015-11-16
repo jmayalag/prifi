@@ -212,7 +212,7 @@ func (relayState *RelayState) processMessageLoop(protocolFailed chan bool, indic
 		}
 
 		//we report the speed, bytes exchanged, etc
-		stats.report(relayState)
+		stats.reportRelay(relayState)
 		if stats.reportingDone() {
 			println("Reporting limit matched; exiting the relay")
 			break;
