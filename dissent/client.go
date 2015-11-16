@@ -16,11 +16,17 @@ import (
 // Number of bytes of cell payload to reserve for connection header, length
 const socksHeaderLength = 6
 
-type ClientCryptoParams struct {
+type ClientState struct {
 	Name				string
 
 	PublicKey			abstract.Point
 	privateKey			abstract.Secret
+
+	nClients			int
+	nTrustees			int
+
+	PayloadLength		int
+	UseSocksProxy		bool
 	
 	TrusteePublicKey	[]abstract.Point
 	sharedSecrets		[]abstract.Point
@@ -30,11 +36,15 @@ type ClientCryptoParams struct {
 	MessageHistory		abstract.Cipher
 }
 
-func initateClientCrypto(clientId int, nTrustees int) *ClientCryptoParams {
+func initiateClientState(clientId int, nTrustees int, nClients int, payloadLength int, useSocksProxy bool) *ClientState {
 
-	params := new(ClientCryptoParams)
+	params := new(ClientState)
 
-	params.Name = "Client-"+strconv.Itoa(clientId)
+	params.Name          = "Client-"+strconv.Itoa(clientId)
+	params.nClients      = nClients
+	params.nTrustees     = nTrustees
+	params.PayloadLength = payloadLength
+	params.UseSocksProxy = useSocksProxy
 
 	//prepare the crypto parameters
 	rand 	:= suite.Cipher([]byte(params.Name))
@@ -54,121 +64,85 @@ func initateClientCrypto(clientId int, nTrustees int) *ClientCryptoParams {
 	return params
 }
 
+func (clientState *ClientState) printSecrets() {
+	//print all shared secrets
+	for i:=0; i<clientState.nTrustees; i++ {
+		fmt.Println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+		fmt.Println("            TRUSTEE", i)
+		d1, _ := clientState.TrusteePublicKey[i].MarshalBinary()
+		d2, _ := clientState.sharedSecrets[i].MarshalBinary()
+		fmt.Println(hex.Dump(d1))
+		fmt.Println("+++")
+		fmt.Println(hex.Dump(d2))
+		fmt.Println("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
+	}
+}
+
 func startClient(clientId int, relayHostAddr string, nClients int, nTrustees int, payloadLength int, useSocksProxy bool) {
 	fmt.Printf("startClient %d\n", clientId)
 
-	//crypto parameters
-	cryptoParams := initateClientCrypto(clientId, nTrustees)
-	clientPayloadSize := cryptoParams.CellCoder.ClientCellSize(payloadLength)
+	clientState := initiateClientState(clientId, nTrustees, nClients, payloadLength, useSocksProxy)
+	clientPayloadSize := clientState.CellCoder.ClientCellSize(payloadLength)
 
-	relayConn := connectToRelay(relayHostAddr, clientId, cryptoParams)
+	//connect to relay
+	relayConn := connectToRelay(relayHostAddr, clientId, clientState)
+
+	//initiate downstream stream (relay -> client)
+	dataFromRelay := make(chan dataWithMessageTypeAndConnId)
+	go readDataFromRelay(relayConn, dataFromRelay)
+
+	//start the socks proxy
+	socksProxyNewConnections := make(chan net.Conn)
+	dataForRelayBuffer       := make(chan []byte, 0) // This will hold the data to be sent later on to the relay, anonymized
+	dataForSocksProxy        := make(chan dataWithMessageTypeAndConnId, 0) // This hold the data from the relay to one of the SOCKS connection
+	
+	if(clientState.UseSocksProxy){
+		port := ":" + strconv.Itoa(1080+clientId)
+		go startSocksProxyServerListener(port, socksProxyNewConnections)
+		go startSocksProxyServerHandler(socksProxyNewConnections, dataForRelayBuffer, dataForSocksProxy, clientState)
+	}	
 
 	//TODO : On "resync", the client should jump back here
 
 	//Read the trustee's public keys from the connection
 	trusteesPublicKeys := util.UnMarshalPublicKeyArrayFromConnection(relayConn, suite)
 	for i:=0; i<len(trusteesPublicKeys); i++ {
-		cryptoParams.TrusteePublicKey[i] = trusteesPublicKeys[i]
-		cryptoParams.sharedSecrets[i] = suite.Point().Mul(trusteesPublicKeys[i], cryptoParams.privateKey)
+		clientState.TrusteePublicKey[i] = trusteesPublicKeys[i]
+		clientState.sharedSecrets[i] = suite.Point().Mul(trusteesPublicKeys[i], clientState.privateKey)
 	}
 
 	//check that we got all keys
 	for i := 0; i<nTrustees; i++ {
-		if cryptoParams.TrusteePublicKey[i] == nil {
+		if clientState.TrusteePublicKey[i] == nil {
 			panic("Client : didn't get the public key from trustee "+strconv.Itoa(i))
 		}
 	}
 
-	//print all shared secrets
-	for i:=0; i<nTrustees; i++ {
-		fmt.Println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
-		fmt.Println("            TRUSTEE", i)
-		d1, _ := cryptoParams.TrusteePublicKey[i].MarshalBinary()
-		d2, _ := cryptoParams.sharedSecrets[i].MarshalBinary()
-		fmt.Println(hex.Dump(d1))
-		fmt.Println("+++")
-		fmt.Println(hex.Dump(d2))
-		fmt.Println("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
-	}
-
+	clientState.printSecrets()
 	println("All crypto stuff exchanged !")
-
-	//initiate downstream stream
-	dataFromRelay := make(chan dataWithMessageType)
-	go readDataFromRelay(relayConn, dataFromRelay)
-
-	println("client", clientId, "connected")
-
-	// We're the "slot owner" - start a socks relay
-	socksProxyNewConnections    := make(chan net.Conn)
-	socksProxyData              := make(chan []byte)
-	socksProxyConnClosed        := make(chan int)
-	socksProxyActiveConnections := make([]net.Conn, 1) // reserve socksProxyActiveConnections[0]
-	
-	if(useSocksProxy){
-		port := ":" + strconv.Itoa(1080+clientId)
-		go startSocksProxy(port, socksProxyNewConnections)
-	}
-
-	// This will hold the data to be sent later on to the relay, anonymized
-	dataForRelayBuffer := make([][]byte, 0)
 
 	// Client/proxy main loop
 	totupcells := uint64(0)
 	totupbytes := uint64(0)
+
 	for {
 		select {
-
-			// New TCP connection to the SOCKS proxy
-			case conn := <-socksProxyNewConnections: 
-				newClientId := len(socksProxyActiveConnections)
-				socksProxyActiveConnections = append(socksProxyActiveConnections, conn)
-				go readDataFromSocksProxy(newClientId, payloadLength, conn, socksProxyData, socksProxyConnClosed)
-
-			// Data to anonymize from SOCKS proxy
-			case data := <-socksProxyData: 
-				dataForRelayBuffer = append(dataForRelayBuffer, data)
-
-			//connection closed from SOCKS proxy
-			case clientId := <-socksProxyConnClosed:
-				socksProxyActiveConnections[clientId] = nil
-
 			//downstream slice from relay (normal DC-net cycle)
-			case dataWithConnId := <-dataFromRelay:
+			case dataWithTypeAndConnId := <-dataFromRelay:
 				print(".")
 
-				messageType := dataWithConnId.messageType
-				
-				//Relay wants to re-sync
-				if messageType == 1 {
-					panic("Server wants to resync")
-				}
+				switch dataWithTypeAndConnId.messageType {
+					case 1 :
+						panic("Server wants to resync")
 
-				//Handle the connections, forwards the downstream slice to the SOCKS proxy
-				if messageType == 0 && socksProxyActiveConnections[clientId] != nil {
-					data       := dataWithConnId.data
-					dataLength := len(data)
-
-					if dataLength > 0 {
-
-						//if there is no socks proxy, nothing to do (useless case indeed, only for debug)
-						if useSocksProxy {
-							n, err := socksProxyActiveConnections[clientId].Write(data)
-							if n < dataLength {
-								panic("Write to socks proxy: expected "+strconv.Itoa(dataLength)+" bytes, got "+strconv.Itoa(n)+", " + err.Error())
-							}
-						}
-					} else {
-						// Relay indicating EOF on this conn
-						fmt.Printf("Relay to client : closed conn %d", clientId)
-						socksProxyActiveConnections[clientId].Close()
-					}
+					case 0 :
+						dataForSocksProxy <- dataWithTypeAndConnId
 				}
 
 				// Should account the downstream cell in the history
 
 				// Produce and ship the next upstream slice
-				writeNextUpstreamSlice(dataForRelayBuffer, payloadLength, clientPayloadSize, relayConn, cryptoParams)
+				writeNextUpstreamSlice(dataForRelayBuffer, payloadLength, clientPayloadSize, relayConn, clientState)
 
 				//statistics
 				totupcells++
@@ -182,16 +156,18 @@ func startClient(clientId int, relayHostAddr string, nClients int, nTrustees int
  * Creates the next cell
  */
 
-func writeNextUpstreamSlice(dataForRelayBuffer [][]byte, payloadLength int, clientPayloadSize int, relayConn net.Conn, cryptoParams *ClientCryptoParams) {
+func writeNextUpstreamSlice(dataForRelayBuffer chan []byte, payloadLength int, clientPayloadSize int, relayConn net.Conn, clientState *ClientState) {
 	var nextUpstreamBytes []byte
-	if len(dataForRelayBuffer) > 0 {
-		nextUpstreamBytes  = dataForRelayBuffer[0]
-		dataForRelayBuffer = dataForRelayBuffer[1:]
-		//fmt.Printf("\n^ %v (len : %d)\n", p)
+
+	select
+	{
+		case nextUpstreamBytes = <-dataForRelayBuffer:
+
+		default:
 	}
 
 	//produce the next upstream cell
-	upstreamSlice := cryptoParams.CellCoder.ClientEncode(nextUpstreamBytes, payloadLength, cryptoParams.MessageHistory)
+	upstreamSlice := clientState.CellCoder.ClientEncode(nextUpstreamBytes, payloadLength, clientState.MessageHistory)
 
 	if len(upstreamSlice) != clientPayloadSize {
 		panic("Client slice wrong size, expected "+strconv.Itoa(clientPayloadSize)+", but got "+strconv.Itoa(len(upstreamSlice)))
@@ -208,7 +184,7 @@ func writeNextUpstreamSlice(dataForRelayBuffer [][]byte, payloadLength int, clie
  * RELAY CONNECTION
  */
 
-func connectToRelay(relayHost string, connectionId int, params *ClientCryptoParams) net.Conn {
+func connectToRelay(relayHost string, connectionId int, params *ClientState) net.Conn {
 	conn, err := net.Dial("tcp", relayHost)
 	if err != nil {
 		panic("Can't connect to relay:" + err.Error())
@@ -234,8 +210,8 @@ func connectToRelay(relayHost string, connectionId int, params *ClientCryptoPara
 	return conn
 }
 
-func readDataFromRelay(relayConn net.Conn, dataFromRelay chan<- dataWithMessageType) {
-	header := [6]byte{}
+func readDataFromRelay(relayConn net.Conn, dataFromRelay chan<- dataWithMessageTypeAndConnId) {
+	header := [10]byte{}
 	totcells := uint64(0)
 	totbytes := uint64(0)
 
@@ -248,7 +224,8 @@ func readDataFromRelay(relayConn net.Conn, dataFromRelay chan<- dataWithMessageT
 		}
 
 		messageType := int(binary.BigEndian.Uint32(header[0:4]))
-		dataLength := int(binary.BigEndian.Uint16(header[4:6]))
+		socksConnId := int(binary.BigEndian.Uint16(header[4:8]))
+		dataLength  := int(binary.BigEndian.Uint16(header[8:10]))
 
 		// Read the downstream data
 		data := make([]byte, dataLength)
@@ -258,7 +235,7 @@ func readDataFromRelay(relayConn net.Conn, dataFromRelay chan<- dataWithMessageT
 			panic("readDataFromRelay: read data length ("+strconv.Itoa(n)+") not matching expected length ("+strconv.Itoa(dataLength)+")" + err.Error())
 		}
 
-		dataFromRelay <- dataWithMessageType{messageType, data}
+		dataFromRelay <- dataWithMessageTypeAndConnId{messageType, socksConnId, data}
 
 		totcells++
 		totbytes += uint64(dataLength)
@@ -269,7 +246,7 @@ func readDataFromRelay(relayConn net.Conn, dataFromRelay chan<- dataWithMessageT
  * SOCKS PROXY
  */
 
-func startSocksProxy(port string, newConnections chan<- net.Conn) {
+func startSocksProxyServerListener(port string, newConnections chan<- net.Conn) {
 	fmt.Printf("Listening on port %s\n", port)
 	
 	lsock, err := net.Listen("tcp", port)
@@ -288,6 +265,55 @@ func startSocksProxy(port string, newConnections chan<- net.Conn) {
 			return
 		}
 		newConnections <- conn
+	}
+}
+
+func startSocksProxyServerHandler(socksProxyNewConnections chan net.Conn, dataForRelayBuffer chan []byte, dataForSOCKSProxy chan dataWithMessageTypeAndConnId, clientState *ClientState) {
+
+	socksProxyActiveConnections := make([]net.Conn, 1) // reserve socksProxyActiveConnections[0]
+	socksProxyConnClosed        := make(chan int)
+	socksProxyData              := make(chan []byte)
+
+	for {
+		select {
+
+			// New TCP connection to the SOCKS proxy
+			case conn := <-socksProxyNewConnections: 
+				newSocksProxyId := len(socksProxyActiveConnections)
+				socksProxyActiveConnections = append(socksProxyActiveConnections, conn)
+				go readDataFromSocksProxy(newSocksProxyId, clientState.PayloadLength, conn, socksProxyData, socksProxyConnClosed)
+
+			// Data to anonymize from SOCKS proxy
+			case data := <-socksProxyData: 
+				dataForRelayBuffer <- data
+
+			// Plaintext downstream data (relay->client->Socks proxy)
+			case dataWithTypeAndConnId := <-dataForSOCKSProxy:
+
+				//messageType := dataWithConnId.messageType //we know it's data for relay
+				socksConnId   := dataWithTypeAndConnId.connectionId
+				data          := dataWithTypeAndConnId.data
+				dataLength    := len(data)
+				
+				//Handle the connections, forwards the downstream slice to the SOCKS proxy
+				//if there is no socks proxy, nothing to do (useless case indeed, only for debug)
+				if clientState.UseSocksProxy {
+					if dataLength > 0 && socksProxyActiveConnections[socksConnId] != nil {
+						n, err := socksProxyActiveConnections[socksConnId].Write(data)
+						if n < dataLength {
+							panic("Write to socks proxy: expected "+strconv.Itoa(dataLength)+" bytes, got "+strconv.Itoa(n)+", " + err.Error())
+						}
+					} else {
+						// Relay indicating EOF on this conn
+						fmt.Printf("Relay to client : closed socks conn %d", socksConnId)
+						socksProxyActiveConnections[socksConnId].Close()
+					}
+				}
+
+			//connection closed from SOCKS proxy
+			case clientId := <-socksProxyConnClosed:
+				socksProxyActiveConnections[clientId] = nil
+		}
 	}
 }
 

@@ -237,10 +237,10 @@ func (relayState *RelayState) processMessageLoop(protocolFailed chan bool, indic
 
 		//craft the message for clients
 		downstreamDataPayloadLength := len(downbuffer.data)
-		downstreamData := make([]byte, 6+downstreamDataPayloadLength)
+		downstreamData := make([]byte, 10+downstreamDataPayloadLength)
 		binary.BigEndian.PutUint32(downstreamData[0:4], uint32(msgType))
-		//binary.BigEndian.PutUint32(downstreamData[0:4], uint32(downbuffer.connectionId))
-		binary.BigEndian.PutUint16(downstreamData[4:6], uint16(downstreamDataPayloadLength))
+		binary.BigEndian.PutUint32(downstreamData[4:8], uint32(downbuffer.connectionId)) //this is the SOCKS connection ID
+		binary.BigEndian.PutUint16(downstreamData[8:10], uint16(downstreamDataPayloadLength))
 		copy(downstreamData[6:], downbuffer.data)
 
 		// Broadcast the downstream data to all clients.

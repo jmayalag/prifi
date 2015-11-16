@@ -30,6 +30,12 @@ type dataWithMessageType struct {
 	data 			[]byte
 }
 
+type dataWithMessageTypeAndConnId struct {
+	messageType 	int    
+	connectionId 	int    // connection number (SOCKS id)
+	data 			[]byte
+}
+
 func min(x, y int) int {
 	if x < y {
 		return x
