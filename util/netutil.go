@@ -6,7 +6,6 @@ import (
 	"strconv"
 	"encoding/binary"
 	"github.com/lbarman/crypto/abstract"
-	"github.com/lbarman/prifi/dissent"
 	"encoding/hex"
 )
 

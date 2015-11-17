@@ -154,6 +154,7 @@ func handleConnection(connId int,conn net.Conn, closedConnections chan int){
 	//Read the clients' public keys from the connection
 	clientsPublicKeys := util.UnMarshalPublicKeyArrayFromConnection(conn, suite)
 	for i:=0; i<len(clientsPublicKeys); i++ {
+		fmt.Println("Reading public key", i)
 		trusteeState.ClientPublicKeys[i] = clientsPublicKeys[i]
 		trusteeState.sharedSecrets[i] = suite.Point().Mul(clientsPublicKeys[i], trusteeState.privateKey)
 	}

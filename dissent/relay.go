@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"log"
 	"net"
-	"github.com/lbarman/prifi/util"
+	//"github.com/lbarman/prifi/util"
 )
 
 type RelayState struct {
@@ -51,7 +51,8 @@ type IdConnectionAndPublicKey struct{
 
 func startRelay(payloadLength int, relayPort string, nClients int, nTrustees int, trusteesIp []string, reportingLimit int) {
 
-	relayState := initiateRelayState(relayPort, nTrustees, nClients, payloadLength, reportingLimit, trusteesIp)
+	var relayState *RelayState
+	relayState = initiateRelayState(relayPort, nTrustees, nClients, payloadLength, reportingLimit, trusteesIp)
 
 	//start the server waiting for clients
 	newClientConnectionsChan        := make(chan net.Conn) 					//channel with unparsed clients
@@ -92,9 +93,28 @@ func startRelay(payloadLength int, relayPort string, nClients int, nTrustees int
 					panic("something went wrong, should not happen")
 				}
 
+				time.Sleep(10 * time.Second)
+
+				fmt.Println("oooooooooooooooooooooooooooooooo")
+				for i := 0; i<len(relayState.clients); i++ {
+					fmt.Println(relayState.clients[i].Id, " - ", relayState.clients[i].PublicKey, " - ", relayState.clients[i].Conn)
+				}
+				fmt.Println("oooooooooooooooooooooooooooooooo")
+
 				//a new client has connected
 				//1. copy the previous relayState
-				newRelayState := relayState.copyStateAndAddNewClient(newClient)
+				newRelayState := relayState.clone() 
+				newRelayState.clients = append(newRelayState.clients, newClient)
+
+				fmt.Println("*******************************")
+				for i := 0; i<len(newRelayState.clients); i++ {
+					fmt.Println(newRelayState.clients[i].Id, " - ", newRelayState.clients[i].PublicKey, " - ", newRelayState.clients[i].Conn)
+				}
+				fmt.Println("*******************************")
+
+
+				time.Sleep(10 * time.Second)
+
 				//2. disconnect the trustees (but not the clients)
 				relayState.disconnectFromAllTrustees()
 				//3. compose new client list
@@ -105,6 +125,9 @@ func startRelay(payloadLength int, relayPort string, nClients int, nTrustees int
 				newRelayState.advertisePublicKeys()
 				//6. process message loop (on the new relayState)
 				go newRelayState.processMessageLoop(protocolFailed, indicateEndOfProtocol)
+
+				//replace old state
+				relayState = newRelayState
 
 			default: 
 				//all clear!
@@ -147,6 +170,24 @@ func (relayState *RelayState) waitForDefaultNumberOfClients(newClientConnections
 		}
 	}
 	fmt.Println("Client connecting done, ", len(relayState.clients), "clients connected")
+}
+
+func (relayState *RelayState) clone() *RelayState{
+	newNClients := relayState.nClients + 1
+	newRelayState := initiateRelayState(relayState.RelayPort, relayState.nTrustees, newNClients, relayState.PayloadLength, relayState.ReportingLimit, relayState.trusteesHosts)
+
+	//we keep the previous client params
+	newRelayState.clients = make([]NodeRepresentation, relayState.nClients)
+
+	fmt.Println("COPYING OLD ", len(relayState.clients), " CLIENTS")
+
+	for i := 0; i<len(relayState.clients); i++ {
+		newRelayState.clients[i] = relayState.clients[i]
+	}
+
+	copy(newRelayState.clients, relayState.clients)
+
+	return newRelayState
 }
 
 func (relayState *RelayState) copyStateAndAddNewClient(newClient NodeRepresentation) *RelayState{
@@ -536,6 +577,8 @@ func MarshalNodeRepresentationArrayToByteArray(nodes []NodeRepresentation) []byt
 		publicKeysBytes, err := nodes[i].PublicKey.MarshalBinary()
 		publicKeyLength := make([]byte, 4)
 		binary.BigEndian.PutUint32(publicKeyLength, uint32(len(publicKeysBytes)))
+
+		fmt.Println(">>>>>>>>>>>>>>>>>>>>>>>>> Adding key ", i)
 
 		byteArray = append(byteArray, publicKeyLength...)
 		byteArray = append(byteArray, publicKeysBytes...)
