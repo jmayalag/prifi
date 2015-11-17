@@ -76,12 +76,15 @@ func startRelay(payloadLength int, relayPort string, nClients int, nTrustees int
 			case protocolHasFailed = <- protocolFailed:
 				//re-run setup, something went wrong
 				fmt.Println(protocolHasFailed)
+				fmt.Println("protocolHasFailed")
 
 			case newClient = <- newClientWithIdAndPublicKeyChan:
 				//we tell processMessageLoop to stop ASAP
+				fmt.Println("newClientWithIdAndPublicKeyChan")
 				indicateEndOfProtocol <- 1
 
 			case endOfProtocolState = <- indicateEndOfProtocol:
+				fmt.Println("indicateEndOfProtocol")
 				if endOfProtocolState != 2 {
 					panic("something went wrong, should not happen")
 				}
@@ -102,7 +105,8 @@ func startRelay(payloadLength int, relayPort string, nClients int, nTrustees int
 
 			default: 
 				//all clear!
-				time.Sleep(1000)
+				fmt.Println("timer1000")
+				time.Sleep(1000 * time.Millisecond)
 		}
 	}
 }
@@ -163,13 +167,32 @@ func (relayState *RelayState) copyStateAndAddNewClient(newClient IdConnectionAnd
 
 func (relayState *RelayState) advertisePublicKeys(){
 	//Prepare the messages
-	messageForClient   := util.MarshalPublicKeyArrayToByteArray(relayState.trusteesPublicKeys)
-	messageForTrustees := util.MarshalPublicKeyArrayToByteArray(relayState.clientPublicKeys)
+	println("Preparing trustee array")
+	dataForClients   := util.MarshalPublicKeyArrayToByteArray(relayState.trusteesPublicKeys)
+	println("Preparing client array")
+			println(len(relayState.clientPublicKeys))
+			for i:=0; i<len(relayState.clientPublicKeys); i++{
+				fmt.Println(relayState.clientPublicKeys[i])
+			}
+	dataForTrustees := util.MarshalPublicKeyArrayToByteArray(relayState.clientPublicKeys)
+
+
+			println("<<<<<<<<<<<<<<<<<<")
+			println("Data has size")
+			println(len(dataForClients))
+
+	//craft the message for clients
+	messageForClientsLength := len(dataForClients)
+	messageForClients := make([]byte, 10+messageForClientsLength)
+	binary.BigEndian.PutUint32(messageForClients[0:4], uint32(2)) //message type //TODO make this less ugly
+	binary.BigEndian.PutUint32(messageForClients[4:8], uint32(0)) //socks ID
+	binary.BigEndian.PutUint16(messageForClients[8:10], uint16(messageForClientsLength))
+	copy(messageForClients[10:], dataForClients)
 
 	//broadcast to the clients
-	util.BroadcastMessage(relayState.clientsConnections, messageForClient)
-	util.BroadcastMessage(relayState.trusteesConnections, messageForTrustees)
-	fmt.Println("Advertising done, to", len(relayState.clientsConnections), "clients and", len(relayState.trusteesConnections))
+	util.BroadcastMessage(relayState.clientsConnections, messageForClients)
+	util.BroadcastMessage(relayState.trusteesConnections, dataForTrustees)
+	fmt.Println("Advertising done, to", len(relayState.clientsConnections), "clients and", len(relayState.trusteesConnections), "trustees")
 }
 
 
@@ -197,7 +220,10 @@ func (relayState *RelayState) processMessageLoop(protocolFailed chan bool, indic
 	window := 2           // Maximum cells in-flight
 	inflight := 0         // Current cells in-flight
 
-	for {
+	doResyncWithClients := false
+	for !doResyncWithClients {
+
+		println("<")
 
 		//if the main thread tells us to stop (for re-setup)
 		tellClientsToResync := false
@@ -232,7 +258,9 @@ func (relayState *RelayState) processMessageLoop(protocolFailed chan bool, indic
 		//compute the message type; if 1, the client know they will resync
 		msgType := 0
 		if tellClientsToResync{
+			fmt.Println("Telling clients to resync")
 			msgType = 1
+			doResyncWithClients = true
 		}
 
 		//craft the message for clients
@@ -241,7 +269,10 @@ func (relayState *RelayState) processMessageLoop(protocolFailed chan bool, indic
 		binary.BigEndian.PutUint32(downstreamData[0:4], uint32(msgType))
 		binary.BigEndian.PutUint32(downstreamData[4:8], uint32(downbuffer.connectionId)) //this is the SOCKS connection ID
 		binary.BigEndian.PutUint16(downstreamData[8:10], uint16(downstreamDataPayloadLength))
-		copy(downstreamData[6:], downbuffer.data)
+		copy(downstreamData[10:], downbuffer.data)
+
+
+		fmt.Println("Writing a message with type", msgType, " socks id ", downbuffer.connectionId)
 
 		// Broadcast the downstream data to all clients.
 		util.BroadcastMessage(relayState.clientsConnections, downstreamData)
@@ -314,6 +345,8 @@ func (relayState *RelayState) processMessageLoop(protocolFailed chan bool, indic
 
 		conn <- upstreamPlaintext[6 : 6+upstreamPlainTextDataLength]
 	}
+
+	indicateEndOfProtocol <- 2
 }
 
 func initiateRelayState(relayPort string, nTrustees int, nClients int, payloadLength int, reportingLimit int, trusteesHosts []string) *RelayState {

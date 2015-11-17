@@ -11,6 +11,7 @@ import (
 	"github.com/lbarman/prifi/dcnet"
 	"github.com/lbarman/crypto/abstract"
 	//log2 "github.com/lbarman/prifi/log"
+	"time"
 )
 
 // Number of bytes of cell payload to reserve for connection header, length
@@ -90,8 +91,9 @@ func startClient(clientId int, relayHostAddr string, nClients int, nTrustees int
 	relayConn := connectToRelay(relayHostAddr, clientId, clientState)
 
 	//initiate downstream stream (relay -> client)
-	dataFromRelay := make(chan dataWithMessageTypeAndConnId)
-	go readDataFromRelay(relayConn, dataFromRelay)
+	dataFromRelay       := make(chan dataWithMessageTypeAndConnId)
+	publicKeysFromRelay := make(chan []abstract.Point)
+	go readDataFromRelay(relayConn, dataFromRelay, publicKeysFromRelay)
 
 	//start the socks proxy
 	socksProxyNewConnections := make(chan net.Conn)
@@ -102,51 +104,75 @@ func startClient(clientId int, relayHostAddr string, nClients int, nTrustees int
 		port := ":" + strconv.Itoa(1080+clientId)
 		go startSocksProxyServerListener(port, socksProxyNewConnections)
 		go startSocksProxyServerHandler(socksProxyNewConnections, dataForRelayBuffer, dataForSocksProxy, clientState)
-	}	
-
-	//TODO : On "resync", the client should jump back here
-
-	//Read the trustee's public keys from the connection
-	trusteesPublicKeys := util.UnMarshalPublicKeyArrayFromConnection(relayConn, suite)
-	for i:=0; i<len(trusteesPublicKeys); i++ {
-		clientState.TrusteePublicKey[i] = trusteesPublicKeys[i]
-		clientState.sharedSecrets[i] = suite.Point().Mul(trusteesPublicKeys[i], clientState.privateKey)
+	} else {
+		go channelCleaner(dataForSocksProxy)
 	}
 
-	//check that we got all keys
-	for i := 0; i<clientState.nTrustees; i++ {
-		if clientState.TrusteePublicKey[i] == nil {
-			panic("Client : didn't get the public key from trustee "+strconv.Itoa(i))
+	exitClient := false
+	for !exitClient {
+		println(">>>> Configurating... ")
+
+		var trusteesPublicKeys []abstract.Point
+		publicKeysMessageReceived := false
+
+		for !publicKeysMessageReceived{
+			select {
+				case trusteesPublicKeys = <- publicKeysFromRelay:
+					println("Received the public keys !")
+					publicKeysMessageReceived = true
+
+				default: 
+					time.Sleep(1000*time.Millisecond)
+			}
 		}
-	}
 
-	clientState.printSecrets()
-	println("All crypto stuff exchanged !")
+		//Parse the trustee's public keys
+		for i:=0; i<len(trusteesPublicKeys); i++ {
+			clientState.TrusteePublicKey[i] = trusteesPublicKeys[i]
+			clientState.sharedSecrets[i] = suite.Point().Mul(trusteesPublicKeys[i], clientState.privateKey)
+		}
+
+		//check that we got all keys
+		for i := 0; i<clientState.nTrustees; i++ {
+			if clientState.TrusteePublicKey[i] == nil {
+				panic("Client : didn't get the public key from trustee "+strconv.Itoa(i))
+			}
+		}
+
+		clientState.printSecrets()
+		println(">>>> All crypto stuff exchanged !")
+
+		continueToNextRound := true
+		for continueToNextRound {
+			select {
+				//downstream slice from relay (normal DC-net cycle)
+				case data := <-dataFromRelay:
+					print(".")
+
+					switch data.messageType {
+						case 1 : //relay wants to re-setup (new key exchanges)
+							fmt.Println("Server wants to resync")
+							continueToNextRound = false
+
+						case 0 : //data for SOCKS proxy, just hand it over to the dedicated thread
+							println("1")
+							dataForSocksProxy <- data
+							println("2")
+					}
+
+					// TODO Should account the downstream cell in the history
+
+					// Produce and ship the next upstream slice
+							println("3")
+					writeNextUpstreamSlice(dataForRelayBuffer, relayConn, clientState)
+							println("4")
 
 
-	for {
-		select {
-			//downstream slice from relay (normal DC-net cycle)
-			case dataWithTypeAndConnId := <-dataFromRelay:
-				print(".")
-
-				switch dataWithTypeAndConnId.messageType {
-					case 1 : //relay wants to re-setup (new key exchanges)
-						panic("Server wants to resync")
-
-					case 0 : //data for SOCKS proxy, just hand it over to the dedicated thread
-						dataForSocksProxy <- dataWithTypeAndConnId
-				}
-
-				// TODO Should account the downstream cell in the history
-
-				// Produce and ship the next upstream slice
-				writeNextUpstreamSlice(dataForRelayBuffer, relayConn, clientState)
-
-
-				//we report the speed, bytes exchanged, etc
-				stats.report()
-
+					//we report the speed, bytes exchanged, etc
+							println("5")
+					stats.report()
+							println("6")
+			}
 		}
 	}
 }
@@ -209,7 +235,7 @@ func connectToRelay(relayHost string, connectionId int, params *ClientState) net
 	return conn
 }
 
-func readDataFromRelay(relayConn net.Conn, dataFromRelay chan<- dataWithMessageTypeAndConnId) {
+func readDataFromRelay(relayConn net.Conn, dataFromRelay chan<- dataWithMessageTypeAndConnId, publicKeysFromRelay chan<- []abstract.Point) {
 	header := [10]byte{}
 	totcells := uint64(0)
 	totbytes := uint64(0)
@@ -222,22 +248,40 @@ func readDataFromRelay(relayConn net.Conn, dataFromRelay chan<- dataWithMessageT
 			panic("clientReadRelay: " + err.Error())
 		}
 
+		//parse the header
 		messageType := int(binary.BigEndian.Uint32(header[0:4]))
-		socksConnId := int(binary.BigEndian.Uint16(header[4:8]))
+		socksConnId := int(binary.BigEndian.Uint32(header[4:8]))
 		dataLength  := int(binary.BigEndian.Uint16(header[8:10]))
 
-		// Read the downstream data
+		fmt.Println("Read a message with type", messageType, " socks id ", socksConnId, "data length", dataLength)
+
+		// Read the data
 		data := make([]byte, dataLength)
 		n, err = io.ReadFull(relayConn, data)
 
-		if n != dataLength {
-			panic("readDataFromRelay: read data length ("+strconv.Itoa(n)+") not matching expected length ("+strconv.Itoa(dataLength)+")" + err.Error())
+		if messageType == 2 { //TODO : declare this as a constant
+			//Public key arrays
+
+			println("<<<<<<<<<<<<<<<<<<")
+			println("Data has size")
+			println(len(data))
+
+			publicKeys := util.UnMarshalPublicKeyArrayFromByteArray(data, suite)
+			publicKeysFromRelay <- publicKeys
+		} else {
+			// Data
+			data := make([]byte, dataLength)
+			n, err = io.ReadFull(relayConn, data)
+
+			if n != dataLength {
+				panic("readDataFromRelay: read data length ("+strconv.Itoa(n)+") not matching expected length ("+strconv.Itoa(dataLength)+")" + err.Error())
+			}
+
+			dataFromRelay <- dataWithMessageTypeAndConnId{messageType, socksConnId, data}
+
+			totcells++
+			totbytes += uint64(dataLength)
 		}
-
-		dataFromRelay <- dataWithMessageTypeAndConnId{messageType, socksConnId, data}
-
-		totcells++
-		totbytes += uint64(dataLength)
 	}
 }
 
@@ -274,25 +318,31 @@ func startSocksProxyServerHandler(socksProxyNewConnections chan net.Conn, dataFo
 	socksProxyData              := make(chan []byte)
 
 	for {
+		println("a")
 		select {
 
 			// New TCP connection to the SOCKS proxy
 			case conn := <-socksProxyNewConnections: 
+		println("b")
 				newSocksProxyId := len(socksProxyActiveConnections)
 				socksProxyActiveConnections = append(socksProxyActiveConnections, conn)
 				go readDataFromSocksProxy(newSocksProxyId, clientState.PayloadLength, conn, socksProxyData, socksProxyConnClosed)
 
 			// Data to anonymize from SOCKS proxy
 			case data := <-socksProxyData: 
+		println("c")
 				dataForRelayBuffer <- data
 
 			// Plaintext downstream data (relay->client->Socks proxy)
-			case dataWithTypeAndConnId := <-dataForSOCKSProxy:
+			case dataTypeConn := <-dataForSOCKSProxy:
+		println("d")
 
-				//messageType := dataWithConnId.messageType //we know it's data for relay
-				socksConnId   := dataWithTypeAndConnId.connectionId
-				data          := dataWithTypeAndConnId.data
+				messageType := dataTypeConn.messageType //we know it's data for relay
+				socksConnId   := dataTypeConn.connectionId
+				data          := dataTypeConn.data
 				dataLength    := len(data)
+
+		fmt.Println("Read a message with type", messageType, " socks id ", socksConnId)
 				
 				//Handle the connections, forwards the downstream slice to the SOCKS proxy
 				//if there is no socks proxy, nothing to do (useless case indeed, only for debug)
@@ -311,8 +361,10 @@ func startSocksProxyServerHandler(socksProxyNewConnections chan net.Conn, dataFo
 
 			//connection closed from SOCKS proxy
 			case clientId := <-socksProxyConnClosed:
+		println("e")
 				socksProxyActiveConnections[clientId] = nil
 		}
+		println("f")
 	}
 }
 
@@ -339,6 +391,18 @@ func readDataFromSocksProxy(clientId int, payloadLength int, conn net.Conn, data
 			conn.Close()
 			closed <- clientId // signal that channel is closed
 			return
+		}
+	}
+}
+
+func channelCleaner(channel chan dataWithMessageTypeAndConnId){
+	for{
+		select{
+			case x := <- channel:
+				_ = x //could this be more ugly ?
+				//do nothing
+			default:
+				time.Sleep(1000 * time.Millisecond)
 		}
 	}
 }
