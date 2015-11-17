@@ -26,10 +26,8 @@ type RelayState struct {
 
 	trusteesHosts		[]string
 
-	clientsConnections  []net.Conn
-	trusteesConnections []net.Conn
-	trusteesPublicKeys  []abstract.Point
-	clientPublicKeys    []abstract.Point
+	clients  			[]NodeRepresentation
+	trustees  			[]NodeRepresentation
 	
 	CellCoder			dcnet.CellCoder
 	
@@ -37,6 +35,12 @@ type RelayState struct {
 
 	PayloadLength		int
 	ReportingLimit		int
+}
+
+type NodeRepresentation struct {
+	Id			int
+	Conn 		net.Conn
+	PublicKey	abstract.Point
 }
 
 type IdConnectionAndPublicKey struct{
@@ -54,7 +58,7 @@ func startRelay(payloadLength int, relayPort string, nClients int, nTrustees int
 	go relayServerListener(relayPort, newClientConnectionsChan)
 
 	//start the client parser
-	newClientWithIdAndPublicKeyChan := make(chan IdConnectionAndPublicKey)  //channel with parsed clients
+	newClientWithIdAndPublicKeyChan := make(chan NodeRepresentation)  //channel with parsed clients
 	go welcomeNewClients(newClientConnectionsChan, newClientWithIdAndPublicKeyChan, relayState)
 
 	//start the actual protocol
@@ -68,12 +72,11 @@ func startRelay(payloadLength int, relayPort string, nClients int, nTrustees int
 	go relayState.processMessageLoop(protocolFailed, indicateEndOfProtocol) //CAREFUL RELAYSTATE IS SHARED BETWEEN THREADS
 
 	//control loop
-	var protocolHasFailed bool
 	var endOfProtocolState int
-	var newClient IdConnectionAndPublicKey
+	var newClient NodeRepresentation //TODO this only handles an increment of one client
 	for {
 		select {
-			case protocolHasFailed = <- protocolFailed:
+			case protocolHasFailed := <- protocolFailed:
 				//re-run setup, something went wrong
 				fmt.Println(protocolHasFailed)
 				fmt.Println("protocolHasFailed")
@@ -116,30 +119,26 @@ func (relayState *RelayState) connectToAllTrustees() {
 	for i:= 0; i < relayState.nTrustees; i++ {
 		connectToTrustee(i, relayState.trusteesHosts[i], relayState)
 	}
-	fmt.Println("Trustees connecting done, ", len(relayState.trusteesPublicKeys), "trustees connected")
+	fmt.Println("Trustees connecting done, ", len(relayState.trustees), "trustees connected")
 }
 
 func (relayState *RelayState) disconnectFromAllTrustees() {
 	//disconnect to the trustees
 	for i:= 0; i < relayState.nTrustees; i++ {
-		relayState.trusteesConnections[i].Close()
+		relayState.trustees[i].Conn.Close()
 	}
-	fmt.Println("Trustees connecting done, ", len(relayState.trusteesPublicKeys), "trustees connected")
+	fmt.Println("Trustees connecting done, ", len(relayState.trustees), "trustees connected")
 }
 
-func (relayState *RelayState) waitForDefaultNumberOfClients(newClientConnectionsChan chan IdConnectionAndPublicKey) {
+func (relayState *RelayState) waitForDefaultNumberOfClients(newClientConnectionsChan chan NodeRepresentation) {
 	currentClients := 0
-	var newClientConnection IdConnectionAndPublicKey
 
 	fmt.Printf("Waiting for %d clients (on port %s)\n", relayState.nClients - currentClients, relayState.RelayPort)
+
 	for currentClients < relayState.nClients {
 		select{
-				case newClientConnection = <-newClientConnectionsChan: 
-
-					//todo : this needs to be done better
-					id := newClientConnection.Id
-					relayState.clientsConnections[id] = newClientConnection.Conn
-					relayState.clientPublicKeys[id] = newClientConnection.PublicKey
+				case newClient := <-newClientConnectionsChan: 
+					relayState.clients = append(relayState.clients, newClient)
 
 					currentClients += 1
 					fmt.Printf("Waiting for %d clients (on port %s)\n", relayState.nClients - currentClients, relayState.RelayPort)
@@ -147,20 +146,18 @@ func (relayState *RelayState) waitForDefaultNumberOfClients(newClientConnections
 					time.Sleep(100 * time.Millisecond)
 		}
 	}
-	fmt.Println("Client connecting done, ", len(relayState.clientPublicKeys), "clients connected")
+	fmt.Println("Client connecting done, ", len(relayState.clients), "clients connected")
 }
 
-func (relayState *RelayState) copyStateAndAddNewClient(newClient IdConnectionAndPublicKey) *RelayState{
+func (relayState *RelayState) copyStateAndAddNewClient(newClient NodeRepresentation) *RelayState{
 	newNClients := relayState.nClients + 1
 	newRelayState := initiateRelayState(relayState.RelayPort, relayState.nTrustees, newNClients, relayState.PayloadLength, relayState.ReportingLimit, relayState.trusteesHosts)
 
 	//we keep the previous client params
-	copy(newRelayState.clientPublicKeys, relayState.clientPublicKeys)
-	copy(newRelayState.clientsConnections, relayState.clientsConnections)
+	copy(newRelayState.clients, relayState.clients)
 
 	//we add the new client
-	newRelayState.clientPublicKeys = append(newRelayState.clientPublicKeys, newClient.PublicKey)
-	newRelayState.clientsConnections = append(newRelayState.clientsConnections, newClient.Conn)
+	newRelayState.clients = append(newRelayState.clients, newClient)
 
 	return newRelayState
 }
@@ -168,13 +165,13 @@ func (relayState *RelayState) copyStateAndAddNewClient(newClient IdConnectionAnd
 func (relayState *RelayState) advertisePublicKeys(){
 	//Prepare the messages
 	println("Preparing trustee array")
-	dataForClients   := util.MarshalPublicKeyArrayToByteArray(relayState.trusteesPublicKeys)
+	dataForClients   := MarshalNodeRepresentationArrayToByteArray(relayState.trustees)
 	println("Preparing client array")
-			println(len(relayState.clientPublicKeys))
-			for i:=0; i<len(relayState.clientPublicKeys); i++{
-				fmt.Println(relayState.clientPublicKeys[i])
+			println(len(relayState.clients))
+			for i:=0; i<len(relayState.clients); i++{
+				fmt.Println(relayState.clients)
 			}
-	dataForTrustees := util.MarshalPublicKeyArrayToByteArray(relayState.clientPublicKeys)
+	dataForTrustees := MarshalNodeRepresentationArrayToByteArray(relayState.clients)
 
 
 			println("<<<<<<<<<<<<<<<<<<")
@@ -190,9 +187,9 @@ func (relayState *RelayState) advertisePublicKeys(){
 	copy(messageForClients[10:], dataForClients)
 
 	//broadcast to the clients
-	util.BroadcastMessage(relayState.clientsConnections, messageForClients)
-	util.BroadcastMessage(relayState.trusteesConnections, dataForTrustees)
-	fmt.Println("Advertising done, to", len(relayState.clientsConnections), "clients and", len(relayState.trusteesConnections), "trustees")
+	BroadcastMessage(relayState.clients, messageForClients)
+	BroadcastMessage(relayState.trustees, dataForTrustees)
+	fmt.Println("Advertising done, to", len(relayState.clients), "clients and", len(relayState.trustees), "trustees")
 }
 
 
@@ -275,7 +272,7 @@ func (relayState *RelayState) processMessageLoop(protocolFailed chan bool, indic
 		fmt.Println("Writing a message with type", msgType, " socks id ", downbuffer.connectionId)
 
 		// Broadcast the downstream data to all clients.
-		util.BroadcastMessage(relayState.clientsConnections, downstreamData)
+		BroadcastMessage(relayState.clients, downstreamData)
 		stats.addDownstreamCell(int64(downstreamDataPayloadLength))
 
 		inflight++
@@ -288,7 +285,7 @@ func (relayState *RelayState) processMessageLoop(protocolFailed chan bool, indic
 		// Collect a cell ciphertext from each trustee
 		for i := 0; i < relayState.nTrustees; i++ {			
 			//TODO: this looks blocking
-			n, err := io.ReadFull(relayState.trusteesConnections[i], trusteesPayloadData[i])
+			n, err := io.ReadFull(relayState.trustees[i].Conn, trusteesPayloadData[i])
 			if n < trusteePayloadLength {
 				panic("Relay : Read from trustee failed, read "+strconv.Itoa(n)+" where "+strconv.Itoa(trusteePayloadLength)+" was expected: " + err.Error())
 			}
@@ -299,7 +296,7 @@ func (relayState *RelayState) processMessageLoop(protocolFailed chan bool, indic
 		// Collect an upstream ciphertext from each client
 		for i := 0; i < relayState.nClients; i++ {
 			//TODO: this looks blocking
-			n, err := io.ReadFull(relayState.clientsConnections[i], clientsPayloadData[i])
+			n, err := io.ReadFull(relayState.clients[i].Conn, clientsPayloadData[i])
 			if n < clientPayloadLength {
 				panic("Relay : Read from client failed, read "+strconv.Itoa(n)+" where "+strconv.Itoa(clientPayloadLength)+" was expected: " + err.Error())
 			}
@@ -369,35 +366,26 @@ func initiateRelayState(relayPort string, nTrustees int, nClients int, payloadLe
 	params.nTrustees     = nTrustees
 	params.trusteesHosts = trusteesHosts
 
-	//placeholders for pubkeys and connections
-	params.trusteesPublicKeys = make([]abstract.Point, nTrustees)
-	params.clientPublicKeys   = make([]abstract.Point, nClients)
-
-	params.trusteesConnections = make([]net.Conn, nTrustees)
-	params.clientsConnections  = make([]net.Conn, nClients)
-
 	//sets the cell coder, and the history
 	params.CellCoder = factory()
 
 	return params
 }
 
-func welcomeNewClients(newClientConnectionsChan chan net.Conn, newClientWithPkChan chan IdConnectionAndPublicKey, relayState *RelayState) {	
-	newClientsToParse := make(chan IdConnectionAndPublicKey)
-	var newClientConnection net.Conn
-	var newClientWithIdAndPk IdConnectionAndPublicKey
+func welcomeNewClients(newConnectionsChan chan net.Conn, newClientChan chan NodeRepresentation, relayState *RelayState) {	
+	newClientsToParse := make(chan NodeRepresentation)
 
 	for {
 		select{
 			//accept the TCP connection, and parse the parameters
-			case newClientConnection = <-newClientConnectionsChan: 
-				go relayParseClientParams(newClientConnection, relayState, newClientsToParse)
+			case newConnection := <-newConnectionsChan: 
+				go relayParseClientParams(newConnection, relayState, newClientsToParse)
 			
 			//once client is ready (we have params+pk), forward to the other channel
-			case newClientWithIdAndPk = <-newClientsToParse: 
+			case newClient := <-newClientsToParse: 
 				fmt.Println("New client is ready !")
-				fmt.Println(newClientWithIdAndPk)
-				newClientWithPkChan <- newClientWithIdAndPk
+				fmt.Println(newClient)
+				newClientChan <- newClient
 			default: 
 				time.Sleep(1000) //todo : check this duration
 		}
@@ -462,8 +450,9 @@ func connectToTrustee(trusteeId int, trusteeHostAddr string, relayState *RelaySt
 	
 
 	//side effects
-	relayState.trusteesConnections[trusteeId] = conn
-	relayState.trusteesPublicKeys[trusteeId]  = publicKey
+	newTrustee := NodeRepresentation{trusteeId, conn, publicKey}
+
+	relayState.trustees = append(relayState.trustees, newTrustee)
 }
 
 func relayServerListener(listeningPort string, newConnection chan net.Conn) {
@@ -481,7 +470,7 @@ func relayServerListener(listeningPort string, newConnection chan net.Conn) {
 	}
 }
 
-func relayParseClientParamsAux(conn net.Conn, relayState *RelayState) (int, net.Conn, abstract.Point) {
+func relayParseClientParamsAux(conn net.Conn, relayState *RelayState) NodeRepresentation {
 	buffer := make([]byte, 512)
 	_, err2 := conn.Read(buffer)
 	if err2 != nil {
@@ -498,11 +487,19 @@ func relayParseClientParamsAux(conn net.Conn, relayState *RelayState) (int, net.
 	nodeId := int(binary.BigEndian.Uint32(buffer[4:8]))
 
 	//check that the node ID is not used
-	if(nodeId < len(relayState.clientsConnections) && relayState.clientsConnections[nodeId] != nil) {
-		fmt.Println(nodeId, "is used")
-		newId := len(relayState.clientsConnections)
-		fmt.Println("Client with ID ", nodeId, "tried to connect, but some client already took that ID. changing ID to", newId)
-		nodeId = newId
+	idExists := false
+	nextFreeId := 0
+	for i:=0; i<len(relayState.clients); i++{
+		if relayState.clients[i].Id == nodeId {
+			idExists = true
+		}
+		if relayState.clients[i].Id == nextFreeId {
+			nextFreeId++
+		}
+	}
+	if idExists {
+		fmt.Println("Client with ID ", nodeId, "tried to connect, but some client already took that ID. changing ID to", nextFreeId)
+		nodeId = nextFreeId
 	}
 
 	keySize := int(binary.BigEndian.Uint32(buffer[8:12]))
@@ -515,12 +512,54 @@ func relayParseClientParamsAux(conn net.Conn, relayState *RelayState) (int, net.
 		panic(">>>>  Relay : can't unmarshal client key ! " + err3.Error())
 	}
 
-	return nodeId, conn, publicKey
+	newClient := NodeRepresentation{nodeId, conn, publicKey}
+
+	return newClient
 }
 
-func relayParseClientParams(conn net.Conn, relayState *RelayState, newConnAndPk chan IdConnectionAndPublicKey) {
+func relayParseClientParams(conn net.Conn, relayState *RelayState, newClientChan chan NodeRepresentation) {
 
-	nodeId, conn, publicKey := relayParseClientParamsAux(conn, relayState)
-	s := IdConnectionAndPublicKey{Id: nodeId, Conn: conn, PublicKey: publicKey}
-	newConnAndPk <- s
+	newClient := relayParseClientParamsAux(conn, relayState)
+	newClientChan <- newClient
+}
+
+
+// TODO : this should be somewhere else
+func MarshalNodeRepresentationArrayToByteArray(nodes []NodeRepresentation) []byte {
+	var byteArray []byte
+
+	msgType := make([]byte, 4)
+	binary.BigEndian.PutUint32(msgType, uint32(2))
+	byteArray = append(byteArray, msgType...)
+
+	for i:=0; i<len(nodes); i++ {
+		publicKeysBytes, err := nodes[i].PublicKey.MarshalBinary()
+		publicKeyLength := make([]byte, 4)
+		binary.BigEndian.PutUint32(publicKeyLength, uint32(len(publicKeysBytes)))
+
+		byteArray = append(byteArray, publicKeyLength...)
+		byteArray = append(byteArray, publicKeysBytes...)
+
+		//fmt.Println(hex.Dump(publicKeysBytes))
+		if err != nil{
+			panic("can't marshal client public key n°"+strconv.Itoa(i))
+		}
+	}
+
+	return byteArray
+}
+func BroadcastMessage(nodes []NodeRepresentation, message []byte) {
+	fmt.Println("Gonna broadcast this message")
+	fmt.Println(hex.Dump(message))
+
+	for i:=0; i<len(nodes); i++ {
+		n, err := nodes[i].Conn.Write(message)
+
+		fmt.Println("[", nodes[i].Conn.LocalAddr(), " - ", nodes[i].Conn.RemoteAddr(), "]")
+
+		if n < len(message) || err != nil {
+			fmt.Println("Could not broadcast to conn", i)
+			panic("Error writing to socket:" + err.Error())
+		}
+	}
 }

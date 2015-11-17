@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"encoding/binary"
 	"github.com/lbarman/crypto/abstract"
+	"github.com/lbarman/prifi/dissent"
 	"encoding/hex"
 )
 
@@ -42,7 +43,6 @@ func TellPublicKey(conn net.Conn, LLD_PROTOCOL_VERSION int, publicKey abstract.P
 		panic("Error writing to socket:" + err.Error())
 	}
 }
-
 func MarshalPublicKeyArrayToByteArray(publicKeys []abstract.Point) []byte {
 	var byteArray []byte
 
