@@ -70,6 +70,8 @@ func initiateClientState(socksConnId int, nTrustees int, nClients int, payloadLe
 
 func (clientState *ClientState) printSecrets() {
 	//print all shared secrets
+	
+	fmt.Println("")
 	for i:=0; i<clientState.nTrustees; i++ {
 		fmt.Println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
 		fmt.Println("            TRUSTEE", i)
@@ -78,8 +80,9 @@ func (clientState *ClientState) printSecrets() {
 		fmt.Println(hex.Dump(d1))
 		fmt.Println("+++")
 		fmt.Println(hex.Dump(d2))
-		fmt.Println("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
 	}
+	fmt.Println("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
+	fmt.Println("")
 }
 
 func startClient(socksConnId int, relayHostAddr string, nClients int, nTrustees int, payloadLength int, useSocksProxy bool) {

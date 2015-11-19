@@ -50,9 +50,11 @@ type IdConnectionAndPublicKey struct{
 	PublicKey 	abstract.Point
 }
 
+var relayState *RelayState 
+/* definition of playing with fire : this is mutable and shared across thread.*/
+
 func startRelay(payloadLength int, relayPort string, nClients int, nTrustees int, trusteesIp []string, reportingLimit int) {
 
-	var relayState *RelayState
 	relayState = initiateRelayState(relayPort, nTrustees, nClients, payloadLength, reportingLimit, trusteesIp)
 
 	//start the server waiting for clients
@@ -61,7 +63,7 @@ func startRelay(payloadLength int, relayPort string, nClients int, nTrustees int
 
 	//start the client parser
 	newClientWithIdAndPublicKeyChan := make(chan NodeRepresentation)  //channel with parsed clients
-	go welcomeNewClients(newClientConnectionsChan, newClientWithIdAndPublicKeyChan, relayState)
+	go welcomeNewClients(newClientConnectionsChan, newClientWithIdAndPublicKeyChan)
 
 	//start the actual protocol
 	relayState.connectToAllTrustees()
@@ -75,6 +77,7 @@ func startRelay(payloadLength int, relayPort string, nClients int, nTrustees int
 
 	//control loop
 	var endOfProtocolState int
+	var isProtocolRunning = true //we just started processMessageLoop
 	newClients := make([]NodeRepresentation, 0)
 
 	for {
@@ -82,13 +85,20 @@ func startRelay(payloadLength int, relayPort string, nClients int, nTrustees int
 			case protocolHasFailed := <- protocolFailed:
 				fmt.Println(protocolHasFailed)
 				fmt.Println("Relay Handler : Processing loop has failed")
+				isProtocolRunning = false
 				//TODO : re-run setup, something went wrong. Maybe restart from 0 ?
 
 			case newClient := <- newClientWithIdAndPublicKeyChan:
 				//we tell processMessageLoop to stop when possible
-				fmt.Println("Relay Handler : new Client is ready, stopping processing loop")
 				newClients = append(newClients, newClient)
-				indicateEndOfProtocol <- 1
+				if isProtocolRunning {
+					fmt.Println("Relay Handler : new Client is ready, stopping processing loop")
+					indicateEndOfProtocol <- PROTOCOL_STATUS_GONNA_RESYNC
+				} else {
+					fmt.Println("Relay Handler : new Client is ready, restarting processing loop")
+					isProtocolRunning, relayState = restartProtocol(relayState, newClients, protocolFailed, indicateEndOfProtocol)
+					fmt.Println("Done...")
+				}
 
 			case endOfProtocolState = <- indicateEndOfProtocol:
 				fmt.Println("Relay Handler : main loop stopped, resyncing")
@@ -97,33 +107,42 @@ func startRelay(payloadLength int, relayPort string, nClients int, nTrustees int
 					panic("something went wrong, should not happen")
 				}
 
-				//copy the previous relayState
-				newRelayState := relayState.clone() 				
-				relayState.disconnectFromAllTrustees()
-
-				//add the new clients to the previous (filtered) list
-				for i:=0; i<len(newClients); i++{
-					newRelayState.addNewClient(newClients[i])
-				}
-				newClients = make([]NodeRepresentation, 0)
-
-				//re-advertise the configuration
-				newRelayState.connectToAllTrustees()
-				newRelayState.advertisePublicKeys()
-
-				println("Client should be OK ...")
-				time.Sleep(5*time.Second)
-
-				//6. process message loop (on the new relayState)
-				go newRelayState.processMessageLoop(protocolFailed, indicateEndOfProtocol)
-
-				//replace old state
-				relayState = newRelayState
-
+				isProtocolRunning, relayState = restartProtocol(relayState, newClients, protocolFailed, indicateEndOfProtocol)
 			default: 
 				//all clear! keep this thread handler load low, (accept changes every X millisecond)
 				time.Sleep(1000 * time.Millisecond)
 		}
+	}
+}
+
+func restartProtocol(relayState *RelayState, newClients []NodeRepresentation, protocolFailed chan bool, indicateEndOfProtocol chan int) (bool, *RelayState) {
+	//copy the previous relayState
+	newRelayState := relayState.cloneWithoutDeconnectedClients() 				
+	relayState.disconnectFromAllTrustees()
+
+	//add the new clients to the previous (filtered) list
+	for i:=0; i<len(newClients); i++{
+		newRelayState.addNewClient(newClients[i])
+		println("Adding new client")
+		fmt.Println(newClients[i])
+	}
+	newClients = make([]NodeRepresentation, 0)
+
+	//if we dont have enough client, stop.
+	if newRelayState.nClients == 0{
+		fmt.Println("Relay Handler : not enough client, stopping and waiting...")
+		return false, newRelayState
+	} else {
+		//re-advertise the configuration 	
+		newRelayState.connectToAllTrustees()
+		newRelayState.advertisePublicKeys()
+
+		println("Client should be OK ...")
+		time.Sleep(5*time.Second)
+
+		//6. process message loop (on the new relayState)
+		go newRelayState.processMessageLoop(protocolFailed, indicateEndOfProtocol)
+		return true, newRelayState
 	}
 }
 
@@ -137,10 +156,10 @@ func (relayState *RelayState) connectToAllTrustees() {
 
 func (relayState *RelayState) disconnectFromAllTrustees() {
 	//disconnect to the trustees
-	for i:= 0; i < relayState.nTrustees; i++ {
+	for i:= 0; i < len(relayState.trustees); i++ {
 		relayState.trustees[i].Conn.Close()
 	}
-	fmt.Println("Trustees connecting done, ", len(relayState.trustees), "trustees connected")
+	fmt.Println("Trustees disonnecting done, ", len(relayState.trustees), "trustees disconnected")
 }
 
 func (relayState *RelayState) waitForDefaultNumberOfClients(newClientConnectionsChan chan NodeRepresentation) {
@@ -152,7 +171,6 @@ func (relayState *RelayState) waitForDefaultNumberOfClients(newClientConnections
 		select{
 				case newClient := <-newClientConnectionsChan: 
 					relayState.clients = append(relayState.clients, newClient)
-
 					currentClients += 1
 					fmt.Printf("Waiting for %d clients (on port %s)\n", relayState.nClients - currentClients, relayState.RelayPort)
 				default: 
@@ -162,7 +180,7 @@ func (relayState *RelayState) waitForDefaultNumberOfClients(newClientConnections
 	fmt.Println("Client connecting done, ", len(relayState.clients), "clients connected")
 }
 
-func (relayState *RelayState) clone() *RelayState{
+func (relayState *RelayState) cloneWithoutDeconnectedClients() *RelayState{
 
 	//count the clients that disconnected
 	nClientsDisconnected := 0
@@ -183,6 +201,7 @@ func (relayState *RelayState) clone() *RelayState{
 	for i := 0; i<len(relayState.clients); i++ {
 		if relayState.clients[i].Connected {
 			newRelayState.clients[j] = relayState.clients[i]
+			fmt.Println("Adding Client ", i, "who's not disconnected")
 			j++
 		}
 	}
@@ -264,6 +283,9 @@ func (relayState *RelayState) processMessageLoop(protocolFailed chan bool, indic
 		var mainThreadStatus int
 		select {
 			case mainThreadStatus = <- indicateEndOfProtocol:
+
+				fmt.Println("BAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD")
+				fmt.Println(mainThreadStatus)
 				if mainThreadStatus == PROTOCOL_STATUS_GONNA_RESYNC {
 					println("Main thread status is 1, gonna warn the clients")
 					tellClientsToResync = true
@@ -442,19 +464,18 @@ func initiateRelayState(relayPort string, nTrustees int, nClients int, payloadLe
 	return params
 }
 
-func welcomeNewClients(newConnectionsChan chan net.Conn, newClientChan chan NodeRepresentation, relayState *RelayState) {	
+func welcomeNewClients(newConnectionsChan chan net.Conn, newClientChan chan NodeRepresentation) {	
 	newClientsToParse := make(chan NodeRepresentation)
 
 	for {
 		select{
 			//accept the TCP connection, and parse the parameters
 			case newConnection := <-newConnectionsChan: 
-				go relayParseClientParams(newConnection, relayState, newClientsToParse)
+				go relayParseClientParams(newConnection, newClientsToParse)
 			
 			//once client is ready (we have params+pk), forward to the other channel
 			case newClient := <-newClientsToParse: 
-				fmt.Println("New client is ready !")
-				fmt.Println(newClient)
+				fmt.Println("welcomeNewClients : New client is ready !")
 				newClientChan <- newClient
 			default: 
 				time.Sleep(1000) //todo : check this duration
@@ -497,31 +518,25 @@ func connectToTrustee(trusteeId int, trusteeHostAddr string, relayState *RelaySt
 	buffer2 := make([]byte, 1024)
 	
 	// Read the incoming connection into the buffer.
-	reqLen, err := conn.Read(buffer2)
-	if err != nil {
+	_, err2 := conn.Read(buffer2)
+	if err2 != nil {
 	    fmt.Println(">>>> Relay : error reading:", err.Error())
 	}
 
-	fmt.Println(">>>>  Relay : reading public key", reqLen)
 	keySize := int(binary.BigEndian.Uint32(buffer2[4:8]))
 	keyBytes := buffer2[8:(8+keySize)]
-
-
-	fmt.Println(hex.Dump(keyBytes))
-
 	publicKey := suite.Point()
-	err2 := publicKey.UnmarshalBinary(keyBytes)
+	err3 := publicKey.UnmarshalBinary(keyBytes)
 
-	if err2 != nil {
+	if err3 != nil {
 		panic(">>>>  Relay : can't unmarshal trustee key ! " + err2.Error())
 	}
 
 	fmt.Println("Trustee", trusteeId, "is connected.")
 	
-
-	//side effects
 	newTrustee := NodeRepresentation{trusteeId, conn, true, publicKey}
 
+	//side effects
 	relayState.trustees = append(relayState.trustees, newTrustee)
 }
 
@@ -540,7 +555,7 @@ func relayServerListener(listeningPort string, newConnection chan net.Conn) {
 	}
 }
 
-func relayParseClientParamsAux(conn net.Conn, relayState *RelayState) NodeRepresentation {
+func relayParseClientParamsAux(conn net.Conn) NodeRepresentation {
 	buffer := make([]byte, 512)
 	_, err2 := conn.Read(buffer)
 	if err2 != nil {
@@ -587,9 +602,9 @@ func relayParseClientParamsAux(conn net.Conn, relayState *RelayState) NodeRepres
 	return newClient
 }
 
-func relayParseClientParams(conn net.Conn, relayState *RelayState, newClientChan chan NodeRepresentation) {
+func relayParseClientParams(conn net.Conn, newClientChan chan NodeRepresentation) {
 
-	newClient := relayParseClientParamsAux(conn, relayState)
+	newClient := relayParseClientParamsAux(conn)
 	newClientChan <- newClient
 }
 

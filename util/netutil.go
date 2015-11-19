@@ -6,14 +6,10 @@ import (
 	"strconv"
 	"encoding/binary"
 	"github.com/lbarman/crypto/abstract"
-	"encoding/hex"
 )
 
 
 func BroadcastMessage(conns []net.Conn, message []byte) {
-	fmt.Println("Gonna broadcast this message")
-	fmt.Println(hex.Dump(message))
-
 	for i:=0; i<len(conns); i++ {
 		n, err := conns[i].Write(message)
 
