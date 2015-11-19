@@ -126,6 +126,9 @@ func startRelay(payloadLength int, relayPort string, nClients int, nTrustees int
 				newRelayState.connectToAllTrustees()
 				//5. exchange the public keys 
 				newRelayState.advertisePublicKeys()
+
+				println("Client should be OK ...")
+				time.Sleep(5*time.Second)
 				//6. process message loop (on the new relayState)
 				go newRelayState.processMessageLoop(protocolFailed, indicateEndOfProtocol)
 
@@ -189,9 +192,6 @@ func (relayState *RelayState) clone() *RelayState{
 	//count the actual number of clients, and init the new state with the old parameters
 	newNClients   := relayState.nClients - nClientsDisconnected
 	newRelayState := initiateRelayState(relayState.RelayPort, relayState.nTrustees, newNClients, relayState.PayloadLength, relayState.ReportingLimit, relayState.trusteesHosts)
-
-
-	fmt.Println("COPYING OLD ", len(relayState.clients), " CLIENTS")
 
 	//copy the connected clients
 	newRelayState.clients = make([]NodeRepresentation, newNClients)
@@ -426,6 +426,9 @@ func (relayState *RelayState) processMessageLoop(protocolFailed chan bool, indic
 			conn <- upstreamPlaintext[6 : 6+upstreamPlainTextDataLength]
 		}
 	}
+
+	println("Main loop broken, waiting 5 sec")
+	time.Sleep(5*time.Second)
 
 	indicateEndOfProtocol <- 2
 }

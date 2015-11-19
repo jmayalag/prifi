@@ -152,8 +152,13 @@ func startClient(clientId int, relayHostAddr string, nClients int, nTrustees int
 					print(".")
 
 					switch data.messageType {
+
+						case 3 : //relay wants to re-setup (new key exchanges)
+							fmt.Println("Relay warns that a client disconnected, gonna resync..")
+							continueToNextRound = false
+
 						case 1 : //relay wants to re-setup (new key exchanges)
-							fmt.Println("Server wants to resync")
+							fmt.Println("Relay wants to resync")
 							continueToNextRound = false
 
 						case 0 : //data for SOCKS proxy, just hand it over to the dedicated thread
@@ -269,8 +274,11 @@ func readDataFromRelay(relayConn net.Conn, dataFromRelay chan<- dataWithMessageT
 			println(len(data))
 
 			publicKeys := util.UnMarshalPublicKeyArrayFromByteArray(data, suite)
+			println("unmarshalling done")
 			publicKeysFromRelay <- publicKeys
-		} else {
+			println("Exiting...")
+
+		}  else {
 			// Data
 			data := make([]byte, dataLength)
 			n, err = io.ReadFull(relayConn, data)
@@ -320,25 +328,20 @@ func startSocksProxyServerHandler(socksProxyNewConnections chan net.Conn, dataFo
 	socksProxyData              := make(chan []byte)
 
 	for {
-		println("a")
 		select {
 
 			// New TCP connection to the SOCKS proxy
 			case conn := <-socksProxyNewConnections: 
-		println("b")
 				newSocksProxyId := len(socksProxyActiveConnections)
 				socksProxyActiveConnections = append(socksProxyActiveConnections, conn)
 				go readDataFromSocksProxy(newSocksProxyId, clientState.PayloadLength, conn, socksProxyData, socksProxyConnClosed)
 
 			// Data to anonymize from SOCKS proxy
 			case data := <-socksProxyData: 
-		println("c")
 				dataForRelayBuffer <- data
 
 			// Plaintext downstream data (relay->client->Socks proxy)
 			case dataTypeConn := <-dataForSOCKSProxy:
-		println("d")
-
 				messageType := dataTypeConn.messageType //we know it's data for relay
 				socksConnId   := dataTypeConn.connectionId
 				data          := dataTypeConn.data
@@ -363,10 +366,8 @@ func startSocksProxyServerHandler(socksProxyNewConnections chan net.Conn, dataFo
 
 			//connection closed from SOCKS proxy
 			case clientId := <-socksProxyConnClosed:
-		println("e")
 				socksProxyActiveConnections[clientId] = nil
 		}
-		println("f")
 	}
 }
 
