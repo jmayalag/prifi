@@ -64,7 +64,6 @@ func (stats *Statistics) reportRelay(relayState *RelayState) {
 		//log2.BenchmarkFloat(fmt.Sprintf("cellsize-%d-upstream-bytes", payloadLength), instantUpSpeed)
 
 		//write JSON
-		relayState.RLock()
 		data := struct {
 		    Experiment string
 		    CellSize int
@@ -74,7 +73,6 @@ func (stats *Statistics) reportRelay(relayState *RelayState) {
 		    relayState.PayloadLength,
 		    instantUpSpeed,
 		}
-		relayState.RUnlock()
 		log2.JsonDump(data)
 
 		stats.nextReport = now.Add(stats.period)
