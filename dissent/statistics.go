@@ -44,7 +44,7 @@ func (stats *Statistics) addUpstreamCell(nBytes int64) {
 	stats.instantUpstreamBytes += nBytes
 }
 
-func (stats *Statistics) reportRelay(state *RelayState) {
+func (stats *Statistics) reportRelay(relayState *RelayState) {
 	now := time.Now()
 	if now.After(stats.nextReport) {
 		duration := now.Sub(stats.begin).Seconds()
@@ -64,15 +64,17 @@ func (stats *Statistics) reportRelay(state *RelayState) {
 		//log2.BenchmarkFloat(fmt.Sprintf("cellsize-%d-upstream-bytes", payloadLength), instantUpSpeed)
 
 		//write JSON
+		relayState.RLock()
 		data := struct {
 		    Experiment string
 		    CellSize int
 		    Speed float64
 		}{
 		    "upstream-speed-given-cellsize",
-		    state.PayloadLength,
+		    relayState.PayloadLength,
 		    instantUpSpeed,
 		}
+		relayState.RUnlock()
 		log2.JsonDump(data)
 
 		stats.nextReport = now.Add(stats.period)

@@ -10,11 +10,14 @@ import (
 	"time"
 	"strconv"
 	"log"
+	"sync"
 	"net"
 	//"github.com/lbarman/prifi/util"
 )
 
 type RelayState struct {
+	sync.RWMutex
+
 	Name				string
 	RelayPort			string
 
@@ -37,6 +40,23 @@ type RelayState struct {
 	ReportingLimit		int
 }
 
+func (relayState *RelayState) verboseRLock(){
+	fmt.Println("Requesting RLock")
+	relayState.RLock()
+}
+func (relayState *RelayState) verboseLock(){
+	fmt.Println("Requesting Lock")
+	relayState.Lock()
+}
+func (relayState *RelayState) verboseRUnlock(){
+	fmt.Println("Requesting RUnlock")
+	relayState.RUnlock()
+}
+func (relayState *RelayState) verboseUnlock(){
+	fmt.Println("Requesting Unlock")
+	relayState.Unlock()
+}
+
 type NodeRepresentation struct {
 	Id			int
 	Conn 		net.Conn
@@ -50,12 +70,12 @@ type IdConnectionAndPublicKey struct{
 	PublicKey 	abstract.Point
 }
 
-var relayState *RelayState 
-/* definition of playing with fire : this is mutable and shared across thread.*/
+var relayState 			*RelayState 
 
 func startRelay(payloadLength int, relayPort string, nClients int, nTrustees int, trusteesIp []string, reportingLimit int) {
 
-	relayState = initiateRelayState(relayPort, nTrustees, nClients, payloadLength, reportingLimit, trusteesIp)
+	relayState = new(RelayState)
+	setupRelayState(relayPort, nTrustees, nClients, payloadLength, reportingLimit, trusteesIp)
 
 	//start the server waiting for clients
 	newClientConnectionsChan        := make(chan net.Conn) 	          //channel with unparsed clients
@@ -66,14 +86,14 @@ func startRelay(payloadLength int, relayPort string, nClients int, nTrustees int
 	go welcomeNewClients(newClientConnectionsChan, newClientWithIdAndPublicKeyChan)
 
 	//start the actual protocol
-	relayState.connectToAllTrustees()
-	relayState.waitForDefaultNumberOfClients(newClientWithIdAndPublicKeyChan)
-	relayState.advertisePublicKeys()	
+	connectToAllTrustees() //request RW lock
+	waitForDefaultNumberOfClients(newClientWithIdAndPublicKeyChan) //ask for RW lock
+	advertisePublicKeys()	
 
 	//inputs and feedbacks for "processMessageLoop"
 	protocolFailed        := make(chan bool)
 	indicateEndOfProtocol := make(chan int)
-	go relayState.processMessageLoop(protocolFailed, indicateEndOfProtocol) //CAREFUL RELAYSTATE IS SHARED BETWEEN THREADS
+	go processMessageLoop(protocolFailed, indicateEndOfProtocol)
 
 	//control loop
 	var endOfProtocolState int
@@ -96,7 +116,7 @@ func startRelay(payloadLength int, relayPort string, nClients int, nTrustees int
 					indicateEndOfProtocol <- PROTOCOL_STATUS_GONNA_RESYNC
 				} else {
 					fmt.Println("Relay Handler : new Client is ready, restarting processing loop")
-					isProtocolRunning, relayState = restartProtocol(relayState, newClients, protocolFailed, indicateEndOfProtocol)
+					isProtocolRunning = restartProtocol(newClients, protocolFailed, indicateEndOfProtocol) //request RW Lock
 					fmt.Println("Done...")
 				}
 
@@ -107,7 +127,7 @@ func startRelay(payloadLength int, relayPort string, nClients int, nTrustees int
 					panic("something went wrong, should not happen")
 				}
 
-				isProtocolRunning, relayState = restartProtocol(relayState, newClients, protocolFailed, indicateEndOfProtocol)
+				isProtocolRunning = restartProtocol(newClients, protocolFailed, indicateEndOfProtocol) //request RW Lock
 			default: 
 				//all clear! keep this thread handler load low, (accept changes every X millisecond)
 				time.Sleep(1000 * time.Millisecond)
@@ -115,72 +135,96 @@ func startRelay(payloadLength int, relayPort string, nClients int, nTrustees int
 	}
 }
 
-func restartProtocol(relayState *RelayState, newClients []NodeRepresentation, protocolFailed chan bool, indicateEndOfProtocol chan int) (bool, *RelayState) {
+func restartProtocol(newClients []NodeRepresentation, protocolFailed chan bool, indicateEndOfProtocol chan int) bool {
 	//copy the previous relayState
-	newRelayState := relayState.cloneWithoutDeconnectedClients() 				
-	relayState.disconnectFromAllTrustees()
+	println("a")
+	excludeDisconnectedClients() //request RW lock	
+	println("b")	
+	disconnectFromAllTrustees()
 
 	//add the new clients to the previous (filtered) list
 	for i:=0; i<len(newClients); i++{
-		newRelayState.addNewClient(newClients[i])
-		println("Adding new client")
+		addNewClient(newClients[i])  //request RW lock	
+		fmt.Println("Adding new client")
 		fmt.Println(newClients[i])
 	}
 	newClients = make([]NodeRepresentation, 0)
 
 	//if we dont have enough client, stop.
-	if newRelayState.nClients == 0{
+	if len(relayState.clients) == 0{
 		fmt.Println("Relay Handler : not enough client, stopping and waiting...")
-		return false, newRelayState
+		return false
 	} else {
 		//re-advertise the configuration 	
-		newRelayState.connectToAllTrustees()
-		newRelayState.advertisePublicKeys()
+		connectToAllTrustees()  //request RW lock
+		advertisePublicKeys()
 
 		println("Client should be OK ...")
 		time.Sleep(5*time.Second)
 
 		//6. process message loop (on the new relayState)
-		go newRelayState.processMessageLoop(protocolFailed, indicateEndOfProtocol)
-		return true, newRelayState
+		go processMessageLoop(protocolFailed, indicateEndOfProtocol)
+		return true
 	}
 }
 
-func (relayState *RelayState) connectToAllTrustees() {
+func connectToAllTrustees() {
+	relayState.verboseRLock()
+	trusteesHosts := make([]string, relayState.nTrustees)
+	copy(trusteesHosts, relayState.trusteesHosts)
+	relayState.verboseRUnlock()
+
 	//connect to the trustees
-	for i:= 0; i < relayState.nTrustees; i++ {
-		connectToTrustee(i, relayState.trusteesHosts[i], relayState)
+	for i:= 0; i < len(trusteesHosts); i++ {
+		connectToTrustee(i, trusteesHosts[i]) //request RW lock
 	}
 	fmt.Println("Trustees connecting done, ", len(relayState.trustees), "trustees connected")
+
 }
 
-func (relayState *RelayState) disconnectFromAllTrustees() {
+func disconnectFromAllTrustees() {
+	relayState.verboseRLock()
+
 	//disconnect to the trustees
 	for i:= 0; i < len(relayState.trustees); i++ {
 		relayState.trustees[i].Conn.Close()
 	}
 	fmt.Println("Trustees disonnecting done, ", len(relayState.trustees), "trustees disconnected")
+
+	relayState.verboseRUnlock()
 }
 
-func (relayState *RelayState) waitForDefaultNumberOfClients(newClientConnectionsChan chan NodeRepresentation) {
-	currentClients := 0
+func waitForDefaultNumberOfClients(newClientConnectionsChan chan NodeRepresentation) {
+
+	relayState.verboseRLock()
+	currentClients   := len(relayState.clients)
+	expectedNClients := relayState.nClients
+	relayState.verboseRUnlock()
 
 	fmt.Printf("Waiting for %d clients (on port %s)\n", relayState.nClients - currentClients, relayState.RelayPort)
 
-	for currentClients < relayState.nClients {
+	for currentClients < expectedNClients {
 		select{
 				case newClient := <-newClientConnectionsChan: 
+
+					relayState.verboseLock()
 					relayState.clients = append(relayState.clients, newClient)
-					currentClients += 1
+					relayState.verboseUnlock()
+					
 					fmt.Printf("Waiting for %d clients (on port %s)\n", relayState.nClients - currentClients, relayState.RelayPort)
 				default: 
 					time.Sleep(100 * time.Millisecond)
 		}
+		relayState.verboseRLock()
+		currentClients = len(relayState.clients)
+		expectedNClients = relayState.nClients
+		relayState.verboseRUnlock()
 	}
 	fmt.Println("Client connecting done, ", len(relayState.clients), "clients connected")
 }
 
-func (relayState *RelayState) cloneWithoutDeconnectedClients() *RelayState{
+func excludeDisconnectedClients(){
+	relayState.verboseLock()
 
 	//count the clients that disconnected
 	nClientsDisconnected := 0
@@ -193,29 +237,32 @@ func (relayState *RelayState) cloneWithoutDeconnectedClients() *RelayState{
 
 	//count the actual number of clients, and init the new state with the old parameters
 	newNClients   := relayState.nClients - nClientsDisconnected
-	newRelayState := initiateRelayState(relayState.RelayPort, relayState.nTrustees, newNClients, relayState.PayloadLength, relayState.ReportingLimit, relayState.trusteesHosts)
 
 	//copy the connected clients
-	newRelayState.clients = make([]NodeRepresentation, newNClients)
+	newClients := make([]NodeRepresentation, newNClients)
 	j := 0
 	for i := 0; i<len(relayState.clients); i++ {
 		if relayState.clients[i].Connected {
-			newRelayState.clients[j] = relayState.clients[i]
+			newClients[j] = relayState.clients[i]
 			fmt.Println("Adding Client ", i, "who's not disconnected")
 			j++
 		}
 	}
 
-	return newRelayState
+	relayState.clients = newClients
+	relayState.verboseUnlock()
 }
 
-func (relayState *RelayState) addNewClient(newClient NodeRepresentation){
+func addNewClient(newClient NodeRepresentation){
+	relayState.verboseLock()
 	relayState.nClients = relayState.nClients + 1
 	relayState.clients  = append(relayState.clients, newClient)
+	relayState.verboseUnlock()
 }
 
-func (relayState *RelayState) advertisePublicKeys(){
+func advertisePublicKeys(){
 	//Prepare the messages
+	relayState.verboseRLock()
 	dataForClients   := MarshalNodeRepresentationArrayToByteArray(relayState.trustees)
 	dataForTrustees := MarshalNodeRepresentationArrayToByteArray(relayState.clients)
 
@@ -233,11 +280,14 @@ func (relayState *RelayState) advertisePublicKeys(){
 	BroadcastMessage(relayState.clients, messageForClients)
 	BroadcastMessage(relayState.trustees, dataForTrustees)
 	fmt.Println("Advertising done, to", len(relayState.clients), "clients and", len(relayState.trustees), "trustees")
+	relayState.verboseRUnlock()
 }
 
 
-func (relayState *RelayState) processMessageLoop(protocolFailed chan bool, indicateEndOfProtocol chan int){
+func processMessageLoop(protocolFailed chan bool, indicateEndOfProtocol chan int){
 	//TODO : if something fail, send true->protocolFailed
+
+	relayState.verboseRLock()
 
 	fmt.Println("")
 	fmt.Println("#################################")
@@ -267,6 +317,7 @@ func (relayState *RelayState) processMessageLoop(protocolFailed chan bool, indic
 	for i := 0; i < relayState.nTrustees; i++ {
 		trusteesPayloadData[i] = make([]byte, trusteePayloadLength)
 	}
+	relayState.verboseRUnlock()
 
 	socksProxyConnections := make(map[int]chan<- []byte)
 	downstream            := make(chan dataWithConnectionId)
@@ -283,11 +334,8 @@ func (relayState *RelayState) processMessageLoop(protocolFailed chan bool, indic
 		var mainThreadStatus int
 		select {
 			case mainThreadStatus = <- indicateEndOfProtocol:
-
-				fmt.Println("BAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD")
-				fmt.Println(mainThreadStatus)
 				if mainThreadStatus == PROTOCOL_STATUS_GONNA_RESYNC {
-					println("Main thread status is 1, gonna warn the clients")
+					println("Main thread status is PROTOCOL_STATUS_GONNA_RESYNC, gonna warn the clients")
 					tellClientsToResync = true
 				}
 			default:
@@ -322,6 +370,8 @@ func (relayState *RelayState) processMessageLoop(protocolFailed chan bool, indic
 		binary.BigEndian.PutUint32(downstreamData[4:8], uint32(downbuffer.connectionId)) //this is the SOCKS connection ID
 		binary.BigEndian.PutUint16(downstreamData[8:10], uint16(downstreamDataPayloadLength))
 		copy(downstreamData[10:], downbuffer.data)
+
+		relayState.verboseRLock()
 
 		// Broadcast the downstream data to all clients.
 		BroadcastMessage(relayState.clients, downstreamData)
@@ -391,7 +441,8 @@ func (relayState *RelayState) processMessageLoop(protocolFailed chan bool, indic
 			binary.BigEndian.PutUint32(downstreamData[4:8], uint32(downbuffer.connectionId)) //this is the SOCKS connection ID
 			binary.BigEndian.PutUint16(downstreamData[8:10], uint16(0))
 			BroadcastMessage(relayState.clients, downstreamData)
-
+			
+			relayState.verboseRUnlock()
 			break
 		} else {
 			upstreamPlaintext := relayState.CellCoder.DecodeCell()
@@ -401,6 +452,7 @@ func (relayState *RelayState) processMessageLoop(protocolFailed chan bool, indic
 
 			// Process the decoded cell
 			if upstreamPlaintext == nil {
+				relayState.verboseRUnlock()
 				continue // empty or corrupt upstream cell
 			}
 			if len(upstreamPlaintext) != relayState.PayloadLength {
@@ -412,6 +464,7 @@ func (relayState *RelayState) processMessageLoop(protocolFailed chan bool, indic
 			socksDataLength := int(binary.BigEndian.Uint16(upstreamPlaintext[4:6]))
 
 			if socksConnId == SOCKS_CONNECTION_ID_EMPTY {
+				relayState.verboseRUnlock()
 				continue 
 			}
 
@@ -425,10 +478,13 @@ func (relayState *RelayState) processMessageLoop(protocolFailed chan bool, indic
 
 			if 6+socksDataLength > relayState.PayloadLength {
 				log.Printf("upstream cell invalid length %d", 6+socksDataLength)
+
+				relayState.verboseRUnlock()
 				continue
 			}
 
 			socksConn <- upstreamPlaintext[6 : 6+socksDataLength]
+			relayState.verboseRUnlock()
 		}
 	}
 
@@ -438,30 +494,30 @@ func (relayState *RelayState) processMessageLoop(protocolFailed chan bool, indic
 	indicateEndOfProtocol <- PROTOCOL_STATUS_RESYNCING
 }
 
-func initiateRelayState(relayPort string, nTrustees int, nClients int, payloadLength int, reportingLimit int, trusteesHosts []string) *RelayState {
-	params := new(RelayState)
+func setupRelayState(relayPort string, nTrustees int, nClients int, payloadLength int, reportingLimit int, trusteesHosts []string) {
+	relayState.verboseLock()
 
-	params.Name           = "Relay"
-	params.RelayPort      = relayPort
-	params.PayloadLength  = payloadLength
-	params.ReportingLimit = reportingLimit
+	relayState.Name           = "Relay"
+	relayState.RelayPort      = relayPort
+	relayState.PayloadLength  = payloadLength
+	relayState.ReportingLimit = reportingLimit
 
 	//prepare the crypto parameters
-	rand 	:= suite.Cipher([]byte(params.Name))
+	rand 	:= suite.Cipher([]byte(relayState.Name))
 	base	:= suite.Point().Base()
 
 	//generate own parameters
-	params.privateKey       = suite.Secret().Pick(rand)
-	params.PublicKey        = suite.Point().Mul(base, params.privateKey)
+	relayState.privateKey       = suite.Secret().Pick(rand)
+	relayState.PublicKey        = suite.Point().Mul(base, relayState.privateKey)
 
-	params.nClients      = nClients
-	params.nTrustees     = nTrustees
-	params.trusteesHosts = trusteesHosts
+	relayState.nClients      = nClients
+	relayState.nTrustees     = nTrustees
+	relayState.trusteesHosts = trusteesHosts
 
 	//sets the cell coder, and the history
-	params.CellCoder = factory()
-
-	return params
+	relayState.CellCoder = factory()
+	
+	relayState.verboseUnlock()
 }
 
 func welcomeNewClients(newConnectionsChan chan net.Conn, newClientChan chan NodeRepresentation) {	
@@ -489,7 +545,7 @@ func newSOCKSProxyHandler(connId int, downstreamData chan<- dataWithConnectionId
 	return upstreamData
 }
 
-func connectToTrustee(trusteeId int, trusteeHostAddr string, relayState *RelayState) {
+func connectToTrustee(trusteeId int, trusteeHostAddr string) {
 	//connect
 	fmt.Println("Relay connecting to trustee", trusteeId, "on address", trusteeHostAddr)
 	conn, err := net.Dial("tcp", trusteeHostAddr)
@@ -499,6 +555,7 @@ func connectToTrustee(trusteeId int, trusteeHostAddr string, relayState *RelaySt
 	}
 
 	//tell the trustee server our parameters
+	relayState.verboseRLock()
 	buffer := make([]byte, 20)
 	binary.BigEndian.PutUint32(buffer[0:4], uint32(LLD_PROTOCOL_VERSION))
 	binary.BigEndian.PutUint32(buffer[4:8], uint32(relayState.PayloadLength))
@@ -507,6 +564,7 @@ func connectToTrustee(trusteeId int, trusteeHostAddr string, relayState *RelaySt
 	binary.BigEndian.PutUint32(buffer[16:20], uint32(trusteeId))
 
 	fmt.Println("Writing", LLD_PROTOCOL_VERSION, "setup is", relayState.nClients, relayState.nTrustees, "role is", trusteeId, "cellSize ", relayState.PayloadLength)
+	relayState.verboseRUnlock()
 
 	n, err := conn.Write(buffer)
 
@@ -536,8 +594,9 @@ func connectToTrustee(trusteeId int, trusteeHostAddr string, relayState *RelaySt
 	
 	newTrustee := NodeRepresentation{trusteeId, conn, true, publicKey}
 
-	//side effects
+	relayState.verboseLock()
 	relayState.trustees = append(relayState.trustees, newTrustee)
+	relayState.verboseUnlock()
 }
 
 func relayServerListener(listeningPort string, newConnection chan net.Conn) {
@@ -572,6 +631,7 @@ func relayParseClientParamsAux(conn net.Conn) NodeRepresentation {
 	nodeId := int(binary.BigEndian.Uint32(buffer[4:8]))
 
 	//check that the node ID is not used
+	relayState.verboseRLock()
 	idExists := false
 	nextFreeId := 0
 	for i:=0; i<len(relayState.clients); i++{
@@ -582,6 +642,7 @@ func relayParseClientParamsAux(conn net.Conn) NodeRepresentation {
 			nextFreeId++
 		}
 	}
+	relayState.verboseRUnlock()
 	if idExists {
 		fmt.Println("Client with ID ", nodeId, "tried to connect, but some client already took that ID. changing ID to", nextFreeId)
 		nodeId = nextFreeId
