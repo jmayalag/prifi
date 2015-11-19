@@ -12,6 +12,7 @@ import (
 	"github.com/lbarman/crypto/abstract"
 	//log2 "github.com/lbarman/prifi/log"
 	"time"
+	"os"
 )
 
 // Number of bytes of cell payload to reserve for connection header, length
@@ -142,6 +143,7 @@ func startClient(clientId int, relayHostAddr string, nClients int, nTrustees int
 		clientState.printSecrets()
 		println(">>>> All crypto stuff exchanged !")
 
+		roundCount          := 0
 		continueToNextRound := true
 		for continueToNextRound {
 			select {
@@ -155,24 +157,24 @@ func startClient(clientId int, relayHostAddr string, nClients int, nTrustees int
 							continueToNextRound = false
 
 						case 0 : //data for SOCKS proxy, just hand it over to the dedicated thread
-							println("1")
 							dataForSocksProxy <- data
-							println("2")
 					}
 
 					// TODO Should account the downstream cell in the history
 
 					// Produce and ship the next upstream slice
-							println("3")
 					writeNextUpstreamSlice(dataForRelayBuffer, relayConn, clientState)
-							println("4")
-
 
 					//we report the speed, bytes exchanged, etc
-							println("5")
 					stats.report()
-							println("6")
 			}
+
+			if roundCount > 10 && clientId == 1 {
+				fmt.Println("10/1 GONNA EXIT")
+				os.Exit(1)
+			}
+
+			roundCount++
 		}
 	}
 }

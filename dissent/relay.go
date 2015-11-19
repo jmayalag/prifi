@@ -40,6 +40,7 @@ type RelayState struct {
 type NodeRepresentation struct {
 	Id			int
 	Conn 		net.Conn
+	Connected 	bool
 	PublicKey	abstract.Point
 }
 
@@ -74,7 +75,7 @@ func startRelay(payloadLength int, relayPort string, nClients int, nTrustees int
 
 	//control loop
 	var endOfProtocolState int
-	var newClient NodeRepresentation //TODO this only handles an increment of one client
+	var newClients NodeRepresentation //TODO this only handles an increment of one client
 	for {
 		select {
 			case protocolHasFailed := <- protocolFailed:
@@ -93,7 +94,7 @@ func startRelay(payloadLength int, relayPort string, nClients int, nTrustees int
 					panic("something went wrong, should not happen")
 				}
 
-				time.Sleep(10 * time.Second)
+				time.Sleep(1 * time.Second)
 
 				fmt.Println("oooooooooooooooooooooooooooooooo")
 				for i := 0; i<len(relayState.clients); i++ {
@@ -113,7 +114,7 @@ func startRelay(payloadLength int, relayPort string, nClients int, nTrustees int
 				fmt.Println("*******************************")
 
 
-				time.Sleep(10 * time.Second)
+				time.Sleep(1 * time.Second)
 
 				//2. disconnect the trustees (but not the clients)
 				relayState.disconnectFromAllTrustees()
@@ -177,12 +178,25 @@ func (relayState *RelayState) clone() *RelayState{
 	newRelayState := initiateRelayState(relayState.RelayPort, relayState.nTrustees, newNClients, relayState.PayloadLength, relayState.ReportingLimit, relayState.trusteesHosts)
 
 	//we keep the previous client params
-	newRelayState.clients = make([]NodeRepresentation, relayState.nClients)
+	nClientsDisconnected := 0
+	for i := 0; i<len(relayState.clients); i++ {
+		if !relayState.clients[i].Connected {
+			fmt.Println("CLIENT ", i, " IS NOT COPIED, DISCONNECTED")
+			nClientsDisconnected++
+		}
+	}
+
+	nNewClients           := relayState.nClients - nClientsDisconnected
+	newRelayState.clients = make([]NodeRepresentation, nNewClients)
 
 	fmt.Println("COPYING OLD ", len(relayState.clients), " CLIENTS")
 
+	j := 0
 	for i := 0; i<len(relayState.clients); i++ {
-		newRelayState.clients[i] = relayState.clients[i]
+		if relayState.clients[i].Connected {
+			newRelayState.clients[j] = relayState.clients[i]
+			j++
+		}
 	}
 
 	copy(newRelayState.clients, relayState.clients)
@@ -258,9 +272,9 @@ func (relayState *RelayState) processMessageLoop(protocolFailed chan bool, indic
 	window := 2           // Maximum cells in-flight
 	inflight := 0         // Current cells in-flight
 
-	doResyncWithClients := false
-	for !doResyncWithClients {
-
+	currentSetupContinues := true
+	
+	for currentSetupContinues {
 		println("<")
 
 		//if the main thread tells us to stop (for re-setup)
@@ -298,7 +312,7 @@ func (relayState *RelayState) processMessageLoop(protocolFailed chan bool, indic
 		if tellClientsToResync{
 			fmt.Println("Telling clients to resync")
 			msgType = 1
-			doResyncWithClients = true
+			currentSetupContinues = false
 		}
 
 		//craft the message for clients
@@ -324,11 +338,24 @@ func (relayState *RelayState) processMessageLoop(protocolFailed chan bool, indic
 		relayState.CellCoder.DecodeStart(relayState.PayloadLength, relayState.MessageHistory)
 
 		// Collect a cell ciphertext from each trustee
-		for i := 0; i < relayState.nTrustees; i++ {			
+		errorInThisCell := false
+		for i := 0; i < relayState.nTrustees; i++ {	
+
+			if errorInThisCell {
+				break
+			}
+
 			//TODO: this looks blocking
 			n, err := io.ReadFull(relayState.trustees[i].Conn, trusteesPayloadData[i])
+			if err != nil {
+				errorInThisCell                  = true
+				relayState.trustees[i].Connected = false
+				fmt.Println("Trustee "+strconv.Itoa(i)+" deconnected")
+			}
 			if n < trusteePayloadLength {
-				panic("Relay : Read from trustee failed, read "+strconv.Itoa(n)+" where "+strconv.Itoa(trusteePayloadLength)+" was expected: " + err.Error())
+				errorInThisCell                  = true
+				relayState.trustees[i].Connected = false
+				fmt.Println("Relay : Read from trustee failed, read "+strconv.Itoa(n)+" where "+strconv.Itoa(trusteePayloadLength)+" was expected: " + err.Error())
 			}
 
 			relayState.CellCoder.DecodeTrustee(trusteesPayloadData[i])
@@ -336,52 +363,74 @@ func (relayState *RelayState) processMessageLoop(protocolFailed chan bool, indic
 
 		// Collect an upstream ciphertext from each client
 		for i := 0; i < relayState.nClients; i++ {
+
+			if errorInThisCell {
+				break
+			}
+
 			//TODO: this looks blocking
 			n, err := io.ReadFull(relayState.clients[i].Conn, clientsPayloadData[i])
+			if err != nil {
+				fmt.Println("Client "+strconv.Itoa(i)+" deconnected")
+				errorInThisCell                 = true
+				relayState.clients[i].Connected = false
+			}
 			if n < clientPayloadLength {
-				panic("Relay : Read from client failed, read "+strconv.Itoa(n)+" where "+strconv.Itoa(clientPayloadLength)+" was expected: " + err.Error())
+				errorInThisCell                 = true
+				relayState.clients[i].Connected = false
+				fmt.Println("Relay : Read from client failed, read "+strconv.Itoa(n)+" where "+strconv.Itoa(trusteePayloadLength)+" was expected: " + err.Error())
 			}
 
 			relayState.CellCoder.DecodeClient(clientsPayloadData[i])
 		}
 
-		upstreamPlaintext := relayState.CellCoder.DecodeCell()
-		inflight--
+		if errorInThisCell {
+			//craft the message for clients
+			downstreamData := make([]byte, 10)
+			binary.BigEndian.PutUint32(downstreamData[0:4], uint32(3))
+			binary.BigEndian.PutUint32(downstreamData[4:8], uint32(downbuffer.connectionId)) //this is the SOCKS connection ID
+			binary.BigEndian.PutUint16(downstreamData[8:10], uint16(0))
+			BroadcastMessage(relayState.clients, downstreamData)
+			break
+		} else {
+			upstreamPlaintext := relayState.CellCoder.DecodeCell()
+			inflight--
 
-		stats.addUpstreamCell(int64(relayState.PayloadLength))
+			stats.addUpstreamCell(int64(relayState.PayloadLength))
 
-		// Process the decoded cell
-		if upstreamPlaintext == nil {
-			continue // empty or corrupt upstream cell
+			// Process the decoded cell
+			if upstreamPlaintext == nil {
+				continue // empty or corrupt upstream cell
+			}
+			if len(upstreamPlaintext) != relayState.PayloadLength {
+				panic("DecodeCell produced wrong-size payload")
+			}
+
+			// Decode the upstream cell header (may be empty, all zeros)
+			upstreamPlainTextConnId     := int(binary.BigEndian.Uint32(upstreamPlaintext[0:4]))
+			upstreamPlainTextDataLength := int(binary.BigEndian.Uint16(upstreamPlaintext[4:6]))
+
+			if upstreamPlainTextConnId == 0 {
+				continue // no upstream data
+			}
+
+			//check which connection it belongs to
+			//TODO: what is that ?? this is supposed to be anonymous
+			conn := conns[upstreamPlainTextConnId]
+
+			// client initiating new connection
+			if conn == nil { 
+				conn = relayNewConn(upstreamPlainTextConnId, downstream)
+				conns[upstreamPlainTextConnId] = conn
+			}
+
+			if 6+upstreamPlainTextDataLength > relayState.PayloadLength {
+				log.Printf("upstream cell invalid length %d", 6+upstreamPlainTextDataLength)
+				continue
+			}
+
+			conn <- upstreamPlaintext[6 : 6+upstreamPlainTextDataLength]
 		}
-		if len(upstreamPlaintext) != relayState.PayloadLength {
-			panic("DecodeCell produced wrong-size payload")
-		}
-
-		// Decode the upstream cell header (may be empty, all zeros)
-		upstreamPlainTextConnId     := int(binary.BigEndian.Uint32(upstreamPlaintext[0:4]))
-		upstreamPlainTextDataLength := int(binary.BigEndian.Uint16(upstreamPlaintext[4:6]))
-
-		if upstreamPlainTextConnId == 0 {
-			continue // no upstream data
-		}
-
-		//check which connection it belongs to
-		//TODO: what is that ?? this is supposed to be anonymous
-		conn := conns[upstreamPlainTextConnId]
-
-		// client initiating new connection
-		if conn == nil { 
-			conn = relayNewConn(upstreamPlainTextConnId, downstream)
-			conns[upstreamPlainTextConnId] = conn
-		}
-
-		if 6+upstreamPlainTextDataLength > relayState.PayloadLength {
-			log.Printf("upstream cell invalid length %d", 6+upstreamPlainTextDataLength)
-			continue
-		}
-
-		conn <- upstreamPlaintext[6 : 6+upstreamPlainTextDataLength]
 	}
 
 	indicateEndOfProtocol <- 2
@@ -491,7 +540,7 @@ func connectToTrustee(trusteeId int, trusteeHostAddr string, relayState *RelaySt
 	
 
 	//side effects
-	newTrustee := NodeRepresentation{trusteeId, conn, publicKey}
+	newTrustee := NodeRepresentation{trusteeId, conn, true, publicKey}
 
 	relayState.trustees = append(relayState.trustees, newTrustee)
 }
@@ -553,7 +602,7 @@ func relayParseClientParamsAux(conn net.Conn, relayState *RelayState) NodeRepres
 		panic(">>>>  Relay : can't unmarshal client key ! " + err3.Error())
 	}
 
-	newClient := NodeRepresentation{nodeId, conn, publicKey}
+	newClient := NodeRepresentation{nodeId, conn, true, publicKey}
 
 	return newClient
 }
@@ -596,13 +645,15 @@ func BroadcastMessage(nodes []NodeRepresentation, message []byte) {
 	fmt.Println(hex.Dump(message))
 
 	for i:=0; i<len(nodes); i++ {
-		n, err := nodes[i].Conn.Write(message)
+		if  nodes[i].Connected {
+			n, err := nodes[i].Conn.Write(message)
 
-		fmt.Println("[", nodes[i].Conn.LocalAddr(), " - ", nodes[i].Conn.RemoteAddr(), "]")
+			fmt.Println("[", nodes[i].Conn.LocalAddr(), " - ", nodes[i].Conn.RemoteAddr(), "]")
 
-		if n < len(message) || err != nil {
-			fmt.Println("Could not broadcast to conn", i)
-			panic("Error writing to socket:" + err.Error())
+			if n < len(message) || err != nil {
+				fmt.Println("Could not broadcast to conn", i, "gonna set it to disconnected.")
+				nodes[i].Connected = false
+			}
 		}
 	}
 }
