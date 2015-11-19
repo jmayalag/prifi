@@ -220,9 +220,10 @@ func (relayState *RelayState) advertisePublicKeys(){
 func (relayState *RelayState) processMessageLoop(protocolFailed chan bool, indicateEndOfProtocol chan int){
 	//TODO : if something fail, send true->protocolFailed
 
+	fmt.Println("")
 	fmt.Println("#################################")
-	fmt.Println("# Configuration updated, running #")
-	fmt.Println("#", relayState.nClients, "clients", relayState.nTrustees, "trustees          #")
+	fmt.Println("# Configuration updated, running")
+	fmt.Println("#", relayState.nClients, "clients", relayState.nTrustees, "trustees")
 
 	for i := 0; i<len(relayState.clients); i++ {
 		fmt.Println("# Client", relayState.clients[i].Id, " on port ", relayState.clients[i].Conn.LocalAddr())
@@ -231,6 +232,7 @@ func (relayState *RelayState) processMessageLoop(protocolFailed chan bool, indic
 		fmt.Println("# Trustee", relayState.trustees[i].Id, " on port ", relayState.trustees[i].Conn.LocalAddr())
 	}
 	fmt.Println("#################################")
+	fmt.Println("")
 
 	stats := emptyStatistics(relayState.ReportingLimit)
 
