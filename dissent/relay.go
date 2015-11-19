@@ -75,7 +75,8 @@ func startRelay(payloadLength int, relayPort string, nClients int, nTrustees int
 
 	//control loop
 	var endOfProtocolState int
-	var newClients NodeRepresentation //TODO this only handles an increment of one client
+	newClients := make([]NodeRepresentation, 0)
+
 	for {
 		select {
 			case protocolHasFailed := <- protocolFailed:
@@ -83,9 +84,10 @@ func startRelay(payloadLength int, relayPort string, nClients int, nTrustees int
 				fmt.Println(protocolHasFailed)
 				fmt.Println("protocolHasFailed")
 
-			case newClient = <- newClientWithIdAndPublicKeyChan:
+			case newClient := <- newClientWithIdAndPublicKeyChan:
 				//we tell processMessageLoop to stop ASAP
 				fmt.Println("newClientWithIdAndPublicKeyChan")
+				newClients = append(newClients, newClient)
 				indicateEndOfProtocol <- 1
 
 			case endOfProtocolState = <- indicateEndOfProtocol:
@@ -94,18 +96,23 @@ func startRelay(payloadLength int, relayPort string, nClients int, nTrustees int
 					panic("something went wrong, should not happen")
 				}
 
-				time.Sleep(1 * time.Second)
-
 				fmt.Println("oooooooooooooooooooooooooooooooo")
 				for i := 0; i<len(relayState.clients); i++ {
 					fmt.Println(relayState.clients[i].Id, " - ", relayState.clients[i].PublicKey, " - ", relayState.clients[i].Conn)
 				}
 				fmt.Println("oooooooooooooooooooooooooooooooo")
 
-				//a new client has connected
 				//1. copy the previous relayState
 				newRelayState := relayState.clone() 
-				newRelayState.clients = append(newRelayState.clients, newClient)
+				
+				//2. disconnect the trustees (but not the clients)
+				relayState.disconnectFromAllTrustees()
+				//3. compose new client list
+				for i:=0; i<len(newClients); i++{
+					newRelayState.addNewClient(newClients[i])
+				}
+				newClients = make([]NodeRepresentation, 0)
+
 
 				fmt.Println("*******************************")
 				for i := 0; i<len(newRelayState.clients); i++ {
@@ -114,12 +121,7 @@ func startRelay(payloadLength int, relayPort string, nClients int, nTrustees int
 				fmt.Println("*******************************")
 
 
-				time.Sleep(1 * time.Second)
 
-				//2. disconnect the trustees (but not the clients)
-				relayState.disconnectFromAllTrustees()
-				//3. compose new client list
-				//(done in 1, but this is a bit ugly)
 				//4. reconnect to trustees
 				newRelayState.connectToAllTrustees()
 				//5. exchange the public keys 
@@ -174,10 +176,8 @@ func (relayState *RelayState) waitForDefaultNumberOfClients(newClientConnections
 }
 
 func (relayState *RelayState) clone() *RelayState{
-	newNClients := relayState.nClients + 1
-	newRelayState := initiateRelayState(relayState.RelayPort, relayState.nTrustees, newNClients, relayState.PayloadLength, relayState.ReportingLimit, relayState.trusteesHosts)
 
-	//we keep the previous client params
+	//count the clients that disconnected
 	nClientsDisconnected := 0
 	for i := 0; i<len(relayState.clients); i++ {
 		if !relayState.clients[i].Connected {
@@ -186,11 +186,15 @@ func (relayState *RelayState) clone() *RelayState{
 		}
 	}
 
-	nNewClients           := relayState.nClients - nClientsDisconnected
-	newRelayState.clients = make([]NodeRepresentation, nNewClients)
+	//count the actual number of clients, and init the new state with the old parameters
+	newNClients   := relayState.nClients - nClientsDisconnected
+	newRelayState := initiateRelayState(relayState.RelayPort, relayState.nTrustees, newNClients, relayState.PayloadLength, relayState.ReportingLimit, relayState.trusteesHosts)
+
 
 	fmt.Println("COPYING OLD ", len(relayState.clients), " CLIENTS")
 
+	//copy the connected clients
+	newRelayState.clients = make([]NodeRepresentation, newNClients)
 	j := 0
 	for i := 0; i<len(relayState.clients); i++ {
 		if relayState.clients[i].Connected {
@@ -199,22 +203,12 @@ func (relayState *RelayState) clone() *RelayState{
 		}
 	}
 
-	copy(newRelayState.clients, relayState.clients)
-
 	return newRelayState
 }
 
-func (relayState *RelayState) copyStateAndAddNewClient(newClient NodeRepresentation) *RelayState{
-	newNClients := relayState.nClients + 1
-	newRelayState := initiateRelayState(relayState.RelayPort, relayState.nTrustees, newNClients, relayState.PayloadLength, relayState.ReportingLimit, relayState.trusteesHosts)
-
-	//we keep the previous client params
-	copy(newRelayState.clients, relayState.clients)
-
-	//we add the new client
-	newRelayState.clients = append(newRelayState.clients, newClient)
-
-	return newRelayState
+func (relayState *RelayState) addNewClient(newClient NodeRepresentation){
+	relayState.nClients = relayState.nClients + 1
+	relayState.clients  = append(relayState.clients, newClient)
 }
 
 func (relayState *RelayState) advertisePublicKeys(){
