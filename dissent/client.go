@@ -110,22 +110,23 @@ func startClient(socksConnId int, relayHostAddr string, nClients int, nTrustees 
 	}
 
 	exitClient := false
+	publicKeysMessageReceived := false
+
 	for !exitClient {
 		println(">>>> Configurating... ")
 
 		var trusteesPublicKeys []abstract.Point
-		publicKeysMessageReceived := false
 
 		for !publicKeysMessageReceived{
 			select {
 				case trusteesPublicKeys = <- publicKeysFromRelay:
-					println("Received the public keys !")
 					publicKeysMessageReceived = true
 
 				default: 
 					time.Sleep(1000*time.Millisecond)
 			}
 		}
+		publicKeysMessageReceived = false // we consumed the keys
 
 		//Parse the trustee's public keys
 		for i:=0; i<len(trusteesPublicKeys); i++ {
@@ -172,8 +173,13 @@ func startClient(socksConnId int, relayHostAddr string, nClients int, nTrustees 
 
 					//we report the speed, bytes exchanged, etc
 					stats.report()
+
+				//if we receive keys from relay, that's unexpected, but store them (most likely they will be overwritten, but we need to empty the channel)
+				case trusteesPublicKeys = <- publicKeysFromRelay:
+					publicKeysMessageReceived = true
 			}
 
+			//DEBUG : client 1 hard-fails after 10 loops
 			if roundCount > 10 && socksConnId == 1 {
 				fmt.Println("10/1 GONNA EXIT")
 				os.Exit(1)
@@ -268,15 +274,8 @@ func readDataFromRelay(relayConn net.Conn, dataFromRelay chan<- dataWithMessageT
 
 		if messageType == MESSAGE_TYPE_PUBLICKEYS {
 			//Public key arrays
-
-			println("<<<<<<<<<<<<<<<<<<")
-			println("Data has size")
-			println(len(data))
-
 			publicKeys := util.UnMarshalPublicKeyArrayFromByteArray(data, suite)
-			println("unmarshalling done")
-			publicKeysFromRelay <- publicKeys
-			println("Exiting...")
+			publicKeysFromRelay <- publicKeys // TODO : this may hang
 
 		}  else {
 			// Data

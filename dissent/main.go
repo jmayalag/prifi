@@ -134,9 +134,7 @@ func main() {
 
 	flag.Parse()
 	trusteesIp := []string{*trustee1Host, *trustee2Host, *trustee3Host, *trustee4Host, *trustee5Host}
-
-	fmt.Println(*trustee1Host)
-
+	
 	readConfig()
 
 	//exception

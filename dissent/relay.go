@@ -608,12 +608,9 @@ func MarshalNodeRepresentationArrayToByteArray(nodes []NodeRepresentation) []byt
 		publicKeyLength := make([]byte, 4)
 		binary.BigEndian.PutUint32(publicKeyLength, uint32(len(publicKeysBytes)))
 
-		fmt.Println(">>>>>>>>>>>>>>>>>>>>>>>>> Adding key ", i)
-
 		byteArray = append(byteArray, publicKeyLength...)
 		byteArray = append(byteArray, publicKeysBytes...)
 
-		//fmt.Println(hex.Dump(publicKeysBytes))
 		if err != nil{
 			panic("can't marshal client public key n°"+strconv.Itoa(i))
 		}
@@ -622,14 +619,13 @@ func MarshalNodeRepresentationArrayToByteArray(nodes []NodeRepresentation) []byt
 	return byteArray
 }
 func BroadcastMessage(nodes []NodeRepresentation, message []byte) {
-	fmt.Println("Gonna broadcast this message")
 	fmt.Println(hex.Dump(message))
 
 	for i:=0; i<len(nodes); i++ {
 		if  nodes[i].Connected {
 			n, err := nodes[i].Conn.Write(message)
 
-			fmt.Println("[", nodes[i].Conn.LocalAddr(), " - ", nodes[i].Conn.RemoteAddr(), "]")
+			//fmt.Println("[", nodes[i].Conn.LocalAddr(), " - ", nodes[i].Conn.RemoteAddr(), "]")
 
 			if n < len(message) || err != nil {
 				fmt.Println("Could not broadcast to conn", i, "gonna set it to disconnected.")
