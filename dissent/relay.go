@@ -278,18 +278,15 @@ func (relayState *RelayState) processMessageLoop(protocolFailed chan bool, indic
 			break;
 		}
 
-		//TODO : check if it is required to send empty cell
 		// See if there's any downstream data to forward.
 		var downbuffer dataWithConnectionId
 		select {
 			case downbuffer = <-downstream: // some data to forward downstream
-				//fmt.Println("Downstream data...")
-				//fmt.Printf("v %d\n", len(downbuffer)-6)
-			default: // nothing at the moment to forward
+			default: 
 				downbuffer = nulldown
 		}
 
-		//compute the message type; if 1, the client know they will resync
+		//compute the message type; if MESSAGE_TYPE_DATA_AND_RESYNC, the clients know they will resync
 		msgType := MESSAGE_TYPE_DATA
 		if tellClientsToResync{
 			msgType = MESSAGE_TYPE_DATA_AND_RESYNC
@@ -416,7 +413,7 @@ func (relayState *RelayState) processMessageLoop(protocolFailed chan bool, indic
 	println("Relay main loop : waiting 5 seconds, client should now be waiting for new parameters...")
 	time.Sleep(5*time.Second)
 
-	indicateEndOfProtocol <- 2
+	indicateEndOfProtocol <- PROTOCOL_STATUS_RESYNCING
 }
 
 func initiateRelayState(relayPort string, nTrustees int, nClients int, payloadLength int, reportingLimit int, trusteesHosts []string) *RelayState {
