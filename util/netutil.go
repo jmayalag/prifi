@@ -46,7 +46,7 @@ func MarshalPublicKeyArrayToByteArray(publicKeys []abstract.Point) []byte {
 	var byteArray []byte
 
 	msgType := make([]byte, 4)
-	binary.BigEndian.PutUint32(msgType, uint32(2))
+	binary.BigEndian.PutUint32(msgType, uint32(2)) //MESSAGE_TYPE_PUBLICKEYS))
 	byteArray = append(byteArray, msgType...)
 
 	for i:=0; i<len(publicKeys); i++ {

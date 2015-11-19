@@ -39,11 +39,11 @@ type ClientState struct {
 	MessageHistory		abstract.Cipher
 }
 
-func initiateClientState(clientId int, nTrustees int, nClients int, payloadLength int, useSocksProxy bool) *ClientState {
+func initiateClientState(socksConnId int, nTrustees int, nClients int, payloadLength int, useSocksProxy bool) *ClientState {
 
 	params := new(ClientState)
 
-	params.Name                = "Client-"+strconv.Itoa(clientId)
+	params.Name                = "Client-"+strconv.Itoa(socksConnId)
 	params.nClients            = nClients
 	params.nTrustees           = nTrustees
 	params.PayloadLength       = payloadLength
@@ -82,14 +82,14 @@ func (clientState *ClientState) printSecrets() {
 	}
 }
 
-func startClient(clientId int, relayHostAddr string, nClients int, nTrustees int, payloadLength int, useSocksProxy bool) {
-	fmt.Printf("startClient %d\n", clientId)
+func startClient(socksConnId int, relayHostAddr string, nClients int, nTrustees int, payloadLength int, useSocksProxy bool) {
+	fmt.Printf("startClient %d\n", socksConnId)
 
-	clientState := initiateClientState(clientId, nTrustees, nClients, payloadLength, useSocksProxy)
+	clientState := initiateClientState(socksConnId, nTrustees, nClients, payloadLength, useSocksProxy)
 	stats := emptyStatistics(-1) //no limit
 
 	//connect to relay
-	relayConn := connectToRelay(relayHostAddr, clientId, clientState)
+	relayConn := connectToRelay(relayHostAddr, socksConnId, clientState)
 
 	//initiate downstream stream (relay -> client)
 	dataFromRelay       := make(chan dataWithMessageTypeAndConnId)
@@ -102,7 +102,7 @@ func startClient(clientId int, relayHostAddr string, nClients int, nTrustees int
 	dataForSocksProxy        := make(chan dataWithMessageTypeAndConnId, 0) // This hold the data from the relay to one of the SOCKS connection
 	
 	if(clientState.UseSocksProxy){
-		port := ":" + strconv.Itoa(1080+clientId)
+		port := ":" + strconv.Itoa(1080+socksConnId)
 		go startSocksProxyServerListener(port, socksProxyNewConnections)
 		go startSocksProxyServerHandler(socksProxyNewConnections, dataForRelayBuffer, dataForSocksProxy, clientState)
 	} else {
@@ -174,7 +174,7 @@ func startClient(clientId int, relayHostAddr string, nClients int, nTrustees int
 					stats.report()
 			}
 
-			if roundCount > 10 && clientId == 1 {
+			if roundCount > 10 && socksConnId == 1 {
 				fmt.Println("10/1 GONNA EXIT")
 				os.Exit(1)
 			}
@@ -266,7 +266,7 @@ func readDataFromRelay(relayConn net.Conn, dataFromRelay chan<- dataWithMessageT
 		data := make([]byte, dataLength)
 		n, err = io.ReadFull(relayConn, data)
 
-		if messageType == 2 { //TODO : declare this as a constant
+		if messageType == MESSAGE_TYPE_PUBLICKEYS {
 			//Public key arrays
 
 			println("<<<<<<<<<<<<<<<<<<")
@@ -347,7 +347,7 @@ func startSocksProxyServerHandler(socksProxyNewConnections chan net.Conn, dataFo
 				data          := dataTypeConn.data
 				dataLength    := len(data)
 
-		fmt.Println("Read a message with type", messageType, " socks id ", socksConnId)
+				fmt.Println("Read a message with type", messageType, " socks id ", socksConnId)
 				
 				//Handle the connections, forwards the downstream slice to the SOCKS proxy
 				//if there is no socks proxy, nothing to do (useless case indeed, only for debug)
@@ -365,21 +365,21 @@ func startSocksProxyServerHandler(socksProxyNewConnections chan net.Conn, dataFo
 				}
 
 			//connection closed from SOCKS proxy
-			case clientId := <-socksProxyConnClosed:
-				socksProxyActiveConnections[clientId] = nil
+			case socksConnId := <-socksProxyConnClosed:
+				socksProxyActiveConnections[socksConnId] = nil
 		}
 	}
 }
 
 
-func readDataFromSocksProxy(clientId int, payloadLength int, conn net.Conn, data chan<- []byte, closed chan<- int) {
+func readDataFromSocksProxy(socksConnId int, payloadLength int, conn net.Conn, data chan<- []byte, closed chan<- int) {
 	for {
 		// Read up to a cell worth of data to send upstream
 		buffer := make([]byte, payloadLength)
 		n, err := conn.Read(buffer[socksHeaderLength:])
 
 		// Encode the connection number and actual data length
-		binary.BigEndian.PutUint32(buffer[0:4], uint32(clientId))
+		binary.BigEndian.PutUint32(buffer[0:4], uint32(socksConnId))
 		binary.BigEndian.PutUint16(buffer[4:6], uint16(n))
 
 		data <- buffer
@@ -392,7 +392,7 @@ func readDataFromSocksProxy(clientId int, payloadLength int, conn net.Conn, data
 				println("clientUpload: " + err.Error())
 			}
 			conn.Close()
-			closed <- clientId // signal that channel is closed
+			closed <- socksConnId // signal that channel is closed
 			return
 		}
 	}

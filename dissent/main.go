@@ -51,6 +51,22 @@ const (
 	methNone = 0xff
 )
 
+const SOCKS_CONNECTION_ID_EMPTY = 0
+
+// Authentication methods
+const (
+	MESSAGE_TYPE_DATA = iota
+	MESSAGE_TYPE_DATA_AND_RESYNC
+	MESSAGE_TYPE_PUBLICKEYS
+	MESSAGE_TYPE_LAST_UPLOAD_FAILED
+)
+
+const (
+	PROTOCOL_STATUS_OK = iota
+	PROTOCOL_STATUS_GONNA_RESYNC
+	PROTOCOL_STATUS_RESYNCING
+)
+
 // Address types
 const (
 	addrIPv4   = 0x01
