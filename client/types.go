@@ -5,7 +5,8 @@ import (
 	"encoding/hex"
 	"github.com/lbarman/prifi/dcnet"
 	"github.com/lbarman/crypto/abstract"
-	//log2 "github.com/lbarman/prifi/log"
+	"strconv"
+	"github.com/lbarman/prifi/config"
 )
 
 // Number of bytes of cell payload to reserve for connection header, length
@@ -32,6 +33,34 @@ type ClientState struct {
 	MessageHistory		abstract.Cipher
 }
 
+func newClientState(socksConnId int, nTrustees int, nClients int, payloadLength int, useSocksProxy bool) *ClientState {
+
+	params := new(ClientState)
+
+	params.Name                = "Client-"+strconv.Itoa(socksConnId)
+	params.nClients            = nClients
+	params.nTrustees           = nTrustees
+	params.PayloadLength       = payloadLength
+	params.UseSocksProxy       = useSocksProxy
+
+	//prepare the crypto parameters
+	rand 	:= config.CryptoSuite.Cipher([]byte(params.Name))
+	base	:= config.CryptoSuite.Point().Base()
+
+	//generate own parameters
+	params.privateKey       = config.CryptoSuite.Secret().Pick(rand)
+	params.PublicKey        = config.CryptoSuite.Point().Mul(base, params.privateKey)
+
+	//placeholders for pubkeys and secrets
+	params.TrusteePublicKey = make([]abstract.Point,  nTrustees)
+	params.sharedSecrets    = make([]abstract.Point, nTrustees)
+
+	//sets the cell coder, and the history
+	params.CellCoder           = config.Factory()
+	params.UsablePayloadLength = params.CellCoder.ClientCellSize(payloadLength)
+
+	return params
+}
 
 func (clientState *ClientState) printSecrets() {
 	//print all shared secrets

@@ -10,7 +10,7 @@ import (
 	"github.com/lbarman/prifi/relay"
 	"github.com/lbarman/prifi/trustee"
 	"github.com/lbarman/prifi/config"
-	log2 "github.com/lbarman/prifi/log"
+	prifilog "github.com/lbarman/prifi/log"
 )
 
 func interceptCtrlC() {
@@ -26,7 +26,7 @@ func interceptCtrlC() {
 func main() {
 	interceptCtrlC()
 
-	log2.StringDump("New run...")
+	prifilog.StringDump("New run...")
 
 	//roles...
 	isRelay           := flag.Bool("relay", false, "Start relay node")
@@ -53,7 +53,7 @@ func main() {
 
 	//exception
 	if(*nTrustees > 5) {
-		fmt.Println("Only up to 5 trustees are supported")
+		fmt.Println("Only up to 5 trustees are supported for this prototype")
 		os.Exit(1)
 	}
 

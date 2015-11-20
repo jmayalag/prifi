@@ -10,7 +10,7 @@ import (
 	"log"
 	"net"
 	prifinet "github.com/lbarman/prifi/net"
-	util "github.com/lbarman/prifi/util"
+	prifilog "github.com/lbarman/prifi/log"
 )
 
 var relayState 			*RelayState 
@@ -161,7 +161,7 @@ func processMessageLoop(relayState *RelayState){
 	fmt.Println("#################################")
 	fmt.Println("")
 
-	stats := util.EmptyStatistics(relayState.ReportingLimit)
+	stats := prifilog.EmptyStatistics(relayState.ReportingLimit)
 
 	// Create ciphertext slice bufferfers for all clients and trustees
 	clientPayloadLength := relayState.CellCoder.ClientCellSize(relayState.PayloadLength)
@@ -345,7 +345,7 @@ func processMessageLoop(relayState *RelayState){
 
 func newSOCKSProxyHandler(connId int, downstreamData chan<- prifinet.DataWithConnectionId) chan<- []byte {
 	upstreamData := make(chan []byte)
-	go util.RelaySocksProxy(connId, upstreamData, downstreamData)
+	go prifinet.RelaySocksProxy(connId, upstreamData, downstreamData)
 	return upstreamData
 }
 

@@ -1,9 +1,8 @@
-package util
+package log
 
 import (
 	"fmt"
 	"time"
-	log2 "github.com/lbarman/prifi/log"
 )
 
 type Statistics struct {
@@ -61,7 +60,7 @@ func (stats *Statistics) ReportJson() {
 		stats.instantUpstreamBytes = 0
 		stats.instantDownstreamBytes = 0
 
-		//log2.BenchmarkFloat(fmt.Sprintf("cellsize-%d-upstream-bytes", payloadLength), instantUpSpeed)
+		//prifilog.BenchmarkFloat(fmt.Sprintf("cellsize-%d-upstream-bytes", payloadLength), instantUpSpeed)
 
 		//write JSON
 		data := struct {
@@ -73,7 +72,7 @@ func (stats *Statistics) ReportJson() {
 		    42,//relayState.PayloadLength,
 		    instantUpSpeed,
 		}
-		log2.JsonDump(data)
+		JsonDump(data)
 
 		stats.nextReport = now.Add(stats.period)
 		stats.nReports += 1

@@ -3,51 +3,22 @@ package client
 import (
 	"encoding/binary"
 	"fmt"
-	"github.com/lbarman/prifi/util"
 	"strconv"
 	"io"
 	"net"
 	"github.com/lbarman/crypto/abstract"
 	"github.com/lbarman/prifi/config"
 	prifinet "github.com/lbarman/prifi/net"
+	prifilog "github.com/lbarman/prifi/log"
 	"time"
 	"os"
 )
 
-func initiateClientState(socksConnId int, nTrustees int, nClients int, payloadLength int, useSocksProxy bool) *ClientState {
-
-	params := new(ClientState)
-
-	params.Name                = "Client-"+strconv.Itoa(socksConnId)
-	params.nClients            = nClients
-	params.nTrustees           = nTrustees
-	params.PayloadLength       = payloadLength
-	params.UseSocksProxy       = useSocksProxy
-
-	//prepare the crypto parameters
-	rand 	:= config.CryptoSuite.Cipher([]byte(params.Name))
-	base	:= config.CryptoSuite.Point().Base()
-
-	//generate own parameters
-	params.privateKey       = config.CryptoSuite.Secret().Pick(rand)
-	params.PublicKey        = config.CryptoSuite.Point().Mul(base, params.privateKey)
-
-	//placeholders for pubkeys and secrets
-	params.TrusteePublicKey = make([]abstract.Point,  nTrustees)
-	params.sharedSecrets    = make([]abstract.Point, nTrustees)
-
-	//sets the cell coder, and the history
-	params.CellCoder           = config.Factory()
-	params.UsablePayloadLength = params.CellCoder.ClientCellSize(payloadLength)
-
-	return params
-}
-
 func StartClient(socksConnId int, relayHostAddr string, nClients int, nTrustees int, payloadLength int, useSocksProxy bool) {
 	fmt.Printf("startClient %d\n", socksConnId)
 
-	clientState := initiateClientState(socksConnId, nTrustees, nClients, payloadLength, useSocksProxy)
-	stats := util.EmptyStatistics(-1) //no limit
+	clientState := newClientState(socksConnId, nTrustees, nClients, payloadLength, useSocksProxy)
+	stats := prifilog.EmptyStatistics(-1) //no limit
 
 	//connect to relay
 	relayConn := connectToRelay(relayHostAddr, socksConnId, clientState)
@@ -358,6 +329,7 @@ func readDataFromSocksProxy(socksConnId int, payloadLength int, conn net.Conn, d
 	}
 }
 
+//cheat function to keep the channel empty, i.e. non blocking (when we don't start the socks proxy)
 func channelCleaner(channel chan prifinet.DataWithMessageTypeAndConnId){
 	for{
 		select{

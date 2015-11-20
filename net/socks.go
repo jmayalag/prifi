@@ -1,4 +1,4 @@
-package util
+package net
 
 import (
 	"errors"
@@ -7,7 +7,6 @@ import (
 	"log"
 	"net"
 	"encoding/binary"
-	prifinet "github.com/lbarman/prifi/net"
 )
 
 // Authentication methods
@@ -130,7 +129,7 @@ func readSocksAddr(cr io.Reader, addrtype int) (string, error) {
 	}
 }
 
-func socksRelayDown(cno int, conn net.Conn, downstream chan<- prifinet.DataWithConnectionId) {
+func socksRelayDown(cno int, conn net.Conn, downstream chan<- DataWithConnectionId) {
 	//log.Printf("socksRelayDown: cno %d\n", cno)
 	for {
 		buf := make([]byte, downcellmax)
@@ -140,7 +139,7 @@ func socksRelayDown(cno int, conn net.Conn, downstream chan<- prifinet.DataWithC
 		//fmt.Print(hex.Dump(buf[:n]))
 
 		// Forward the data (or close indication if n==0) downstream
-		downstream <- prifinet.DataWithConnectionId{cno, buf}
+		downstream <- DataWithConnectionId{cno, buf}
 
 		// Connection error or EOF?
 		if n == 0 {
@@ -175,7 +174,7 @@ func socksRelayUp(cno int, conn net.Conn, upstream <-chan []byte) {
 	}
 }
 
-func socks5Reply(cno int, err error, addr net.Addr) prifinet.DataWithConnectionId {
+func socks5Reply(cno int, err error, addr net.Addr) DataWithConnectionId {
 
 	buf := make([]byte, 4)
 	buf[0] = byte(5) // version
@@ -228,17 +227,17 @@ func socks5Reply(cno int, err error, addr net.Addr) prifinet.DataWithConnectionI
 	buf[1] = byte(rep)
 
 	//log.Printf("SOCKS5 reply:\n" + hex.Dump(buf))
-	return prifinet.DataWithConnectionId{cno, buf}
+	return DataWithConnectionId{cno, buf}
 }
 
 
 
 // Main loop of our relay-side SOCKS proxy.
-func RelaySocksProxy(connId int, upstream <-chan []byte, downstream chan<- prifinet.DataWithConnectionId) {
+func RelaySocksProxy(connId int, upstream <-chan []byte, downstream chan<- DataWithConnectionId) {
 
 	// Send downstream close indication when we bail for whatever reason
 	defer func() {
-		downstream <- prifinet.DataWithConnectionId{connId, []byte{}}
+		downstream <- DataWithConnectionId{connId, []byte{}}
 	}()
 
 	// Put a convenient I/O wrapper around the raw upstream channel
@@ -275,7 +274,7 @@ func RelaySocksProxy(connId int, upstream <-chan []byte, downstream chan<- prifi
 		if i >= len(methods) {
 			log.Printf("SOCKS: no supported method")
 			resp := [2]byte{byte(ver), byte(methNone)}
-			downstream <- prifinet.DataWithConnectionId{connId, resp[:]}
+			downstream <- DataWithConnectionId{connId, resp[:]}
 			return
 		}
 		if methods[i] == methNoAuth {
@@ -285,7 +284,7 @@ func RelaySocksProxy(connId int, upstream <-chan []byte, downstream chan<- prifi
 
 	// Reply with the chosen method
 	methresp := [2]byte{byte(ver), byte(methNoAuth)}
-	downstream <- prifinet.DataWithConnectionId{connId, methresp[:]}
+	downstream <- DataWithConnectionId{connId, methresp[:]}
 
 	// Receive client request
 	req := make([]byte, 4)
