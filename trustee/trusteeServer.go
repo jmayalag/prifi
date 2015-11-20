@@ -1,30 +1,24 @@
-package main
+package trustee
 
 import (
 	"encoding/binary"
 	"fmt"
 	"io"
 	"strconv"
-	//"github.com/lbarman/prifi/dcnet"
-	//"log"
 	"encoding/hex"
 	"net"
-	"github.com/lbarman/prifi/dcnet"
 	"github.com/lbarman/crypto/abstract"
-	//log2 "github.com/lbarman/prifi/log"
-	"github.com/lbarman/prifi/util"
+	"github.com/lbarman/prifi/config"
+	prifinet "github.com/lbarman/prifi/net"
 )
 
-
-const listeningPort = ":9000"
-
-func startTrusteeServer() {
+func StartTrusteeServer() {
 
 	fmt.Printf("Starting Trustee Server \n")
 
 	//async listen for incoming connections
 	newConnections := make(chan net.Conn)
-	go startListening(listeningPort, newConnections)
+	go startListening(TRUSTEE_SERVER_LISTENING_PORT, newConnections)
 
 	//active connections will be hold there
 	activeConnections := make([]net.Conn, 0)
@@ -69,26 +63,6 @@ func startListening(listenport string, newConnections chan<- net.Conn) {
 	}
 }
 
-type TrusteeState struct {
-	Name				string
-	TrusteeId			int
-	PayloadLength		int
-	activeConnection	net.Conn
-
-	PublicKey			abstract.Point
-	privateKey			abstract.Secret
-	
-	nClients			int
-	nTrustees			int
-
-	ClientPublicKeys	[]abstract.Point
-	sharedSecrets		[]abstract.Point
-	
-	CellCoder			dcnet.CellCoder
-	
-	MessageHistory		abstract.Cipher
-}
-
 
 func initiateTrusteeState(trusteeId int, nClients int, nTrustees int, payloadLength int, conn net.Conn) *TrusteeState {
 	params := new(TrusteeState)
@@ -101,19 +75,19 @@ func initiateTrusteeState(trusteeId int, nClients int, nTrustees int, payloadLen
 	params.activeConnection = conn
 
 	//prepare the crypto parameters
-	rand 	:= suite.Cipher([]byte(params.Name))
-	base	:= suite.Point().Base()
+	rand 	:= config.CryptoSuite.Cipher([]byte(params.Name))
+	base	:= config.CryptoSuite.Point().Base()
 
 	//generate own parameters
-	params.privateKey       = suite.Secret().Pick(rand)
-	params.PublicKey        = suite.Point().Mul(base, params.privateKey)
+	params.privateKey       = config.CryptoSuite.Secret().Pick(rand)
+	params.PublicKey        = config.CryptoSuite.Point().Mul(base, params.privateKey)
 
 	//placeholders for pubkeys and secrets
 	params.ClientPublicKeys = make([]abstract.Point, nClients)
 	params.sharedSecrets    = make([]abstract.Point, nClients)
 
 	//sets the cell coder, and the history
-	params.CellCoder = factory()
+	params.CellCoder = config.Factory()
 
 	return params
 }
@@ -134,8 +108,8 @@ func handleConnection(connId int,conn net.Conn, closedConnections chan int){
 	//Check the protocol version against ours
 	version := int(binary.BigEndian.Uint32(buffer[0:4]))
 
-	if(version != LLD_PROTOCOL_VERSION) {
-		fmt.Println(">>>> Trustee", connId, "client version", version, "!= server version", LLD_PROTOCOL_VERSION)
+	if(version != config.LLD_PROTOCOL_VERSION) {
+		fmt.Println(">>>> Trustee", connId, "client version", version, "!= server version", config.LLD_PROTOCOL_VERSION)
 		return;
 	}
 
@@ -149,14 +123,14 @@ func handleConnection(connId int,conn net.Conn, closedConnections chan int){
 	
 	//prepare the crypto parameters
 	trusteeState := initiateTrusteeState(trusteeId, nClients, nTrustees, cellSize, conn)
-	util.TellPublicKey(conn, LLD_PROTOCOL_VERSION, trusteeState.PublicKey)
+	prifinet.TellPublicKey(conn, config.LLD_PROTOCOL_VERSION, trusteeState.PublicKey)
 
 	//Read the clients' public keys from the connection
-	clientsPublicKeys := util.UnMarshalPublicKeyArrayFromConnection(conn, suite)
+	clientsPublicKeys := prifinet.UnMarshalPublicKeyArrayFromConnection(conn, config.CryptoSuite)
 	for i:=0; i<len(clientsPublicKeys); i++ {
 		fmt.Println("Reading public key", i)
 		trusteeState.ClientPublicKeys[i] = clientsPublicKeys[i]
-		trusteeState.sharedSecrets[i] = suite.Point().Mul(clientsPublicKeys[i], trusteeState.privateKey)
+		trusteeState.sharedSecrets[i] = config.CryptoSuite.Point().Mul(clientsPublicKeys[i], trusteeState.privateKey)
 	}
 
 	//check that we got all keys

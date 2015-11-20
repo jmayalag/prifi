@@ -1,13 +1,53 @@
-package util
+package net
 
 import (
-	"net"	
-	"fmt"
-	"strconv"
 	"encoding/binary"
+	"fmt"
+	"encoding/hex"
+	"strconv"
+	"net"
 	"github.com/lbarman/crypto/abstract"
 )
 
+func MarshalNodeRepresentationArrayToByteArray(nodes []NodeRepresentation) []byte {
+	var byteArray []byte
+
+	msgType := make([]byte, 4)
+	binary.BigEndian.PutUint32(msgType, uint32(MESSAGE_TYPE_PUBLICKEYS))
+	byteArray = append(byteArray, msgType...)
+
+	for i:=0; i<len(nodes); i++ {
+		publicKeysBytes, err := nodes[i].PublicKey.MarshalBinary()
+		publicKeyLength := make([]byte, 4)
+		binary.BigEndian.PutUint32(publicKeyLength, uint32(len(publicKeysBytes)))
+
+		byteArray = append(byteArray, publicKeyLength...)
+		byteArray = append(byteArray, publicKeysBytes...)
+
+		if err != nil{
+			panic("can't marshal client public key n°"+strconv.Itoa(i))
+		}
+	}
+
+	return byteArray
+}
+
+func BroadcastMessageToNodes(nodes []NodeRepresentation, message []byte) {
+	fmt.Println(hex.Dump(message))
+
+	for i:=0; i<len(nodes); i++ {
+		if  nodes[i].Connected {
+			n, err := nodes[i].Conn.Write(message)
+
+			//fmt.Println("[", nodes[i].Conn.LocalAddr(), " - ", nodes[i].Conn.RemoteAddr(), "]")
+
+			if n < len(message) || err != nil {
+				fmt.Println("Could not broadcast to conn", i, "gonna set it to disconnected.")
+				nodes[i].Connected = false
+			}
+		}
+	}
+}
 
 func BroadcastMessage(conns []net.Conn, message []byte) {
 	for i:=0; i<len(conns); i++ {

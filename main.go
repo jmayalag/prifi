@@ -6,98 +6,12 @@ import (
 	"strconv"
 	"os"
 	"os/signal"
-	"github.com/lbarman/crypto/nist"
-	"github.com/lbarman/prifi/dcnet"
+	"github.com/lbarman/prifi/client"
+	"github.com/lbarman/prifi/relay"
+	"github.com/lbarman/prifi/trustee"
+	"github.com/lbarman/prifi/config"
 	log2 "github.com/lbarman/prifi/log"
 )
-
-//used to make sure everybody has the same version of the software. must be updated manually
-const LLD_PROTOCOL_VERSION = 2
-
-//sets the crypto suite used
-var suite = nist.NewAES128SHA256P256()
-
-//sets the factory for the dcnet's cell encoder/decoder
-var factory = dcnet.SimpleCoderFactory
-
-type dataWithConnectionId struct {
-	connectionId 	int    // connection number
-	data 			[]byte // data buffer
-}
-
-type dataWithMessageType struct {
-	messageType 	int    
-	data 			[]byte
-}
-
-type dataWithMessageTypeAndConnId struct {
-	messageType 	int    
-	connectionId 	int    // connection number (SOCKS id)
-	data 			[]byte
-}
-
-func min(x, y int) int {
-	if x < y {
-		return x
-	}
-	return y
-}
-
-// Authentication methods
-const (
-	methNoAuth = iota
-	methGSS
-	methUserPass
-	methNone = 0xff
-)
-
-const SOCKS_CONNECTION_ID_EMPTY = 0
-
-// Authentication methods
-const (
-	MESSAGE_TYPE_DATA = iota
-	MESSAGE_TYPE_DATA_AND_RESYNC
-	MESSAGE_TYPE_PUBLICKEYS
-	MESSAGE_TYPE_LAST_UPLOAD_FAILED
-)
-
-const (
-	PROTOCOL_STATUS_OK = iota
-	PROTOCOL_STATUS_GONNA_RESYNC
-	PROTOCOL_STATUS_RESYNCING
-)
-
-// Address types
-const (
-	addrIPv4   = 0x01
-	addrDomain = 0x03
-	addrIPv6   = 0x04
-)
-
-// Commands
-const (
-	cmdConnect   = 0x01
-	cmdBind      = 0x02
-	cmdAssociate = 0x03
-)
-
-// Reply codes
-const (
-	repSucceeded = iota
-	repGeneralFailure
-	repConnectionNotAllowed
-	repNetworkUnreachable
-	repHostUnreachable
-	repConnectionRefused
-	repTTLExpired
-	repCommandNotSupported
-	repAddressTypeNotSupported
-)
-
-
-/*
- * MAIN
- */
 
 func interceptCtrlC() {
 	c := make(chan os.Signal, 1)
@@ -135,7 +49,7 @@ func main() {
 	flag.Parse()
 	trusteesIp := []string{*trustee1Host, *trustee2Host, *trustee3Host, *trustee4Host, *trustee5Host}
 	
-	readConfig()
+	config.ReadConfig()
 
 	//exception
 	if(*nTrustees > 5) {
@@ -146,11 +60,11 @@ func main() {
 	relayPortAddr := "localhost:"+strconv.Itoa(*relayPort)
 
 	if *isRelay {
-		startRelay(*cellSize, relayPortAddr, *nClients, *nTrustees, trusteesIp, *relayReceiveLimit)
+		relay.StartRelay(*cellSize, relayPortAddr, *nClients, *nTrustees, trusteesIp, *relayReceiveLimit)
 	} else if *clientId >= 0 {
-		startClient(*clientId, relayPortAddr, *nClients, *nTrustees, *cellSize, *useSocksProxy)
+		client.StartClient(*clientId, relayPortAddr, *nClients, *nTrustees, *cellSize, *useSocksProxy)
 	} else if *isTrusteeServer {
-		startTrusteeServer()
+		trustee.StartTrusteeServer()
 	} else {
 		println("Error: must specify -relay, -trusteesrv, -client=n, or -trustee=n")
 	}

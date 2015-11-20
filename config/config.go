@@ -1,4 +1,4 @@
-package main
+package config
 
 import (
 	"github.com/lbarman/crypto/config"
@@ -15,13 +15,13 @@ type ConfigData struct {
 var configData ConfigData
 var keyPairs []config.KeyPair
 
-func readConfig() error {
+func ReadConfig() error {
 
 	// Load the configuration file
 	configFile.Load("dissent", &configData)
 
 	// Read or create our public/private keypairs
-	pairs, err := configFile.Keys(&configData.Keys, suites.All(), suite)
+	pairs, err := configFile.Keys(&configData.Keys, suites.All(), CryptoSuite)
 	if err != nil {
 		return err
 	}

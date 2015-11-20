@@ -1,4 +1,4 @@
-package main
+package util
 
 import (
 	"errors"
@@ -7,12 +7,54 @@ import (
 	"log"
 	"net"
 	"encoding/binary"
+	prifinet "github.com/lbarman/prifi/net"
 )
+
+// Authentication methods
+const (
+	methNoAuth = iota
+	methGSS
+	methUserPass
+	methNone = 0xff
+)
+
+// Address types
+const (
+	addrIPv4   = 0x01
+	addrDomain = 0x03
+	addrIPv6   = 0x04
+)
+
+// Commands
+const (
+	cmdConnect   = 0x01
+	cmdBind      = 0x02
+	cmdAssociate = 0x03
+)
+
+// Reply codes
+const (
+	repSucceeded = iota
+	repGeneralFailure
+	repConnectionNotAllowed
+	repNetworkUnreachable
+	repHostUnreachable
+	repConnectionRefused
+	repTTLExpired
+	repCommandNotSupported
+	repAddressTypeNotSupported
+)
+
+
+func min(x, y int) int {
+	if x < y {
+		return x
+	}
+	return y
+}
 
 const downcellmax = 16 * 1024 // downstream cell max size
 var errAddressTypeNotSupported = errors.New("SOCKS5 address type not supported")
-
-
 
 type chanreader struct {
 	b   []byte
@@ -88,7 +130,7 @@ func readSocksAddr(cr io.Reader, addrtype int) (string, error) {
 	}
 }
 
-func socksRelayDown(cno int, conn net.Conn, downstream chan<- dataWithConnectionId) {
+func socksRelayDown(cno int, conn net.Conn, downstream chan<- prifinet.DataWithConnectionId) {
 	//log.Printf("socksRelayDown: cno %d\n", cno)
 	for {
 		buf := make([]byte, downcellmax)
@@ -98,7 +140,7 @@ func socksRelayDown(cno int, conn net.Conn, downstream chan<- dataWithConnection
 		//fmt.Print(hex.Dump(buf[:n]))
 
 		// Forward the data (or close indication if n==0) downstream
-		downstream <- dataWithConnectionId{cno, buf}
+		downstream <- prifinet.DataWithConnectionId{cno, buf}
 
 		// Connection error or EOF?
 		if n == 0 {
@@ -133,7 +175,7 @@ func socksRelayUp(cno int, conn net.Conn, upstream <-chan []byte) {
 	}
 }
 
-func socks5Reply(cno int, err error, addr net.Addr) dataWithConnectionId {
+func socks5Reply(cno int, err error, addr net.Addr) prifinet.DataWithConnectionId {
 
 	buf := make([]byte, 4)
 	buf[0] = byte(5) // version
@@ -186,17 +228,17 @@ func socks5Reply(cno int, err error, addr net.Addr) dataWithConnectionId {
 	buf[1] = byte(rep)
 
 	//log.Printf("SOCKS5 reply:\n" + hex.Dump(buf))
-	return dataWithConnectionId{cno, buf}
+	return prifinet.DataWithConnectionId{cno, buf}
 }
 
 
 
 // Main loop of our relay-side SOCKS proxy.
-func relaySocksProxy(connId int, upstream <-chan []byte, downstream chan<- dataWithConnectionId) {
+func RelaySocksProxy(connId int, upstream <-chan []byte, downstream chan<- prifinet.DataWithConnectionId) {
 
 	// Send downstream close indication when we bail for whatever reason
 	defer func() {
-		downstream <- dataWithConnectionId{connId, []byte{}}
+		downstream <- prifinet.DataWithConnectionId{connId, []byte{}}
 	}()
 
 	// Put a convenient I/O wrapper around the raw upstream channel
@@ -233,7 +275,7 @@ func relaySocksProxy(connId int, upstream <-chan []byte, downstream chan<- dataW
 		if i >= len(methods) {
 			log.Printf("SOCKS: no supported method")
 			resp := [2]byte{byte(ver), byte(methNone)}
-			downstream <- dataWithConnectionId{connId, resp[:]}
+			downstream <- prifinet.DataWithConnectionId{connId, resp[:]}
 			return
 		}
 		if methods[i] == methNoAuth {
@@ -243,7 +285,7 @@ func relaySocksProxy(connId int, upstream <-chan []byte, downstream chan<- dataW
 
 	// Reply with the chosen method
 	methresp := [2]byte{byte(ver), byte(methNoAuth)}
-	downstream <- dataWithConnectionId{connId, methresp[:]}
+	downstream <- prifinet.DataWithConnectionId{connId, methresp[:]}
 
 	// Receive client request
 	req := make([]byte, 4)

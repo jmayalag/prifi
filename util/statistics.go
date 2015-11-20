@@ -1,4 +1,4 @@
-package main
+package util
 
 import (
 	"fmt"
@@ -22,29 +22,29 @@ type Statistics struct {
 	instantDownstreamBytes	int64
 }
 
-func emptyStatistics(reportingLimit int) *Statistics{
+func EmptyStatistics(reportingLimit int) *Statistics{
 	stats := Statistics{time.Now(), time.Now(), 0, reportingLimit, time.Duration(3)*time.Second, 0, 0, 0, 0, 0, 0, 0}
 	return &stats
 }
 
-func (stats *Statistics) reportingDone() bool {
+func (stats *Statistics) ReportingDone() bool {
 	return stats.nReports >= stats.maxNReports
 }
 
-func (stats *Statistics) addDownstreamCell(nBytes int64) {
+func (stats *Statistics) AddDownstreamCell(nBytes int64) {
 	stats.totalDownstreamCells += 1
 	stats.totalDownstreamBytes += nBytes
 	stats.instantDownstreamBytes += nBytes
 }
 
-func (stats *Statistics) addUpstreamCell(nBytes int64) {
+func (stats *Statistics) AddUpstreamCell(nBytes int64) {
 	stats.totalUpstreamCells += 1
 	stats.totalUpstreamBytes += nBytes
 	stats.instantUpstreamCells += 1
 	stats.instantUpstreamBytes += nBytes
 }
 
-func (stats *Statistics) reportRelay(relayState *RelayState) {
+func (stats *Statistics) ReportJson() {
 	now := time.Now()
 	if now.After(stats.nextReport) {
 		duration := now.Sub(stats.begin).Seconds()
@@ -70,7 +70,7 @@ func (stats *Statistics) reportRelay(relayState *RelayState) {
 		    Speed float64
 		}{
 		    "upstream-speed-given-cellsize",
-		    relayState.PayloadLength,
+		    42,//relayState.PayloadLength,
 		    instantUpSpeed,
 		}
 		log2.JsonDump(data)
@@ -80,7 +80,7 @@ func (stats *Statistics) reportRelay(relayState *RelayState) {
 	}
 }
 
-func (stats *Statistics) report() {
+func (stats *Statistics) Report() {
 	now := time.Now()
 	if now.After(stats.nextReport) {
 		duration := now.Sub(stats.begin).Seconds()
