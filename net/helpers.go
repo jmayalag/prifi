@@ -3,7 +3,7 @@ package net
 import (
 	"encoding/binary"
 	"fmt"
-	"encoding/hex"
+	//"encoding/hex"
 	"strconv"
 	"net"
 	"github.com/lbarman/crypto/abstract"
@@ -33,7 +33,7 @@ func MarshalNodeRepresentationArrayToByteArray(nodes []NodeRepresentation) []byt
 }
 
 func BroadcastMessageToNodes(nodes []NodeRepresentation, message []byte) {
-	fmt.Println(hex.Dump(message))
+	//fmt.Println(hex.Dump(message))
 
 	for i:=0; i<len(nodes); i++ {
 		if  nodes[i].Connected {

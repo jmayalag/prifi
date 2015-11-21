@@ -30,6 +30,23 @@ func (stats *Statistics) ReportingDone() bool {
 	return stats.nReports >= stats.maxNReports
 }
 
+func (stats *Statistics) Dump() {
+	fmt.Println("Dumping Statistics...")
+	fmt.Println("begin", stats.begin)
+	fmt.Println("nextReport", stats.nextReport)
+	fmt.Println("nReports", stats.nReports)
+	fmt.Println("maxNReports", stats.maxNReports)
+	fmt.Println("period", stats.period)
+
+	fmt.Println(stats.totalUpstreamCells)
+	fmt.Println(stats.totalUpstreamBytes)
+	fmt.Println(stats.totalDownstreamCells)
+	fmt.Println(stats.totalDownstreamBytes)
+	fmt.Println(stats.instantUpstreamCells)
+	fmt.Println(stats.instantUpstreamBytes)
+	fmt.Println(stats.instantDownstreamBytes)
+}
+
 func (stats *Statistics) AddDownstreamCell(nBytes int64) {
 	stats.totalDownstreamCells += 1
 	stats.totalDownstreamBytes += nBytes

@@ -37,7 +37,7 @@ func main() {
 	//parameters config
 	nClients          := flag.Int("nclients", 1, "The number of clients.")
 	nTrustees         := flag.Int("ntrustees", 1, "The number of trustees.")
-	cellSize          := flag.Int("cellsize", 128, "Sets the size of one cell, in bytes.")
+	cellSize          := flag.Int("cellsize", 2048, "Sets the size of one cell, in bytes.")
 	relayPort         := flag.Int("relayport", 9876, "Sets listening port of the relay, waiting for clients.")
 	relayReceiveLimit := flag.Int("reportlimit", -1, "Sets the limit of cells to receive before stopping the relay")
 	trustee1Host      := flag.String("t1host", "localhost", "The Ip address of the 1st trustee, or localhost")
@@ -53,7 +53,7 @@ func main() {
 
 	//exception
 	if(*nTrustees > 5) {
-		fmt.Println("Only up to 5 trustees are supported for this prototype")
+		fmt.Println("Only up to 5 trustees are supported for this prototype") //only limited because of the input parameters
 		os.Exit(1)
 	}
 

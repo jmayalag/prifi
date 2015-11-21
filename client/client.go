@@ -55,7 +55,7 @@ func StartClient(socksConnId int, relayHostAddr string, nClients int, nTrustees 
 					publicKeysMessageReceived = true
 
 				default: 
-					time.Sleep(1000*time.Millisecond)
+					time.Sleep(WAIT_FOR_PUBLICKEY_SLEEP_TIME)
 			}
 		}
 		publicKeysMessageReceived = false // we consumed the keys
@@ -96,12 +96,14 @@ func StartClient(socksConnId int, relayHostAddr string, nClients int, nTrustees 
 
 						case 0 : //data for SOCKS proxy, just hand it over to the dedicated thread
 							dataForSocksProxy <- data
+							stats.AddDownstreamCell(int64(len(data.Data)))
 					}
 
 					// TODO Should account the downstream cell in the history
 
 					// Produce and ship the next upstream slice
-					writeNextUpstreamSlice(dataForRelayBuffer, relayConn, clientState)
+					nBytes := writeNextUpstreamSlice(dataForRelayBuffer, relayConn, clientState)
+					stats.AddUpstreamCell(int64(nBytes))
 
 					//we report the speed, bytes exchanged, etc
 					stats.Report()
@@ -126,7 +128,7 @@ func StartClient(socksConnId int, relayHostAddr string, nClients int, nTrustees 
  * Creates the next cell
  */
 
-func writeNextUpstreamSlice(dataForRelayBuffer chan []byte, relayConn net.Conn, clientState *ClientState) {
+func writeNextUpstreamSlice(dataForRelayBuffer chan []byte, relayConn net.Conn, clientState *ClientState) int {
 	var nextUpstreamBytes []byte
 
 	select
@@ -147,6 +149,8 @@ func writeNextUpstreamSlice(dataForRelayBuffer chan []byte, relayConn net.Conn, 
 	if n != len(upstreamSlice) {
 		panic("Client write to relay error, expected writing "+strconv.Itoa(len(upstreamSlice))+", but wrote "+strconv.Itoa(n)+", err : " + err.Error())
 	}
+
+	return n
 }
 
 

@@ -106,7 +106,7 @@ func welcomeNewClients(newConnectionsChan chan net.Conn, newClientChan chan prif
 				fmt.Println("welcomeNewClients : New client is ready !")
 				newClientChan <- newClient
 			default: 
-				time.Sleep(1000) //todo : check this duration
+				time.Sleep(NEWCLIENT_CHECK_SLEEP_TIME) //todo : check this duration
 		}
 	}
 }

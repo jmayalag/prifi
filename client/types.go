@@ -6,11 +6,14 @@ import (
 	"github.com/lbarman/prifi/dcnet"
 	"github.com/lbarman/crypto/abstract"
 	"strconv"
+	"time"
 	"github.com/lbarman/prifi/config"
 )
 
 // Number of bytes of cell payload to reserve for connection header, length
 const socksHeaderLength = 6
+
+const WAIT_FOR_PUBLICKEY_SLEEP_TIME =  100 * time.Millisecond
 
 type ClientState struct {
 	Name				string

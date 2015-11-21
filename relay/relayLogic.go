@@ -85,7 +85,7 @@ func StartRelay(payloadLength int, relayPort string, nClients int, nTrustees int
 				isProtocolRunning = restartProtocol(relayState, newClients)
 			default: 
 				//all clear! keep this thread handler load low, (accept changes every X millisecond)
-				time.Sleep(1000 * time.Millisecond)
+				time.Sleep(CONTROL_LOOP_SLEEP_TIME)
 		}
 	}
 }
@@ -111,8 +111,7 @@ func restartProtocol(relayState *RelayState, newClients []prifinet.NodeRepresent
 		relayState.connectToAllTrustees()
 		relayState.advertisePublicKeys()
 
-		fmt.Println("Client should be OK ...")
-		time.Sleep(5*time.Second)
+		time.Sleep(INBETWEEN_CONFIG_SLEEP_TIME)
 
 		//process message loop
 		relayStateCopy := relayState.deepClone()
@@ -337,8 +336,8 @@ func processMessageLoop(relayState *RelayState){
 		}
 	}
 
-	fmt.Println("Relay main loop : waiting 5 seconds, client should now be waiting for new parameters...")
-	time.Sleep(5*time.Second)
+	fmt.Println("Relay main loop : waiting ",INBETWEEN_CONFIG_SLEEP_TIME," seconds, client should now be waiting for new parameters...")
+	time.Sleep(INBETWEEN_CONFIG_SLEEP_TIME)
 
 	indicateEndOfProtocol <- PROTOCOL_STATUS_RESYNCING
 }
