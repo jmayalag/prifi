@@ -99,22 +99,10 @@ func welcomeNewClients(newConnectionsChan chan net.Conn, newClientChan chan prif
 		select{
 			//accept the TCP connection, and parse the parameters
 			case newConnection := <-newConnectionsChan: 
-
-				fmt.Println("")
-				fmt.Println(" A NEW CLIENT HAS BEEN HANDLED 0")
-				fmt.Println("")
-
 				go relayParseClientParams(newConnection, newClientsToParse)
 			
 			//once client is ready (we have params+pk), forward to the other channel
 			case newClient := <-newClientsToParse: 
-
-
-				fmt.Println("")
-				fmt.Println(" A NEW CLIENT HAS BEEN HANDLED 1")
-				fmt.Println("")
-
-
 				fmt.Println("welcomeNewClients : New client is ready !")
 				newClientChan <- newClient
 			default: 

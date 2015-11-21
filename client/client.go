@@ -202,8 +202,6 @@ func readDataFromRelay(relayConn net.Conn, dataFromRelay chan<- prifinet.DataWit
 		socksConnId := int(binary.BigEndian.Uint32(header[4:8]))
 		dataLength  := int(binary.BigEndian.Uint16(header[8:10]))
 
-		fmt.Println("Read a message with type", messageType, " socks id ", socksConnId, "data length", dataLength)
-
 		// Read the data
 		data := make([]byte, dataLength)
 		n, err = io.ReadFull(relayConn, data)
