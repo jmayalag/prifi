@@ -103,11 +103,6 @@ func MarshalPublicKeyArrayToByteArray(publicKeys []abstract.Point) []byte {
 }
 
 func UnMarshalPublicKeyArrayFromConnection(conn net.Conn, cryptoSuite abstract.Suite) []abstract.Point {
-
-	println("Gonna read...")
-	fmt.Println("[", conn.LocalAddr(), " - ", conn.RemoteAddr(), "]")
-
-	fmt.Println(conn)
 	//collect the public keys from the trustees
 	buffer := make([]byte, 1024)
 	_, err := conn.Read(buffer)

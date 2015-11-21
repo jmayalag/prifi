@@ -49,6 +49,14 @@ func StartRelay(payloadLength int, relayPort string, nClients int, nTrustees int
 	newClients := make([]prifinet.NodeRepresentation, 0)
 
 	for {
+
+				fmt.Println("")
+				fmt.Println(" CURRENT STATUS OF NEWCLIENTS ")
+					for i := 0; i<len(newClients); i++ {
+						fmt.Println("# Client in the add list ", newClients[i].Id, " connected =", newClients[i].Connected)
+					}
+				fmt.Println("")
+
 		select {
 			case protocolHasFailed := <- protocolFailed:
 				fmt.Println(protocolHasFailed)
@@ -65,6 +73,11 @@ func StartRelay(payloadLength int, relayPort string, nClients int, nTrustees int
 
 			case newClient := <- newClientWithIdAndPublicKeyChan:
 				//we tell processMessageLoop to stop when possible
+
+				fmt.Println("")
+				fmt.Println(" A NEW CLIENT HAS BEEN HANDLED 2")
+				fmt.Println("")
+
 				newClients = append(newClients, newClient)
 				if isProtocolRunning {
 					fmt.Println("Relay Handler : new Client is ready, stopping processing loop")
@@ -72,6 +85,7 @@ func StartRelay(payloadLength int, relayPort string, nClients int, nTrustees int
 				} else {
 					fmt.Println("Relay Handler : new Client is ready, restarting processing loop")
 					isProtocolRunning = restartProtocol(relayState, newClients)
+					newClients = make([]prifinet.NodeRepresentation, 0)
 					fmt.Println("Done...")
 				}
 
@@ -83,6 +97,7 @@ func StartRelay(payloadLength int, relayPort string, nClients int, nTrustees int
 				}
 
 				isProtocolRunning = restartProtocol(relayState, newClients)
+				newClients = make([]prifinet.NodeRepresentation, 0)
 			default: 
 				//all clear! keep this thread handler load low, (accept changes every X millisecond)
 				time.Sleep(CONTROL_LOOP_SLEEP_TIME)
@@ -94,13 +109,26 @@ func restartProtocol(relayState *RelayState, newClients []prifinet.NodeRepresent
 	relayState.excludeDisconnectedClients() 				
 	relayState.disconnectFromAllTrustees()
 
+	for i := 0; i<len(newClients); i++ {
+		fmt.Println("# Client in the add list ", newClients[i].Id, " connected =", newClients[i].Connected)
+	}
+
 	//add the new clients to the previous (filtered) list
 	for i:=0; i<len(newClients); i++{
 		relayState.addNewClient(newClients[i])
 		fmt.Println("Adding new client")
 		fmt.Println(newClients[i])
 	}
-	newClients = make([]prifinet.NodeRepresentation, 0)
+	relayState.nClients = len(relayState.clients)
+
+	fmt.Println("Config has been updated, current config is")
+	for i := 0; i<len(relayState.clients); i++ {
+		fmt.Println("# Client", relayState.clients[i].Id, " connected =", relayState.clients[i].Connected)
+	}
+
+	for i := 0; i<len(newClients); i++ {
+		fmt.Println("# Client in the add list ", newClients[i].Id, " connected =", newClients[i].Connected)
+	}
 
 	//if we dont have enough client, stop.
 	if len(relayState.clients) == 0{
