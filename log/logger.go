@@ -45,3 +45,17 @@ func writeToLogFile(s string) {
 	log.SetOutput(f)
 	log.Println(s)
 }
+
+/* Usage :
+func factorial(n *big.Int) (result *big.Int) {
+    defer timeTrack(time.Now(), "factorial")
+    // ... do some things, maybe even return under some condition
+    return n
+}
+*/
+func timeTrack(start time.Time, name string) {
+    elapsed := time.Since(start)
+    s := fmt.Sprintf("%s took %s", name, elapsed)
+    log.Printf(s)
+    writeToLogFile(s)
+}
