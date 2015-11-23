@@ -2,6 +2,7 @@ package log
 
 import (
 	"time"
+	"fmt"
 	"sync"
 	"github.com/fatih/color"
 )
@@ -17,7 +18,7 @@ type StateMachineStateChange struct {
 	Time			time.Time
 }
 
-type StateMachineLogs struct {
+type StateMachineLogger struct {
 	sync.Mutex
 	currentState	string
 	timeEnterState	time.Time
@@ -25,31 +26,42 @@ type StateMachineLogs struct {
 }
 
 //output is meaningful only when EXITING a state
-func (sml *StateMachineLogs) addStateChange(newState string, action int16) time.Duration {
+func (sml *StateMachineLogger) addStateChange(newState string, action int16) time.Duration {
 	//NOT thread safe, but private
 	currentTime        := time.Now()
 	newMeasure         := StateMachineStateChange{newState, action, currentTime}
 	sml.measures       = append(sml.measures, newMeasure)
 
 	timeSpentInPrevState := time.Since(sml.timeEnterState)
-	sml.timeEnterState = currentTime
+	sml.timeEnterState   = currentTime
+	sml.currentState     = newState
 
 	return timeSpentInPrevState
 }
 
-func (sml *StateMachineLogs) Init () {
+func NewStateMachineLogger() *StateMachineLogger {
+	sml := StateMachineLogger{}
+	sml.Init()
+
+	return &sml
+}
+
+func (sml *StateMachineLogger) Init () {
+	fmt.Println("requesting lock...")
 	sml.Lock()
 
-	initialState     := "init"
-	sml.currentState = initialState
-	sml.measures     = make([]StateMachineStateChange, 0)
+	initialState       := "statemachinelogger-init"
+	sml.timeEnterState = time.Now()
+	sml.measures       = make([]StateMachineStateChange, 0)
 
 	sml.addStateChange(initialState, ACTION_ENTER_STATE)
 
 	sml.Unlock()
+	fmt.Println("releasing lock...")
 }
 
-func (sml *StateMachineLogs) StateChange(newState string){
+func (sml *StateMachineLogger) StateChange(newState string){
+	fmt.Println("requesting lock...")
 	sml.Lock()
 
 	//exit
@@ -57,9 +69,10 @@ func (sml *StateMachineLogs) StateChange(newState string){
 	timeSpendInState := sml.addStateChange(oldState, ACTION_EXIT_STATE)
 	sml.addStateChange(newState, ACTION_ENTER_STATE)
 
-	color.Blue("[Timings] Left state %s after %s sec.", oldState, timeSpendInState)
+	color.White("[Timings] Left state %s after %s", oldState, timeSpendInState)
 
 	sml.Unlock()
+	fmt.Println("releasing lock...")
 }
 
 /*

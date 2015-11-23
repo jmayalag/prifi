@@ -14,6 +14,7 @@ import (
 )
 
 var relayState 			*RelayState 
+var stateMachineLogger 	*prifilog.StateMachineLogger
 
 var	protocolFailed        = make(chan bool)
 var	indicateEndOfProtocol = make(chan int)
@@ -21,6 +22,9 @@ var	deconnectedClients	  = make(chan int)
 var	deconnectedTrustees	  = make(chan int)
 
 func StartRelay(payloadLength int, relayPort string, nClients int, nTrustees int, trusteesIp []string, reportingLimit int) {
+
+	stateMachineLogger = prifilog.NewStateMachineLogger()
+	stateMachineLogger.StateChange("relay-init")
 
 	relayState = initiateRelayState(relayPort, nTrustees, nClients, payloadLength, reportingLimit, trusteesIp)
 
@@ -32,12 +36,12 @@ func StartRelay(payloadLength int, relayPort string, nClients int, nTrustees int
 	newClientWithIdAndPublicKeyChan := make(chan prifinet.NodeRepresentation)  //channel with parsed clients
 	go welcomeNewClients(newClientConnectionsChan, newClientWithIdAndPublicKeyChan)
 
+	stateMachineLogger.StateChange("protocol-setup")
+
 	//start the actual protocol
 	relayState.connectToAllTrustees()
 	relayState.waitForDefaultNumberOfClients(newClientWithIdAndPublicKeyChan)
 	relayState.advertisePublicKeys()	
-
-	//inputs and feedbacks for "processMessageLoop"
 
 	//copy for subtrhead
 	relayStateCopy := relayState.deepClone()
@@ -149,6 +153,8 @@ func (relayState *RelayState) advertisePublicKeys(){
 func processMessageLoop(relayState *RelayState){
 	//TODO : if something fail, send true->protocolFailed
 
+	stateMachineLogger.StateChange("protocol-mainloop")
+
 	fmt.Println("")
 	fmt.Println("#################################")
 	fmt.Println("# Configuration updated, running")
@@ -188,6 +194,8 @@ func processMessageLoop(relayState *RelayState){
 	
 	for currentSetupContinues {
 
+		fmt.Printf("0")
+
 		//if the main thread tells us to stop (for re-setup)
 		tellClientsToResync := false
 		var mainThreadStatus int
@@ -200,12 +208,16 @@ func processMessageLoop(relayState *RelayState){
 			default:
 		}
 
+		fmt.Printf("1")
+
 		//we report the speed, bytes exchanged, etc
 		stats.Report()
 		if stats.ReportingDone() {
 			fmt.Println("Reporting limit matched; exiting the relay")
 			break;
 		}
+
+		fmt.Printf("2")
 
 		// See if there's any downstream data to forward.
 		var downbuffer prifinet.DataWithConnectionId
@@ -214,6 +226,8 @@ func processMessageLoop(relayState *RelayState){
 			default: 
 				downbuffer = nulldown
 		}
+
+		fmt.Printf("3")
 
 		//compute the message type; if MESSAGE_TYPE_DATA_AND_RESYNC, the clients know they will resync
 		msgType := prifinet.MESSAGE_TYPE_DATA
@@ -234,6 +248,8 @@ func processMessageLoop(relayState *RelayState){
 		prifinet.BroadcastMessageToNodes(relayState.clients, downstreamData)
 		stats.AddDownstreamCell(int64(downstreamDataPayloadLength))
 
+		fmt.Printf("4")
+
 		inflight++
 		if inflight < window {
 			continue // Get more cells in flight
@@ -243,6 +259,7 @@ func processMessageLoop(relayState *RelayState){
 
 		// Collect a cell ciphertext from each trustee
 		errorInThisCell := false
+		fmt.Printf("[")
 		for i := 0; i < relayState.nTrustees; i++ {	
 
 			if errorInThisCell {
@@ -251,6 +268,7 @@ func processMessageLoop(relayState *RelayState){
 
 			//TODO: this looks blocking
 			n, err := io.ReadFull(relayState.trustees[i].Conn, trusteesPayloadData[i])
+			fmt.Printf(strconv.Itoa(i))
 			if err != nil {
 				errorInThisCell = true
 				deconnectedTrustees <- i
@@ -265,6 +283,10 @@ func processMessageLoop(relayState *RelayState){
 			relayState.CellCoder.DecodeTrustee(trusteesPayloadData[i])
 		}
 
+		fmt.Printf("]")
+		fmt.Printf("5")
+		fmt.Printf("[")
+
 		// Collect an upstream ciphertext from each client
 		for i := 0; i < relayState.nClients; i++ {
 
@@ -274,6 +296,7 @@ func processMessageLoop(relayState *RelayState){
 
 			//TODO: this looks blocking
 			n, err := io.ReadFull(relayState.clients[i].Conn, clientsPayloadData[i])
+			fmt.Printf(strconv.Itoa(i))
 			if err != nil {
 				errorInThisCell = true
 				deconnectedClients <- i
@@ -288,6 +311,9 @@ func processMessageLoop(relayState *RelayState){
 			relayState.CellCoder.DecodeClient(clientsPayloadData[i])
 		}
 
+		fmt.Printf("]")
+		fmt.Printf("6")
+
 		if errorInThisCell {
 			
 			fmt.Println("Relay main loop : Cell will be invalid, some party disconnected. Warning the clients...")
@@ -299,12 +325,16 @@ func processMessageLoop(relayState *RelayState){
 			binary.BigEndian.PutUint16(downstreamData[8:10], uint16(0))
 			prifinet.BroadcastMessageToNodes(relayState.clients, downstreamData)
 
+		fmt.Printf("7")
 			break
 		} else {
 			upstreamPlaintext := relayState.CellCoder.DecodeCell()
 			inflight--
 
 			stats.AddUpstreamCell(int64(relayState.PayloadLength))
+
+
+		fmt.Printf("8")
 
 			// Process the decoded cell
 			if upstreamPlaintext == nil {
@@ -343,6 +373,8 @@ func processMessageLoop(relayState *RelayState){
 	time.Sleep(INBETWEEN_CONFIG_SLEEP_TIME)
 
 	indicateEndOfProtocol <- PROTOCOL_STATUS_RESYNCING
+
+	stateMachineLogger.StateChange("protocol-resync")
 }
 
 func newSOCKSProxyHandler(connId int, downstreamData chan<- prifinet.DataWithConnectionId) chan<- []byte {

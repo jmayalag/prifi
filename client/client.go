@@ -37,8 +37,6 @@ func StartClient(socksConnId int, relayHostAddr string, nClients int, nTrustees 
 		port := ":" + strconv.Itoa(1080+socksConnId)
 		go startSocksProxyServerListener(port, socksProxyNewConnections)
 		go startSocksProxyServerHandler(socksProxyNewConnections, dataForRelayBuffer, dataForSocksProxy, clientState)
-	} else {
-		go channelCleaner(dataForSocksProxy)
 	}
 
 	exitClient := false
@@ -95,7 +93,9 @@ func StartClient(socksConnId int, relayHostAddr string, nClients int, nTrustees 
 							continueToNextRound = false
 
 						case 0 : //data for SOCKS proxy, just hand it over to the dedicated thread
-							dataForSocksProxy <- data
+							if(clientState.UseSocksProxy){
+								dataForSocksProxy <- data
+							}
 							stats.AddDownstreamCell(int64(len(data.Data)))
 					}
 
@@ -146,13 +146,13 @@ func writeNextUpstreamSlice(dataForRelayBuffer chan []byte, relayConn net.Conn, 
 	}
 
 	n, err := relayConn.Write(upstreamSlice)
+
 	if n != len(upstreamSlice) {
 		panic("Client write to relay error, expected writing "+strconv.Itoa(len(upstreamSlice))+", but wrote "+strconv.Itoa(n)+", err : " + err.Error())
 	}
 
 	return n
 }
-
 
 /*
  * RELAY CONNECTION
@@ -327,19 +327,6 @@ func readDataFromSocksProxy(socksConnId int, payloadLength int, conn net.Conn, d
 			conn.Close()
 			closed <- socksConnId // signal that channel is closed
 			return
-		}
-	}
-}
-
-//cheat function to keep the channel empty, i.e. non blocking (when we don't start the socks proxy)
-func channelCleaner(channel chan prifinet.DataWithMessageTypeAndConnId){
-	for{
-		select{
-			case x := <- channel:
-				_ = x //could this be more ugly ?
-				//do nothing
-			default:
-				time.Sleep(1000 * time.Millisecond)
 		}
 	}
 }
