@@ -2,7 +2,6 @@ package log
 
 import (
 	"time"
-	"fmt"
 	"sync"
 	"github.com/fatih/color"
 )
@@ -47,7 +46,6 @@ func NewStateMachineLogger() *StateMachineLogger {
 }
 
 func (sml *StateMachineLogger) Init () {
-	fmt.Println("requesting lock...")
 	sml.Lock()
 
 	initialState       := "statemachinelogger-init"
@@ -57,11 +55,9 @@ func (sml *StateMachineLogger) Init () {
 	sml.addStateChange(initialState, ACTION_ENTER_STATE)
 
 	sml.Unlock()
-	fmt.Println("releasing lock...")
 }
 
 func (sml *StateMachineLogger) StateChange(newState string){
-	fmt.Println("requesting lock...")
 	sml.Lock()
 
 	//exit
@@ -72,7 +68,6 @@ func (sml *StateMachineLogger) StateChange(newState string){
 	color.White("[Timings] Left state %s after %s", oldState, timeSpendInState)
 
 	sml.Unlock()
-	fmt.Println("releasing lock...")
 }
 
 /*

@@ -11,7 +11,8 @@ import (
 const CONTROL_LOOP_SLEEP_TIME     =  time.Second
 const PROCESSING_LOOP_SLEEP_TIME  =  time.Second
 const INBETWEEN_CONFIG_SLEEP_TIME =  0 * time.Second
-const NEWCLIENT_CHECK_SLEEP_TIME =  100 * time.Millisecond
+const NEWCLIENT_CHECK_SLEEP_TIME  =  100 * time.Millisecond
+const INBETWEEN_ROUND_SLEEP_TIME  = time.Second
 
 const (
 	PROTOCOL_STATUS_OK = iota
