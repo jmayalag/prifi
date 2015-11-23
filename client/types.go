@@ -15,7 +15,13 @@ const socksHeaderLength = 6
 
 const WAIT_FOR_PUBLICKEY_SLEEP_TIME =  100 * time.Millisecond
 
+type ParamsFromRelay struct {
+	publicKeys []abstract.Point
+	nClients  	int
+}
+
 type ClientState struct {
+	Id					int
 	Name				string
 
 	PublicKey			abstract.Point
@@ -36,11 +42,12 @@ type ClientState struct {
 	MessageHistory		abstract.Cipher
 }
 
-func newClientState(socksConnId int, nTrustees int, nClients int, payloadLength int, useSocksProxy bool) *ClientState {
+func newClientState(clientId int, nTrustees int, nClients int, payloadLength int, useSocksProxy bool) *ClientState {
 
 	params := new(ClientState)
 
-	params.Name                = "Client-"+strconv.Itoa(socksConnId)
+	params.Name                = "Client-"+strconv.Itoa(clientId)
+	params.Id 				   = clientId
 	params.nClients            = nClients
 	params.nTrustees           = nTrustees
 	params.PayloadLength       = payloadLength

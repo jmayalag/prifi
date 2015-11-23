@@ -137,7 +137,7 @@ func (relayState *RelayState) advertisePublicKeys(){
 	messageForClientsLength := len(dataForClients)
 	messageForClients := make([]byte, 10+messageForClientsLength)
 	binary.BigEndian.PutUint32(messageForClients[0:4], uint32(prifinet.MESSAGE_TYPE_PUBLICKEYS))
-	binary.BigEndian.PutUint32(messageForClients[4:8], uint32(prifinet.SOCKS_CONNECTION_ID_EMPTY))
+	binary.BigEndian.PutUint32(messageForClients[4:8], uint32(relayState.nClients))
 	binary.BigEndian.PutUint16(messageForClients[8:10], uint16(messageForClientsLength))
 	copy(messageForClients[10:], dataForClients)
 

@@ -6,7 +6,6 @@ import (
 	"strconv"
 	"io"
 	"net"
-	"github.com/lbarman/crypto/abstract"
 	"github.com/lbarman/prifi/config"
 	prifinet "github.com/lbarman/prifi/net"
 	prifilog "github.com/lbarman/prifi/log"
@@ -14,10 +13,10 @@ import (
 	"os"
 )
 
-func StartClient(socksConnId int, relayHostAddr string, nClients int, nTrustees int, payloadLength int, useSocksProxy bool) {
+func StartClient(socksConnId int, relayHostAddr string, expectedNumberOfClients int, nTrustees int, payloadLength int, useSocksProxy bool) {
 	fmt.Printf("startClient %d\n", socksConnId)
 
-	clientState := newClientState(socksConnId, nTrustees, nClients, payloadLength, useSocksProxy)
+	clientState := newClientState(socksConnId, nTrustees, expectedNumberOfClients, payloadLength, useSocksProxy)
 	stats := prifilog.EmptyStatistics(-1) //no limit
 
 	//connect to relay
@@ -25,8 +24,8 @@ func StartClient(socksConnId int, relayHostAddr string, nClients int, nTrustees 
 
 	//initiate downstream stream (relay -> client)
 	dataFromRelay       := make(chan prifinet.DataWithMessageTypeAndConnId)
-	publicKeysFromRelay := make(chan []abstract.Point)
-	go readDataFromRelay(relayConn, dataFromRelay, publicKeysFromRelay)
+	paramsFromRelayChan := make(chan ParamsFromRelay)
+	go readDataFromRelay(relayConn, dataFromRelay, paramsFromRelayChan)
 
 	//start the socks proxy
 	socksProxyNewConnections := make(chan net.Conn)
@@ -39,26 +38,29 @@ func StartClient(socksConnId int, relayHostAddr string, nClients int, nTrustees 
 		go startSocksProxyServerHandler(socksProxyNewConnections, dataForRelayBuffer, dataForSocksProxy, clientState)
 	}
 
-	exitClient := false
-	publicKeysMessageReceived := false
+	exitClient            := false
+	paramsMessageReceived := false
 
 	for !exitClient {
 		println(">>>> Configurating... ")
 
-		var trusteesPublicKeys []abstract.Point
+		var params ParamsFromRelay
 
-		for !publicKeysMessageReceived{
+		for !paramsMessageReceived{
 			select {
-				case trusteesPublicKeys = <- publicKeysFromRelay:
-					publicKeysMessageReceived = true
+				case params = <- paramsFromRelayChan:
+					fmt.Println("Client : Received params; ", params.nClients, " clients and ", len(params.publicKeys), "trustees.")
+					paramsMessageReceived = true
+					clientState.nClients = params.nClients
 
 				default: 
 					time.Sleep(WAIT_FOR_PUBLICKEY_SLEEP_TIME)
 			}
 		}
-		publicKeysMessageReceived = false // we consumed the keys
+		paramsMessageReceived = false // we consumed the keys
 
 		//Parse the trustee's public keys
+		trusteesPublicKeys := params.publicKeys
 		for i:=0; i<len(trusteesPublicKeys); i++ {
 			clientState.TrusteePublicKey[i] = trusteesPublicKeys[i]
 			clientState.sharedSecrets[i] = config.CryptoSuite.Point().Mul(trusteesPublicKeys[i], clientState.privateKey)
@@ -71,6 +73,8 @@ func StartClient(socksConnId int, relayHostAddr string, nClients int, nTrustees 
 			}
 		}
 
+		//TODO: Shuffle to detect if we own the slot
+		myRound := roundScheduling(clientState)
 		clientState.printSecrets()
 		println(">>>> All crypto stuff exchanged !")
 
@@ -80,7 +84,14 @@ func StartClient(socksConnId int, relayHostAddr string, nClients int, nTrustees 
 			select {
 				//downstream slice from relay (normal DC-net cycle)
 				case data := <-dataFromRelay:
-					print(".")
+
+					//compute in which round we are (respective to the number of Clients)
+					currentRound := roundCount % clientState.nClients
+					isMySlot := false
+					if currentRound == myRound {
+						isMySlot = true
+					}
+					fmt.Println("[", currentRound, "-",myRound, "]")
 
 					switch data.MessageType {
 
@@ -102,15 +113,16 @@ func StartClient(socksConnId int, relayHostAddr string, nClients int, nTrustees 
 					// TODO Should account the downstream cell in the history
 
 					// Produce and ship the next upstream slice
-					nBytes := writeNextUpstreamSlice(dataForRelayBuffer, relayConn, clientState)
+					//TODO : Branch here. If we don't own the cell, data must be empty.
+					nBytes := writeNextUpstreamSlice(isMySlot, dataForRelayBuffer, relayConn, clientState)
 					stats.AddUpstreamCell(int64(nBytes))
 
 					//we report the speed, bytes exchanged, etc
 					stats.Report()
 
 				//if we receive keys from relay, that's unexpected, but store them (most likely they will be overwritten, but we need to empty the channel)
-				case trusteesPublicKeys = <- publicKeysFromRelay:
-					publicKeysMessageReceived = true
+				case params = <- paramsFromRelayChan:
+					paramsMessageReceived = true
 			}
 
 			//DEBUG : client 1 hard-fails after 10 loops
@@ -124,19 +136,28 @@ func StartClient(socksConnId int, relayHostAddr string, nClients int, nTrustees 
 	}
 }
 
+func roundScheduling(clientState *ClientState) int{
+
+	roundId := clientState.Id
+	fmt.Println("Client", clientState.Name, "was assigned secretly to the round", roundId)
+	return roundId
+}
+
 /*
  * Creates the next cell
  */
 
-func writeNextUpstreamSlice(dataForRelayBuffer chan []byte, relayConn net.Conn, clientState *ClientState) int {
+func writeNextUpstreamSlice(canWrite bool, dataForRelayBuffer chan []byte, relayConn net.Conn, clientState *ClientState) int {
 	var nextUpstreamBytes []byte
 
-	select
-	{
-		case nextUpstreamBytes = <-dataForRelayBuffer:
+	if canWrite {
+		select
+		{
+			case nextUpstreamBytes = <-dataForRelayBuffer:
 
-		default:
-	}
+			default:
+		}
+	}		
 
 	//produce the next upstream cell
 	upstreamSlice := clientState.CellCoder.ClientEncode(nextUpstreamBytes, clientState.PayloadLength, clientState.MessageHistory)
@@ -184,7 +205,7 @@ func connectToRelay(relayHost string, connectionId int, params *ClientState) net
 	return conn
 }
 
-func readDataFromRelay(relayConn net.Conn, dataFromRelay chan<- prifinet.DataWithMessageTypeAndConnId, publicKeysFromRelay chan<- []abstract.Point) {
+func readDataFromRelay(relayConn net.Conn, dataFromRelay chan<- prifinet.DataWithMessageTypeAndConnId, paramsFromRelayChan chan<- ParamsFromRelay) {
 	header := [10]byte{}
 	totcells := uint64(0)
 	totbytes := uint64(0)
@@ -207,9 +228,11 @@ func readDataFromRelay(relayConn net.Conn, dataFromRelay chan<- prifinet.DataWit
 		n, err = io.ReadFull(relayConn, data)
 
 		if messageType == prifinet.MESSAGE_TYPE_PUBLICKEYS {
-			//Public key arrays
+			
+			nClients := socksConnId //we use the SOCKS conn field to transmit this info
 			publicKeys := prifinet.UnMarshalPublicKeyArrayFromByteArray(data, config.CryptoSuite)
-			publicKeysFromRelay <- publicKeys // TODO : this may hang
+			params := ParamsFromRelay{publicKeys, nClients}
+			paramsFromRelayChan <- params
 
 		}  else {
 			// Data
