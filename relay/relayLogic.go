@@ -321,7 +321,7 @@ func processMessageLoop(relayState *RelayState){
 			}()
 			go func() {
 				dataHolder := make([]byte, trusteePayloadLength)
-			    io.ReadFull(relayState.trustees[i].Conn, dataHolder)
+			    io.ReadFull(relayState.clients[i].Conn, dataHolder)
 
 				n, err := io.ReadFull(relayState.clients[i].Conn, clientsPayloadData[i])
 				if err != nil || n < clientPayloadLength {
