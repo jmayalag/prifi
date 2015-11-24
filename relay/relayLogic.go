@@ -271,7 +271,7 @@ func processMessageLoop(relayState *RelayState){
 			errorChan := make(chan bool, 1)
 			dataChan  := make(chan []byte)
 			go func() {
-			    time.Sleep(1 * time.Second)
+			    time.Sleep(5 * time.Second)
 			    timeout <- true
 			}()
 			go func() {
@@ -316,7 +316,7 @@ func processMessageLoop(relayState *RelayState){
 			errorChan := make(chan bool, 1)
 			dataChan  := make(chan []byte)
 			go func() {
-			    time.Sleep(1 * time.Second)
+			    time.Sleep(5 * time.Second)
 			    timeout <- true
 			}()
 			go func() {
