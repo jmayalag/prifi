@@ -260,17 +260,39 @@ func processMessageLoop(relayState *RelayState){
 				break
 			}
 
-			//TODO: this looks blocking
-			n, err := io.ReadFull(relayState.trustees[i].Conn, trusteesPayloadData[i])
-			if err != nil {
-				errorInThisCell = true
-				deconnectedTrustees <- i
-				fmt.Println("Relay main loop : Trustee "+strconv.Itoa(i)+" deconnected")
-			}
-			if n < trusteePayloadLength {
-				errorInThisCell = true
-				deconnectedTrustees <- i
-				fmt.Println("Relay main loop : Read from trustee failed, read "+strconv.Itoa(n)+" where "+strconv.Itoa(trusteePayloadLength)+" was expected: " + err.Error())
+			//read with timeout
+			timeout   := make(chan bool, 1)
+			errorChan := make(chan bool, 1)
+			dataChan  := make(chan []byte)
+			go func() {
+			    time.Sleep(1 * time.Second)
+			    timeout <- true
+			}()
+			go func() {
+				dataHolder := make([]byte, trusteePayloadLength)
+			    io.ReadFull(relayState.trustees[i].Conn, dataHolder)
+
+				n, err := io.ReadFull(relayState.trustees[i].Conn, trusteesPayloadData[i])
+				if err != nil || n < trusteePayloadLength {
+					errorChan <- true
+				} else {
+			    	dataChan <- dataHolder
+				}
+			}()
+
+			select
+			{
+				case trusteesPayloadData[i] = <- dataChan:
+
+				case <-timeout:
+					fmt.Println("Relay main loop : Trustee "+strconv.Itoa(i)+" timed out.")
+					errorInThisCell = true
+					deconnectedTrustees <- i
+
+				case <-errorChan:
+					fmt.Println("Relay main loop : Trustee "+strconv.Itoa(i)+" disconnected.")
+					errorInThisCell = true
+					deconnectedTrustees <- i
 			}
 
 			relayState.CellCoder.DecodeTrustee(trusteesPayloadData[i])
@@ -283,17 +305,39 @@ func processMessageLoop(relayState *RelayState){
 				break
 			}
 
-			//TODO: this looks blocking
-			n, err := io.ReadFull(relayState.clients[i].Conn, clientsPayloadData[i])
-			if err != nil {
-				errorInThisCell = true
-				deconnectedClients <- i
-				fmt.Println("Relay main loop : Client "+strconv.Itoa(i)+" deconnected")
-			}
-			if n < clientPayloadLength {
-				errorInThisCell = true
-				deconnectedClients <- i
-				fmt.Println("Relay main loop : Read from client failed, read "+strconv.Itoa(n)+" where "+strconv.Itoa(trusteePayloadLength)+" was expected: " + err.Error())
+			//read with timeout
+			timeout   := make(chan bool, 1)
+			errorChan := make(chan bool, 1)
+			dataChan  := make(chan []byte)
+			go func() {
+			    time.Sleep(1 * time.Second)
+			    timeout <- true
+			}()
+			go func() {
+				dataHolder := make([]byte, trusteePayloadLength)
+			    io.ReadFull(relayState.trustees[i].Conn, dataHolder)
+
+				n, err := io.ReadFull(relayState.clients[i].Conn, clientsPayloadData[i])
+				if err != nil || n < clientPayloadLength {
+					errorChan <- true
+				} else {
+			    	dataChan <- dataHolder
+				}
+			}()
+
+			select
+			{
+				case trusteesPayloadData[i] = <- dataChan:
+
+				case <-timeout:
+					fmt.Println("Relay main loop : Client "+strconv.Itoa(i)+" timed out.")
+					errorInThisCell = true
+					deconnectedClients <- i
+
+				case <-errorChan:
+					fmt.Println("Relay main loop : Client "+strconv.Itoa(i)+" disconnected.")
+					errorInThisCell = true
+					deconnectedClients <- i
 			}
 
 			relayState.CellCoder.DecodeClient(clientsPayloadData[i])
