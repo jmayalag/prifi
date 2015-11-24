@@ -42,6 +42,13 @@ func StartClient(socksConnId int, relayHostAddr string, expectedNumberOfClients 
 	paramsMessageReceived := false
 
 	for !exitClient {
+
+		if relayConn == nil {
+			fmt.Println("Client: trying to configure, but relay not connected. connecting...")
+			relayConn = connectToRelay(relayHostAddr, socksConnId, clientState)
+			go readDataFromRelay(relayConn, dataFromRelay, paramsFromRelayChan)
+		}
+
 		println(">>>> Configurating... ")
 
 		var params ParamsFromRelay
@@ -113,8 +120,12 @@ func StartClient(socksConnId int, relayHostAddr string, expectedNumberOfClients 
 					// TODO Should account the downstream cell in the history
 
 					// Produce and ship the next upstream slice
-					//TODO : Branch here. If we don't own the cell, data must be empty.
 					nBytes := writeNextUpstreamSlice(isMySlot, dataForRelayBuffer, relayConn, clientState)
+					if nBytes == -1 {
+						//couldn't write anything, relay is disconnected
+						relayConn = nil
+						continueToNextRound = false
+					}
 					stats.AddUpstreamCell(int64(nBytes))
 
 					//we report the speed, bytes exchanged, etc
@@ -169,7 +180,8 @@ func writeNextUpstreamSlice(canWrite bool, dataForRelayBuffer chan []byte, relay
 	n, err := relayConn.Write(upstreamSlice)
 
 	if n != len(upstreamSlice) {
-		panic("Client write to relay error, expected writing "+strconv.Itoa(len(upstreamSlice))+", but wrote "+strconv.Itoa(n)+", err : " + err.Error())
+		fmt.Println("Client write to relay error, expected writing "+strconv.Itoa(len(upstreamSlice))+", but wrote "+strconv.Itoa(n)+", err : " + err.Error())
+		return -1 //relay probably disconnected
 	}
 
 	return n
@@ -214,6 +226,10 @@ func readDataFromRelay(relayConn net.Conn, dataFromRelay chan<- prifinet.DataWit
 		// Read the next (downstream) header from the relay
 		n, err := io.ReadFull(relayConn, header[:])
 
+		if err != nil {
+			fmt.Println("ClientReadRelay error, relay probably disconnected, stopping goroutine...")
+			return
+		}
 		if n != len(header) {
 			panic("clientReadRelay: " + err.Error())
 		}
@@ -226,6 +242,11 @@ func readDataFromRelay(relayConn net.Conn, dataFromRelay chan<- prifinet.DataWit
 		// Read the data
 		data := make([]byte, dataLength)
 		n, err = io.ReadFull(relayConn, data)
+
+		if err != nil {
+			fmt.Println("ClientReadRelay error, relay probably disconnected, stopping goroutine...")
+			return
+		}
 
 		if messageType == prifinet.MESSAGE_TYPE_PUBLICKEYS {
 			

@@ -19,6 +19,7 @@ var stateMachineLogger 	*prifilog.StateMachineLogger
 var	protocolFailed        = make(chan bool)
 var	indicateEndOfProtocol = make(chan int)
 var	deconnectedClients	  = make(chan int)
+var	timedOutClients   	  = make(chan int)
 var	deconnectedTrustees	  = make(chan int)
 
 func StartRelay(payloadLength int, relayPort string, nClients int, nTrustees int, trusteesIp []string, reportingLimit int) {
@@ -64,6 +65,11 @@ func StartRelay(payloadLength int, relayPort string, nClients int, nTrustees int
 			case deconnectedClient := <- deconnectedClients:
 				fmt.Println("Client", deconnectedClient, " has been indicated offline")
 				relayState.clients[deconnectedClient].Connected = false
+
+			case timedOutClient := <- timedOutClients:
+				fmt.Println("Client", timedOutClient, " has been indicated offline (time out)")
+				relayState.clients[timedOutClient].Conn.Close()
+				relayState.clients[timedOutClient].Connected = false
 
 			case deconnectedTrustee := <- deconnectedTrustees:
 				fmt.Println("Trustee", deconnectedTrustee, " has been indicated offline")
@@ -332,7 +338,7 @@ func processMessageLoop(relayState *RelayState){
 				case <-timeout:
 					fmt.Println("Relay main loop : Client "+strconv.Itoa(i)+" timed out.")
 					errorInThisCell = true
-					deconnectedClients <- i
+					timedOutClients <- i
 
 				case <-errorChan:
 					fmt.Println("Relay main loop : Client "+strconv.Itoa(i)+" disconnected.")
