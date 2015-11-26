@@ -9,7 +9,6 @@ import (
 	"github.com/lbarman/prifi/config"
 	prifinet "github.com/lbarman/prifi/net"
 	prifilog "github.com/lbarman/prifi/log"
-	"time"
 	"os"
 )
 
@@ -22,10 +21,8 @@ func StartClient(socksConnId int, relayHostAddr string, expectedNumberOfClients 
 	//connect to relay
 	relayConn := connectToRelay(relayHostAddr, socksConnId, clientState)
 
-	//initiate downstream stream (relay -> client)
+	//define downstream stream (relay -> client)
 	dataFromRelay       := make(chan prifinet.DataWithMessageTypeAndConnId)
-	paramsFromRelayChan := make(chan ParamsFromRelay)
-	go readDataFromRelay(relayConn, dataFromRelay, paramsFromRelayChan)
 
 	//start the socks proxy
 	socksProxyNewConnections := make(chan net.Conn)
@@ -39,38 +36,22 @@ func StartClient(socksConnId int, relayHostAddr string, expectedNumberOfClients 
 	}
 
 	exitClient            := false
-	paramsMessageReceived := false
 
 	for !exitClient {
 
 		if relayConn == nil {
 			fmt.Println("Client: trying to configure, but relay not connected. connecting...")
 			relayConn = connectToRelay(relayHostAddr, socksConnId, clientState)
-			go readDataFromRelay(relayConn, dataFromRelay, paramsFromRelayChan)
 		}
 
 		println(">>>> Configurating... ")
 
-		var params ParamsFromRelay
+		params := readParamsFromRelay(relayConn)
 
-		for !paramsMessageReceived{
-			select {
-				case params = <- paramsFromRelayChan:
-					fmt.Println("Client : Received params; ", params.nClients, " clients and ", len(params.publicKeys), "trustees.")
-					paramsMessageReceived = true
-					clientState.nClients = params.nClients
-
-				default: 
-					time.Sleep(WAIT_FOR_PUBLICKEY_SLEEP_TIME)
-			}
-		}
-		paramsMessageReceived = false // we consumed the keys
-
-		//Parse the trustee's public keys
-		trusteesPublicKeys := params.publicKeys
-		for i:=0; i<len(trusteesPublicKeys); i++ {
-			clientState.TrusteePublicKey[i] = trusteesPublicKeys[i]
-			clientState.sharedSecrets[i] = config.CryptoSuite.Point().Mul(trusteesPublicKeys[i], clientState.privateKey)
+		//Parse the trustee's public keys, generate the shared secrets
+		for i:=0; i<len(params.trusteesPublicKeys); i++ {
+			clientState.TrusteePublicKey[i] = params.trusteesPublicKeys[i]
+			clientState.sharedSecrets[i] = config.CryptoSuite.Point().Mul(params.trusteesPublicKeys[i], clientState.privateKey)
 		}
 
 		//check that we got all keys
@@ -84,6 +65,10 @@ func StartClient(socksConnId int, relayHostAddr string, expectedNumberOfClients 
 		myRound := roundScheduling(clientState)
 		clientState.printSecrets()
 		println(">>>> All crypto stuff exchanged !")
+
+		//define downstream stream (relay -> client)
+		stopReadRelay := make(chan bool, 1)
+		go readDataFromRelay(relayConn, dataFromRelay, stopReadRelay)
 
 		roundCount          := 0
 		continueToNextRound := true
@@ -102,15 +87,18 @@ func StartClient(socksConnId int, relayHostAddr string, expectedNumberOfClients 
 
 					switch data.MessageType {
 
-						case 3 : //relay wants to re-setup (new key exchanges)
+						case prifinet.MESSAGE_TYPE_LAST_UPLOAD_FAILED :
+							//relay wants to re-setup (new key exchanges)
 							fmt.Println("Relay warns that a client disconnected, gonna resync..")
 							continueToNextRound = false
 
-						case 1 : //relay wants to re-setup (new key exchanges)
+						case prifinet.MESSAGE_TYPE_DATA_AND_RESYNC :
+							//relay wants to re-setup (new key exchanges)
 							fmt.Println("Relay wants to resync")
 							continueToNextRound = false
 
-						case 0 : //data for SOCKS proxy, just hand it over to the dedicated thread
+						case prifinet.MESSAGE_TYPE_DATA :
+							//data for SOCKS proxy, just hand it over to the dedicated thread
 							if(clientState.UseSocksProxy){
 								dataForSocksProxy <- data
 							}
@@ -130,10 +118,6 @@ func StartClient(socksConnId int, relayHostAddr string, expectedNumberOfClients 
 
 					//we report the speed, bytes exchanged, etc
 					stats.Report()
-
-				//if we receive keys from relay, that's unexpected, but store them (most likely they will be overwritten, but we need to empty the channel)
-				case params = <- paramsFromRelayChan:
-					paramsMessageReceived = true
 			}
 
 			//DEBUG : client 1 hard-fails after 10 loops
@@ -149,6 +133,7 @@ func StartClient(socksConnId int, relayHostAddr string, expectedNumberOfClients 
 
 func roundScheduling(clientState *ClientState) int{
 
+	//trivial round schedule
 	roundId := clientState.Id
 	fmt.Println("Client", clientState.Name, "was assigned secretly to the round", roundId)
 	return roundId
@@ -217,7 +202,41 @@ func connectToRelay(relayHost string, connectionId int, params *ClientState) net
 	return conn
 }
 
-func readDataFromRelay(relayConn net.Conn, dataFromRelay chan<- prifinet.DataWithMessageTypeAndConnId, paramsFromRelayChan chan<- ParamsFromRelay) {
+func readParamsFromRelay(relayConn net.Conn) ParamsFromRelay {
+
+	// Read the next (downstream) header from the relay
+	header := [10]byte{}
+	n, err := io.ReadFull(relayConn, header[:])
+
+	if n != len(header) {
+		panic("readParamsFromRelay: " + err.Error())
+	}
+
+	//parse the header
+	messageType := int(binary.BigEndian.Uint32(header[0:4]))
+	nClients := int(binary.BigEndian.Uint32(header[4:8]))
+	dataLength  := int(binary.BigEndian.Uint16(header[8:10]))
+
+	// Read the data
+	data := make([]byte, dataLength)
+	n, err = io.ReadFull(relayConn, data)
+
+	if err != nil {
+		panic("readParamsFromRelay: " + err.Error())
+	}
+
+	if messageType != prifinet.MESSAGE_TYPE_PUBLICKEYS {
+		fmt.Println("MessageType", messageType, "nClients/SocksConnID", nClients, "DataLength", dataLength)
+		panic("Expecting params from relay, got another message")
+	}
+		
+	publicKeys := prifinet.UnMarshalPublicKeyArrayFromByteArray(data, config.CryptoSuite)
+
+	params := ParamsFromRelay{publicKeys, nClients}
+	return  params
+}
+
+func readDataFromRelay(relayConn net.Conn, dataFromRelay chan<- prifinet.DataWithMessageTypeAndConnId, stopReadRelay chan bool) {
 	header := [10]byte{}
 	totcells := uint64(0)
 	totbytes := uint64(0)
@@ -239,36 +258,29 @@ func readDataFromRelay(relayConn net.Conn, dataFromRelay chan<- prifinet.DataWit
 		socksConnId := int(binary.BigEndian.Uint32(header[4:8]))
 		dataLength  := int(binary.BigEndian.Uint16(header[8:10]))
 
-		// Read the data
-		data := make([]byte, dataLength)
-		n, err = io.ReadFull(relayConn, data)
+		// Read the body
+		body := make([]byte, dataLength)
+		n, err = io.ReadFull(relayConn, body)
 
 		if err != nil {
 			fmt.Println("ClientReadRelay error, relay probably disconnected, stopping goroutine...")
 			return
+		}		
+		if n != dataLength {
+			panic("readDataFromRelay: read body length ("+strconv.Itoa(n)+") not matching expected length ("+strconv.Itoa(dataLength)+")" + err.Error())
 		}
 
-		if messageType == prifinet.MESSAGE_TYPE_PUBLICKEYS {
-			
-			nClients := socksConnId //we use the SOCKS conn field to transmit this info
-			publicKeys := prifinet.UnMarshalPublicKeyArrayFromByteArray(data, config.CryptoSuite)
-			params := ParamsFromRelay{publicKeys, nClients}
-			paramsFromRelayChan <- params
+		//communicate to main thread
+		dataFromRelay <- prifinet.DataWithMessageTypeAndConnId{messageType, socksConnId, body}
 
-		}  else {
-			// Data
-			data := make([]byte, dataLength)
-			n, err = io.ReadFull(relayConn, data)
+		//statistics
+		totcells++
+		totbytes += uint64(dataLength)
 
-			if n != dataLength {
-				panic("readDataFromRelay: read data length ("+strconv.Itoa(n)+") not matching expected length ("+strconv.Itoa(dataLength)+")" + err.Error())
-			}
-
-			dataFromRelay <- prifinet.DataWithMessageTypeAndConnId{messageType, socksConnId, data}
-
-			totcells++
-			totbytes += uint64(dataLength)
-		}
+		if messageType == prifinet.MESSAGE_TYPE_DATA_AND_RESYNC || messageType == prifinet.MESSAGE_TYPE_LAST_UPLOAD_FAILED {
+			fmt.Println("next message is gonna be some parameters, not data. Stop this goroutine")
+			return
+		} 
 	}
 }
 

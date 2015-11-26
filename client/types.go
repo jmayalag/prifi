@@ -16,8 +16,8 @@ const socksHeaderLength = 6
 const WAIT_FOR_PUBLICKEY_SLEEP_TIME =  100 * time.Millisecond
 
 type ParamsFromRelay struct {
-	publicKeys []abstract.Point
-	nClients  	int
+	trusteesPublicKeys 	[]abstract.Point
+	nClients  			int
 }
 
 type ClientState struct {
@@ -27,13 +27,16 @@ type ClientState struct {
 	PublicKey			abstract.Point
 	privateKey			abstract.Secret
 
+	EphemeralPublicKey	abstract.Point
+	ephemeralPrivateKey	abstract.Secret
+
 	nClients			int
 	nTrustees			int
 
 	PayloadLength		int
 	UsablePayloadLength	int
 	UseSocksProxy		bool
-	
+
 	TrusteePublicKey	[]abstract.Point
 	sharedSecrets		[]abstract.Point
 	
@@ -72,17 +75,56 @@ func newClientState(clientId int, nTrustees int, nClients int, payloadLength int
 	return params
 }
 
+func (clientState *ClientState) generateEphemeralKeys() {
+
+	//prepare the crypto parameters
+	rand 	:= config.CryptoSuite.Cipher([]byte(clientState.Name))
+
+	//generate ephemeral keys
+	Epriv := config.CryptoSuite.Secret().Pick(rand)
+	Epub := config.CryptoSuite.Point().Mul(nil, Epriv)
+
+	clientState.EphemeralPublicKey  = Epub
+	clientState.ephemeralPrivateKey = Epriv
+
+}
+
 func (clientState *ClientState) printSecrets() {
-	//print all shared secrets
+	//print all secrets
 	
+
+	k1, _ := clientState.PublicKey.MarshalBinary()
+	k2, _ := clientState.privateKey.MarshalBinary()
+	var k3, k4 []byte
+
+	if clientState.EphemeralPublicKey != nil {
+		k3, _ = clientState.EphemeralPublicKey.MarshalBinary()
+		k4, _ = clientState.ephemeralPrivateKey.MarshalBinary()
+	}
+
 	fmt.Println("")
+	fmt.Println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+	fmt.Println("            CLIENT ", clientState.Id)
+	fmt.Println("Public key :")
+	fmt.Println(hex.Dump(k1))
+	fmt.Println("private key :")
+	fmt.Println(hex.Dump(k2))
+
+	if clientState.EphemeralPublicKey != nil {
+		fmt.Println("Ephemeral public key :")
+		fmt.Println(hex.Dump(k3))
+		fmt.Println("Ephemeral private key :")
+		fmt.Println(hex.Dump(k4))
+	}
+
 	for i:=0; i<clientState.nTrustees; i++ {
-		fmt.Println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
-		fmt.Println("            TRUSTEE", i)
+		fmt.Println("> > > > > > > > > > > > > > > > >")
+		fmt.Println("   Shared Params With Trustee", i)
 		d1, _ := clientState.TrusteePublicKey[i].MarshalBinary()
 		d2, _ := clientState.sharedSecrets[i].MarshalBinary()
+		fmt.Println("Trustee public key :")
 		fmt.Println(hex.Dump(d1))
-		fmt.Println("+++")
+		fmt.Println("Shared secret :")
 		fmt.Println(hex.Dump(d2))
 	}
 	fmt.Println("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
