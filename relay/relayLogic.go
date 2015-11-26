@@ -248,7 +248,9 @@ func processMessageLoop(relayState *RelayState){
 		copy(downstreamData[10:], downbuffer.Data)
 
 		// Broadcast the downstream data to all clients.
+		fmt.Println("Gonna write the message to the clients")
 		prifinet.BroadcastMessageToNodes(relayState.clients, downstreamData)
+		fmt.Println("Done writing the message")
 		stats.AddDownstreamCell(int64(downstreamDataPayloadLength))
 
 		inflight++
@@ -256,6 +258,7 @@ func processMessageLoop(relayState *RelayState){
 			continue // Get more cells in flight
 		}
 
+		fmt.Println("Start collecting...")
 		relayState.CellCoder.DecodeStart(relayState.PayloadLength, relayState.MessageHistory)
 
 		// Collect a cell ciphertext from each trustee
@@ -301,6 +304,7 @@ func processMessageLoop(relayState *RelayState){
 					deconnectedTrustees <- i
 			}
 
+			fmt.Println("Collected for trustee, ", i)
 			relayState.CellCoder.DecodeTrustee(trusteesPayloadData[i])
 		}
 
@@ -346,8 +350,12 @@ func processMessageLoop(relayState *RelayState){
 					deconnectedClients <- i
 			}
 
+
+			fmt.Println("Collected for client, ", i)
 			relayState.CellCoder.DecodeClient(clientsPayloadData[i])
 		}
+
+		fmt.Println("Done collecting")
 
 		if errorInThisCell {
 			
@@ -363,6 +371,7 @@ func processMessageLoop(relayState *RelayState){
 			break
 		} else {
 			upstreamPlaintext := relayState.CellCoder.DecodeCell()
+			fmt.Println("Done decoding")
 			inflight--
 
 			stats.AddUpstreamCell(int64(relayState.PayloadLength))
