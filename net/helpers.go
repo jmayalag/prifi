@@ -5,9 +5,53 @@ import (
 	"fmt"
 	//"encoding/hex"
 	"strconv"
+	"io"
+	"time"
 	"net"
 	"github.com/lbarman/crypto/abstract"
 )
+
+// return data, error
+func ReadWithTimeOut(nodeId int, conn net.Conn, length int, timeout time.Duration, chanForTimeoutNode chan int, chanForDisconnectedNode chan int) ([]byte, bool) {
+	
+	//read with timeout
+	timeoutChan := make(chan bool, 1)
+	errorChan   := make(chan bool, 1)
+	dataChan    := make(chan []byte)
+	
+	go func() {
+	    time.Sleep(timeout)
+	    timeoutChan <- true
+	}()
+	
+	go func() {
+		dataHolder := make([]byte, length)
+		n, err := io.ReadFull(conn, dataHolder)
+
+		if err != nil || n < length {
+			errorChan <- true
+		} else {
+	    	dataChan <- dataHolder
+		}
+	}()
+
+	var data []byte
+	errorDuringRead := false
+	select
+	{
+		case data = <- dataChan:
+
+		case <-timeoutChan:
+			errorDuringRead = true
+			chanForTimeoutNode <- nodeId
+
+		case <-errorChan:
+			errorDuringRead = true
+			chanForDisconnectedNode <- nodeId
+	}
+
+	return data, errorDuringRead
+}
 
 func MarshalNodeRepresentationArrayToByteArray(nodes []NodeRepresentation) []byte {
 	var byteArray []byte

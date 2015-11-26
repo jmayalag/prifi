@@ -4,9 +4,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"github.com/lbarman/prifi/config"
-	"io"
 	"time"
-	"strconv"
 	"log"
 	"net"
 	prifinet "github.com/lbarman/prifi/net"
@@ -266,42 +264,14 @@ func processMessageLoop(relayState *RelayState){
 				break
 			}
 
-			//read with timeout
-			timeout   := make(chan bool, 1)
-			errorChan := make(chan bool, 1)
-			dataChan  := make(chan []byte)
-			go func() {
-			    time.Sleep(CLIENT_READ_TIMEOUT)
-			    timeout <- true
-			}()
-			go func() {
-				dataHolder := make([]byte, trusteePayloadLength)
-			    io.ReadFull(relayState.trustees[i].Conn, dataHolder)
+			//TODO : add a channel for timeout trustee
+			data, err := prifinet.ReadWithTimeOut(i, relayState.trustees[i].Conn, trusteePayloadLength, CLIENT_READ_TIMEOUT, deconnectedTrustees, deconnectedTrustees)
 
-				n, err := io.ReadFull(relayState.trustees[i].Conn, trusteesPayloadData[i])
-				if err != nil || n < trusteePayloadLength {
-					errorChan <- true
-				} else {
-			    	dataChan <- dataHolder
-				}
-			}()
-
-			select
-			{
-				case trusteesPayloadData[i] = <- dataChan:
-
-				case <-timeout:
-					fmt.Println("Relay main loop : Trustee "+strconv.Itoa(i)+" timed out.")
-					errorInThisCell = true
-					deconnectedTrustees <- i
-
-				case <-errorChan:
-					fmt.Println("Relay main loop : Trustee "+strconv.Itoa(i)+" disconnected.")
-					errorInThisCell = true
-					deconnectedTrustees <- i
+			if err {
+				errorInThisCell = true
 			}
 
-			relayState.CellCoder.DecodeTrustee(trusteesPayloadData[i])
+			relayState.CellCoder.DecodeTrustee(data)
 		}
 
 		// Collect an upstream ciphertext from each client
@@ -311,41 +281,13 @@ func processMessageLoop(relayState *RelayState){
 				break
 			}
 
-			//read with timeout
-			timeout   := make(chan bool, 1)
-			errorChan := make(chan bool, 1)
-			dataChan  := make(chan []byte)
-			go func() {
-			    time.Sleep(CLIENT_READ_TIMEOUT)
-			    timeout <- true
-			}()
-			go func() {
-				dataHolder := make([]byte, clientPayloadLength)
-				n, err := io.ReadFull(relayState.clients[i].Conn, dataHolder)
+			data, err := prifinet.ReadWithTimeOut(i, relayState.clients[i].Conn, clientPayloadLength, CLIENT_READ_TIMEOUT, timedOutClients, deconnectedClients)
 
-				if err != nil || n < clientPayloadLength {
-					errorChan <- true
-				} else {
-			    	dataChan <- dataHolder
-				}
-			}()
-
-			select
-			{
-				case clientsPayloadData[i] = <- dataChan:
-
-				case <-timeout:
-					fmt.Println("Relay main loop : Client "+strconv.Itoa(i)+" timed out.")
-					errorInThisCell = true
-					timedOutClients <- i
-
-				case <-errorChan:
-					fmt.Println("Relay main loop : Client "+strconv.Itoa(i)+" disconnected.")
-					errorInThisCell = true
-					deconnectedClients <- i
+			if err {
+				errorInThisCell = true
 			}
 
-			relayState.CellCoder.DecodeClient(clientsPayloadData[i])
+			relayState.CellCoder.DecodeClient(data)
 		}
 
 		if errorInThisCell {
