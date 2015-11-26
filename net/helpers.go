@@ -122,11 +122,12 @@ func TellPublicKey(conn net.Conn, LLD_PROTOCOL_VERSION int, publicKey abstract.P
 		panic("Error writing to socket:" + err.Error())
 	}
 }
+
 func MarshalPublicKeyArrayToByteArray(publicKeys []abstract.Point) []byte {
 	var byteArray []byte
 
 	msgType := make([]byte, 4)
-	binary.BigEndian.PutUint32(msgType, uint32(2)) //MESSAGE_TYPE_PUBLICKEYS))
+	binary.BigEndian.PutUint32(msgType, uint32(MESSAGE_TYPE_PUBLICKEYS))
 	byteArray = append(byteArray, msgType...)
 
 	for i:=0; i<len(publicKeys); i++ {

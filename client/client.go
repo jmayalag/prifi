@@ -10,16 +10,17 @@ import (
 	prifinet "github.com/lbarman/prifi/net"
 	prifilog "github.com/lbarman/prifi/log"
 	"os"
+	"time"
 )
 
-func StartClient(socksConnId int, relayHostAddr string, expectedNumberOfClients int, nTrustees int, payloadLength int, useSocksProxy bool) {
-	fmt.Printf("startClient %d\n", socksConnId)
+func StartClient(clientId int, relayHostAddr string, expectedNumberOfClients int, nTrustees int, payloadLength int, useSocksProxy bool) {
+	fmt.Printf("startClient %d\n", clientId)
 
-	clientState := newClientState(socksConnId, nTrustees, expectedNumberOfClients, payloadLength, useSocksProxy)
+	clientState := newClientState(clientId, nTrustees, expectedNumberOfClients, payloadLength, useSocksProxy)
 	stats := prifilog.EmptyStatistics(-1) //no limit
 
 	//connect to relay
-	relayConn := connectToRelay(relayHostAddr, socksConnId, clientState)
+	relayConn := connectToRelay(relayHostAddr, clientState)
 
 	//define downstream stream (relay -> client)
 	dataFromRelay       := make(chan prifinet.DataWithMessageTypeAndConnId)
@@ -30,7 +31,7 @@ func StartClient(socksConnId int, relayHostAddr string, expectedNumberOfClients 
 	dataForSocksProxy        := make(chan prifinet.DataWithMessageTypeAndConnId, 0) // This hold the data from the relay to one of the SOCKS connection
 	
 	if(clientState.UseSocksProxy){
-		port := ":" + strconv.Itoa(1080+socksConnId)
+		port := ":" + strconv.Itoa(1080+clientId)
 		go startSocksProxyServerListener(port, socksProxyNewConnections)
 		go startSocksProxyServerHandler(socksProxyNewConnections, dataForRelayBuffer, dataForSocksProxy, clientState)
 	}
@@ -41,12 +42,13 @@ func StartClient(socksConnId int, relayHostAddr string, expectedNumberOfClients 
 
 		if relayConn == nil {
 			fmt.Println("Client: trying to configure, but relay not connected. connecting...")
-			relayConn = connectToRelay(relayHostAddr, socksConnId, clientState)
+			relayConn = connectToRelay(relayHostAddr, clientState)
 		}
 
 		println(">>>> Configurating... ")
 
 		params := readParamsFromRelay(relayConn)
+		clientState.nClients = params.nClients
 
 		//Parse the trustee's public keys, generate the shared secrets
 		for i:=0; i<len(params.trusteesPublicKeys); i++ {
@@ -62,7 +64,7 @@ func StartClient(socksConnId int, relayHostAddr string, expectedNumberOfClients 
 		}
 
 		//TODO: Shuffle to detect if we own the slot
-		myRound := roundScheduling(clientState)
+		myRound := roundScheduling(relayConn, clientState)
 		clientState.printSecrets()
 		println(">>>> All crypto stuff exchanged !")
 
@@ -121,7 +123,7 @@ func StartClient(socksConnId int, relayHostAddr string, expectedNumberOfClients 
 			}
 
 			//DEBUG : client 1 hard-fails after 10 loops
-			if roundCount > 10 && socksConnId == 1 {
+			if roundCount > 10 && clientId == 1 {
 				fmt.Println("10/1 GONNA EXIT")
 				os.Exit(1)
 			}
@@ -131,7 +133,34 @@ func StartClient(socksConnId int, relayHostAddr string, expectedNumberOfClients 
 	}
 }
 
-func roundScheduling(clientState *ClientState) int{
+func roundScheduling(relayConn net.Conn, clientState *ClientState) int{
+
+	fmt.Println("Generating ephemeral keys....")
+	clientState.generateEphemeralKeys()
+
+	//tell the relay our public key
+	ephPublicKeyBytes, _ := clientState.EphemeralPublicKey.MarshalBinary()
+	keySize := len(ephPublicKeyBytes)
+
+	buffer := make([]byte, 12+keySize)
+	binary.BigEndian.PutUint32(buffer[0:4], uint32(config.LLD_PROTOCOL_VERSION))
+	binary.BigEndian.PutUint32(buffer[4:8], uint32(prifinet.SOCKS_CONNECTION_ID_EMPTY))
+	binary.BigEndian.PutUint32(buffer[8:12], uint32(keySize))
+	copy(buffer[12:], ephPublicKeyBytes)
+
+	n, err := relayConn.Write(buffer)
+
+	if n < 12+keySize || err != nil {
+		panic("Error writing to socket:" + err.Error())
+	}
+
+	fmt.Println("Ephemeral public key sent to relay")
+
+
+	for {
+		fmt.Println("all done, waiting forever")
+		time.Sleep(5 * time.Second)
+	}
 
 	//trivial round schedule
 	roundId := clientState.Id
@@ -176,7 +205,7 @@ func writeNextUpstreamSlice(canWrite bool, dataForRelayBuffer chan []byte, relay
  * RELAY CONNECTION
  */
 
-func connectToRelay(relayHost string, connectionId int, params *ClientState) net.Conn {
+func connectToRelay(relayHost string, params *ClientState) net.Conn {
 	conn, err := net.Dial("tcp", relayHost)
 	if err != nil {
 		panic("Can't connect to relay:" + err.Error())
@@ -189,7 +218,7 @@ func connectToRelay(relayHost string, connectionId int, params *ClientState) net
 
 	buffer := make([]byte, 12+keySize)
 	binary.BigEndian.PutUint32(buffer[0:4], uint32(config.LLD_PROTOCOL_VERSION))
-	binary.BigEndian.PutUint32(buffer[4:8], uint32(connectionId))
+	binary.BigEndian.PutUint32(buffer[4:8], uint32(prifinet.SOCKS_CONNECTION_ID_EMPTY))
 	binary.BigEndian.PutUint32(buffer[8:12], uint32(keySize))
 	copy(buffer[12:], publicKeyBytes)
 
@@ -231,6 +260,7 @@ func readParamsFromRelay(relayConn net.Conn) ParamsFromRelay {
 	}
 		
 	publicKeys := prifinet.UnMarshalPublicKeyArrayFromByteArray(data, config.CryptoSuite)
+	fmt.Println("Got the public key from the trustees...")
 
 	params := ParamsFromRelay{publicKeys, nClients}
 	return  params

@@ -79,10 +79,11 @@ func (clientState *ClientState) generateEphemeralKeys() {
 
 	//prepare the crypto parameters
 	rand 	:= config.CryptoSuite.Cipher([]byte(clientState.Name))
+	base	:= config.CryptoSuite.Point().Base()
 
 	//generate ephemeral keys
 	Epriv := config.CryptoSuite.Secret().Pick(rand)
-	Epub := config.CryptoSuite.Point().Mul(nil, Epriv)
+	Epub := config.CryptoSuite.Point().Mul(base, Epriv)
 
 	clientState.EphemeralPublicKey  = Epub
 	clientState.ephemeralPrivateKey = Epriv

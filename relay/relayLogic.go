@@ -4,7 +4,9 @@ import (
 	"encoding/binary"
 	"fmt"
 	"github.com/lbarman/prifi/config"
+	"github.com/lbarman/crypto/abstract"
 	"time"
+	"encoding/hex"
 	"log"
 	"net"
 	prifinet "github.com/lbarman/prifi/net"
@@ -41,6 +43,7 @@ func StartRelay(payloadLength int, relayPort string, nClients int, nTrustees int
 	relayState.connectToAllTrustees()
 	relayState.waitForDefaultNumberOfClients(newClientWithIdAndPublicKeyChan)
 	relayState.advertisePublicKeys()	
+	relayState.organizeRoundScheduling()
 
 	//copy for subtrhead
 	relayStateCopy := relayState.deepClone()
@@ -151,6 +154,110 @@ func (relayState *RelayState) advertisePublicKeys(){
 	prifinet.BroadcastMessageToNodes(relayState.clients, messageForClients)
 	prifinet.BroadcastMessageToNodes(relayState.trustees, dataForTrustees)
 	fmt.Println("Advertising done, to", len(relayState.clients), "clients and", len(relayState.trustees), "trustees")
+}
+
+func (relayState *RelayState) organizeRoundScheduling(){
+
+	ephPublicKey := make([]abstract.Point, relayState.nClients)
+
+	for i := 0; i < relayState.nClients; i++ {
+
+		buffer := make([]byte, 512)
+		_, err := relayState.clients[i].Conn.Read(buffer)
+		if err != nil {
+			panic("Read error:" + err.Error())
+		}
+
+		keySize := int(binary.BigEndian.Uint32(buffer[8:12]))
+		keyBytes := buffer[12:(12+keySize)] 
+
+		publicKey := config.CryptoSuite.Point()
+		err2 := publicKey.UnmarshalBinary(keyBytes)
+
+		if err2 != nil {
+			panic(">>>>  Relay : can't unmarshal ephemeral client key ! " + err2.Error())
+		}
+
+		ephPublicKey[i] = publicKey
+	}
+
+	ephPublicKeyData := prifinet.MarshalPublicKeyArrayToByteArray(ephPublicKey)
+	fmt.Println("Relay: collected all ephemeral public keys")
+
+	G := config.CryptoSuite.Point().Base()
+	for j := 0; j < relayState.nTrustees; j++ {
+
+		baseBytes, err := G.MarshalBinary()
+		if err != nil {
+			panic("Marshall error:" + err.Error())
+		}
+
+		message := make([]byte, 8+len(baseBytes)+len(ephPublicKeyData))
+
+		binary.BigEndian.PutUint32(message[0:4], uint32(len(baseBytes)))
+		copy(message[4:4+len(baseBytes)], baseBytes)
+		binary.BigEndian.PutUint32(message[4+len(baseBytes):8+len(baseBytes)], uint32(len(ephPublicKeyData)))
+		copy(message[8+len(baseBytes):], ephPublicKeyData)
+
+		_, err2 := relayState.trustees[j].Conn.Write(message)
+		if err2 != nil {
+			panic("Write error:" + err.Error())
+		}
+
+		fmt.Println(" ======== message written ===========")
+		fmt.Println(hex.Dump(message))
+		fmt.Println(" ======== =========== ===========")
+
+		fmt.Println(G)
+		for i := 0; i < relayState.nClients; i++ {
+			fmt.Println(ephPublicKey[i])
+		}
+
+		fmt.Println("Trustee", j, "is shuffling...")
+
+		buffer := make([]byte, 1024)
+		_, err3 := relayState.trustees[j].Conn.Read(buffer)
+
+		fmt.Println(" ======== message read ===========")
+		fmt.Println(hex.Dump(buffer))
+		fmt.Println(" ======== =========== ===========")
+
+		if err3 != nil {
+			panic("Err " + err3.Error())
+		}
+
+		base2Size := int(binary.BigEndian.Uint32(buffer[0:4]))
+		base2Bytes := buffer[4:4+base2Size] 
+		keys2Size := int(binary.BigEndian.Uint32(buffer[4+base2Size:8+base2Size]))
+		keys2Bytes := buffer[8+base2Size:8+base2Size+keys2Size] 
+		proofSize := int(binary.BigEndian.Uint32(buffer[8+base2Size+keys2Size:12+base2Size+keys2Size]))
+		proof := buffer[12+base2Size+keys2Size:12+base2Size+keys2Size+proofSize] 
+
+		base2 := config.CryptoSuite.Point()
+		err4 := base2.UnmarshalBinary(base2Bytes)
+		if err4 != nil {
+			panic(">>>>  Relay : can't unmarshal base2 key ! " + err4.Error())
+		}
+		
+		ephPublicKeys2 := prifinet.UnMarshalPublicKeyArrayFromByteArray(keys2Bytes, config.CryptoSuite)
+
+		fmt.Println("Trustee", j, "is done shuffling")
+		fmt.Println(base2)
+		for i := 0; i < relayState.nClients; i++ {
+			fmt.Println(ephPublicKeys2[i])
+		}
+		fmt.Println(proof)
+
+		for {
+			fmt.Println("all done, waiting forever")
+			time.Sleep(5 * time.Second)
+		}
+	}
+
+	for {
+		fmt.Println("all done, waiting forever")
+		time.Sleep(5 * time.Second)
+	}
 }
 
 
