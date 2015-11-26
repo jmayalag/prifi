@@ -91,9 +91,7 @@ func StartClient(socksConnId int, relayHostAddr string, expectedNumberOfClients 
 			select {
 				//downstream slice from relay (normal DC-net cycle)
 				case data := <-dataFromRelay:
-
-					fmt.Println("Data from relay")
-
+					
 					//compute in which round we are (respective to the number of Clients)
 					currentRound := roundCount % clientState.nClients
 					isMySlot := false
@@ -122,9 +120,7 @@ func StartClient(socksConnId int, relayHostAddr string, expectedNumberOfClients 
 					// TODO Should account the downstream cell in the history
 
 					// Produce and ship the next upstream slice
-					fmt.Println("Gonna write upstream cell")
 					nBytes := writeNextUpstreamSlice(isMySlot, dataForRelayBuffer, relayConn, clientState)
-					fmt.Println("wrote upstream cell")
 					if nBytes == -1 {
 						//couldn't write anything, relay is disconnected
 						relayConn = nil
@@ -137,7 +133,6 @@ func StartClient(socksConnId int, relayHostAddr string, expectedNumberOfClients 
 
 				//if we receive keys from relay, that's unexpected, but store them (most likely they will be overwritten, but we need to empty the channel)
 				case params = <- paramsFromRelayChan:
-					fmt.Println("Params received")
 					paramsMessageReceived = true
 			}
 
@@ -148,7 +143,6 @@ func StartClient(socksConnId int, relayHostAddr string, expectedNumberOfClients 
 			}
 
 			roundCount++
-			fmt.Println("Round finished")
 		}
 	}
 }

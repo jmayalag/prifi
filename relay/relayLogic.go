@@ -248,9 +248,7 @@ func processMessageLoop(relayState *RelayState){
 		copy(downstreamData[10:], downbuffer.Data)
 
 		// Broadcast the downstream data to all clients.
-		fmt.Println("Gonna write the message to the clients")
 		prifinet.BroadcastMessageToNodes(relayState.clients, downstreamData)
-		fmt.Println("Done writing the message")
 		stats.AddDownstreamCell(int64(downstreamDataPayloadLength))
 
 		inflight++
@@ -258,7 +256,6 @@ func processMessageLoop(relayState *RelayState){
 			continue // Get more cells in flight
 		}
 
-		fmt.Println("Start collecting...")
 		relayState.CellCoder.DecodeStart(relayState.PayloadLength, relayState.MessageHistory)
 
 		// Collect a cell ciphertext from each trustee
@@ -274,7 +271,7 @@ func processMessageLoop(relayState *RelayState){
 			errorChan := make(chan bool, 1)
 			dataChan  := make(chan []byte)
 			go func() {
-			    time.Sleep(5 * time.Second)
+			    time.Sleep(CLIENT_READ_TIMEOUT)
 			    timeout <- true
 			}()
 			go func() {
@@ -304,7 +301,6 @@ func processMessageLoop(relayState *RelayState){
 					deconnectedTrustees <- i
 			}
 
-			fmt.Println("Collected for trustee, ", i)
 			relayState.CellCoder.DecodeTrustee(trusteesPayloadData[i])
 		}
 
@@ -320,14 +316,13 @@ func processMessageLoop(relayState *RelayState){
 			errorChan := make(chan bool, 1)
 			dataChan  := make(chan []byte)
 			go func() {
-			    time.Sleep(5 * time.Second)
+			    time.Sleep(CLIENT_READ_TIMEOUT)
 			    timeout <- true
 			}()
 			go func() {
-				dataHolder := make([]byte, trusteePayloadLength)
-			    io.ReadFull(relayState.clients[i].Conn, dataHolder)
+				dataHolder := make([]byte, clientPayloadLength)
+				n, err := io.ReadFull(relayState.clients[i].Conn, dataHolder)
 
-				n, err := io.ReadFull(relayState.clients[i].Conn, clientsPayloadData[i])
 				if err != nil || n < clientPayloadLength {
 					errorChan <- true
 				} else {
@@ -337,7 +332,7 @@ func processMessageLoop(relayState *RelayState){
 
 			select
 			{
-				case trusteesPayloadData[i] = <- dataChan:
+				case clientsPayloadData[i] = <- dataChan:
 
 				case <-timeout:
 					fmt.Println("Relay main loop : Client "+strconv.Itoa(i)+" timed out.")
@@ -350,12 +345,8 @@ func processMessageLoop(relayState *RelayState){
 					deconnectedClients <- i
 			}
 
-
-			fmt.Println("Collected for client, ", i)
 			relayState.CellCoder.DecodeClient(clientsPayloadData[i])
 		}
-
-		fmt.Println("Done collecting")
 
 		if errorInThisCell {
 			
@@ -371,7 +362,6 @@ func processMessageLoop(relayState *RelayState){
 			break
 		} else {
 			upstreamPlaintext := relayState.CellCoder.DecodeCell()
-			fmt.Println("Done decoding")
 			inflight--
 
 			stats.AddUpstreamCell(int64(relayState.PayloadLength))
