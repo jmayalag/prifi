@@ -156,34 +156,7 @@ func handleConnection(connId int,conn net.Conn, closedConnections chan int){
 	println("All crypto stuff exchanged !")
 
 	//do round schedulue
-
-	_, err2 := conn.Read(buffer)
-	if err2 != nil {
-		panic("Err " + err2.Error())
-	}
-
-	fmt.Println(" ======== message read ===========")
-	fmt.Println(hex.Dump(buffer))
-	fmt.Println(" ======== =========== ===========")
-
-	baseSize := int(binary.BigEndian.Uint32(buffer[0:4]))
-	keysSize := int(binary.BigEndian.Uint32(buffer[4+baseSize:8+baseSize]))
-	fmt.Println("Length of base", baseSize)
-	fmt.Println("Length of keys", keysSize)
-
-	baseBytes := buffer[4:4+baseSize] 
-	fmt.Println("Extracting base from", (4), "to", (4+baseSize))
-	keysBytes := buffer[8+baseSize:8+baseSize+keysSize] 
-	fmt.Println("Extracting keys from", (8+baseSize), "to", (8+baseSize+keysSize))
-
-
-	base := config.CryptoSuite.Point()
-	err3 := base.UnmarshalBinary(baseBytes)
-	if err3 != nil {
-		panic(">>>>  Relay : can't unmarshal client key ! " + err3.Error())
-	}
-
-	ephPublicKeys := prifinet.UnMarshalPublicKeyArrayFromByteArray(keysBytes, config.CryptoSuite)
+	base, ephPublicKeys := prifinet.ParseBaseAndPublicKeysFromConn(conn)
 
 	//To some shuffly-stuff
 
@@ -192,46 +165,13 @@ func handleConnection(connId int,conn net.Conn, closedConnections chan int){
 	proof          := make([]byte, 50)
 
 	//Send back the shuffle
-	base2Bytes, err4    := base2.MarshalBinary()
-	ephPublicKeys2Bytes := prifinet.MarshalPublicKeyArrayToByteArray(ephPublicKeys2)
-	if err4 != nil {
-		panic("Marshall error:" + err4.Error())
-	}
-
-	//compose the message
-	totMessageLength := 12+len(base2Bytes)+len(ephPublicKeys2Bytes)+len(proof)
-	message := make([]byte,totMessageLength)
-
-	binary.BigEndian.PutUint32(message[0:4], uint32(len(base2Bytes)))
-	binary.BigEndian.PutUint32(message[4+len(base2Bytes):8+len(base2Bytes)], uint32(len(ephPublicKeys2Bytes)))
-	binary.BigEndian.PutUint32(message[8+len(base2Bytes)+len(ephPublicKeys2Bytes):12+len(base2Bytes)+len(ephPublicKeys2Bytes)], uint32(len(proof)))
-
-	fmt.Println("Length of base2", len(base2Bytes))
-	fmt.Println("Length of keys2", len(ephPublicKeys2Bytes))
-	fmt.Println("Length of proof", len(proof))
-
-	copy(message[4:4+len(base2Bytes)], base2Bytes)
-	fmt.Println("Copying base ", len(base2Bytes), "from", (4), "to", (4+len(base2Bytes)))
-	copy(message[8+len(base2Bytes):8+len(base2Bytes)+len(ephPublicKeys2Bytes)], ephPublicKeys2Bytes)
-	fmt.Println("Copying ephkeys ", len(proof), "from", (8+len(base2Bytes)), "to", (8+len(base2Bytes)+len(ephPublicKeys2Bytes)))
-	copy(message[12+len(base2Bytes)+len(ephPublicKeys2Bytes):12+len(base2Bytes)+len(ephPublicKeys2Bytes)+len(proof)], proof)
-	fmt.Println("Copying proof", len(proof), "from", (12+len(base2Bytes)+len(ephPublicKeys2Bytes)), "to", (12+len(base2Bytes)+len(ephPublicKeys2Bytes)+len(proof)))
-
-	fmt.Println(" ======== message written ===========")
-	fmt.Println(hex.Dump(message))
-	fmt.Println(" ======== =========== ===========")
-
-	_, err6 := conn.Write(message)
-	if err6 != nil {
-		panic("Write error:" + err4.Error())
-	}
+	prifinet.WriteBasePublicKeysAndProofToConn(conn, base2, ephPublicKeys2, proof)
 	fmt.Println("Shuffling done, wrote back to the relay")
 
 	for {
 		fmt.Println("all done, waiting forever")
 		time.Sleep(5 * time.Second)
 	}
-
 
 	startTrusteeSlave(trusteeState, closedConnections)
 

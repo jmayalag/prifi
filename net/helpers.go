@@ -9,6 +9,7 @@ import (
 	"time"
 	"net"
 	"github.com/lbarman/crypto/abstract"
+	"github.com/lbarman/prifi/config"
 )
 
 // return data, error
@@ -51,6 +52,105 @@ func ReadWithTimeOut(nodeId int, conn net.Conn, length int, timeout time.Duratio
 	}
 
 	return data, errorDuringRead
+}
+
+func ParseBaseAndPublicKeysFromConn(conn net.Conn) (abstract.Point, []abstract.Point) {
+	buffer := make([]byte, 1024)
+	_, err := conn.Read(buffer)
+	if err != nil {
+		panic("ParseBaseAndPublicKeysFromConn, couldn't read. " + err.Error())
+	}
+
+	baseSize := int(binary.BigEndian.Uint32(buffer[0:4]))
+	keysSize := int(binary.BigEndian.Uint32(buffer[4+baseSize:8+baseSize]))
+
+	baseBytes := buffer[4:4+baseSize] 
+	keysBytes := buffer[8+baseSize:8+baseSize+keysSize] 
+
+	base := config.CryptoSuite.Point()
+	err2 := base.UnmarshalBinary(baseBytes)
+	if err2 != nil {
+		panic("ParseBaseAndPublicKeysFromConn : can't unmarshal client key ! " + err2.Error())
+	}
+
+	publicKeys := UnMarshalPublicKeyArrayFromByteArray(keysBytes, config.CryptoSuite)
+	return base, publicKeys
+}
+
+
+func ParseBasePublicKeysAndProofFromConn(conn net.Conn) (abstract.Point, []abstract.Point, []byte) {
+	buffer := make([]byte, 1024)
+	_, err := conn.Read(buffer)
+	if err != nil {
+		panic("ParseBaseAndPublicKeysFromConn, couldn't read. " + err.Error())
+	}
+		
+	baseSize := int(binary.BigEndian.Uint32(buffer[0:4]))
+	keysSize := int(binary.BigEndian.Uint32(buffer[4+baseSize:8+baseSize]))
+	proofSize := int(binary.BigEndian.Uint32(buffer[8+baseSize+keysSize:12+baseSize+keysSize]))
+
+	baseBytes := buffer[4:4+baseSize] 
+	keysBytes := buffer[8+baseSize:8+baseSize+keysSize] 
+	proof := buffer[12+baseSize+keysSize:12+baseSize+keysSize+proofSize] 
+
+	base := config.CryptoSuite.Point()
+	err2 := base.UnmarshalBinary(baseBytes)
+	if err2 != nil {
+		panic("ParseBasePublicKeysAndProofFromConn : can't unmarshal client key ! " + err2.Error())
+	}
+
+	publicKeys := UnMarshalPublicKeyArrayFromByteArray(keysBytes, config.CryptoSuite)
+	return base, publicKeys, proof
+}
+
+func WriteBaseAndPublicKeyToConn(conn net.Conn, base abstract.Point, keys []abstract.Point) {
+
+	baseBytes, err := base.MarshalBinary()
+	if err != nil {
+		panic("Marshall error:" + err.Error())
+	}
+
+	publicKEysBytes := MarshalPublicKeyArrayToByteArray(keys)
+
+	message := make([]byte, 8+len(baseBytes)+len(publicKEysBytes))
+
+	binary.BigEndian.PutUint32(message[0:4], uint32(len(baseBytes)))
+	copy(message[4:4+len(baseBytes)], baseBytes)
+	binary.BigEndian.PutUint32(message[4+len(baseBytes):8+len(baseBytes)], uint32(len(publicKEysBytes)))
+	copy(message[8+len(baseBytes):], publicKEysBytes)
+
+	_, err2 := conn.Write(message)
+	if err2 != nil {
+		panic("Write error:" + err.Error())
+	}
+}
+
+func WriteBasePublicKeysAndProofToConn(conn net.Conn, base abstract.Point, keys []abstract.Point, proof []byte) {
+	baseBytes, err    := base.MarshalBinary()
+	keysBytes := MarshalPublicKeyArrayToByteArray(keys)
+	if err != nil {
+		panic("Marshall error:" + err.Error())
+	}
+
+	//compose the message
+	totalMessageLength := 12+len(baseBytes)+len(keysBytes)+len(proof)
+	message := make([]byte, totalMessageLength)
+
+	binary.BigEndian.PutUint32(message[0:4], uint32(len(baseBytes)))
+	binary.BigEndian.PutUint32(message[4+len(baseBytes):8+len(baseBytes)], uint32(len(keysBytes)))
+	binary.BigEndian.PutUint32(message[8+len(baseBytes)+len(keysBytes):12+len(baseBytes)+len(keysBytes)], uint32(len(proof)))
+
+	copy(message[4:4+len(baseBytes)], baseBytes)
+	copy(message[8+len(baseBytes):8+len(baseBytes)+len(keysBytes)], keysBytes)
+	copy(message[12+len(baseBytes)+len(keysBytes):12+len(baseBytes)+len(keysBytes)+len(proof)], proof)
+
+	n, err2 := conn.Write(message)
+	if err2 != nil {
+		panic("Write error:" + err2.Error())
+	}
+	if n != totalMessageLength {
+		panic("WriteBasePublicKeysAndProofToConn: wrote "+strconv.Itoa(n)+", but expecetd length"+strconv.Itoa(totalMessageLength)+"." + err.Error())
+	}
 }
 
 func MarshalNodeRepresentationArrayToByteArray(nodes []NodeRepresentation) []byte {
