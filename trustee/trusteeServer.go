@@ -6,10 +6,11 @@ import (
 	"io"
 	"strconv"
 	"encoding/hex"
+	"bytes"
 	"net"
 	"github.com/lbarman/crypto/abstract"
 	"github.com/lbarman/prifi/config"
-	"time"
+	"github.com/lbarman/prifi/crypto"
 	prifinet "github.com/lbarman/prifi/net"
 )
 
@@ -155,11 +156,12 @@ func handleConnection(connId int,conn net.Conn, closedConnections chan int){
 
 	println("All crypto stuff exchanged !")
 
-	//do round schedulue
+	//parse the ephemeral keys
 	base, ephPublicKeys := prifinet.ParseBaseAndPublicKeysFromConn(conn)
 
-	//To some shuffly-stuff
+	//do the round-shuffle
 
+	//base2, ephPublicKeys2, proof := NeffShuffle(base, ephPublicKey)
 	base2          := base
 	ephPublicKeys2 := ephPublicKeys
 	proof          := make([]byte, 50)
@@ -168,11 +170,87 @@ func handleConnection(connId int,conn net.Conn, closedConnections chan int){
 	prifinet.WriteBasePublicKeysAndProofToConn(conn, base2, ephPublicKeys2, proof)
 	fmt.Println("Shuffling done, wrote back to the relay")
 
-	for {
-		fmt.Println("all done, waiting forever")
-		time.Sleep(5 * time.Second)
+	//we wait, verify, and sign the transcript
+	fmt.Println("Parsing the transcript ...")
+
+	G_s, ephPublicKeys_s, proof_s := prifinet.ParseTranscript(conn, nClients, nTrustees)
+
+	fmt.Println("Verifying the transcript...")
+
+	//Todo : verify each individual permutations
+	for j:=0; j<nTrustees; j++ {
+		//verify := NeffVerify(G_s[j], ephPublicKey_s[j], proof_s[j])
+		verify := true
+
+		if !verify {
+			fmt.Println("Verifying the transcript failed, trustee", j, " (or relay) did something shady...")
+			fmt.Println("Aborting.")
+			return
+		}
 	}
 
+	//we verify that our shuffle was included
+	ownPermutationFound := false
+	for j:=0; j<nTrustees; j++ {
+
+		if G_s[j].Equal(base2) && bytes.Equal(proof, proof_s[j]) {
+			fmt.Println("Find in transcript : Found indice", j, "that seems to match, verifing all the keys...")
+			allKeyEqual := true
+			for k:=0; k<nClients; k++ {
+				if !ephPublicKeys2[k].Equal(ephPublicKeys_s[j][k]) {
+					fmt.Println("Find in transcript : Eph key", k, "is different, skipping")
+					allKeyEqual = false
+					break
+				}
+			}
+
+			if allKeyEqual {
+				ownPermutationFound = true
+			}
+		}
+	}
+
+	if !ownPermutationFound {
+		fmt.Println("Relay didn't include our own permutation, quitting")
+		return;
+	}
+
+	fmt.Println("Everything is ok ! signing the last permutation...")
+
+	M := make([]byte, 0)
+	G_s_j_bytes, err := G_s[nTrustees-1].MarshalBinary()
+	if err != nil {
+		panic(err.Error())
+	}
+	M = append(M, G_s_j_bytes...)
+
+	for j:=0; j<nClients; j++{
+		pkBytes, err := ephPublicKeys_s[nTrustees-1][j].MarshalBinary()
+		if err != nil {
+			panic(err.Error())
+		}
+		fmt.Println("Embedding eph key")
+		fmt.Println(ephPublicKeys_s[nTrustees-1][j])
+		M = append(M, pkBytes...)
+	}
+
+	rand := config.CryptoSuite.Cipher([]byte("example-signature"))
+	sig := crypto.SchnorrSign(config.CryptoSuite, rand, M, trusteeState.privateKey)
+
+	fmt.Println("Sending the signature....")
+
+	signatureMsg := make([]byte, 0)
+	signatureMsg = append(signatureMsg, prifinet.IntToBA(len(sig))...)
+	signatureMsg = append(signatureMsg, sig...)
+
+	n, err2 := conn.Write(signatureMsg)
+	if err2!=nil || n<len(signatureMsg) {
+		panic("Could not write signature to relay, " + err2.Error())
+	}
+
+	fmt.Println("Signature sent.")
+
+	//start the handler for this round configuration
 	startTrusteeSlave(trusteeState, closedConnections)
 
 	fmt.Println(">>>> Trustee", connId, "shutting down.")

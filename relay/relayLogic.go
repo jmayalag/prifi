@@ -2,6 +2,7 @@ package relay
 
 import (
 	"encoding/binary"
+	"encoding/hex"
 	"fmt"
 	"github.com/lbarman/prifi/config"
 	"github.com/lbarman/crypto/abstract"
@@ -123,6 +124,7 @@ func restartProtocol(relayState *RelayState, newClients []prifinet.NodeRepresent
 		//re-advertise the configuration 	
 		relayState.connectToAllTrustees()
 		relayState.advertisePublicKeys()
+		relayState.organizeRoundScheduling()
 
 		time.Sleep(INBETWEEN_CONFIG_SLEEP_TIME)
 
@@ -157,62 +159,170 @@ func (relayState *RelayState) advertisePublicKeys(){
 
 func (relayState *RelayState) organizeRoundScheduling(){
 
-	ephPublicKey := make([]abstract.Point, relayState.nClients)
+	ephPublicKeys := make([]abstract.Point, relayState.nClients)
 
+	//collect ephemeral keys
 	for i := 0; i < relayState.nClients; i++ {
-
-		buffer := make([]byte, 512)
-		_, err := relayState.clients[i].Conn.Read(buffer)
-		if err != nil {
-			panic("Read error:" + err.Error())
-		}
-
-		keySize := int(binary.BigEndian.Uint32(buffer[8:12]))
-		keyBytes := buffer[12:(12+keySize)] 
-
-		publicKey := config.CryptoSuite.Point()
-		err2 := publicKey.UnmarshalBinary(keyBytes)
-
-		if err2 != nil {
-			panic(">>>>  Relay : can't unmarshal ephemeral client key ! " + err2.Error())
-		}
-
-		ephPublicKey[i] = publicKey
+		ephPublicKeys[i] = prifinet.ParsePublicKeyFromConn(relayState.clients[i].Conn)
 	}
 
 	fmt.Println("Relay: collected all ephemeral public keys")
 
+	// prepare transcript
+	G_s             := make([]abstract.Point, relayState.nTrustees)
+	ephPublicKeys_s := make([][]abstract.Point, relayState.nTrustees)
+	proof_s         := make([][]byte, relayState.nTrustees)
+
+	//ask each trustee in turn to do the oblivious shuffle
 	G := config.CryptoSuite.Point().Base()
 	for j := 0; j < relayState.nTrustees; j++ {
 
-		prifinet.WriteBaseAndPublicKeyToConn(relayState.trustees[j].Conn, G, ephPublicKey)
-		
-		fmt.Println(G)
-		for i := 0; i < relayState.nClients; i++ {
-			fmt.Println(ephPublicKey[i])
-		}
-
+		prifinet.WriteBaseAndPublicKeyToConn(relayState.trustees[j].Conn, G, ephPublicKeys)
 		fmt.Println("Trustee", j, "is shuffling...")
 
 		base2, ephPublicKeys2, proof := prifinet.ParseBasePublicKeysAndProofFromConn(relayState.trustees[j].Conn)
-
 		fmt.Println("Trustee", j, "is done shuffling")
-		fmt.Println(base2)
-		for i := 0; i < relayState.nClients; i++ {
-			fmt.Println(ephPublicKeys2[i])
-		}
-		fmt.Println(proof)
 
-		for {
-			fmt.Println("all done, waiting forever")
-			time.Sleep(5 * time.Second)
+		//collect transcript
+		G_s[j]             = base2
+		ephPublicKeys_s[j] = ephPublicKeys2
+		proof_s[j]         = proof
+
+		//next trustee get this trustee's output
+		G            = base2
+		ephPublicKeys = ephPublicKeys2
+	}
+
+	fmt.Println("All trustees have shuffled, sending the transcript...")
+
+	//pack transcript
+	transcriptBytes := make([]byte, 0)
+	for i:=0; i<len(G_s); i++ {
+		G_s_i_bytes, _ := G_s[i].MarshalBinary()
+		transcriptBytes = append(transcriptBytes, prifinet.IntToBA(len(G_s_i_bytes))...)
+		transcriptBytes = append(transcriptBytes, G_s_i_bytes...)
+
+		fmt.Println("G_S_", i)
+		fmt.Println(hex.Dump(G_s_i_bytes))
+	}
+	for i:=0; i<len(ephPublicKeys_s); i++ {
+
+		pkArray := make([]byte, 0)
+		for k:=0; k<len(ephPublicKeys_s[i]); k++{
+			pkBytes, _ := ephPublicKeys_s[i][k].MarshalBinary()
+			pkArray = append(pkArray, prifinet.IntToBA(len(pkBytes))...)
+			pkArray = append(pkArray, pkBytes...)
+			fmt.Println("Packing key", k)
+		}
+
+		transcriptBytes = append(transcriptBytes, prifinet.IntToBA(len(pkArray))...)
+		transcriptBytes = append(transcriptBytes, pkArray...)
+
+		fmt.Println("pkArray_", i)
+		fmt.Println(hex.Dump(pkArray))
+	}
+	for i:=0; i<len(proof_s); i++ {
+		transcriptBytes = append(transcriptBytes, prifinet.IntToBA(len(proof_s[i]))...)
+		transcriptBytes = append(transcriptBytes, proof_s[i]...)
+
+		fmt.Println("G_S_", i)
+		fmt.Println(hex.Dump(proof_s[i]))
+	}
+
+	//broadcast to trustees
+	for j := 0; j < relayState.nTrustees; j++ {
+		n, err := relayState.trustees[j].Conn.Write(transcriptBytes)
+		if err != nil || n < len(transcriptBytes) {
+			panic("Relay : couldn't write transcript to trustee "+ err.Error())
 		}
 	}
 
-	for {
-		fmt.Println("all done, waiting forever")
-		time.Sleep(5 * time.Second)
+	//wait for the signature for each trustee
+	signatures := make([][]byte, relayState.nTrustees)
+	for j := 0; j < relayState.nTrustees; j++ {
+ 
+		buffer := make([]byte, 1024)
+		_, err := relayState.trustees[j].Conn.Read(buffer)
+		if err != nil {
+			panic("Relay, couldn't read signature from trustee " + err.Error())
+		}
+
+		sigSize := int(binary.BigEndian.Uint32(buffer[0:4]))
+		sig := make([]byte, sigSize)
+		copy(sig[:], buffer[4:4+sigSize])
+		
+		signatures[j] = sig
+
+		fmt.Println("Collected signature from trustee", j)
 	}
+
+	fmt.Println("Crafting signature message for clients...")
+
+	sigMsg := make([]byte, 0)
+
+	//the final shuffle is the one from the latest trustee
+	lastPermutation := relayState.nTrustees - 1
+	G_s_i_bytes, err := G_s[lastPermutation].MarshalBinary()
+	if err != nil {
+		panic(err)
+	}
+
+	//pack the final base
+	sigMsg = append(sigMsg, prifinet.IntToBA(len(G_s_i_bytes))...)
+	sigMsg = append(sigMsg, G_s_i_bytes...)
+
+	//pack the ephemeral shuffle
+	pkArray := prifinet.MarshalPublicKeyArrayToByteArray(ephPublicKeys_s[lastPermutation])
+	sigMsg = append(sigMsg, prifinet.IntToBA(len(pkArray))...)
+	sigMsg = append(sigMsg, pkArray...)
+
+	//pack the trustee's signatures
+	packedSignatures := make([]byte, 0)
+	for j := 0; j < relayState.nTrustees; j++ {
+		packedSignatures = append(packedSignatures, prifinet.IntToBA(len(signatures[j]))...)
+		packedSignatures = append(packedSignatures, signatures[j]...)
+	}
+	sigMsg = append(sigMsg, prifinet.IntToBA(len(packedSignatures))...)
+	sigMsg = append(sigMsg, packedSignatures...)
+
+	//send to clients
+	prifinet.BroadcastMessageToNodes(relayState.clients, sigMsg)
+
+	fmt.Println("Oblivious shuffle & signatures sent !")
+
+	/* 
+	//obsolete, of course in practice the client do the verification (relay is untrusted)
+	fmt.Println("We verify on behalf of client")
+
+	M := make([]byte, 0)
+	M = append(M, G_s_i_bytes...)
+	for k:=0; k<len(ephPublicKeys_s[lastPermutation]); k++{
+		fmt.Println("Embedding eph key")
+		fmt.Println(ephPublicKeys_s[lastPermutation][k])
+		pkBytes, _ := ephPublicKeys_s[lastPermutation][k].MarshalBinary()
+		M = append(M, pkBytes...)
+	}
+
+	fmt.Println("The message we're gonna verify is :")
+	fmt.Println(hex.Dump(M))
+
+	for j := 0; j < relayState.nTrustees; j++ {
+		sigMsg = append(sigMsg, prifinet.IntToBA(len(signatures[j]))...)
+		sigMsg = append(sigMsg, signatures[j]...)
+
+		fmt.Println("Verifying for trustee", j)
+		err := crypto.SchnorrVerify(config.CryptoSuite, M, relayState.trustees[j].PublicKey, signatures[j])
+
+		fmt.Println("Signature was :")
+		fmt.Println(hex.Dump(signatures[j]))
+
+		if err == nil {
+			fmt.Println("Signature OK !")
+		} else {
+			panic(err.Error())
+		}
+	}
+	*/
 }
 
 

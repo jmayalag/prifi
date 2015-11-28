@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"strconv"
 	"io"
+	"github.com/lbarman/prifi/crypto"
 	"net"
 	"github.com/lbarman/prifi/config"
 	prifinet "github.com/lbarman/prifi/net"
 	prifilog "github.com/lbarman/prifi/log"
 	"os"
-	"time"
 )
 
 func StartClient(clientId int, relayHostAddr string, expectedNumberOfClients int, nTrustees int, payloadLength int, useSocksProxy bool) {
@@ -154,18 +154,51 @@ func roundScheduling(relayConn net.Conn, clientState *ClientState) int{
 		panic("Error writing to socket:" + err.Error())
 	}
 
-	fmt.Println("Ephemeral public key sent to relay")
+	fmt.Println("Ephemeral public key sent to relay, waiting for the trustees signatures")
+
+	G, ephPubKeys, signatures := prifinet.ParseBasePublicKeysAndTrusteeSignaturesFromConn(relayConn)
 
 
-	for {
-		fmt.Println("all done, waiting forever")
-		time.Sleep(5 * time.Second)
+	//composing the signed message
+	G_bytes, _ := G.MarshalBinary()
+	M := make([]byte, 0)
+	M = append(M, G_bytes...)
+	for k:=0; k<len(ephPubKeys); k++{
+		pkBytes, _ := ephPubKeys[k].MarshalBinary()
+		M = append(M, pkBytes...)
 	}
 
-	//trivial round schedule
-	roundId := clientState.Id
-	fmt.Println("Client", clientState.Name, "was assigned secretly to the round", roundId)
-	return roundId
+	//verifying the signature for all trustees
+	for j := 0; j < clientState.nTrustees; j++ {
+		fmt.Println("Verifying signature for trustee", j)
+		err := crypto.SchnorrVerify(config.CryptoSuite, M, clientState.TrusteePublicKey[j], signatures[j])
+
+		if err == nil {
+			fmt.Println("Signature OK !")
+		} else {
+			fmt.Println("Trustee", j, "signature is not valid. Something fishy is going on...")
+			panic(err.Error())
+		}
+	}
+
+	//identify which slot we own
+	myPrivKey := clientState.ephemeralPrivateKey
+	ephPubInBaseG := config.CryptoSuite.Point().Mul(G, myPrivKey)
+	mySlot := -1
+
+	for j:=0; j<len(ephPubKeys); j++ {
+		if(ephPubKeys[j].Equal(ephPubInBaseG)) {
+			mySlot = j
+		}
+	}
+
+	if mySlot == -1 {
+		panic("We don't have a slot !")
+	} else {
+		fmt.Println("Our slot is", mySlot)
+	}
+
+	return mySlot
 }
 
 /*
