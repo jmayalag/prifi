@@ -3,7 +3,6 @@ package log
 import (
 	"time"
 	"sync"
-	"github.com/fatih/color"
 )
 
 const (
@@ -19,6 +18,7 @@ type StateMachineStateChange struct {
 
 type StateMachineLogger struct {
 	sync.Mutex
+	entity 			string
 	currentState	string
 	timeEnterState	time.Time
 	measures		[]StateMachineStateChange
@@ -38,17 +38,18 @@ func (sml *StateMachineLogger) addStateChange(newState string, action int16) tim
 	return timeSpentInPrevState
 }
 
-func NewStateMachineLogger() *StateMachineLogger {
+func NewStateMachineLogger(entity string) *StateMachineLogger {
 	sml := StateMachineLogger{}
-	sml.Init()
+	sml.Init(entity)
 
 	return &sml
 }
 
-func (sml *StateMachineLogger) Init () {
+func (sml *StateMachineLogger) Init (entity string) {
 	sml.Lock()
 
 	initialState       := "statemachinelogger-init"
+	sml.entity         = entity
 	sml.timeEnterState = time.Now()
 	sml.measures       = make([]StateMachineStateChange, 0)
 
@@ -65,7 +66,7 @@ func (sml *StateMachineLogger) StateChange(newState string){
 	timeSpendInState := sml.addStateChange(oldState, ACTION_EXIT_STATE)
 	sml.addStateChange(newState, ACTION_ENTER_STATE)
 
-	color.White("[Timings] Left state %s after %s", oldState, timeSpendInState)
+	StatisticReport(sml.entity, oldState, timeSpendInState.String())
 
 	sml.Unlock()
 }

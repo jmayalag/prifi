@@ -24,7 +24,7 @@ var	deconnectedTrustees	  = make(chan int)
 
 func StartRelay(payloadLength int, relayPort string, nClients int, nTrustees int, trusteesIp []string, reportingLimit int) {
 
-	stateMachineLogger = prifilog.NewStateMachineLogger()
+	stateMachineLogger = prifilog.NewStateMachineLogger("relay")
 	stateMachineLogger.StateChange("relay-init")
 
 	relayState = initiateRelayState(relayPort, nTrustees, nClients, payloadLength, reportingLimit, trusteesIp)
@@ -100,6 +100,7 @@ func StartRelay(payloadLength int, relayPort string, nClients int, nTrustees int
 			default: 
 				//all clear! keep this thread handler load low, (accept changes every X millisecond)
 				time.Sleep(CONTROL_LOOP_SLEEP_TIME)
+				prifilog.StatisticReport("relay", "CONTROL_LOOP_SLEEP_TIME", CONTROL_LOOP_SLEEP_TIME.String())
 		}
 	}
 }
@@ -127,6 +128,7 @@ func restartProtocol(relayState *RelayState, newClients []prifinet.NodeRepresent
 		relayState.organizeRoundScheduling()
 
 		time.Sleep(INBETWEEN_CONFIG_SLEEP_TIME)
+		prifilog.StatisticReport("relay", "INBETWEEN_CONFIG_SLEEP_TIME", INBETWEEN_CONFIG_SLEEP_TIME.String())
 
 		//process message loop
 		relayStateCopy := relayState.deepClone()
@@ -137,6 +139,8 @@ func restartProtocol(relayState *RelayState, newClients []prifinet.NodeRepresent
 }
 
 func (relayState *RelayState) advertisePublicKeys(){
+	defer prifilog.TimeTrack("relay", "advertisePublicKeys", time.Now())
+
 	//Prepare the messages
 	dataForClients   := prifinet.MarshalNodeRepresentationArrayToByteArray(relayState.trustees)
 	dataForTrustees := prifinet.MarshalNodeRepresentationArrayToByteArray(relayState.clients)
@@ -158,6 +162,7 @@ func (relayState *RelayState) advertisePublicKeys(){
 }
 
 func (relayState *RelayState) organizeRoundScheduling(){
+	defer prifilog.TimeTrack("relay", "organizeRoundScheduling", time.Now())
 
 	ephPublicKeys := make([]abstract.Point, relayState.nClients)
 
@@ -374,6 +379,7 @@ func processMessageLoop(relayState *RelayState){
 
 		//if needed, we bound the number of round per second
 		time.Sleep(INBETWEEN_ROUND_SLEEP_TIME)
+		prifilog.StatisticReport("relay", "INBETWEEN_ROUND_SLEEP_TIME", INBETWEEN_ROUND_SLEEP_TIME.String())
 
 		//if the main thread tells us to stop (for re-setup)
 		tellClientsToResync := false
@@ -515,6 +521,7 @@ func processMessageLoop(relayState *RelayState){
 
 	fmt.Println("Relay main loop : waiting ",INBETWEEN_CONFIG_SLEEP_TIME," seconds, client should now be waiting for new parameters...")
 	time.Sleep(INBETWEEN_CONFIG_SLEEP_TIME)
+	prifilog.StatisticReport("relay", "INBETWEEN_CONFIG_SLEEP_TIME", INBETWEEN_CONFIG_SLEEP_TIME.String())
 
 	indicateEndOfProtocol <- PROTOCOL_STATUS_RESYNCING
 

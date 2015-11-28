@@ -6,6 +6,7 @@ import (
 	"log"
 	"time"
     "encoding/json"
+	"github.com/fatih/color"
 )
 
 var logFile = "dissent.log"
@@ -54,9 +55,17 @@ func factorial(n *big.Int) (result *big.Int) {
     return n
 }
 */
-func timeTrack(start time.Time, name string) {
+func TimeTrack(entity, task string, start time.Time) {
     elapsed := time.Since(start)
-    s := fmt.Sprintf("%s took %s", name, elapsed)
-    log.Printf(s)
+    StatisticReport(entity, task, elapsed.String())
+}
+
+func StatisticReport(entity, task, duration string) {
+	s := fmt.Sprint("[Timings] Entity %s did %s in %s\n", entity, task, duration)
+	color.White(s)
     writeToLogFile(s)
+    log.Printf(s)
+
+    s2 := fmt.Sprintf("{\"entity\":\"%q\", \"task\":\"%q\", \"time\":%d}", entity, task, duration)
+    writeToLogFile(s2)
 }

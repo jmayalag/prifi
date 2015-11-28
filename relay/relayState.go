@@ -6,6 +6,7 @@ import (
 	"time"
 	"net"
 	prifinet "github.com/lbarman/prifi/net"
+	prifilog "github.com/lbarman/prifi/log"
 )
 
 func initiateRelayState(relayPort string, nTrustees int, nClients int, payloadLength int, reportingLimit int, trusteesHosts []string) *RelayState {
@@ -75,6 +76,9 @@ func (relayState *RelayState) addNewClient(newClient prifinet.NodeRepresentation
 }
 
 func (relayState *RelayState) connectToAllTrustees() {
+
+	defer prifilog.TimeTrack("relay", "connectToAllTrustees", time.Now())
+
 	//connect to the trustees
 	for i:= 0; i < relayState.nTrustees; i++ {
 		connectToTrustee(i, relayState.trusteesHosts[i], relayState)
@@ -83,6 +87,8 @@ func (relayState *RelayState) connectToAllTrustees() {
 }
 
 func (relayState *RelayState) disconnectFromAllTrustees() {
+	defer prifilog.TimeTrack("relay", "disconnectToAllTrustees", time.Now())
+
 	//disconnect to the trustees
 	for i:= 0; i < len(relayState.trustees); i++ {
 		relayState.trustees[i].Conn.Close()
@@ -107,11 +113,14 @@ func welcomeNewClients(newConnectionsChan chan net.Conn, newClientChan chan prif
 				newClientChan <- newClient
 			default: 
 				time.Sleep(NEWCLIENT_CHECK_SLEEP_TIME) //todo : check this duration
+				prifilog.StatisticReport("relay", "NEWCLIENT_CHECK_SLEEP_TIME", "NEWCLIENT_CHECK_SLEEP_TIME")
 		}
 	}
 }
 
 func (relayState *RelayState) waitForDefaultNumberOfClients(newClientConnectionsChan chan prifinet.NodeRepresentation) {
+	defer prifilog.TimeTrack("relay", "waitForDefaultNumberOfClients", time.Now())
+
 	currentClients := 0
 
 	fmt.Printf("Waiting for %d clients (on port %s)\n", relayState.nClients - currentClients, relayState.RelayPort)
@@ -124,12 +133,14 @@ func (relayState *RelayState) waitForDefaultNumberOfClients(newClientConnections
 					fmt.Printf("Waiting for %d clients (on port %s)\n", relayState.nClients - currentClients, relayState.RelayPort)
 				default: 
 					time.Sleep(100 * time.Millisecond)
+					prifilog.StatisticReport("relay", "SLEEP_100ms", "100ms")
 		}
 	}
 	fmt.Println("Client connecting done, ", len(relayState.clients), "clients connected")
 }
 
 func (relayState *RelayState) excludeDisconnectedClients(){
+	defer prifilog.TimeTrack("relay", "excludeDisconnectedClients", time.Now())
 
 	//count the clients that disconnected
 	nClientsDisconnected := 0
