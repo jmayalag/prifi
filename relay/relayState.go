@@ -113,7 +113,7 @@ func welcomeNewClients(newConnectionsChan chan net.Conn, newClientChan chan prif
 				newClientChan <- newClient
 			default: 
 				time.Sleep(NEWCLIENT_CHECK_SLEEP_TIME) //todo : check this duration
-				prifilog.StatisticReport("relay", "NEWCLIENT_CHECK_SLEEP_TIME", "NEWCLIENT_CHECK_SLEEP_TIME")
+				//prifilog.StatisticReport("relay", "NEWCLIENT_CHECK_SLEEP_TIME", "NEWCLIENT_CHECK_SLEEP_TIME")
 		}
 	}
 }
@@ -133,7 +133,7 @@ func (relayState *RelayState) waitForDefaultNumberOfClients(newClientConnections
 					fmt.Printf("Waiting for %d clients (on port %s)\n", relayState.nClients - currentClients, relayState.RelayPort)
 				default: 
 					time.Sleep(100 * time.Millisecond)
-					prifilog.StatisticReport("relay", "SLEEP_100ms", "100ms")
+					//prifilog.StatisticReport("relay", "SLEEP_100ms", "100ms")
 		}
 	}
 	fmt.Println("Client connecting done, ", len(relayState.clients), "clients connected")

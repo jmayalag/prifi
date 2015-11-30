@@ -61,11 +61,21 @@ func TimeTrack(entity, task string, start time.Time) {
 }
 
 func StatisticReport(entity, task, duration string) {
-	s := fmt.Sprint("[Timings] Entity %s did %s in %s\n", entity, task, duration)
+	s := fmt.Sprint("[Timings] Entity ", entity, " did ", task, " in ", duration, "\n")
 	color.White(s)
     writeToLogFile(s)
     log.Printf(s)
 
-    s2 := fmt.Sprintf("{\"entity\":\"%q\", \"task\":\"%q\", \"time\":%d}", entity, task, duration)
+    s2 := fmt.Sprint("{\"entity\":\"", entity, "\", \"task\":\"", task, "\", \"time\":\"", duration, "\"}")
+    writeToLogFile(s2)
+}
+
+func InfoReport(entity, info string) {
+    s := fmt.Sprint("[Timings] Entity ", entity, " did ", info, "\n")
+	color.White(s)
+    writeToLogFile(s)
+    log.Printf(s)
+
+    s2 := fmt.Sprint("{\"entity\":\"", entity, "\", \"info\":\"", info, "\"}")
     writeToLogFile(s2)
 }

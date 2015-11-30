@@ -2,8 +2,8 @@ package net
 
 import (
 	"encoding/binary"
-	"fmt"
 	"encoding/hex"
+	"fmt"
 	"strconv"
 	"io"
 	"time"
@@ -199,6 +199,12 @@ func ParsePublicKeyFromConn(conn net.Conn) abstract.Point {
 		panic("ParsePublicKeyFromConn : Read error:" + err.Error())
 	}
 
+	version := int(binary.BigEndian.Uint32(buffer[0:4]))
+	if version != config.LLD_PROTOCOL_VERSION {
+		fmt.Println("ParsePublicKeyFromConn caught a data message")
+		return nil
+	}
+
 	keySize := int(binary.BigEndian.Uint32(buffer[8:12]))
 	keyBytes := buffer[12:(12+keySize)] 
 
@@ -291,17 +297,7 @@ func ParseBasePublicKeysAndTrusteeSignaturesFromConn(conn net.Conn) (abstract.Po
 		panic("ParseBasePublicKeysAndProofFromConn : can't unmarshal client key ! " + err2.Error())
 	}
 
-
-	fmt.Println("base blob")
-	fmt.Println(hex.Dump(baseBytes))
-
-	fmt.Println("keys blob")
-	fmt.Println(hex.Dump(keysBytes))
-
 	publicKeys := UnMarshalPublicKeyArrayFromByteArray(keysBytes, config.CryptoSuite)
-
-	fmt.Println("Signature blob")
-	fmt.Println(hex.Dump(signaturesBytes))
 
 	//now read the proofs
 	//read the G_s

@@ -144,7 +144,7 @@ func roundScheduling(relayConn net.Conn, clientState *ClientState) int{
 
 	buffer := make([]byte, 12+keySize)
 	binary.BigEndian.PutUint32(buffer[0:4], uint32(config.LLD_PROTOCOL_VERSION))
-	binary.BigEndian.PutUint32(buffer[4:8], uint32(prifinet.SOCKS_CONNECTION_ID_EMPTY))
+	binary.BigEndian.PutUint32(buffer[4:8], uint32(prifinet.MESSAGE_TYPE_PUBLICKEYS))
 	binary.BigEndian.PutUint32(buffer[8:12], uint32(keySize))
 	copy(buffer[12:], ephPublicKeyBytes)
 

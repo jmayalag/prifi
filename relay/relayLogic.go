@@ -167,8 +167,12 @@ func (relayState *RelayState) organizeRoundScheduling(){
 	ephPublicKeys := make([]abstract.Point, relayState.nClients)
 
 	//collect ephemeral keys
+	fmt.Println("nclient is ", relayState.nClients)
 	for i := 0; i < relayState.nClients; i++ {
-		ephPublicKeys[i] = prifinet.ParsePublicKeyFromConn(relayState.clients[i].Conn)
+		ephPublicKeys[i] = nil
+		for ephPublicKeys[i] == nil {
+			ephPublicKeys[i] = prifinet.ParsePublicKeyFromConn(relayState.clients[i].Conn)
+		}
 	}
 
 	fmt.Println("Relay: collected all ephemeral public keys")
@@ -349,6 +353,16 @@ func processMessageLoop(relayState *RelayState){
 	}
 	fmt.Println("#################################")
 	fmt.Println("")
+
+
+	prifilog.InfoReport("relay", fmt.Sprintf("new setup, %v clients and %v trustees", relayState.nClients, relayState.nTrustees))
+
+	for i := 0; i<len(relayState.clients); i++ {
+		prifilog.InfoReport("relay", fmt.Sprintf("new setup, client %v on %v", relayState.clients[i].Id, relayState.clients[i].Conn.LocalAddr()))
+	}
+	for i := 0; i<len(relayState.trustees); i++ {
+		prifilog.InfoReport("relay", fmt.Sprintf("new setup, client %v on %v", relayState.trustees[i].Id, relayState.trustees[i].Conn.LocalAddr()))
+	}
 
 	stats := prifilog.EmptyStatistics(relayState.ReportingLimit)
 
