@@ -26,8 +26,6 @@ func interceptCtrlC() {
 func main() {
 	interceptCtrlC()
 
-	prifilog.StringDump("New run...")
-
 	//roles...
 	isRelay           := flag.Bool("relay", false, "Start relay node")
 	clientId          := flag.Int("client", -1, "Start client node")
@@ -60,6 +58,7 @@ func main() {
 	relayPortAddr := "localhost:"+strconv.Itoa(*relayPort)
 
 	if *isRelay {
+		prifilog.StringDump("Relay - new run")
 		relay.StartRelay(*cellSize, relayPortAddr, *nClients, *nTrustees, trusteesIp, *relayReceiveLimit)
 	} else if *clientId >= 0 {
 		client.StartClient(*clientId, relayPortAddr, *nClients, *nTrustees, *cellSize, *useSocksProxy)

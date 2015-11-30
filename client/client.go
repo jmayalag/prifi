@@ -10,7 +10,6 @@ import (
 	"github.com/lbarman/prifi/config"
 	prifinet "github.com/lbarman/prifi/net"
 	prifilog "github.com/lbarman/prifi/log"
-	"os"
 )
 
 func StartClient(clientId int, relayHostAddr string, expectedNumberOfClients int, nTrustees int, payloadLength int, useSocksProxy bool) {
@@ -121,13 +120,6 @@ func StartClient(clientId int, relayHostAddr string, expectedNumberOfClients int
 					//we report the speed, bytes exchanged, etc
 					stats.Report()
 			}
-
-			//DEBUG : client 1 hard-fails after 10 loops
-			if roundCount > 10 && clientId == 1 {
-				fmt.Println("10/1 GONNA EXIT")
-				os.Exit(1)
-			}
-
 			roundCount++
 		}
 	}

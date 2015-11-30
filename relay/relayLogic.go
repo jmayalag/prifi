@@ -100,7 +100,7 @@ func StartRelay(payloadLength int, relayPort string, nClients int, nTrustees int
 			default: 
 				//all clear! keep this thread handler load low, (accept changes every X millisecond)
 				time.Sleep(CONTROL_LOOP_SLEEP_TIME)
-				prifilog.StatisticReport("relay", "CONTROL_LOOP_SLEEP_TIME", CONTROL_LOOP_SLEEP_TIME.String())
+				//prifilog.StatisticReport("relay", "CONTROL_LOOP_SLEEP_TIME", CONTROL_LOOP_SLEEP_TIME.String())
 		}
 	}
 }
@@ -392,8 +392,10 @@ func processMessageLoop(relayState *RelayState){
 		fmt.Println(".")
 
 		//if needed, we bound the number of round per second
-		time.Sleep(INBETWEEN_ROUND_SLEEP_TIME)
-		prifilog.StatisticReport("relay", "INBETWEEN_ROUND_SLEEP_TIME", INBETWEEN_ROUND_SLEEP_TIME.String())
+		if INBETWEEN_ROUND_SLEEP_TIME != 0 {
+			time.Sleep(INBETWEEN_ROUND_SLEEP_TIME)
+			prifilog.StatisticReport("relay", "INBETWEEN_ROUND_SLEEP_TIME", INBETWEEN_ROUND_SLEEP_TIME.String())
+		}
 
 		//if the main thread tells us to stop (for re-setup)
 		tellClientsToResync := false
@@ -533,9 +535,11 @@ func processMessageLoop(relayState *RelayState){
 		}
 	}
 
-	fmt.Println("Relay main loop : waiting ",INBETWEEN_CONFIG_SLEEP_TIME," seconds, client should now be waiting for new parameters...")
-	time.Sleep(INBETWEEN_CONFIG_SLEEP_TIME)
-	prifilog.StatisticReport("relay", "INBETWEEN_CONFIG_SLEEP_TIME", INBETWEEN_CONFIG_SLEEP_TIME.String())
+	if INBETWEEN_CONFIG_SLEEP_TIME != 0 {
+		fmt.Println("Relay main loop : waiting ",INBETWEEN_CONFIG_SLEEP_TIME," seconds, client should now be waiting for new parameters...")
+		time.Sleep(INBETWEEN_CONFIG_SLEEP_TIME)
+		prifilog.StatisticReport("relay", "INBETWEEN_CONFIG_SLEEP_TIME", INBETWEEN_CONFIG_SLEEP_TIME.String())
+	}
 
 	indicateEndOfProtocol <- PROTOCOL_STATUS_RESYNCING
 

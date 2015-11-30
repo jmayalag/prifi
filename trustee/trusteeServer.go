@@ -12,6 +12,8 @@ import (
 	"github.com/lbarman/prifi/config"
 	"github.com/lbarman/prifi/crypto"
 	prifinet "github.com/lbarman/prifi/net"
+	crypto_proof "github.com/lbarman/crypto/proof"
+	"github.com/lbarman/crypto/shuffle"
 )
 
 func StartTrusteeServer() {
@@ -161,6 +163,17 @@ func handleConnection(connId int,conn net.Conn, closedConnections chan int){
 
 	//do the round-shuffle
 
+	rand := config.CryptoSuite.Cipher([]byte("trustee"+strconv.Itoa(connId)))
+	H := trusteeState.PublicKey
+	X := ephPublicKeys
+	Y := X
+
+	_, _, prover := shuffle.Shuffle(config.CryptoSuite, nil, H, X, Y, rand)
+	_, err = crypto_proof.HashProve(config.CryptoSuite, "PairShuffle", rand, prover)
+	if err != nil {
+		panic("Shuffle proof failed: " + err.Error())
+	}
+
 	//base2, ephPublicKeys2, proof := NeffShuffle(base, ephPublicKey)
 	base2          := base
 	ephPublicKeys2 := ephPublicKeys
@@ -179,8 +192,21 @@ func handleConnection(connId int,conn net.Conn, closedConnections chan int){
 
 	//Todo : verify each individual permutations
 	for j:=0; j<nTrustees; j++ {
-		//verify := NeffVerify(G_s[j], ephPublicKey_s[j], proof_s[j])
+
 		verify := true
+		if j>0 {
+			H        := G_s[j]
+			X        := ephPublicKeys_s[j-1]
+			Y        := ephPublicKeys_s[j-1]
+			Xbar     := ephPublicKeys_s[j]
+			Ybar     := ephPublicKeys_s[j]
+			verifier := shuffle.Verifier(config.CryptoSuite, nil, H, X, Y, Xbar, Ybar)
+			err      = crypto_proof.HashVerify(config.CryptoSuite, "PairShuffle", verifier, proof_s[j])
+			if err != nil {
+				verify = false
+			}
+		}
+		verify = true
 
 		if !verify {
 			fmt.Println("Verifying the transcript failed, trustee", j, " (or relay) did something shady...")
@@ -234,7 +260,6 @@ func handleConnection(connId int,conn net.Conn, closedConnections chan int){
 		M = append(M, pkBytes...)
 	}
 
-	rand := config.CryptoSuite.Cipher([]byte("example-signature"))
 	sig := crypto.SchnorrSign(config.CryptoSuite, rand, M, trusteeState.privateKey)
 
 	fmt.Println("Sending the signature....")
