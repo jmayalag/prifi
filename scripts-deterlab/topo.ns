@@ -6,8 +6,8 @@
 set ns [new Simulator]
 source tb_compat.tcl
 
-set n_clients 2
-set n_trustees 3
+set n_clients 10
+set n_trustees 5
 
 set router [$ns node]
 tb-set-node-os $router Ubuntu1404-64-STD
