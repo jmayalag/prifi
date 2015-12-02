@@ -27,6 +27,9 @@ func EmptyStatistics(reportingLimit int) *Statistics{
 }
 
 func (stats *Statistics) ReportingDone() bool {
+	if stats.maxNReports == 0 || stats.maxNReports == -1 {
+		return false
+	}
 	return stats.nReports >= stats.maxNReports
 }
 
