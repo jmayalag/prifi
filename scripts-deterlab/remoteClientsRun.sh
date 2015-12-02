@@ -1,5 +1,5 @@
 #max trustee minus one, really
-maxclient=1
+maxclient=0
 
 # Start clients and trustees
 for i in $(seq 0 $maxclient); do

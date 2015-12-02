@@ -168,8 +168,10 @@ func handleConnection(connId int,conn net.Conn, closedConnections chan int){
 	X := ephPublicKeys
 	Y := X
 
-	_, _, prover := shuffle.Shuffle(config.CryptoSuite, nil, H, X, Y, rand)
-	_, err = crypto_proof.HashProve(config.CryptoSuite, "PairShuffle", rand, prover)
+	if len(ephPublicKeys) > 1 {
+		_, _, prover := shuffle.Shuffle(config.CryptoSuite, nil, H, X, Y, rand)
+		_, err = crypto_proof.HashProve(config.CryptoSuite, "PairShuffle", rand, prover)
+	}
 	if err != nil {
 		panic("Shuffle proof failed: " + err.Error())
 	}
