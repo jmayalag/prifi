@@ -13,7 +13,9 @@ import (
 // Number of bytes of cell payload to reserve for connection header, length
 const socksHeaderLength = 6
 
-const WAIT_FOR_PUBLICKEY_SLEEP_TIME =  100 * time.Millisecond
+const WAIT_FOR_PUBLICKEY_SLEEP_TIME       = 100 * time.Millisecond
+const FAILED_CONNECTION_WAIT_BEFORE_RETRY = 1000 * time.Millisecond
+const FAILED_CONNECTION_RETRY_ATTMEMPS    = 10
 
 type ParamsFromRelay struct {
 	trusteesPublicKeys 	[]abstract.Point

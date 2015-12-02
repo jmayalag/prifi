@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 	"io"
+	"time"
 	"github.com/lbarman/prifi/crypto"
 	"net"
 	"github.com/lbarman/prifi/config"
@@ -231,11 +232,26 @@ func writeNextUpstreamSlice(canWrite bool, dataForRelayBuffer chan []byte, relay
  */
 
 func connectToRelay(relayHost string, params *ClientState) net.Conn {
-	conn, err := net.Dial("tcp", relayHost)
-	if err != nil {
-		panic("Can't connect to relay:" + err.Error())
+	
+	try := 1
+	var conn net.Conn = nil
+	var err error = nil
+
+	//try to connect at most FAILED_CONNECTION_RETRY_ATTMEMPS times.
+	for conn == nil && try <= FAILED_CONNECTION_RETRY_ATTMEMPS {
+		conn, err = net.Dial("tcp", relayHost)
+		if err != nil {
+			fmt.Println("Can't connect to relay on "+relayHost)
+			fmt.Println(err.Error())
+			conn = nil
+			try++
+			time.Sleep(FAILED_CONNECTION_WAIT_BEFORE_RETRY)
+		}
 	}
 
+	if conn == nil {
+		panic("Unable to connect to relay. Exiting.")
+	}
 
 	//tell the relay our public key
 	publicKeyBytes, _ := params.PublicKey.MarshalBinary()
