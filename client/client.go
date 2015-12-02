@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"strconv"
+	"errors"
 	"io"
 	"time"
 	"github.com/lbarman/prifi/crypto"
@@ -64,7 +65,12 @@ func StartClient(clientId int, relayHostAddr string, expectedNumberOfClients int
 		}
 
 		//TODO: Shuffle to detect if we own the slot
-		myRound := roundScheduling(relayConn, clientState)
+		myRound, err := roundScheduling(relayConn, clientState)
+
+		if err != nil {
+			continue //redo everything
+		}
+
 		clientState.printSecrets()
 		println(">>>> All crypto stuff exchanged !")
 
@@ -126,7 +132,7 @@ func StartClient(clientId int, relayHostAddr string, expectedNumberOfClients int
 	}
 }
 
-func roundScheduling(relayConn net.Conn, clientState *ClientState) int{
+func roundScheduling(relayConn net.Conn, clientState *ClientState) (int, error) {
 
 	fmt.Println("Generating ephemeral keys....")
 	clientState.generateEphemeralKeys()
@@ -144,7 +150,8 @@ func roundScheduling(relayConn net.Conn, clientState *ClientState) int{
 	n, err := relayConn.Write(buffer)
 
 	if n < 12+keySize || err != nil {
-		panic("Error writing to socket:" + err.Error())
+		fmt.Println("Error writing to socket:" + err.Error())
+		return -1, err
 	}
 
 	fmt.Println("Ephemeral public key sent to relay, waiting for the trustees signatures")
@@ -171,6 +178,7 @@ func roundScheduling(relayConn net.Conn, clientState *ClientState) int{
 		} else {
 			fmt.Println("Trustee", j, "signature is not valid. Something fishy is going on...")
 			panic(err.Error())
+			return -1, err
 		}
 	}
 
@@ -186,12 +194,12 @@ func roundScheduling(relayConn net.Conn, clientState *ClientState) int{
 	}
 
 	if mySlot == -1 {
-		panic("We don't have a slot !")
+		return -1, errors.New("We don't have a slot !")
 	} else {
 		fmt.Println("Our slot is", mySlot)
 	}
 
-	return mySlot
+	return mySlot, nil
 }
 
 /*

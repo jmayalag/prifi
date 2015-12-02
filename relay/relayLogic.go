@@ -128,6 +128,12 @@ func restartProtocol(relayState *RelayState, newClients []prifinet.NodeRepresent
 		err := relayState.organizeRoundScheduling()
 		if err != nil {
 			fmt.Println("Relay Handler : round scheduling went wrong, restarting the configuration protocol")
+
+			//disconnect all clients
+			for i:=0; i<len(relayState.clients); i++{
+				relayState.clients[i].Conn.Close()
+				relayState.clients[i].Connected = false
+			}	
 			return restartProtocol(relayState, make([]prifinet.NodeRepresentation, 0));
 		}
 
@@ -180,7 +186,7 @@ func (relayState *RelayState) organizeRoundScheduling() error {
 			if err != nil {
 				return err
 			}
-			
+
 			ephPublicKeys[i] = keys
 		}
 	}
