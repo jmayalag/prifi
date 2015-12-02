@@ -125,7 +125,11 @@ func restartProtocol(relayState *RelayState, newClients []prifinet.NodeRepresent
 		//re-advertise the configuration 	
 		relayState.connectToAllTrustees()
 		relayState.advertisePublicKeys()
-		relayState.organizeRoundScheduling()
+		err := relayState.organizeRoundScheduling()
+		if err != nil {
+			fmt.Println("Relay Handler : round scheduling went wrong, restarting the configuration protocol")
+			return restartProtocol(relayState, make([]prifinet.NodeRepresentation, 0));
+		}
 
 		time.Sleep(INBETWEEN_CONFIG_SLEEP_TIME)
 		prifilog.StatisticReport("relay", "INBETWEEN_CONFIG_SLEEP_TIME", INBETWEEN_CONFIG_SLEEP_TIME.String())
@@ -161,7 +165,7 @@ func (relayState *RelayState) advertisePublicKeys(){
 	fmt.Println("Advertising done, to", len(relayState.clients), "clients and", len(relayState.trustees), "trustees")
 }
 
-func (relayState *RelayState) organizeRoundScheduling(){
+func (relayState *RelayState) organizeRoundScheduling() error {
 	defer prifilog.TimeTrack("relay", "organizeRoundScheduling", time.Now())
 
 	ephPublicKeys := make([]abstract.Point, relayState.nClients)
@@ -171,7 +175,13 @@ func (relayState *RelayState) organizeRoundScheduling(){
 	for i := 0; i < relayState.nClients; i++ {
 		ephPublicKeys[i] = nil
 		for ephPublicKeys[i] == nil {
-			ephPublicKeys[i] = prifinet.ParsePublicKeyFromConn(relayState.clients[i].Conn)
+			keys, err := prifinet.ParsePublicKeyFromConn(relayState.clients[i].Conn)
+
+			if err != nil {
+				return err
+			}
+			
+			ephPublicKeys[i] = keys
 		}
 	}
 
@@ -298,6 +308,7 @@ func (relayState *RelayState) organizeRoundScheduling(){
 	prifinet.BroadcastMessageToNodes(relayState.clients, sigMsg)
 
 	fmt.Println("Oblivious shuffle & signatures sent !")
+	return nil
 
 	/* 
 	//obsolete, of course in practice the client do the verification (relay is untrusted)

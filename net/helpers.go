@@ -192,17 +192,18 @@ func ParseTranscript(conn net.Conn, nClients int, nTrustees int) ([]abstract.Poi
 	return G_s, ephPublicKeys_s, proof_s
 }
 
-func ParsePublicKeyFromConn(conn net.Conn) abstract.Point {
+func ParsePublicKeyFromConn(conn net.Conn) (abstract.Point, error) {
 	buffer := make([]byte, 512)
 	_, err := conn.Read(buffer)
 	if err != nil {
-		panic("ParsePublicKeyFromConn : Read error:" + err.Error())
+		fmt.Println("ParsePublicKeyFromConn : Read error:" + err.Error())
+		return nil, err
 	}
 
 	version := int(binary.BigEndian.Uint32(buffer[0:4]))
 	if version != config.LLD_PROTOCOL_VERSION {
 		fmt.Println("ParsePublicKeyFromConn caught a data message")
-		return nil
+		return nil, nil
 	}
 
 	keySize := int(binary.BigEndian.Uint32(buffer[8:12]))
@@ -215,7 +216,7 @@ func ParsePublicKeyFromConn(conn net.Conn) abstract.Point {
 		panic("ParsePublicKeyFromConn : can't unmarshal ephemeral client key ! " + err2.Error())
 	}
 
-	return publicKey
+	return publicKey, nil
 }
 
 func ParseBaseAndPublicKeysFromConn(conn net.Conn) (abstract.Point, []abstract.Point) {
