@@ -56,7 +56,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	relayPortAddr := "localhost:"+strconv.Itoa(*relayPort)
+	relayPortAddr := ":"+strconv.Itoa(*relayPort) //NOT "localhost:xxxx", or it will not listen on any interfaces
 
 	if *isRelay {
 		prifilog.StringDump("Relay - new run")
