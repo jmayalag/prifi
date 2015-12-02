@@ -389,7 +389,7 @@ func processMessageLoop(relayState *RelayState){
 	
 	for currentSetupContinues {
 
-		fmt.Println(".")
+		//fmt.Println(".")
 
 		//if needed, we bound the number of round per second
 		if INBETWEEN_ROUND_SLEEP_TIME != 0 {
