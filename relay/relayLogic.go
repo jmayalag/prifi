@@ -361,7 +361,7 @@ func processMessageLoop(relayState *RelayState){
 		prifilog.InfoReport("relay", fmt.Sprintf("new setup, client %v on %v", relayState.clients[i].Id, relayState.clients[i].Conn.LocalAddr()))
 	}
 	for i := 0; i<len(relayState.trustees); i++ {
-		prifilog.InfoReport("relay", fmt.Sprintf("new setup, client %v on %v", relayState.trustees[i].Id, relayState.trustees[i].Conn.LocalAddr()))
+		prifilog.InfoReport("relay", fmt.Sprintf("new setup, trustee %v on %v", relayState.trustees[i].Id, relayState.trustees[i].Conn.LocalAddr()))
 	}
 
 	stats := prifilog.EmptyStatistics(relayState.ReportingLimit)
