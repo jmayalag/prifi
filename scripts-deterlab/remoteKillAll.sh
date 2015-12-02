@@ -3,7 +3,7 @@ maxtrustee=10
 maxclient=10
 
 echo "Remoting inside relay"
-ssh relay.LB-LLD.SAFER.isi.deterlab.net "pkill -f prifi"
+ssh router.LB-LLD.SAFER.isi.deterlab.net "pkill -f prifi"
 
 # Start clients and client
 for i in $(seq 0 $maxclient); do
