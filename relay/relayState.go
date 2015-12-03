@@ -81,7 +81,10 @@ func (relayState *RelayState) connectToAllTrustees() {
 
 	//connect to the trustees
 	for i:= 0; i < relayState.nTrustees; i++ {
-		connectToTrustee(i, relayState.trusteesHosts[i], relayState)
+		err := connectToTrustee(i, relayState.trusteesHosts[i], relayState)
+		if err != nil {
+			i--
+		}
 	}
 	fmt.Println("Trustees connecting done, ", len(relayState.trustees), "trustees connected")
 }

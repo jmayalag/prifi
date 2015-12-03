@@ -21,7 +21,7 @@ func StartClient(clientId int, relayHostAddr string, expectedNumberOfClients int
 	stats := prifilog.EmptyStatistics(-1) //no limit
 
 	//connect to relay
-	relayConn := connectToRelay(relayHostAddr, clientState)
+	relayConn, err := connectToRelay(relayHostAddr, clientState)
 
 	//define downstream stream (relay -> client)
 	dataFromRelay       := make(chan prifinet.DataWithMessageTypeAndConnId)
@@ -43,12 +43,23 @@ func StartClient(clientId int, relayHostAddr string, expectedNumberOfClients int
 
 		if relayConn == nil {
 			fmt.Println("Client: trying to configure, but relay not connected. connecting...")
-			relayConn = connectToRelay(relayHostAddr, clientState)
+			relayConn, err = connectToRelay(relayHostAddr, clientState)
+
+			if err != nil {
+				relayConn.Close()
+				relayConn = nil
+				continue //redo everything
+			}
 		}
 
 		println(">>>> Configurating... ")
 
-		params := readParamsFromRelay(relayConn)
+		params, err := readParamsFromRelay(relayConn)
+		if err != nil {
+			relayConn.Close()
+			relayConn = nil
+			continue //redo everything
+		}
 		clientState.nClients = params.nClients
 
 		//Parse the trustee's public keys, generate the shared secrets
@@ -60,7 +71,10 @@ func StartClient(clientId int, relayHostAddr string, expectedNumberOfClients int
 		//check that we got all keys
 		for i := 0; i<clientState.nTrustees; i++ {
 			if clientState.TrusteePublicKey[i] == nil {
-				panic("Client : didn't get the public key from trustee "+strconv.Itoa(i))
+				fmt.Println("Client : didn't get the public key from trustee "+strconv.Itoa(i))
+				relayConn.Close()
+				relayConn = nil
+				continue //redo everything
 			}
 		}
 
@@ -68,6 +82,8 @@ func StartClient(clientId int, relayHostAddr string, expectedNumberOfClients int
 		myRound, err := roundScheduling(relayConn, clientState)
 
 		if err != nil {
+			relayConn.Close()
+			relayConn = nil
 			continue //redo everything
 		}
 
@@ -156,8 +172,11 @@ func roundScheduling(relayConn net.Conn, clientState *ClientState) (int, error) 
 
 	fmt.Println("Ephemeral public key sent to relay, waiting for the trustees signatures")
 
-	G, ephPubKeys, signatures := prifinet.ParseBasePublicKeysAndTrusteeSignaturesFromConn(relayConn)
+	G, ephPubKeys, signatures, err := prifinet.ParseBasePublicKeysAndTrusteeSignaturesFromConn(relayConn)
 
+	if err != nil {
+		return -1, err
+	}
 
 	//composing the signed message
 	G_bytes, _ := G.MarshalBinary()
@@ -177,15 +196,14 @@ func roundScheduling(relayConn net.Conn, clientState *ClientState) (int, error) 
 			fmt.Println("Signature OK !")
 		} else {
 			fmt.Println("Trustee", j, "signature is not valid. Something fishy is going on...")
-			panic(err.Error())
 			return -1, err
 		}
 	}
 
 	//identify which slot we own
-	myPrivKey := clientState.ephemeralPrivateKey
+	myPrivKey     := clientState.ephemeralPrivateKey
 	ephPubInBaseG := config.CryptoSuite.Point().Mul(G, myPrivKey)
-	mySlot := -1
+	mySlot        := -1
 
 	for j:=0; j<len(ephPubKeys); j++ {
 		if(ephPubKeys[j].Equal(ephPubInBaseG)) {
@@ -222,7 +240,8 @@ func writeNextUpstreamSlice(canWrite bool, dataForRelayBuffer chan []byte, relay
 	upstreamSlice := clientState.CellCoder.ClientEncode(nextUpstreamBytes, clientState.PayloadLength, clientState.MessageHistory)
 
 	if len(upstreamSlice) != clientState.UsablePayloadLength {
-		panic("Client slice wrong size, expected "+strconv.Itoa(clientState.UsablePayloadLength)+", but got "+strconv.Itoa(len(upstreamSlice)))
+		fmt.Println("Client slice wrong size, expected "+strconv.Itoa(clientState.UsablePayloadLength)+", but got "+strconv.Itoa(len(upstreamSlice)))
+		return -1 //relay probably disconnected
 	}
 
 	n, err := relayConn.Write(upstreamSlice)
@@ -239,26 +258,20 @@ func writeNextUpstreamSlice(canWrite bool, dataForRelayBuffer chan []byte, relay
  * RELAY CONNECTION
  */
 
-func connectToRelay(relayHost string, params *ClientState) net.Conn {
+func connectToRelay(relayHost string, params *ClientState) (net.Conn, error) {
 	
-	try := 1
 	var conn net.Conn = nil
 	var err error = nil
 
-	//try to connect at most FAILED_CONNECTION_RETRY_ATTMEMPS times.
-	for conn == nil && try <= FAILED_CONNECTION_RETRY_ATTMEMPS {
+	//connect
+	for conn == nil{
 		conn, err = net.Dial("tcp", relayHost)
 		if err != nil {
 			fmt.Println("Can't connect to relay on "+relayHost)
 			fmt.Println(err.Error())
 			conn = nil
-			try++
 			time.Sleep(FAILED_CONNECTION_WAIT_BEFORE_RETRY)
 		}
-	}
-
-	if conn == nil {
-		panic("Unable to connect to relay. Exiting.")
 	}
 
 	//tell the relay our public key
@@ -274,20 +287,21 @@ func connectToRelay(relayHost string, params *ClientState) net.Conn {
 	n, err := conn.Write(buffer)
 
 	if n < 12+keySize || err != nil {
-		panic("Error writing to socket:" + err.Error())
+		fmt.Println("Error writing to socket:" + err.Error())
+		return nil, err
 	}
 
-	return conn
+	return conn, nil
 }
 
-func readParamsFromRelay(relayConn net.Conn) ParamsFromRelay {
+func readParamsFromRelay(relayConn net.Conn) (ParamsFromRelay, error) {
 
 	// Read the next (downstream) header from the relay
 	header := [10]byte{}
 	n, err := io.ReadFull(relayConn, header[:])
 
 	if n != len(header) {
-		panic("readParamsFromRelay: " + err.Error())
+		return ParamsFromRelay{}, errors.New("readParamsFromRelay: " + err.Error())
 	}
 
 	//parse the header
@@ -300,19 +314,22 @@ func readParamsFromRelay(relayConn net.Conn) ParamsFromRelay {
 	n, err = io.ReadFull(relayConn, data)
 
 	if err != nil {
-		panic("readParamsFromRelay: " + err.Error())
+		return ParamsFromRelay{}, errors.New("readParamsFromRelay: " + err.Error())
 	}
 
 	if messageType != prifinet.MESSAGE_TYPE_PUBLICKEYS {
 		fmt.Println("MessageType", messageType, "nClients/SocksConnID", nClients, "DataLength", dataLength)
-		panic("Expecting params from relay, got another message")
+		return ParamsFromRelay{}, errors.New("Expecting params from relay, got another message")
 	}
 		
-	publicKeys := prifinet.UnMarshalPublicKeyArrayFromByteArray(data, config.CryptoSuite)
+	publicKeys, err := prifinet.UnMarshalPublicKeyArrayFromByteArray(data, config.CryptoSuite)
+	if err != nil {
+		return ParamsFromRelay{}, err
+	}
 	fmt.Println("Got the public key from the trustees...")
 
 	params := ParamsFromRelay{publicKeys, nClients}
-	return  params
+	return params, nil
 }
 
 func readDataFromRelay(relayConn net.Conn, dataFromRelay chan<- prifinet.DataWithMessageTypeAndConnId, stopReadRelay chan bool) {
@@ -329,7 +346,9 @@ func readDataFromRelay(relayConn net.Conn, dataFromRelay chan<- prifinet.DataWit
 			return
 		}
 		if n != len(header) {
-			panic("clientReadRelay: " + err.Error())
+			fmt.Println("clientReadRelay: " + err.Error())
+			fmt.Println("ClientReadRelay error, relay probably disconnected, stopping goroutine...")
+			return
 		}
 
 		//parse the header
@@ -346,7 +365,9 @@ func readDataFromRelay(relayConn net.Conn, dataFromRelay chan<- prifinet.DataWit
 			return
 		}		
 		if n != dataLength {
-			panic("readDataFromRelay: read body length ("+strconv.Itoa(n)+") not matching expected length ("+strconv.Itoa(dataLength)+")" + err.Error())
+			fmt.Println("readDataFromRelay: read body length ("+strconv.Itoa(n)+") not matching expected length ("+strconv.Itoa(dataLength)+")" + err.Error())
+			fmt.Println("ClientReadRelay error, relay probably disconnected, stopping goroutine...")
+			return
 		}
 
 		//communicate to main thread
@@ -423,7 +444,7 @@ func startSocksProxyServerHandler(socksProxyNewConnections chan net.Conn, dataFo
 					if dataLength > 0 && socksProxyActiveConnections[socksConnId] != nil {
 						n, err := socksProxyActiveConnections[socksConnId].Write(data)
 						if n < dataLength {
-							panic("Write to socks proxy: expected "+strconv.Itoa(dataLength)+" bytes, got "+strconv.Itoa(n)+", " + err.Error())
+							fmt.Println("Write to socks proxy: expected "+strconv.Itoa(dataLength)+" bytes, got "+strconv.Itoa(n)+", " + err.Error())
 						}
 					} else {
 						// Relay indicating EOF on this conn

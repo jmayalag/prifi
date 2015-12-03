@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"io"
 	"time"
+	"errors"
 	"net"
 	"github.com/lbarman/crypto/abstract"
 	"github.com/lbarman/prifi/config"
@@ -54,11 +55,12 @@ func ReadWithTimeOut(nodeId int, conn net.Conn, length int, timeout time.Duratio
 	return data, errorDuringRead
 }
 
-func ParseTranscript(conn net.Conn, nClients int, nTrustees int) ([]abstract.Point, [][]abstract.Point, [][]byte) {
+func ParseTranscript(conn net.Conn, nClients int, nTrustees int) ([]abstract.Point, [][]abstract.Point, [][]byte, error) {
 	buffer := make([]byte, 4096)
 	_, err := conn.Read(buffer)
 	if err != nil {
-		panic("couldn't read transcript from relay " + err.Error())
+		fmt.Println("couldn't read transcript from relay " + err.Error())
+		return nil, nil, nil, err
 	}
 	
 	G_s             := make([]abstract.Point, nTrustees)
@@ -87,7 +89,8 @@ func ParseTranscript(conn net.Conn, nClients int, nTrustees int) ([]abstract.Poi
 		base := config.CryptoSuite.Point()
 		err2 := base.UnmarshalBinary(G_S_i_Bytes)
 		if err2 != nil {
-			panic(">>>>can't unmarshal base n°"+strconv.Itoa(i)+" ! " + err2.Error())
+			fmt.Println(">>>>can't unmarshal base n°"+strconv.Itoa(i)+" ! " + err2.Error())
+			return nil, nil, nil, err
 		}
 
 		G_s[i] = base
@@ -138,7 +141,8 @@ func ParseTranscript(conn net.Conn, nClients int, nTrustees int) ([]abstract.Poi
 			ephPublicKey := config.CryptoSuite.Point()
 			err2 := ephPublicKey.UnmarshalBinary(ephPublicKeyIJBytes)
 			if err2 != nil {
-				panic(">>>>can't unmarshal public key n°"+strconv.Itoa(i)+","+strconv.Itoa(j)+" ! " + err2.Error())
+				fmt.Println(">>>>can't unmarshal public key n°"+strconv.Itoa(i)+","+strconv.Itoa(j)+" ! " + err2.Error())
+				return nil, nil, nil, err
 			}
 			
 			ephPublicKeys = append(ephPublicKeys, ephPublicKey)
@@ -189,7 +193,7 @@ func ParseTranscript(conn net.Conn, nClients int, nTrustees int) ([]abstract.Poi
 		}
 	}
 
-	return G_s, ephPublicKeys_s, proof_s
+	return G_s, ephPublicKeys_s, proof_s, nil
 }
 
 func ParsePublicKeyFromConn(conn net.Conn) (abstract.Point, error) {
@@ -213,17 +217,19 @@ func ParsePublicKeyFromConn(conn net.Conn) (abstract.Point, error) {
 	err2 := publicKey.UnmarshalBinary(keyBytes)
 
 	if err2 != nil {
-		panic("ParsePublicKeyFromConn : can't unmarshal ephemeral client key ! " + err2.Error())
+		fmt.Println("ParsePublicKeyFromConn : can't unmarshal ephemeral client key ! " + err2.Error())
+		return nil, err
 	}
 
 	return publicKey, nil
 }
 
-func ParseBaseAndPublicKeysFromConn(conn net.Conn) (abstract.Point, []abstract.Point) {
+func ParseBaseAndPublicKeysFromConn(conn net.Conn) (abstract.Point, []abstract.Point, error) {
 	buffer := make([]byte, 1024)
 	_, err := conn.Read(buffer)
 	if err != nil {
-		panic("ParseBaseAndPublicKeysFromConn, couldn't read. " + err.Error())
+		fmt.Println("ParseBaseAndPublicKeysFromConn, couldn't read. " + err.Error())
+		return nil, nil, err
 	}
 
 	baseSize := int(binary.BigEndian.Uint32(buffer[0:4]))
@@ -235,11 +241,15 @@ func ParseBaseAndPublicKeysFromConn(conn net.Conn) (abstract.Point, []abstract.P
 	base := config.CryptoSuite.Point()
 	err2 := base.UnmarshalBinary(baseBytes)
 	if err2 != nil {
-		panic("ParseBaseAndPublicKeysFromConn : can't unmarshal client key ! " + err2.Error())
+		fmt.Println("ParseBaseAndPublicKeysFromConn : can't unmarshal client key ! " + err2.Error())
+		return nil, nil, err2
 	}
 
-	publicKeys := UnMarshalPublicKeyArrayFromByteArray(keysBytes, config.CryptoSuite)
-	return base, publicKeys
+	publicKeys, err := UnMarshalPublicKeyArrayFromByteArray(keysBytes, config.CryptoSuite)
+	if err != nil {
+		return nil, nil, err
+	}
+	return base, publicKeys, nil
 }
 
 func IntToBA(x int) []byte {
@@ -249,11 +259,12 @@ func IntToBA(x int) []byte {
 }
 
 
-func ParseBasePublicKeysAndProofFromConn(conn net.Conn) (abstract.Point, []abstract.Point, []byte) {
+func ParseBasePublicKeysAndProofFromConn(conn net.Conn) (abstract.Point, []abstract.Point, []byte, error) {
 	buffer := make([]byte, 1024)
 	_, err := conn.Read(buffer)
 	if err != nil {
-		panic("ParseBaseAndPublicKeysFromConn, couldn't read. " + err.Error())
+		fmt.Println("ParseBaseAndPublicKeysFromConn, couldn't read. " + err.Error())
+		return nil, nil, nil, err
 	}
 		
 	baseSize := int(binary.BigEndian.Uint32(buffer[0:4]))
@@ -267,19 +278,24 @@ func ParseBasePublicKeysAndProofFromConn(conn net.Conn) (abstract.Point, []abstr
 	base := config.CryptoSuite.Point()
 	err2 := base.UnmarshalBinary(baseBytes)
 	if err2 != nil {
-		panic("ParseBasePublicKeysAndProofFromConn : can't unmarshal client key ! " + err2.Error())
+		fmt.Println("ParseBasePublicKeysAndProofFromConn : can't unmarshal client key ! " + err2.Error())
+		return nil, nil, nil, err2
 	}
 
-	publicKeys := UnMarshalPublicKeyArrayFromByteArray(keysBytes, config.CryptoSuite)
-	return base, publicKeys, proof
+	publicKeys, err := UnMarshalPublicKeyArrayFromByteArray(keysBytes, config.CryptoSuite)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	return base, publicKeys, proof, nil
 }
 
 
-func ParseBasePublicKeysAndTrusteeSignaturesFromConn(conn net.Conn) (abstract.Point, []abstract.Point, [][]byte) {
+func ParseBasePublicKeysAndTrusteeSignaturesFromConn(conn net.Conn) (abstract.Point, []abstract.Point, [][]byte, error) {
 	buffer := make([]byte, 4096)
 	_, err := conn.Read(buffer)
 	if err != nil {
-		panic("ParseBasePublicKeysAndTrusteeProofFromConn, couldn't read. " + err.Error())
+		fmt.Println("ParseBasePublicKeysAndTrusteeProofFromConn, couldn't read. " + err.Error())
+		return nil, nil, nil, err
 	}
 		
 	baseSize := int(binary.BigEndian.Uint32(buffer[0:4]))
@@ -295,10 +311,15 @@ func ParseBasePublicKeysAndTrusteeSignaturesFromConn(conn net.Conn) (abstract.Po
 	base := config.CryptoSuite.Point()
 	err2 := base.UnmarshalBinary(baseBytes)
 	if err2 != nil {
-		panic("ParseBasePublicKeysAndProofFromConn : can't unmarshal client key ! " + err2.Error())
+		fmt.Println("ParseBasePublicKeysAndProofFromConn : can't unmarshal client key ! " + err2.Error())
+		return nil, nil, nil, err2
 	}
 
-	publicKeys := UnMarshalPublicKeyArrayFromByteArray(keysBytes, config.CryptoSuite)
+	publicKeys, err := UnMarshalPublicKeyArrayFromByteArray(keysBytes, config.CryptoSuite)
+
+	if err != nil {
+		return nil, nil, nil, err
+	}
 
 	//now read the proofs
 	//read the G_s
@@ -327,17 +348,22 @@ func ParseBasePublicKeysAndTrusteeSignaturesFromConn(conn net.Conn) (abstract.Po
 		i += 1
 	}
 
-	return base, publicKeys, signatures
+	return base, publicKeys, signatures, nil
 }
 
-func WriteBaseAndPublicKeyToConn(conn net.Conn, base abstract.Point, keys []abstract.Point) {
+func WriteBaseAndPublicKeyToConn(conn net.Conn, base abstract.Point, keys []abstract.Point) error {
 
 	baseBytes, err := base.MarshalBinary()
 	if err != nil {
-		panic("Marshall error:" + err.Error())
+		fmt.Println("Marshall error:" + err.Error())
+		return err
 	}
 
-	publicKEysBytes := MarshalPublicKeyArrayToByteArray(keys)
+	publicKEysBytes, err := MarshalPublicKeyArrayToByteArray(keys)
+
+	if err != nil {
+		return err
+	}
 
 	message := make([]byte, 8+len(baseBytes)+len(publicKEysBytes))
 
@@ -348,15 +374,19 @@ func WriteBaseAndPublicKeyToConn(conn net.Conn, base abstract.Point, keys []abst
 
 	_, err2 := conn.Write(message)
 	if err2 != nil {
-		panic("Write error:" + err.Error())
+		fmt.Println("Write error:" + err.Error())
+		return err2
 	}
+
+	return nil
 }
 
-func WriteBasePublicKeysAndProofToConn(conn net.Conn, base abstract.Point, keys []abstract.Point, proof []byte) {
-	baseBytes, err    := base.MarshalBinary()
-	keysBytes := MarshalPublicKeyArrayToByteArray(keys)
+func WriteBasePublicKeysAndProofToConn(conn net.Conn, base abstract.Point, keys []abstract.Point, proof []byte) error {
+	baseBytes, err := base.MarshalBinary()
+	keysBytes, err := MarshalPublicKeyArrayToByteArray(keys)
 	if err != nil {
-		panic("Marshall error:" + err.Error())
+		fmt.Println("Marshall error:" + err.Error())
+		return err
 	}
 
 	//compose the message
@@ -373,14 +403,18 @@ func WriteBasePublicKeysAndProofToConn(conn net.Conn, base abstract.Point, keys 
 
 	n, err2 := conn.Write(message)
 	if err2 != nil {
-		panic("Write error:" + err2.Error())
+		fmt.Println("Write error:" + err2.Error())
+		return err2
 	}
 	if n != totalMessageLength {
-		panic("WriteBasePublicKeysAndProofToConn: wrote "+strconv.Itoa(n)+", but expecetd length"+strconv.Itoa(totalMessageLength)+"." + err.Error())
+		fmt.Println("WriteBasePublicKeysAndProofToConn: wrote "+strconv.Itoa(n)+", but expecetd length"+strconv.Itoa(totalMessageLength)+"." + err.Error())
+		return errors.New("Could not write to conn")
 	}
+
+	return nil
 }
 
-func MarshalNodeRepresentationArrayToByteArray(nodes []NodeRepresentation) []byte {
+func MarshalNodeRepresentationArrayToByteArray(nodes []NodeRepresentation) ([]byte, error) {
 	var byteArray []byte
 
 	msgType := make([]byte, 4)
@@ -396,11 +430,12 @@ func MarshalNodeRepresentationArrayToByteArray(nodes []NodeRepresentation) []byt
 		byteArray = append(byteArray, publicKeysBytes...)
 
 		if err != nil{
-			panic("can't marshal client public key n°"+strconv.Itoa(i))
+			fmt.Println("can't marshal client public key n°"+strconv.Itoa(i))
+			return nil, errors.New("Can't unmarshall")
 		}
 	}
 
-	return byteArray
+	return byteArray, nil
 }
 
 func BroadcastMessageToNodes(nodes []NodeRepresentation, message []byte) {
@@ -420,7 +455,7 @@ func BroadcastMessageToNodes(nodes []NodeRepresentation, message []byte) {
 	}
 }
 
-func BroadcastMessage(conns []net.Conn, message []byte) {
+func BroadcastMessage(conns []net.Conn, message []byte) error {
 	for i:=0; i<len(conns); i++ {
 		n, err := conns[i].Write(message)
 
@@ -428,12 +463,13 @@ func BroadcastMessage(conns []net.Conn, message []byte) {
 
 		if n < len(message) || err != nil {
 			fmt.Println("Could not broadcast to conn", i)
-			panic("Error writing to socket:" + err.Error())
+			return err
 		}
 	}
+	return nil
 }
 
-func TellPublicKey(conn net.Conn, LLD_PROTOCOL_VERSION int, publicKey abstract.Point) {
+func TellPublicKey(conn net.Conn, LLD_PROTOCOL_VERSION int, publicKey abstract.Point) error {
 	publicKeyBytes, _ := publicKey.MarshalBinary()
 	keySize := len(publicKeyBytes)
 
@@ -446,11 +482,14 @@ func TellPublicKey(conn net.Conn, LLD_PROTOCOL_VERSION int, publicKey abstract.P
 	n, err := conn.Write(buffer)
 
 	if n < len(buffer) || err != nil {
-		panic("Error writing to socket:" + err.Error())
+		fmt.Println("Error writing to socket:" + err.Error())
+		return err
 	}
+
+	return nil
 }
 
-func MarshalPublicKeyArrayToByteArray(publicKeys []abstract.Point) []byte {
+func MarshalPublicKeyArrayToByteArray(publicKeys []abstract.Point) ([]byte, error) {
 	var byteArray []byte
 
 	msgType := make([]byte, 4)
@@ -467,28 +506,32 @@ func MarshalPublicKeyArrayToByteArray(publicKeys []abstract.Point) []byte {
 
 		//fmt.Println(hex.Dump(publicKeysBytes))
 		if err != nil{
-			panic("can't marshal client public key n°"+strconv.Itoa(i))
+			fmt.Println("can't marshal client public key n°"+strconv.Itoa(i))
+			return nil, err
 		}
 	}
 
-	return byteArray
+	return byteArray, nil
 }
 
-func UnMarshalPublicKeyArrayFromConnection(conn net.Conn, cryptoSuite abstract.Suite) []abstract.Point {
+func UnMarshalPublicKeyArrayFromConnection(conn net.Conn, cryptoSuite abstract.Suite) ([]abstract.Point, error) {
 	//collect the public keys from the trustees
 	buffer := make([]byte, 1024)
 	_, err := conn.Read(buffer)
 	if err != nil {
-		panic("Read error:" + err.Error())
+		fmt.Println("Read error:" + err.Error())
+		return nil, err
 	}
-	println("OK")
 
-	pks := UnMarshalPublicKeyArrayFromByteArray(buffer, cryptoSuite)
-	return pks
+	pks, err := UnMarshalPublicKeyArrayFromByteArray(buffer, cryptoSuite)
+	if err != nil {
+		return nil, err
+	}
+	return pks, nil
 }
 
 
-func UnMarshalPublicKeyArrayFromByteArray(buffer []byte, cryptoSuite abstract.Suite) []abstract.Point {
+func UnMarshalPublicKeyArrayFromByteArray(buffer []byte, cryptoSuite abstract.Suite) ([]abstract.Point, error) {
 
 	//will hold the public keys
 	var publicKeys []abstract.Point
@@ -496,7 +539,8 @@ func UnMarshalPublicKeyArrayFromByteArray(buffer []byte, cryptoSuite abstract.Su
 	//safety check
 	messageType := int(binary.BigEndian.Uint32(buffer[0:4]))
 	if messageType != 2 {
-		panic("Trying to unmarshall an array, but does not start by 2")
+		fmt.Println("Trying to unmarshall an array, but does not start by 2")
+		return nil, errors.New("Wrong message type")
 	}
 
 	//parse message
@@ -518,7 +562,8 @@ func UnMarshalPublicKeyArrayFromByteArray(buffer []byte, cryptoSuite abstract.Su
 		publicKey := cryptoSuite.Point()
 		err2 := publicKey.UnmarshalBinary(keyBytes)
 		if err2 != nil {
-			panic(">>>>can't unmarshal key n°"+strconv.Itoa(currentPkId)+" ! " + err2.Error())
+			fmt.Println(">>>>can't unmarshal key n°"+strconv.Itoa(currentPkId)+" ! " + err2.Error())
+			return nil, err2
 		}
 
 		publicKeys = append(publicKeys, publicKey)
@@ -527,5 +572,5 @@ func UnMarshalPublicKeyArrayFromByteArray(buffer []byte, cryptoSuite abstract.Su
 		currentPkId += 1
 	}
 
-	return publicKeys
+	return publicKeys, nil
 }

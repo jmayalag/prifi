@@ -130,7 +130,12 @@ func handleConnection(connId int,conn net.Conn, closedConnections chan int){
 	prifinet.TellPublicKey(conn, config.LLD_PROTOCOL_VERSION, trusteeState.PublicKey)
 
 	//Read the clients' public keys from the connection
-	clientsPublicKeys := prifinet.UnMarshalPublicKeyArrayFromConnection(conn, config.CryptoSuite)
+	clientsPublicKeys, err := prifinet.UnMarshalPublicKeyArrayFromConnection(conn, config.CryptoSuite)
+
+	if err != nil {
+		return
+	}
+
 	for i:=0; i<len(clientsPublicKeys); i++ {
 		fmt.Println("Reading public key", i)
 		trusteeState.ClientPublicKeys[i] = clientsPublicKeys[i]
@@ -140,7 +145,8 @@ func handleConnection(connId int,conn net.Conn, closedConnections chan int){
 	//check that we got all keys
 	for i := 0; i<nClients; i++ {
 		if trusteeState.ClientPublicKeys[i] == nil {
-			panic("Trustee : didn't get the public key from client "+strconv.Itoa(i))
+			fmt.Println("Trustee : didn't get the public key from client "+strconv.Itoa(i))
+			return
 		}
 	}
 
@@ -159,7 +165,12 @@ func handleConnection(connId int,conn net.Conn, closedConnections chan int){
 	println("All crypto stuff exchanged !")
 
 	//parse the ephemeral keys
-	base, ephPublicKeys := prifinet.ParseBaseAndPublicKeysFromConn(conn)
+	base, ephPublicKeys, err := prifinet.ParseBaseAndPublicKeysFromConn(conn)
+
+	if err != nil {
+		fmt.Println("Trustee : error occured, restarting")
+		return
+	}
 
 	//do the round-shuffle
 
@@ -173,7 +184,8 @@ func handleConnection(connId int,conn net.Conn, closedConnections chan int){
 		_, err = crypto_proof.HashProve(config.CryptoSuite, "PairShuffle", rand, prover)
 	}
 	if err != nil {
-		panic("Shuffle proof failed: " + err.Error())
+		fmt.Println("Shuffle proof failed: " + err.Error())
+		return
 	}
 
 	//base2, ephPublicKeys2, proof := NeffShuffle(base, ephPublicKey)
@@ -188,7 +200,7 @@ func handleConnection(connId int,conn net.Conn, closedConnections chan int){
 	//we wait, verify, and sign the transcript
 	fmt.Println("Parsing the transcript ...")
 
-	G_s, ephPublicKeys_s, proof_s := prifinet.ParseTranscript(conn, nClients, nTrustees)
+	G_s, ephPublicKeys_s, proof_s, err := prifinet.ParseTranscript(conn, nClients, nTrustees)
 
 	fmt.Println("Verifying the transcript...")
 
@@ -248,14 +260,16 @@ func handleConnection(connId int,conn net.Conn, closedConnections chan int){
 	M := make([]byte, 0)
 	G_s_j_bytes, err := G_s[nTrustees-1].MarshalBinary()
 	if err != nil {
-		panic(err.Error())
+		fmt.Println(err.Error())
+		return
 	}
 	M = append(M, G_s_j_bytes...)
 
 	for j:=0; j<nClients; j++{
 		pkBytes, err := ephPublicKeys_s[nTrustees-1][j].MarshalBinary()
 		if err != nil {
-			panic(err.Error())
+			fmt.Println(err.Error())
+			return
 		}
 		fmt.Println("Embedding eph key")
 		fmt.Println(ephPublicKeys_s[nTrustees-1][j])
@@ -272,7 +286,8 @@ func handleConnection(connId int,conn net.Conn, closedConnections chan int){
 
 	n, err2 := conn.Write(signatureMsg)
 	if err2!=nil || n<len(signatureMsg) {
-		panic("Could not write signature to relay, " + err2.Error())
+		fmt.Println("Could not write signature to relay, " + err2.Error())
+		return
 	}
 
 	fmt.Println("Signature sent.")

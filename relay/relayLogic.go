@@ -148,12 +148,21 @@ func restartProtocol(relayState *RelayState, newClients []prifinet.NodeRepresent
 	}
 }
 
-func (relayState *RelayState) advertisePublicKeys(){
+func (relayState *RelayState) advertisePublicKeys() error{
 	defer prifilog.TimeTrack("relay", "advertisePublicKeys", time.Now())
 
 	//Prepare the messages
-	dataForClients   := prifinet.MarshalNodeRepresentationArrayToByteArray(relayState.trustees)
-	dataForTrustees := prifinet.MarshalNodeRepresentationArrayToByteArray(relayState.clients)
+	dataForClients, err  := prifinet.MarshalNodeRepresentationArrayToByteArray(relayState.trustees)
+
+	if err != nil {
+		return err
+	}
+
+	dataForTrustees, err := prifinet.MarshalNodeRepresentationArrayToByteArray(relayState.clients)
+
+	if err != nil {
+		return err
+	}
 
 	//craft the message for clients
 	messageForClientsLength := len(dataForClients)
@@ -169,6 +178,8 @@ func (relayState *RelayState) advertisePublicKeys(){
 	prifinet.BroadcastMessageToNodes(relayState.clients, messageForClients)
 	prifinet.BroadcastMessageToNodes(relayState.trustees, dataForTrustees)
 	fmt.Println("Advertising done, to", len(relayState.clients), "clients and", len(relayState.trustees), "trustees")
+
+	return nil
 }
 
 func (relayState *RelayState) organizeRoundScheduling() error {
@@ -205,7 +216,12 @@ func (relayState *RelayState) organizeRoundScheduling() error {
 		prifinet.WriteBaseAndPublicKeyToConn(relayState.trustees[j].Conn, G, ephPublicKeys)
 		fmt.Println("Trustee", j, "is shuffling...")
 
-		base2, ephPublicKeys2, proof := prifinet.ParseBasePublicKeysAndProofFromConn(relayState.trustees[j].Conn)
+		base2, ephPublicKeys2, proof, err := prifinet.ParseBasePublicKeysAndProofFromConn(relayState.trustees[j].Conn)
+
+		if err != nil {
+			return err
+		}
+
 		fmt.Println("Trustee", j, "is done shuffling")
 
 		//collect transcript
@@ -258,7 +274,11 @@ func (relayState *RelayState) organizeRoundScheduling() error {
 	for j := 0; j < relayState.nTrustees; j++ {
 		n, err := relayState.trustees[j].Conn.Write(transcriptBytes)
 		if err != nil || n < len(transcriptBytes) {
-			panic("Relay : couldn't write transcript to trustee "+ err.Error())
+			fmt.Println("Relay : couldn't write transcript to trustee "+ err.Error())
+
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -269,7 +289,8 @@ func (relayState *RelayState) organizeRoundScheduling() error {
 		buffer := make([]byte, 1024)
 		_, err := relayState.trustees[j].Conn.Read(buffer)
 		if err != nil {
-			panic("Relay, couldn't read signature from trustee " + err.Error())
+			fmt.Println("Relay, couldn't read signature from trustee " + err.Error())
+			return err
 		}
 
 		sigSize := int(binary.BigEndian.Uint32(buffer[0:4]))
@@ -289,7 +310,7 @@ func (relayState *RelayState) organizeRoundScheduling() error {
 	lastPermutation := relayState.nTrustees - 1
 	G_s_i_bytes, err := G_s[lastPermutation].MarshalBinary()
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	//pack the final base
@@ -297,7 +318,12 @@ func (relayState *RelayState) organizeRoundScheduling() error {
 	sigMsg = append(sigMsg, G_s_i_bytes...)
 
 	//pack the ephemeral shuffle
-	pkArray := prifinet.MarshalPublicKeyArrayToByteArray(ephPublicKeys_s[lastPermutation])
+	pkArray, err := prifinet.MarshalPublicKeyArrayToByteArray(ephPublicKeys_s[lastPermutation])
+
+	if err != nil {
+		return err
+	}
+
 	sigMsg = append(sigMsg, prifinet.IntToBA(len(pkArray))...)
 	sigMsg = append(sigMsg, pkArray...)
 
@@ -569,13 +595,20 @@ func newSOCKSProxyHandler(connId int, downstreamData chan<- prifinet.DataWithCon
 	return upstreamData
 }
 
-func connectToTrustee(trusteeId int, trusteeHostAddr string, relayState *RelayState) {
-	//connect
+func connectToTrustee(trusteeId int, trusteeHostAddr string, relayState *RelayState) error {
 	fmt.Println("Relay connecting to trustee", trusteeId, "on address", trusteeHostAddr)
-	conn, err := net.Dial("tcp", trusteeHostAddr)
-	if err != nil {
-		panic("Can't connect to trustee:" + err.Error())
-		//TODO : maybe code something less brutal here
+
+	var conn net.Conn = nil
+	var err error = nil
+
+	//connect
+	for conn == nil{
+		conn, err = net.Dial("tcp", trusteeHostAddr)
+		if err != nil {
+			fmt.Println("Can't connect to trustee on "+trusteeHostAddr+"; "+err.Error())
+			conn = nil
+			time.Sleep(FAILED_CONNECTION_WAIT_BEFORE_RETRY)
+		}
 	}
 
 	//tell the trustee server our parameters
@@ -591,7 +624,8 @@ func connectToTrustee(trusteeId int, trusteeHostAddr string, relayState *RelaySt
 	n, err := conn.Write(buffer)
 
 	if n < 1 || err != nil {
-		panic("Error writing to socket:" + err.Error())
+		fmt.Println("Error writing to socket:" + err.Error())
+		return err
 	}
 
 	// Now read the public key
@@ -601,6 +635,7 @@ func connectToTrustee(trusteeId int, trusteeHostAddr string, relayState *RelaySt
 	_, err2 := conn.Read(buffer2)
 	if err2 != nil {
 	    fmt.Println(">>>> Relay : error reading:", err.Error())
+	    return err2
 	}
 
 	keySize := int(binary.BigEndian.Uint32(buffer2[4:8]))
@@ -609,7 +644,8 @@ func connectToTrustee(trusteeId int, trusteeHostAddr string, relayState *RelaySt
 	err3 := publicKey.UnmarshalBinary(keyBytes)
 
 	if err3 != nil {
-		panic(">>>>  Relay : can't unmarshal trustee key ! " + err2.Error())
+		fmt.Println(">>>>  Relay : can't unmarshal trustee key ! " + err3.Error())
+		return err3
 	}
 
 	fmt.Println("Trustee", trusteeId, "is connected.")
@@ -618,6 +654,8 @@ func connectToTrustee(trusteeId int, trusteeHostAddr string, relayState *RelaySt
 
 	//side effects
 	relayState.trustees = append(relayState.trustees, newTrustee)
+
+	return nil
 }
 
 func relayServerListener(listeningPort string, newConnection chan net.Conn) {
