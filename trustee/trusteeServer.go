@@ -214,8 +214,10 @@ func handleConnection(connId int,conn net.Conn, closedConnections chan int){
 			Y        := ephPublicKeys_s[j-1]
 			Xbar     := ephPublicKeys_s[j]
 			Ybar     := ephPublicKeys_s[j]
-			verifier := shuffle.Verifier(config.CryptoSuite, nil, H, X, Y, Xbar, Ybar)
-			err      = crypto_proof.HashVerify(config.CryptoSuite, "PairShuffle", verifier, proof_s[j])
+			if len(X) > 1 {
+				verifier := shuffle.Verifier(config.CryptoSuite, nil, H, X, Y, Xbar, Ybar)
+				err      = crypto_proof.HashVerify(config.CryptoSuite, "PairShuffle", verifier, proof_s[j])
+			}
 			if err != nil {
 				verify = false
 			}
