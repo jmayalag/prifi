@@ -1,14 +1,14 @@
 #max trustee minus one, really
 maxclient=9
 nrepeat=9
-maxtrustees=4
+maxtrustees=5
 
 
 for repeat in $(seq 0 $maxclient); do
 
 	echo "Repetition [$repeat/$nrepeat]"
 
-	for ntrustee in $(seq 0 $maxtrustees); do
+	for ntrustee in $(seq 1 $maxtrustees); do
 
 		echo "[$repeat/$nrepeat] Starting relay with $ntrustee trustees"
 		ssh router.LB-LLD.SAFER.isi.deterlab.net "./dissent/localRelayRunNTrustee.sh $ntrustee"
