@@ -7,6 +7,7 @@ import (
 	"errors"
 	"io"
 	"time"
+	"github.com/lbarman/crypto/abstract"
 	"github.com/lbarman/prifi/crypto"
 	"net"
 	"github.com/lbarman/prifi/config"
@@ -37,7 +38,7 @@ func StartClient(clientId int, relayHostAddr string, expectedNumberOfClients int
 		go startSocksProxyServerHandler(socksProxyNewConnections, dataForRelayBuffer, dataForSocksProxy, clientState)
 	}
 
-	exitClient            := false
+	exitClient := false
 
 	for !exitClient {
 
@@ -63,6 +64,10 @@ func StartClient(clientId int, relayHostAddr string, expectedNumberOfClients int
 		clientState.nClients = params.nClients
 
 		//Parse the trustee's public keys, generate the shared secrets
+		clientState.nTrustees        = len(params.trusteesPublicKeys)
+		clientState.TrusteePublicKey = make([]abstract.Point, clientState.nTrustees)
+		clientState.sharedSecrets    = make([]abstract.Point, clientState.nTrustees)
+
 		for i:=0; i<len(params.trusteesPublicKeys); i++ {
 			clientState.TrusteePublicKey[i] = params.trusteesPublicKeys[i]
 			clientState.sharedSecrets[i] = config.CryptoSuite.Point().Mul(params.trusteesPublicKeys[i], clientState.privateKey)
