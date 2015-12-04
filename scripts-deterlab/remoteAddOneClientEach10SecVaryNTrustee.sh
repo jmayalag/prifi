@@ -10,6 +10,14 @@ for repeat in $(seq 0 $maxclient); do
 
 	for ntrustee in $(seq 1 $maxtrustees); do
 
+
+		echo "[$repeat/$nrepeat] Killing everything..."
+		. remoteKillAll.sh
+
+		echo "[$repeat/$nrepeat] Starting the trustees..."
+		. remoteTrusteesSrvRun.sh
+		sleep 10
+
 		echo "[$repeat/$nrepeat] Starting relay with $ntrustee trustees"
 		ssh router.LB-LLD.SAFER.isi.deterlab.net "./dissent/localRelayRunNTrustee.sh $ntrustee"
 		echo "[$repeat/$nrepeat] Waiting 60 sec for relay to setup..."
