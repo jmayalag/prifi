@@ -1,0 +1,53 @@
+[relay] Relay - new run[relay] [Dec  8 19:21:54.694] Entity relay did statemachinelogger-init in 0
+[relay] {"time":"Dec  8 19:21:54.694", "entity":"relay", "task":"statemachinelogger-init", "duration":"0"}[relay] [Dec  8 19:21:54.697] Entity relay did relay-init in 3.0014ms
+[relay] {"time":"Dec  8 19:21:54.697", "entity":"relay", "task":"relay-init", "duration":"3.0014ms"}[relay] [Dec  8 19:22:18.720] Entity relay did connectToAllTrustees in 24.0231786s
+[relay] {"time":"Dec  8 19:22:18.720", "entity":"relay", "task":"connectToAllTrustees", "duration":"24.0231786s"}[relay] [Dec  8 19:23:23.376] Entity relay did waitForDefaultNumberOfClients in 1m4.654794s
+[relay] {"time":"Dec  8 19:23:23.376", "entity":"relay", "task":"waitForDefaultNumberOfClients", "duration":"1m4.654794s"}[relay] [Dec  8 19:23:23.387] Entity relay did advertisePublicKeys in 6.0032ms
+[relay] {"time":"Dec  8 19:23:23.387", "entity":"relay", "task":"advertisePublicKeys", "duration":"6.0032ms"}[relay] [Dec  8 19:23:23.408] Entity relay did organizeRoundScheduling in 12.0101ms
+[relay] {"time":"Dec  8 19:23:23.408", "entity":"relay", "task":"organizeRoundScheduling", "duration":"12.0101ms"}[relay] [Dec  8 19:23:23.411] Entity relay did protocol-setup in 1m28.714002s
+[relay] {"time":"Dec  8 19:23:23.411", "entity":"relay", "task":"protocol-setup", "duration":"1m28.714002s"}[relay] [Dec  8 19:23:23.413] Entity relay did new setup, 1 clients and 1 trustees
+[relay] {"time":"Dec  8 19:23:23.413", "entity":"relay", "info":"new setup, 1 clients and 1 trustees"}[relay] [Dec  8 19:23:23.414] Entity relay did new setup, client 0 on [::1]:9876
+[relay] {"time":"Dec  8 19:23:23.414", "entity":"relay", "info":"new setup, client 0 on [::1]:9876"}[relay] [Dec  8 19:23:23.414] Entity relay did new setup, trustee 0 on [::1]:6161
+[relay] {"time":"Dec  8 19:23:23.414", "entity":"relay", "info":"new setup, trustee 0 on [::1]:6161"}[relay] [Dec  8 19:23:24.417] Entity relay did INBETWEEN_ROUND_SLEEP_TIME in 1s
+[relay] {"time":"Dec  8 19:23:24.417", "entity":"relay", "task":"INBETWEEN_ROUND_SLEEP_TIME", "duration":"1s"}[relay] [Dec  8 19:23:25.420] Entity relay did INBETWEEN_ROUND_SLEEP_TIME in 1s
+[relay] {"time":"Dec  8 19:23:25.420", "entity":"relay", "task":"INBETWEEN_ROUND_SLEEP_TIME", "duration":"1s"}[relay] [Dec  8 19:23:26.423] Entity relay did INBETWEEN_ROUND_SLEEP_TIME in 1s
+[relay] {"time":"Dec  8 19:23:26.423", "entity":"relay", "task":"INBETWEEN_ROUND_SLEEP_TIME", "duration":"1s"}[relay] [Dec  8 19:23:27.426] Entity relay did INBETWEEN_ROUND_SLEEP_TIME in 1s
+[relay] {"time":"Dec  8 19:23:27.426", "entity":"relay", "task":"INBETWEEN_ROUND_SLEEP_TIME", "duration":"1s"}[relay] [Dec  8 19:23:28.430] Entity relay did INBETWEEN_ROUND_SLEEP_TIME in 1s
+[relay] {"time":"Dec  8 19:23:28.430", "entity":"relay", "task":"INBETWEEN_ROUND_SLEEP_TIME", "duration":"1s"}[relay] [Dec  8 19:23:29.433] Entity relay did INBETWEEN_ROUND_SLEEP_TIME in 1s
+[relay] {"time":"Dec  8 19:23:29.433", "entity":"relay", "task":"INBETWEEN_ROUND_SLEEP_TIME", "duration":"1s"}[relay] [Dec  8 19:23:30.436] Entity relay did INBETWEEN_ROUND_SLEEP_TIME in 1s
+[relay] {"time":"Dec  8 19:23:30.436", "entity":"relay", "task":"INBETWEEN_ROUND_SLEEP_TIME", "duration":"1s"}[relay] [Dec  8 19:23:31.443] Entity relay did INBETWEEN_ROUND_SLEEP_TIME in 1s
+[relay] {"time":"Dec  8 19:23:31.443", "entity":"relay", "task":"INBETWEEN_ROUND_SLEEP_TIME", "duration":"1s"}[relay] [Dec  8 19:23:32.443] Entity relay did INBETWEEN_ROUND_SLEEP_TIME in 1s
+[relay] {"time":"Dec  8 19:23:32.443", "entity":"relay", "task":"INBETWEEN_ROUND_SLEEP_TIME", "duration":"1s"}[relay] [Dec  8 19:23:33.444] Entity relay did INBETWEEN_ROUND_SLEEP_TIME in 1s
+[relay] {"time":"Dec  8 19:23:33.444", "entity":"relay", "task":"INBETWEEN_ROUND_SLEEP_TIME", "duration":"1s"}[relay] [Dec  8 19:23:34.448] Entity relay did INBETWEEN_ROUND_SLEEP_TIME in 1s
+[relay] {"time":"Dec  8 19:23:34.448", "entity":"relay", "task":"INBETWEEN_ROUND_SLEEP_TIME", "duration":"1s"}[relay] [Dec  8 19:23:35.450] Entity relay did INBETWEEN_ROUND_SLEEP_TIME in 1s
+[relay] {"time":"Dec  8 19:23:35.450", "entity":"relay", "task":"INBETWEEN_ROUND_SLEEP_TIME", "duration":"1s"}[relay] [Dec  8 19:23:36.456] Entity relay did INBETWEEN_CONFIG_SLEEP_TIME in 1s
+[relay] {"time":"Dec  8 19:23:36.456", "entity":"relay", "task":"INBETWEEN_CONFIG_SLEEP_TIME", "duration":"1s"}[relay] [Dec  8 19:23:37.453] Entity relay did excludeDisconnectedClients in 0
+[relay] {"time":"Dec  8 19:23:37.453", "entity":"relay", "task":"excludeDisconnectedClients", "duration":"0"}[relay] [Dec  8 19:23:37.453] Entity relay did protocol-mainloop in 14.0427477s
+[relay] {"time":"Dec  8 19:23:37.453", "entity":"relay", "task":"protocol-mainloop", "duration":"14.0427477s"}[relay] [Dec  8 19:23:37.457] Entity relay did disconnectToAllTrustees in 1.0066ms
+[relay] {"time":"Dec  8 19:23:37.457", "entity":"relay", "task":"disconnectToAllTrustees", "duration":"1.0066ms"}[relay] [Dec  8 19:23:37.491] Entity relay did connectToAllTrustees in 12.0084ms
+[relay] {"time":"Dec  8 19:23:37.491", "entity":"relay", "task":"connectToAllTrustees", "duration":"12.0084ms"}[relay] [Dec  8 19:23:37.501] Entity relay did advertisePublicKeys in 6.0048ms
+[relay] {"time":"Dec  8 19:23:37.501", "entity":"relay", "task":"advertisePublicKeys", "duration":"6.0048ms"}[relay] [Dec  8 19:23:37.688] Entity relay did organizeRoundScheduling in 177.1215ms
+[relay] {"time":"Dec  8 19:23:37.688", "entity":"relay", "task":"organizeRoundScheduling", "duration":"177.1215ms"}[relay] [Dec  8 19:23:38.700] Entity relay did INBETWEEN_CONFIG_SLEEP_TIME in 1s
+[relay] {"time":"Dec  8 19:23:38.700", "entity":"relay", "task":"INBETWEEN_CONFIG_SLEEP_TIME", "duration":"1s"}[relay] [Dec  8 19:23:38.701] Entity relay did protocol-resync in 1.2470099s
+[relay] {"time":"Dec  8 19:23:38.701", "entity":"relay", "task":"protocol-resync", "duration":"1.2470099s"}[relay] [Dec  8 19:23:38.721] Entity relay did new setup, 2 clients and 1 trustees
+[relay] {"time":"Dec  8 19:23:38.721", "entity":"relay", "info":"new setup, 2 clients and 1 trustees"}[relay] [Dec  8 19:23:38.725] Entity relay did new setup, client 0 on [::1]:9876
+[relay] {"time":"Dec  8 19:23:38.725", "entity":"relay", "info":"new setup, client 0 on [::1]:9876"}[relay] [Dec  8 19:23:38.729] Entity relay did new setup, client 1 on [::1]:9876
+[relay] {"time":"Dec  8 19:23:38.729", "entity":"relay", "info":"new setup, client 1 on [::1]:9876"}[relay] [Dec  8 19:23:38.733] Entity relay did new setup, trustee 0 on [::1]:6183
+[relay] {"time":"Dec  8 19:23:38.733", "entity":"relay", "info":"new setup, trustee 0 on [::1]:6183"}[relay] [Dec  8 19:23:39.740] Entity relay did INBETWEEN_ROUND_SLEEP_TIME in 1s
+[relay] {"time":"Dec  8 19:23:39.740", "entity":"relay", "task":"INBETWEEN_ROUND_SLEEP_TIME", "duration":"1s"}[relay] [Dec  8 19:23:40.743] Entity relay did INBETWEEN_ROUND_SLEEP_TIME in 1s
+[relay] {"time":"Dec  8 19:23:40.743", "entity":"relay", "task":"INBETWEEN_ROUND_SLEEP_TIME", "duration":"1s"}[relay] [Dec  8 19:23:41.745] Entity relay did INBETWEEN_ROUND_SLEEP_TIME in 1s
+[relay] {"time":"Dec  8 19:23:41.745", "entity":"relay", "task":"INBETWEEN_ROUND_SLEEP_TIME", "duration":"1s"}[relay] [Dec  8 19:23:42.748] Entity relay did INBETWEEN_ROUND_SLEEP_TIME in 1s
+[relay] {"time":"Dec  8 19:23:42.748", "entity":"relay", "task":"INBETWEEN_ROUND_SLEEP_TIME", "duration":"1s"}[relay] [Dec  8 19:23:54.718] Entity relay did INBETWEEN_CONFIG_SLEEP_TIME in 1s
+[relay] {"time":"Dec  8 19:23:54.718", "entity":"relay", "task":"INBETWEEN_CONFIG_SLEEP_TIME", "duration":"1s"}[relay] [Dec  8 19:23:55.715] Entity relay did excludeDisconnectedClients in 4.9925ms
+[relay] [Dec  8 19:23:55.711] Entity relay did protocol-mainloop in 17.010577s
+[relay] {"time":"Dec  8 19:23:55.711", "entity":"relay", "task":"protocol-mainloop", "duration":"17.010577s"}[relay] {"time":"Dec  8 19:23:55.715", "entity":"relay", "task":"excludeDisconnectedClients", "duration":"4.9925ms"}[relay] [Dec  8 19:23:55.729] Entity relay did disconnectToAllTrustees in 4.0031ms
+[relay] {"time":"Dec  8 19:23:55.729", "entity":"relay", "task":"disconnectToAllTrustees", "duration":"4.0031ms"}[relay] [Dec  8 19:23:55.767] Entity relay did connectToAllTrustees in 26.0211ms
+[relay] {"time":"Dec  8 19:23:55.767", "entity":"relay", "task":"connectToAllTrustees", "duration":"26.0211ms"}[relay] [Dec  8 19:23:55.773] Entity relay did advertisePublicKeys in 2.0018ms
+[relay] {"time":"Dec  8 19:23:55.773", "entity":"relay", "task":"advertisePublicKeys", "duration":"2.0018ms"}[relay] [Dec  8 19:23:55.915] Entity relay did organizeRoundScheduling in 127.8483ms
+[relay] {"time":"Dec  8 19:23:55.915", "entity":"relay", "task":"organizeRoundScheduling", "duration":"127.8483ms"}[relay] [Dec  8 19:23:56.916] Entity relay did INBETWEEN_CONFIG_SLEEP_TIME in 1s
+[relay] {"time":"Dec  8 19:23:56.916", "entity":"relay", "task":"INBETWEEN_CONFIG_SLEEP_TIME", "duration":"1s"}[relay] [Dec  8 19:23:56.917] Entity relay did protocol-resync in 1.2056965s
+[relay] {"time":"Dec  8 19:23:56.917", "entity":"relay", "task":"protocol-resync", "duration":"1.2056965s"}[relay] [Dec  8 19:23:56.921] Entity relay did new setup, 1 clients and 1 trustees
+[relay] {"time":"Dec  8 19:23:56.921", "entity":"relay", "info":"new setup, 1 clients and 1 trustees"}[relay] [Dec  8 19:23:56.923] Entity relay did new setup, client 1 on [::1]:9876
+[relay] {"time":"Dec  8 19:23:56.923", "entity":"relay", "info":"new setup, client 1 on [::1]:9876"}[relay] [Dec  8 19:23:56.924] Entity relay did new setup, trustee 0 on [::1]:6184
+[relay] {"time":"Dec  8 19:23:56.924", "entity":"relay", "info":"new setup, trustee 0 on [::1]:6184"}[relay] [Dec  8 19:23:57.926] Entity relay did INBETWEEN_ROUND_SLEEP_TIME in 1s
+[relay] {"time":"Dec  8 19:23:57.926", "entity":"relay", "task":"INBETWEEN_ROUND_SLEEP_TIME", "duration":"1s"}[relay] [Dec  8 19:23:58.929] Entity relay did INBETWEEN_ROUND_SLEEP_TIME in 1s

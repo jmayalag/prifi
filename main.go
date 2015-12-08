@@ -62,7 +62,17 @@ func main() {
 
 	//set up the log - default is a file
 	if *logType == "netlogger" {
-		prifilog.SetUpNetworkLogEngine(*netLogHost, *netLogStdOut)
+		var entity string
+		if *isRelay {
+			entity = "relay"
+		} else if *clientId >= 0 {
+			entity = "client"+strconv.Itoa(*clientId)
+		} else if *isTrusteeServer {
+			entity = "trusteeServer"
+		}else{
+			entity = "unknown"
+		}
+		prifilog.SetUpNetworkLogEngine(entity, *netLogHost, *netLogStdOut)
 	}else{
 		var logFile string
 		if *isRelay {

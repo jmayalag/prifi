@@ -13,7 +13,7 @@ type SinkClient struct {
 	copyToStdOut 	bool
 }
 
-func StartSinkClient(remoteHost string, copyToStdout bool) *SinkClient {
+func StartSinkClient(entity string, remoteHost string, copyToStdout bool) *SinkClient {
 
 	conn, err := net.Dial("tcp", remoteHost)
 
@@ -22,10 +22,19 @@ func StartSinkClient(remoteHost string, copyToStdout bool) *SinkClient {
 		panic("Exiting")
 	}
 
-	return &SinkClient{conn, copyToStdout}
+	sc := SinkClient{conn, copyToStdout}
+	sc.WriteMessage(entity)
+
+	fmt.Println("Connected to sink server...")
+
+	return &sc
 }
 
 func (sc *SinkClient) WriteMessage(message string) error {
+	if sc.copyToStdOut {
+		fmt.Println(message)
+	}
+
 	return sc.writeData([]byte(message))
 }
 
@@ -40,7 +49,7 @@ func (sc *SinkClient) writeData(message []byte) error {
 	//compose new message
 	buffer := make([]byte, length+4)
 	binary.BigEndian.PutUint32(buffer[0:4], uint32(length))
-	copy(buffer[6:], message)
+	copy(buffer[4:], message)
 
 	n, err := sc.conn.Write(buffer)
 
@@ -50,10 +59,6 @@ func (sc *SinkClient) writeData(message []byte) error {
 
 	if err != nil {
 		return err
-	}
-
-	if sc.copyToStdOut {
-		fmt.Println(message)
 	}
 
 	return nil

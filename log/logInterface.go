@@ -12,8 +12,8 @@ type LogInterface interface {
 
 var logEngine LogInterface
 
-func SetUpNetworkLogEngine(remoteHost string, copyToStdout bool) {
-    logEngine = StartSinkClient(remoteHost, copyToStdout)
+func SetUpNetworkLogEngine(entity string, remoteHost string, copyToStdout bool) {
+    logEngine = StartSinkClient(entity, remoteHost, copyToStdout)
 }
 
 func SetUpFileLogEngine(logFile string, copyToStdout bool) {
@@ -40,13 +40,13 @@ func JsonDump(data interface{}) {
 }
 
 func BenchmarkInt(experiment string, duration int) {
-    when := time.Now()
+    when := time.Now().Format(time.StampMilli)
 	s := fmt.Sprintf("{\"time\":\"", when, "\", \"experiment\":\"%q\", \"time\":%d}", experiment, duration)
 	logEngine.WriteMessage(s)
 }
 
 func BenchmarkFloat(experiment string, duration float64) {
-    when := time.Now()
+    when := time.Now().Format(time.StampMilli)
 	s := fmt.Sprintf("{\"time\":\"", when, "\", \"experiment\":\"%q\", \"time\":%f}", experiment, duration)
 	logEngine.WriteMessage(s)
 }
@@ -64,7 +64,7 @@ func TimeTrack(entity, task string, start time.Time) {
 }
 
 func StatisticReport(entity, task, duration string) {
-    when := time.Now()
+    when := time.Now().Format(time.StampMilli)
 	s := fmt.Sprint("[", when, "] Entity ", entity, " did ", task, " in ", duration, "\n")
     logEngine.WriteMessage(s)
 
@@ -73,7 +73,7 @@ func StatisticReport(entity, task, duration string) {
 }
 
 func InfoReport(entity, info string) {
-    when := time.Now()
+    when := time.Now().Format(time.StampMilli)
     s := fmt.Sprint("[", when, "] Entity ", entity, " did ", info, "\n")
     logEngine.WriteMessage(s)
 

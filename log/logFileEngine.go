@@ -2,7 +2,6 @@ package log
 
 import (
 	"os"
-	"log"
 	"fmt"
 )
 
@@ -16,14 +15,16 @@ func StartFileClient(path string, copyToStdout bool) *FileClient {
 }
 
 func (fc *FileClient) WriteMessage(message string) error {
-	f, err := os.OpenFile(fc.logFile, os.O_RDWR | os.O_CREATE | os.O_APPEND, 0666)
+	f, err := os.OpenFile(fc.logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
 	if err != nil {
-	    panic("log : error opening file.")
+	    panic(err)
 	}
+
 	defer f.Close()
 
-	log.SetOutput(f)
-	log.Println(message)
+	if _, err = f.WriteString(message); err != nil {
+	    panic(err)
+	}
 
 	if fc.copyToStdOut {
 		fmt.Println(message)

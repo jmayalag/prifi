@@ -8,20 +8,103 @@ import (
 	"errors"
 	"strconv"
 	"encoding/binary"
+	"github.com/fatih/color"
 )
+
+type EntityAndMessage struct {
+	entity  string
+	message string
+}
 
 func StartSinkServer(listeningPort string, logFile string) {
 
 	//dump to a file
 	fileLogger := StartFileClient(logFile, false)
 
-	dataChan := make(chan string)
+	dataChan := make(chan EntityAndMessage)
 	go serverListener(listeningPort, dataChan)
 
 	for {
 		select {
 			case d := <- dataChan :
-				fileLogger.WriteMessage(d)
+				entity := d.entity
+				msg    := d.message
+				s := "["+entity+"] "+msg
+				fileLogger.WriteMessage(s)
+
+				switch(entity) {
+					case "relay":
+						color.Set(color.FgGreen)
+						fmt.Println(s)
+						color.Unset()
+						break
+					case "trustee0":
+						color.Set(color.FgRed)
+						fmt.Println(s)
+						color.Unset()
+						break
+					case "trustee1":
+						color.Set(color.FgYellow)
+						fmt.Println(s)
+						color.Unset()
+						break
+					case "trustee2":
+						color.Set(color.FgBlue)
+						fmt.Println(s)
+						color.Unset()
+						break
+					case "trustee3":
+						color.Set(color.FgMagenta)
+						fmt.Println(s)
+						color.Unset()
+						break
+					case "trustee4":
+						color.Set(color.FgCyan)
+						fmt.Println(s)
+						color.Unset()
+						break
+					case "trustee5":
+						color.Set(color.FgGreen)
+						fmt.Println(s)
+						color.Unset()
+						break
+					case "client0":
+						color.Set(color.FgCyan)
+						fmt.Println(s)
+						color.Unset()
+						break
+					case "client1":
+						color.Set(color.FgMagenta)
+						fmt.Println(s)
+						color.Unset()
+						break
+					case "client2":
+						color.Set(color.FgBlue)
+						fmt.Println(s)
+						color.Unset()
+						break
+					case "client3":
+						color.Set(color.FgYellow)
+						fmt.Println(s)
+						color.Unset()
+						break
+					case "client4":
+						color.Set(color.FgRed)
+						fmt.Println(s)
+						color.Unset()
+						break
+					case "client5":
+						color.Set(color.FgGreen)
+						fmt.Println(s)
+						color.Unset()
+						break
+					default:
+						color.Set(color.FgWhite)
+						fmt.Println(s)
+						color.Unset()
+						break
+										
+				}
 
 			default:
 				time.Sleep(100*time.Millisecond)
@@ -29,7 +112,9 @@ func StartSinkServer(listeningPort string, logFile string) {
 	}
 }
 
-func serverListener(listeningPort string, dataChan chan string) {
+func serverListener(listeningPort string, dataChan chan EntityAndMessage) {
+	
+	fmt.Println("SinkServer : listening on " + listeningPort)
 	listeningSocket, err := net.Listen("tcp", listeningPort)
 	if err != nil {
 		panic("SinkServer : Can't open listen socket:" + err.Error())
@@ -44,7 +129,23 @@ func serverListener(listeningPort string, dataChan chan string) {
 	}
 }
 
-func handleClient(conn net.Conn, dataChan chan<- string) {
+func handleClient(conn net.Conn, dataChan chan<- EntityAndMessage) {
+	defer fmt.Println("Stopping handler.")
+
+	//the first message is the entity
+	entityBytes, err := readMessage(conn)
+
+	entity := string(entityBytes)
+
+	if err != nil {
+		fmt.Println(err)
+		panic("SinkServer error, could not read entity...")
+		return
+	}
+
+	color.Set(color.FgWhite)
+	fmt.Println("[Sink] connected to entity ", entity)
+	color.Unset()
 
 	for {
 		message, err := readMessage(conn)
@@ -55,10 +156,9 @@ func handleClient(conn net.Conn, dataChan chan<- string) {
 			break
 		}
 
-		dataChan <- string(message)
+		dataChan <- EntityAndMessage{entity, string(message)}
 	}
 
-	fmt.Println("Stopping handler.")
 }
 
 func readMessage(conn net.Conn) ([]byte, error) {

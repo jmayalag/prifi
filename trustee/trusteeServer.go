@@ -12,13 +12,14 @@ import (
 	"github.com/lbarman/prifi/config"
 	"github.com/lbarman/prifi/crypto"
 	prifinet "github.com/lbarman/prifi/net"
+	prifilog "github.com/lbarman/prifi/log"
 	crypto_proof "github.com/lbarman/crypto/proof"
 	"github.com/lbarman/crypto/shuffle"
 )
 
 func StartTrusteeServer() {
 
-	fmt.Printf("Starting Trustee Server \n")
+	prifilog.SimpleStringDump("Trustee server started")
 
 	//async listen for incoming connections
 	newConnections := make(chan net.Conn)
@@ -46,20 +47,20 @@ func StartTrusteeServer() {
 
 
 func startListening(listenport string, newConnections chan<- net.Conn) {
-	fmt.Printf("Listening on port %s\n", listenport)
+	prifilog.SimpleStringDump("Listening on port " + listenport)
 
 	lsock, err := net.Listen("tcp", listenport)
 
 	if err != nil {
-		fmt.Printf("Can't open listen socket at port %s: %s", listenport, err.Error())
+		prifilog.SimpleStringDump("Failed listening " +err.Error())
 		return
 	}
 	for {
 		conn, err := lsock.Accept()
-		fmt.Printf("Accepted on port %s\n", listenport)
+		prifilog.SimpleStringDump("Accepted on port " + listenport)
 
 		if err != nil {
-			fmt.Printf("Accept error: %s", err.Error())
+			prifilog.SimpleStringDump("Accept error " +err.Error())
 			lsock.Close()
 			return
 		}
@@ -103,7 +104,7 @@ func handleConnection(connId int,conn net.Conn, closedConnections chan int){
 	// Read the incoming connection into the bufferfer.
 	buffer, err := prifinet.ReadMessage(conn)
 	if err != nil {
-	    fmt.Println(">>>> Trustee", connId, "error reading:", err.Error())
+		prifilog.SimpleStringDump("Trustee" + strconv.Itoa(connId) + "; Error reading " +err.Error())
 	    return;
 	}
 
@@ -112,8 +113,7 @@ func handleConnection(connId int,conn net.Conn, closedConnections chan int){
 	nClients := int(binary.BigEndian.Uint32(buffer[4:8]))
 	nTrustees := int(binary.BigEndian.Uint32(buffer[8:12]))
 	trusteeId := int(binary.BigEndian.Uint32(buffer[12:16]))
-	fmt.Println(">>>> Trustee", connId, "setup is", nClients, "clients", nTrustees, "trustees, role is", trusteeId, "cellSize ", cellSize)
-
+	prifilog.SimpleStringDump("Trustee" + strconv.Itoa(connId) + "setup is" + strconv.Itoa(nClients) + "clients" + strconv.Itoa(nTrustees) + "trustees, role is" + strconv.Itoa(trusteeId) + "cellSize " + strconv.Itoa(cellSize))
 	
 	//prepare the crypto parameters
 	trusteeState := initiateTrusteeState(trusteeId, nClients, nTrustees, cellSize, conn)
@@ -123,12 +123,11 @@ func handleConnection(connId int,conn net.Conn, closedConnections chan int){
 	clientsPublicKeys, err := prifinet.UnMarshalPublicKeyArrayFromConnection(conn, config.CryptoSuite)
 
 	if err != nil {
-		fmt.Println("Couldn't read the public key array from the connection.")
+		prifilog.SimpleStringDump("Trustee" + strconv.Itoa(connId) + "; Error reading public keys " +err.Error())
 		return
 	}
 
 	for i:=0; i<len(clientsPublicKeys); i++ {
-		fmt.Println("Reading public key", i)
 		trusteeState.ClientPublicKeys[i] = clientsPublicKeys[i]
 		trusteeState.sharedSecrets[i] = config.CryptoSuite.Point().Mul(clientsPublicKeys[i], trusteeState.privateKey)
 	}
@@ -136,7 +135,7 @@ func handleConnection(connId int,conn net.Conn, closedConnections chan int){
 	//check that we got all keys
 	for i := 0; i<nClients; i++ {
 		if trusteeState.ClientPublicKeys[i] == nil {
-			fmt.Println("Trustee : didn't get the public key from client "+strconv.Itoa(i))
+		prifilog.SimpleStringDump("Trustee" + strconv.Itoa(connId) + "; Didn't get public keys from client " + strconv.Itoa(i))
 			return
 		}
 	}
@@ -153,13 +152,12 @@ func handleConnection(connId int,conn net.Conn, closedConnections chan int){
 		fmt.Println("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
 	}
 
-	println("All crypto stuff exchanged !")
-
+	prifilog.SimpleStringDump("Trustee" + strconv.Itoa(connId) + "; All crypto stuff exchanged ! ")
 	//parse the ephemeral keys
 	base, ephPublicKeys, err := prifinet.ParseBaseAndPublicKeysFromConn(conn)
 
 	if err != nil {
-		fmt.Println("Trustee : error occured, restarting")
+		prifilog.SimpleStringDump("Trustee" + strconv.Itoa(connId) + "; Error parsing ephemeral keys, quitting. "+err.Error())
 		return
 	}
 
@@ -175,7 +173,7 @@ func handleConnection(connId int,conn net.Conn, closedConnections chan int){
 		_, err = crypto_proof.HashProve(config.CryptoSuite, "PairShuffle", rand, prover)
 	}
 	if err != nil {
-		fmt.Println("Shuffle proof failed: " + err.Error())
+		//prifilog.SimpleStringDump("Trustee" + strconv.Itoa(connId) + "; Shuffle proof failed. "+err.Error())
 		return
 	}
 
@@ -186,14 +184,14 @@ func handleConnection(connId int,conn net.Conn, closedConnections chan int){
 
 	//Send back the shuffle
 	prifinet.WriteBasePublicKeysAndProofToConn(conn, base2, ephPublicKeys2, proof)
-	fmt.Println("Shuffling done, wrote back to the relay")
+	prifilog.SimpleStringDump("Trustee" + strconv.Itoa(connId) + "; Shuffling done, wrote back to the relay ")
 
 	//we wait, verify, and sign the transcript
-	fmt.Println("Parsing the transcript ...")
+	prifilog.SimpleStringDump("Trustee" + strconv.Itoa(connId) + "; Parsing the transcript ...")
 
 	G_s, ephPublicKeys_s, proof_s, err := prifinet.ParseTranscript(conn, nClients, nTrustees)
 
-	fmt.Println("Verifying the transcript...")
+	prifilog.SimpleStringDump("Trustee" + strconv.Itoa(connId) + "; Verifying the transcript... ")
 
 	//Todo : verify each individual permutations
 	for j:=0; j<nTrustees; j++ {
@@ -216,8 +214,7 @@ func handleConnection(connId int,conn net.Conn, closedConnections chan int){
 		verify = true
 
 		if !verify {
-			fmt.Println("Verifying the transcript failed, trustee", j, " (or relay) did something shady...")
-			fmt.Println("Aborting.")
+			prifilog.SimpleStringDump("Trustee" + strconv.Itoa(connId) + "; Transcript invalid for trustee "+strconv.Itoa(j)+". Aborting.")
 			return
 		}
 	}
@@ -227,11 +224,11 @@ func handleConnection(connId int,conn net.Conn, closedConnections chan int){
 	for j:=0; j<nTrustees; j++ {
 
 		if G_s[j].Equal(base2) && bytes.Equal(proof, proof_s[j]) {
-			fmt.Println("Find in transcript : Found indice", j, "that seems to match, verifing all the keys...")
+			prifilog.SimpleStringDump("Trustee" + strconv.Itoa(connId) + "; Find in transcript : Found indice "+strconv.Itoa(j)+" that seems to match, verifing all the keys...")
 			allKeyEqual := true
 			for k:=0; k<nClients; k++ {
 				if !ephPublicKeys2[k].Equal(ephPublicKeys_s[j][k]) {
-					fmt.Println("Find in transcript : Eph key", k, "is different, skipping")
+					prifilog.SimpleStringDump("Trustee" + strconv.Itoa(connId) + "; Transcript invalid for trustee "+strconv.Itoa(j)+". Aborting.")
 					allKeyEqual = false
 					break
 				}
@@ -244,16 +241,14 @@ func handleConnection(connId int,conn net.Conn, closedConnections chan int){
 	}
 
 	if !ownPermutationFound {
-		fmt.Println("Relay didn't include our own permutation, quitting")
+		prifilog.SimpleStringDump("Trustee" + strconv.Itoa(connId) + "; Can't find own transaction. Aborting.")
 		return;
 	}
-
-	fmt.Println("Everything is ok ! signing the last permutation...")
 
 	M := make([]byte, 0)
 	G_s_j_bytes, err := G_s[nTrustees-1].MarshalBinary()
 	if err != nil {
-		fmt.Println(err.Error())
+		prifilog.SimpleStringDump("Trustee" + strconv.Itoa(connId) + "; Can't marshall base, "+err.Error())
 		return
 	}
 	M = append(M, G_s_j_bytes...)
@@ -264,14 +259,12 @@ func handleConnection(connId int,conn net.Conn, closedConnections chan int){
 			fmt.Println(err.Error())
 			return
 		}
-		fmt.Println("Embedding eph key")
-		fmt.Println(ephPublicKeys_s[nTrustees-1][j])
 		M = append(M, pkBytes...)
 	}
 
 	sig := crypto.SchnorrSign(config.CryptoSuite, rand, M, trusteeState.privateKey)
 
-	fmt.Println("Sending the signature....")
+	prifilog.SimpleStringDump("Trustee" + strconv.Itoa(connId) + "; Sending signature")
 
 	signatureMsg := make([]byte, 0)
 	signatureMsg = append(signatureMsg, prifinet.IntToBA(len(sig))...)
@@ -279,16 +272,16 @@ func handleConnection(connId int,conn net.Conn, closedConnections chan int){
 
 	err2 := prifinet.WriteMessage(conn, signatureMsg)
 	if err2!=nil {
-		fmt.Println("Could not write signature to relay, " + err2.Error())
+		prifilog.SimpleStringDump("Trustee" + strconv.Itoa(connId) + "; Can't send signature, "+err2.Error())
 		return
 	}
 
-	fmt.Println("Signature sent.")
+	prifilog.SimpleStringDump("Trustee" + strconv.Itoa(connId) + "; Signature sent")
 
 	//start the handler for this round configuration
 	startTrusteeSlave(trusteeState, closedConnections)
 
-	fmt.Println(">>>> Trustee", connId, "shutting down.")
+	prifilog.SimpleStringDump("Trustee" + strconv.Itoa(connId) + "; Shutting down.")
 	conn.Close()
 }
 
@@ -308,7 +301,7 @@ func startTrusteeSlave(state *TrusteeState, closedConnections chan int) {
 
 			case connClosed := <- closedConnections:
 				if connClosed == state.TrusteeId {
-					fmt.Println("[safely stopping handler "+strconv.Itoa(state.TrusteeId)+"]")
+					prifilog.SimpleStringDump("Trustee" + strconv.Itoa(state.TrusteeId) + "; Stopping handler...")
 					return;
 				}
 
@@ -322,12 +315,14 @@ func startTrusteeSlave(state *TrusteeState, closedConnections chan int) {
 				err := prifinet.WriteMessage(state.activeConnection, tslice)
 
 				i += 1
-				fmt.Printf("["+strconv.Itoa(i)+":"+strconv.Itoa(state.TrusteeId)+"/"+strconv.Itoa(state.nClients)+","+strconv.Itoa(state.nTrustees)+"]")
 				
+				if i%100 == 0 {
+					prifilog.SimpleStringDump("Trustee" + strconv.Itoa(state.TrusteeId) + "; sent up to slice "+strconv.Itoa(i)+".")
+				}				
 				if err != nil {
 					//fmt.Println("can't write to socket: " + err.Error())
 					//fmt.Println("\nShutting down handler", state.TrusteeId, "of conn", conn.RemoteAddr())
-					fmt.Println("[error, stopping handler "+strconv.Itoa(state.TrusteeId)+"]")
+					prifilog.SimpleStringDump("Trustee" + strconv.Itoa(state.TrusteeId) + "; Write error, stopping handler... " + err.Error())
 					exit = true
 				}
 
