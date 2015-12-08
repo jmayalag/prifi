@@ -8,6 +8,7 @@ import (
 	"errors"
 	"strconv"
 	"encoding/binary"
+	"strings"
 	"github.com/fatih/color"
 )
 
@@ -32,78 +33,84 @@ func StartSinkServer(listeningPort string, logFile string) {
 				s := "["+entity+"] "+msg
 				fileLogger.WriteMessage(s)
 
-				switch(entity) {
-					case "relay":
-						color.Set(color.FgGreen)
-						fmt.Println(s)
-						color.Unset()
-						break
-					case "trustee0":
-						color.Set(color.FgRed)
-						fmt.Println(s)
-						color.Unset()
-						break
-					case "trustee1":
-						color.Set(color.FgYellow)
-						fmt.Println(s)
-						color.Unset()
-						break
-					case "trustee2":
-						color.Set(color.FgBlue)
-						fmt.Println(s)
-						color.Unset()
-						break
-					case "trustee3":
-						color.Set(color.FgMagenta)
-						fmt.Println(s)
-						color.Unset()
-						break
-					case "trustee4":
-						color.Set(color.FgCyan)
-						fmt.Println(s)
-						color.Unset()
-						break
-					case "trustee5":
-						color.Set(color.FgGreen)
-						fmt.Println(s)
-						color.Unset()
-						break
-					case "client0":
-						color.Set(color.FgCyan)
-						fmt.Println(s)
-						color.Unset()
-						break
-					case "client1":
-						color.Set(color.FgMagenta)
-						fmt.Println(s)
-						color.Unset()
-						break
-					case "client2":
-						color.Set(color.FgBlue)
-						fmt.Println(s)
-						color.Unset()
-						break
-					case "client3":
-						color.Set(color.FgYellow)
-						fmt.Println(s)
-						color.Unset()
-						break
-					case "client4":
-						color.Set(color.FgRed)
-						fmt.Println(s)
-						color.Unset()
-						break
-					case "client5":
-						color.Set(color.FgGreen)
-						fmt.Println(s)
-						color.Unset()
-						break
-					default:
-						color.Set(color.FgWhite)
-						fmt.Println(s)
-						color.Unset()
-						break
-										
+				if !strings.HasPrefix(msg, "{") {
+					switch(entity) {
+						case "relay":
+							color.Set(color.FgGreen)
+							fmt.Println(s)
+							color.Unset()
+							break
+						case "trusteeServer":
+							color.Set(color.FgYellow)
+							fmt.Println(s)
+							color.Unset()
+							break
+						case "trustee0":
+							color.Set(color.FgRed)
+							fmt.Println(s)
+							color.Unset()
+							break
+						case "trustee1":
+							color.Set(color.FgYellow)
+							fmt.Println(s)
+							color.Unset()
+							break
+						case "trustee2":
+							color.Set(color.FgBlue)
+							fmt.Println(s)
+							color.Unset()
+							break
+						case "trustee3":
+							color.Set(color.FgMagenta)
+							fmt.Println(s)
+							color.Unset()
+							break
+						case "trustee4":
+							color.Set(color.FgCyan)
+							fmt.Println(s)
+							color.Unset()
+							break
+						case "trustee5":
+							color.Set(color.FgGreen)
+							fmt.Println(s)
+							color.Unset()
+							break
+						case "client0":
+							color.Set(color.FgCyan)
+							fmt.Println(s)
+							color.Unset()
+							break
+						case "client1":
+							color.Set(color.FgMagenta)
+							fmt.Println(s)
+							color.Unset()
+							break
+						case "client2":
+							color.Set(color.FgBlue)
+							fmt.Println(s)
+							color.Unset()
+							break
+						case "client3":
+							color.Set(color.FgYellow)
+							fmt.Println(s)
+							color.Unset()
+							break
+						case "client4":
+							color.Set(color.FgRed)
+							fmt.Println(s)
+							color.Unset()
+							break
+						case "client5":
+							color.Set(color.FgGreen)
+							fmt.Println(s)
+							color.Unset()
+							break
+						default:
+							color.Set(color.FgWhite)
+							fmt.Println(s)
+							color.Unset()
+							break					
+					}
 				}
 
 			default:

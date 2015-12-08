@@ -3,6 +3,7 @@ package log
 import (
 	"os"
 	"fmt"
+	"strings"
 )
 
 type FileClient struct {
@@ -26,7 +27,7 @@ func (fc *FileClient) WriteMessage(message string) error {
 	    panic(err)
 	}
 
-	if fc.copyToStdOut {
+	if fc.copyToStdOut && !strings.HasPrefix(message, "{") {
 		fmt.Println(message)
 	}
 

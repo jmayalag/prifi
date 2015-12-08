@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"strconv"
+	"strings"
 )
 
 type SinkClient struct {
@@ -31,7 +32,7 @@ func StartSinkClient(entity string, remoteHost string, copyToStdout bool) *SinkC
 }
 
 func (sc *SinkClient) WriteMessage(message string) error {
-	if sc.copyToStdOut {
+	if sc.copyToStdOut && !strings.HasPrefix(message, "{")  {
 		fmt.Println(message)
 	}
 

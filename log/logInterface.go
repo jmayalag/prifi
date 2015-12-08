@@ -24,6 +24,16 @@ func SetUpFileLogEngine(logFile string, copyToStdout bool) {
  * Aux methods
  */
 
+func Println(a ...interface{}) {
+    s := fmt.Sprint(a)
+    SimpleStringDump(s)
+}
+
+func Printf(s string, a ...interface{}) {
+    s2 := fmt.Sprintf(s, a)
+    SimpleStringDump(s2)
+}
+
 func SimpleStringDump(s string) {
     logEngine.WriteMessage(s)
 }
@@ -65,7 +75,7 @@ func TimeTrack(entity, task string, start time.Time) {
 
 func StatisticReport(entity, task, duration string) {
     when := time.Now().Format(time.StampMilli)
-	s := fmt.Sprint("[", when, "] Entity ", entity, " did ", task, " in ", duration, "\n")
+	s := fmt.Sprint("[", when, "] Entity ", entity, " did ", task, " in ", duration)
     logEngine.WriteMessage(s)
 
     s2 := fmt.Sprint("{\"time\":\"", when, "\", \"entity\":\"", entity, "\", \"task\":\"", task, "\", \"duration\":\"", duration, "\"}")
@@ -74,7 +84,7 @@ func StatisticReport(entity, task, duration string) {
 
 func InfoReport(entity, info string) {
     when := time.Now().Format(time.StampMilli)
-    s := fmt.Sprint("[", when, "] Entity ", entity, " did ", info, "\n")
+    s := fmt.Sprint("[", when, "] Entity ", entity, " did ", info)
     logEngine.WriteMessage(s)
 
     s2 := fmt.Sprint("{\"time\":\"", when, "\", \"entity\":\"", entity, "\", \"info\":\"", info, "\"}")

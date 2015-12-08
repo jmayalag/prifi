@@ -22,7 +22,7 @@ type Statistics struct {
 }
 
 func EmptyStatistics(reportingLimit int) *Statistics{
-	stats := Statistics{time.Now(), time.Now(), 0, reportingLimit, time.Duration(3)*time.Second, 0, 0, 0, 0, 0, 0, 0}
+	stats := Statistics{time.Now(), time.Now(), 0, reportingLimit, time.Duration(5)*time.Second, 0, 0, 0, 0, 0, 0, 0}
 	return &stats
 }
 
@@ -69,7 +69,7 @@ func (stats *Statistics) ReportJson() {
 		duration := now.Sub(stats.begin).Seconds()
 		instantUpSpeed := (float64(stats.instantUpstreamBytes)/stats.period.Seconds())
 
-		fmt.Printf("@ %fs; cell %f (%f) /sec, up %f (%f) B/s, down %f (%f) B/s\n",
+		Printf("@ %fs; cell %f (%f) /sec, up %f (%f) B/s, down %f (%f) B/s\n",
 			duration,
 			 float64(stats.totalUpstreamCells)/duration, float64(stats.instantUpstreamCells)/stats.period.Seconds(),
 			 float64(stats.totalUpstreamBytes)/duration, instantUpSpeed,
@@ -105,7 +105,7 @@ func (stats *Statistics) Report() {
 		duration := now.Sub(stats.begin).Seconds()
 		instantUpSpeed := (float64(stats.instantUpstreamBytes)/stats.period.Seconds())
 
-		fmt.Printf("@ %fs; cell %f (%f) /sec, up %f (%f) B/s, down %f (%f) B/s\n",
+		Printf("@ %fs; cell %f (%f) /sec, up %f (%f) B/s, down %f (%f) B/s\n",
 			duration,
 			 float64(stats.totalUpstreamCells)/duration, float64(stats.instantUpstreamCells)/stats.period.Seconds(),
 			 float64(stats.totalUpstreamBytes)/duration, instantUpSpeed,
