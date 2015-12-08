@@ -2,6 +2,7 @@ package client
 
 import (
 	"encoding/binary"
+	"encoding/hex"
 	"fmt"
 	"strconv"
 	"errors"
@@ -55,7 +56,7 @@ func StartClient(clientId int, relayHostAddr string, expectedNumberOfClients int
 
 		println(">>>> Configurating... ")
 
-		params, err := readParamsFromRelay(relayConn)
+		params, err := readPublicKeysFromRelay(relayConn)
 		if err != nil {
 			relayConn.Close()
 			relayConn = nil
@@ -162,15 +163,16 @@ func roundScheduling(relayConn net.Conn, clientState *ClientState) (int, error) 
 	ephPublicKeyBytes, _ := clientState.EphemeralPublicKey.MarshalBinary()
 	keySize := len(ephPublicKeyBytes)
 
-	buffer := make([]byte, 12+keySize)
-	binary.BigEndian.PutUint32(buffer[0:4], uint32(config.LLD_PROTOCOL_VERSION))
-	binary.BigEndian.PutUint32(buffer[4:8], uint32(prifinet.MESSAGE_TYPE_PUBLICKEYS))
-	binary.BigEndian.PutUint32(buffer[8:12], uint32(keySize))
-	copy(buffer[12:], ephPublicKeyBytes)
+	buffer := make([]byte, 2+keySize)
+	binary.BigEndian.PutUint16(buffer[0:2], uint16(prifinet.MESSAGE_TYPE_PUBLICKEYS))
+	copy(buffer[2:], ephPublicKeyBytes)
 
-	n, err := relayConn.Write(buffer)
+	err := prifinet.WriteMessage(relayConn, buffer)
 
-	if n < 12+keySize || err != nil {
+	fmt.Println("Writing ephemeral key message")
+	fmt.Println(hex.Dump(buffer))
+
+	if err != nil {
 		fmt.Println("Error writing to socket:" + err.Error())
 		return -1, err
 	}
@@ -249,14 +251,14 @@ func writeNextUpstreamSlice(canWrite bool, dataForRelayBuffer chan []byte, relay
 		return -1 //relay probably disconnected
 	}
 
-	n, err := relayConn.Write(upstreamSlice)
+	err := prifinet.WriteMessage(relayConn, upstreamSlice)
 
-	if n != len(upstreamSlice) {
-		fmt.Println("Client write to relay error, expected writing "+strconv.Itoa(len(upstreamSlice))+", but wrote "+strconv.Itoa(n)+", err : " + err.Error())
+	if err != nil {
+		fmt.Println("Client write to relay error, err : " + err.Error())
 		return -1 //relay probably disconnected
 	}
 
-	return n
+	return len(upstreamSlice)
 }
 
 /*
@@ -281,49 +283,33 @@ func connectToRelay(relayHost string, params *ClientState) (net.Conn, error) {
 
 	//tell the relay our public key
 	publicKeyBytes, _ := params.PublicKey.MarshalBinary()
-	keySize := len(publicKeyBytes)
 
-	buffer := make([]byte, 12+keySize)
-	binary.BigEndian.PutUint32(buffer[0:4], uint32(config.LLD_PROTOCOL_VERSION))
-	binary.BigEndian.PutUint32(buffer[4:8], uint32(prifinet.SOCKS_CONNECTION_ID_EMPTY))
-	binary.BigEndian.PutUint32(buffer[8:12], uint32(keySize))
-	copy(buffer[12:], publicKeyBytes)
+	err2 := prifinet.WriteMessage(conn, publicKeyBytes)
 
-	n, err := conn.Write(buffer)
-
-	if n < 12+keySize || err != nil {
-		fmt.Println("Error writing to socket:" + err.Error())
-		return nil, err
+	if err2 != nil {
+		fmt.Println("Error writing to socket:" + err2.Error())
+		return nil, err2
 	}
 
 	return conn, nil
 }
 
-func readParamsFromRelay(relayConn net.Conn) (ParamsFromRelay, error) {
+func readPublicKeysFromRelay(relayConn net.Conn) (ParamsFromRelay, error) {
 
 	// Read the next (downstream) header from the relay
-	header := [10]byte{}
-	n, err := io.ReadFull(relayConn, header[:])
+	message, err := prifinet.ReadMessage(relayConn)
 
-	if n != len(header) {
-		return ParamsFromRelay{}, errors.New("readParamsFromRelay: " + err.Error())
+	if err != nil {
+		return ParamsFromRelay{}, errors.New("readPublicKeysFromRelay: " + err.Error())
 	}
 
 	//parse the header
-	messageType := int(binary.BigEndian.Uint32(header[0:4]))
-	nClients := int(binary.BigEndian.Uint32(header[4:8]))
-	dataLength  := int(binary.BigEndian.Uint16(header[8:10]))
-
-	// Read the data
-	data := make([]byte, dataLength)
-	n, err = io.ReadFull(relayConn, data)
-
-	if err != nil {
-		return ParamsFromRelay{}, errors.New("readParamsFromRelay: " + err.Error())
-	}
+	messageType := int(binary.BigEndian.Uint16(message[0:2]))
+	nClients    := int(binary.BigEndian.Uint32(message[2:6]))
+	data        := message[6:]
 
 	if messageType != prifinet.MESSAGE_TYPE_PUBLICKEYS {
-		fmt.Println("MessageType", messageType, "nClients/SocksConnID", nClients, "DataLength", dataLength)
+		fmt.Println("MessageType", messageType, "nClients/SocksConnID", nClients, "DataLength", len(data))
 		return ParamsFromRelay{}, errors.New("Expecting params from relay, got another message")
 	}
 		
@@ -338,49 +324,34 @@ func readParamsFromRelay(relayConn net.Conn) (ParamsFromRelay, error) {
 }
 
 func readDataFromRelay(relayConn net.Conn, dataFromRelay chan<- prifinet.DataWithMessageTypeAndConnId, stopReadRelay chan bool) {
-	header := [10]byte{}
 	totcells := uint64(0)
 	totbytes := uint64(0)
 
 	for {
 		// Read the next (downstream) header from the relay
-		n, err := io.ReadFull(relayConn, header[:])
+		message, err := prifinet.ReadMessage(relayConn)
 
 		if err != nil {
-			fmt.Println("ClientReadRelay error, relay probably disconnected, stopping goroutine...")
-			return
-		}
-		if n != len(header) {
-			fmt.Println("clientReadRelay: " + err.Error())
 			fmt.Println("ClientReadRelay error, relay probably disconnected, stopping goroutine...")
 			return
 		}
 
 		//parse the header
-		messageType := int(binary.BigEndian.Uint32(header[0:4]))
-		socksConnId := int(binary.BigEndian.Uint32(header[4:8]))
-		dataLength  := int(binary.BigEndian.Uint16(header[8:10]))
-
-		// Read the body
-		body := make([]byte, dataLength)
-		n, err = io.ReadFull(relayConn, body)
+		messageType := int(binary.BigEndian.Uint16(message[0:2]))
+		socksConnId := int(binary.BigEndian.Uint32(message[2:6]))
+		data        := message[6:]
 
 		if err != nil {
-			fmt.Println("ClientReadRelay error, relay probably disconnected, stopping goroutine...")
-			return
-		}		
-		if n != dataLength {
-			fmt.Println("readDataFromRelay: read body length ("+strconv.Itoa(n)+") not matching expected length ("+strconv.Itoa(dataLength)+")" + err.Error())
 			fmt.Println("ClientReadRelay error, relay probably disconnected, stopping goroutine...")
 			return
 		}
 
 		//communicate to main thread
-		dataFromRelay <- prifinet.DataWithMessageTypeAndConnId{messageType, socksConnId, body}
+		dataFromRelay <- prifinet.DataWithMessageTypeAndConnId{messageType, socksConnId, data}
 
 		//statistics
 		totcells++
-		totbytes += uint64(dataLength)
+		totbytes += uint64(len(data))
 
 		if messageType == prifinet.MESSAGE_TYPE_DATA_AND_RESYNC || messageType == prifinet.MESSAGE_TYPE_LAST_UPLOAD_FAILED {
 			fmt.Println("next message is gonna be some parameters, not data. Stop this goroutine")

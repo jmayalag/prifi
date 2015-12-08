@@ -99,40 +99,31 @@ func initiateTrusteeState(trusteeId int, nClients int, nTrustees int, payloadLen
 func handleConnection(connId int,conn net.Conn, closedConnections chan int){
 	
 	defer conn.Close()
-
-	buffer := make([]byte, 1024)
 	
 	// Read the incoming connection into the bufferfer.
-	_, err := conn.Read(buffer)
+	buffer, err := prifinet.ReadMessage(conn)
 	if err != nil {
 	    fmt.Println(">>>> Trustee", connId, "error reading:", err.Error())
 	    return;
 	}
 
-	//Check the protocol version against ours
-	version := int(binary.BigEndian.Uint32(buffer[0:4]))
-
-	if(version != config.LLD_PROTOCOL_VERSION) {
-		fmt.Println(">>>> Trustee", connId, "client version", version, "!= server version", config.LLD_PROTOCOL_VERSION)
-		return;
-	}
-
 	//Extract the global parameters
-	cellSize := int(binary.BigEndian.Uint32(buffer[4:8]))
-	nClients := int(binary.BigEndian.Uint32(buffer[8:12]))
-	nTrustees := int(binary.BigEndian.Uint32(buffer[12:16]))
-	trusteeId := int(binary.BigEndian.Uint32(buffer[16:20]))
+	cellSize := int(binary.BigEndian.Uint32(buffer[0:4]))
+	nClients := int(binary.BigEndian.Uint32(buffer[4:8]))
+	nTrustees := int(binary.BigEndian.Uint32(buffer[8:12]))
+	trusteeId := int(binary.BigEndian.Uint32(buffer[12:16]))
 	fmt.Println(">>>> Trustee", connId, "setup is", nClients, "clients", nTrustees, "trustees, role is", trusteeId, "cellSize ", cellSize)
 
 	
 	//prepare the crypto parameters
 	trusteeState := initiateTrusteeState(trusteeId, nClients, nTrustees, cellSize, conn)
-	prifinet.TellPublicKey(conn, config.LLD_PROTOCOL_VERSION, trusteeState.PublicKey)
+	prifinet.TellPublicKey(conn, trusteeState.PublicKey)
 
 	//Read the clients' public keys from the connection
 	clientsPublicKeys, err := prifinet.UnMarshalPublicKeyArrayFromConnection(conn, config.CryptoSuite)
 
 	if err != nil {
+		fmt.Println("Couldn't read the public key array from the connection.")
 		return
 	}
 
@@ -286,8 +277,8 @@ func handleConnection(connId int,conn net.Conn, closedConnections chan int){
 	signatureMsg = append(signatureMsg, prifinet.IntToBA(len(sig))...)
 	signatureMsg = append(signatureMsg, sig...)
 
-	n, err2 := conn.Write(signatureMsg)
-	if err2!=nil || n<len(signatureMsg) {
+	err2 := prifinet.WriteMessage(conn, signatureMsg)
+	if err2!=nil {
 		fmt.Println("Could not write signature to relay, " + err2.Error())
 		return
 	}
@@ -328,12 +319,12 @@ func startTrusteeSlave(state *TrusteeState, closedConnections chan int) {
 				// Send it to the relay
 				//println("trustee slice")
 				//println(hex.Dump(tslice))
-				n, err := state.activeConnection.Write(tslice)
+				err := prifinet.WriteMessage(state.activeConnection, tslice)
 
 				i += 1
 				fmt.Printf("["+strconv.Itoa(i)+":"+strconv.Itoa(state.TrusteeId)+"/"+strconv.Itoa(state.nClients)+","+strconv.Itoa(state.nTrustees)+"]")
 				
-				if n < len(tslice) || err != nil {
+				if err != nil {
 					//fmt.Println("can't write to socket: " + err.Error())
 					//fmt.Println("\nShutting down handler", state.TrusteeId, "of conn", conn.RemoteAddr())
 					fmt.Println("[error, stopping handler "+strconv.Itoa(state.TrusteeId)+"]")
@@ -349,18 +340,15 @@ func trusteeConnRead(state *TrusteeState, incomingStream chan []byte, closedConn
 
 	for {
 		// Read up to a cell worth of data to send upstream
-		buf := make([]byte, 512)
-		n, err := state.activeConnection.Read(buf)
+		buf, err := prifinet.ReadMessage(state.activeConnection)
 
 		// Connection error or EOF?
-		if n == 0 {
-			if err == io.EOF {
-				fmt.Println("[read EOF, trustee "+strconv.Itoa(state.TrusteeId)+"]")
-			} else {
-				fmt.Println("[read error, trustee "+strconv.Itoa(state.TrusteeId)+" ("+err.Error()+")]")
-				state.activeConnection.Close()
-				return
-			}
+		if err == io.EOF {
+			fmt.Println("[read EOF, trustee "+strconv.Itoa(state.TrusteeId)+"]")
+		} else if err != nil {
+			fmt.Println("[read error, trustee "+strconv.Itoa(state.TrusteeId)+" ("+err.Error()+")]")
+			state.activeConnection.Close()
+			return
 		} else {
 			incomingStream <- buf
 		}

@@ -6,10 +6,10 @@ import (
 )
 
 type NodeRepresentation struct {
-	Id			int
-	Conn 		net.Conn
-	Connected 	bool
-	PublicKey	abstract.Point
+	Id				int
+	Conn 			net.Conn
+	Connected 		bool
+	PublicKey		abstract.Point
 }
 
 type DataWithConnectionId struct {

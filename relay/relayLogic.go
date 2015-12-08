@@ -43,12 +43,24 @@ func StartRelay(payloadLength int, relayPort string, nClients int, nTrustees int
 	relayState.connectToAllTrustees()
 	relayState.waitForDefaultNumberOfClients(newClientWithIdAndPublicKeyChan)
 	relayState.advertisePublicKeys()	
-	relayState.organizeRoundScheduling()
+	err := relayState.organizeRoundScheduling()
 
-	//copy for subtrhead
-	relayStateCopy := relayState.deepClone()
-	go processMessageLoop(relayStateCopy)
-	var isProtocolRunning = true
+	var isProtocolRunning = false
+	if err != nil {
+		fmt.Println("Relay Handler : round scheduling went wrong, restarting the configuration protocol")
+
+		//disconnect all clients
+		for i:=0; i<len(relayState.clients); i++{
+			relayState.clients[i].Conn.Close()
+			relayState.clients[i].Connected = false
+		}	
+		restartProtocol(relayState, make([]prifinet.NodeRepresentation, 0));
+	} else {
+		//copy for subtrhead
+		relayStateCopy := relayState.deepClone()
+		go processMessageLoop(relayStateCopy)
+		isProtocolRunning = true
+	}
 
 	//control loop
 	var endOfProtocolState int
@@ -165,18 +177,16 @@ func (relayState *RelayState) advertisePublicKeys() error{
 	}
 
 	//craft the message for clients
-	messageForClientsLength := len(dataForClients)
-	messageForClients := make([]byte, 10+messageForClientsLength)
-	binary.BigEndian.PutUint32(messageForClients[0:4], uint32(prifinet.MESSAGE_TYPE_PUBLICKEYS))
-	binary.BigEndian.PutUint32(messageForClients[4:8], uint32(relayState.nClients))
-	binary.BigEndian.PutUint16(messageForClients[8:10], uint16(messageForClientsLength))
-	copy(messageForClients[10:], dataForClients)
+	messageForClients := make([]byte, 6 + len(dataForClients))
+	binary.BigEndian.PutUint16(messageForClients[0:2], uint16(prifinet.MESSAGE_TYPE_PUBLICKEYS))
+	binary.BigEndian.PutUint32(messageForClients[2:6], uint32(relayState.nClients))
+	copy(messageForClients[6:], dataForClients)
 
 	//TODO : would be cleaner if the trustees used the same structure for the message
 
 	//broadcast to the clients
-	prifinet.BroadcastMessageToNodes(relayState.clients, messageForClients)
-	prifinet.BroadcastMessageToNodes(relayState.trustees, dataForTrustees)
+	prifinet.NUnicastMessageToNodes(relayState.clients, messageForClients)
+	prifinet.NUnicastMessageToNodes(relayState.trustees, dataForTrustees)
 	fmt.Println("Advertising done, to", len(relayState.clients), "clients and", len(relayState.trustees), "trustees")
 
 	return nil
@@ -188,17 +198,38 @@ func (relayState *RelayState) organizeRoundScheduling() error {
 	ephPublicKeys := make([]abstract.Point, relayState.nClients)
 
 	//collect ephemeral keys
-	fmt.Println("nclient is ", relayState.nClients)
+	fmt.Println("Waiting for", relayState.nClients, "ephemeral keys")
 	for i := 0; i < relayState.nClients; i++ {
 		ephPublicKeys[i] = nil
 		for ephPublicKeys[i] == nil {
-			keys, err := prifinet.ParsePublicKeyFromConn(relayState.clients[i].Conn)
 
-			if err != nil {
-				return err
+			pkRead := false
+			var pk abstract.Point = nil
+
+			for !pkRead {
+
+				buffer, err := prifinet.ReadMessage(relayState.clients[i].Conn)
+				publicKey := config.CryptoSuite.Point()
+				msgType := int(binary.BigEndian.Uint16(buffer[0:2]))
+
+				if msgType == prifinet.MESSAGE_TYPE_PUBLICKEYS {
+					err2 := publicKey.UnmarshalBinary(buffer[2:])
+
+					if err2 != nil {
+						fmt.Println("Reading client", i, "ephemeral key")
+						return err
+					}
+					pk = publicKey
+					break
+
+				} else if msgType != prifinet.MESSAGE_TYPE_PUBLICKEYS {
+					//append data in the buffer
+					fmt.Println("organizeRoundScheduling: trying to read a public key message, got a data message; discarding, checking for public key in next message...")
+					continue
+				}
 			}
 
-			ephPublicKeys[i] = keys
+			ephPublicKeys[i] = pk
 		}
 	}
 
@@ -271,23 +302,13 @@ func (relayState *RelayState) organizeRoundScheduling() error {
 	}
 
 	//broadcast to trustees
-	for j := 0; j < relayState.nTrustees; j++ {
-		n, err := relayState.trustees[j].Conn.Write(transcriptBytes)
-		if err != nil || n < len(transcriptBytes) {
-			fmt.Println("Relay : couldn't write transcript to trustee "+ err.Error())
-
-			if err != nil {
-				return err
-			}
-		}
-	}
+	prifinet.NUnicastMessageToNodes(relayState.trustees, transcriptBytes)
 
 	//wait for the signature for each trustee
 	signatures := make([][]byte, relayState.nTrustees)
 	for j := 0; j < relayState.nTrustees; j++ {
  
-		buffer := make([]byte, 1024)
-		_, err := relayState.trustees[j].Conn.Read(buffer)
+ 		buffer, err := prifinet.ReadMessage(relayState.trustees[j].Conn)
 		if err != nil {
 			fmt.Println("Relay, couldn't read signature from trustee " + err.Error())
 			return err
@@ -337,7 +358,7 @@ func (relayState *RelayState) organizeRoundScheduling() error {
 	sigMsg = append(sigMsg, packedSignatures...)
 
 	//send to clients
-	prifinet.BroadcastMessageToNodes(relayState.clients, sigMsg)
+	prifinet.NUnicastMessageToNodes(relayState.clients, sigMsg)
 
 	fmt.Println("Oblivious shuffle & signatures sent !")
 	return nil
@@ -476,14 +497,13 @@ func processMessageLoop(relayState *RelayState){
 
 		//craft the message for clients
 		downstreamDataPayloadLength := len(downbuffer.Data)
-		downstreamData := make([]byte, 10+downstreamDataPayloadLength)
-		binary.BigEndian.PutUint32(downstreamData[0:4], uint32(msgType))
-		binary.BigEndian.PutUint32(downstreamData[4:8], uint32(downbuffer.ConnectionId)) //this is the SOCKS connection ID
-		binary.BigEndian.PutUint16(downstreamData[8:10], uint16(downstreamDataPayloadLength))
-		copy(downstreamData[10:], downbuffer.Data)
+		downstreamData := make([]byte, 6+downstreamDataPayloadLength)
+		binary.BigEndian.PutUint16(downstreamData[0:2], uint16(msgType))
+		binary.BigEndian.PutUint32(downstreamData[2:6], uint32(downbuffer.ConnectionId)) //this is the SOCKS connection ID
+		copy(downstreamData[6:], downbuffer.Data)
 
 		// Broadcast the downstream data to all clients.
-		prifinet.BroadcastMessageToNodes(relayState.clients, downstreamData)
+		prifinet.NUnicastMessageToNodes(relayState.clients, downstreamData)
 		stats.AddDownstreamCell(int64(downstreamDataPayloadLength))
 
 		inflight++
@@ -533,10 +553,9 @@ func processMessageLoop(relayState *RelayState){
 
 			//craft the message for clients
 			downstreamData := make([]byte, 10)
-			binary.BigEndian.PutUint32(downstreamData[0:4], uint32(3))
-			binary.BigEndian.PutUint32(downstreamData[4:8], uint32(downbuffer.ConnectionId)) //this is the SOCKS connection ID
-			binary.BigEndian.PutUint16(downstreamData[8:10], uint16(0))
-			prifinet.BroadcastMessageToNodes(relayState.clients, downstreamData)
+			binary.BigEndian.PutUint16(downstreamData[0:2], uint16(prifinet.MESSAGE_TYPE_LAST_UPLOAD_FAILED))
+			binary.BigEndian.PutUint32(downstreamData[2:6], uint32(downbuffer.ConnectionId)) //this is the SOCKS connection ID
+			prifinet.NUnicastMessageToNodes(relayState.clients, downstreamData)
 
 			break
 		} else {
@@ -612,36 +631,30 @@ func connectToTrustee(trusteeId int, trusteeHostAddr string, relayState *RelaySt
 	}
 
 	//tell the trustee server our parameters
-	buffer := make([]byte, 20)
-	binary.BigEndian.PutUint32(buffer[0:4], uint32(config.LLD_PROTOCOL_VERSION))
-	binary.BigEndian.PutUint32(buffer[4:8], uint32(relayState.PayloadLength))
-	binary.BigEndian.PutUint32(buffer[8:12], uint32(relayState.nClients))
-	binary.BigEndian.PutUint32(buffer[12:16], uint32(relayState.nTrustees))
-	binary.BigEndian.PutUint32(buffer[16:20], uint32(trusteeId))
+	buffer := make([]byte, 16)
+	binary.BigEndian.PutUint32(buffer[0:4], uint32(relayState.PayloadLength))
+	binary.BigEndian.PutUint32(buffer[4:8], uint32(relayState.nClients))
+	binary.BigEndian.PutUint32(buffer[8:12], uint32(relayState.nTrustees))
+	binary.BigEndian.PutUint32(buffer[12:16], uint32(trusteeId))
 
-	fmt.Println("Writing", config.LLD_PROTOCOL_VERSION, "setup is", relayState.nClients, relayState.nTrustees, "role is", trusteeId, "cellSize ", relayState.PayloadLength)
+	fmt.Println("Writing; setup is", relayState.nClients, relayState.nTrustees, "role is", trusteeId, "cellSize ", relayState.PayloadLength)
 
-	n, err := conn.Write(buffer)
+	err2 := prifinet.WriteMessage(conn, buffer)
 
-	if n < 1 || err != nil {
-		fmt.Println("Error writing to socket:" + err.Error())
-		return err
+	if err2 != nil {
+		fmt.Println("Error writing to socket:" + err2.Error())
+		return err2
 	}
-
-	// Now read the public key
-	buffer2 := make([]byte, 1024)
 	
 	// Read the incoming connection into the buffer.
-	_, err2 := conn.Read(buffer2)
+	buffer2, err2 := prifinet.ReadMessage(conn)
 	if err2 != nil {
 	    fmt.Println(">>>> Relay : error reading:", err.Error())
 	    return err2
 	}
 
-	keySize := int(binary.BigEndian.Uint32(buffer2[4:8]))
-	keyBytes := buffer2[8:(8+keySize)]
 	publicKey := config.CryptoSuite.Point()
-	err3 := publicKey.UnmarshalBinary(keyBytes)
+	err3 := publicKey.UnmarshalBinary(buffer2)
 
 	if err3 != nil {
 		fmt.Println(">>>>  Relay : can't unmarshal trustee key ! " + err3.Error())
@@ -674,45 +687,28 @@ func relayServerListener(listeningPort string, newConnection chan net.Conn) {
 }
 
 func relayParseClientParamsAux(conn net.Conn) prifinet.NodeRepresentation {
-	buffer := make([]byte, 512)
-	_, err2 := conn.Read(buffer)
-	if err2 != nil {
-		panic("Read error:" + err2.Error())
+
+	message, err := prifinet.ReadMessage(conn)
+	if err != nil {
+		panic("Read error:" + err.Error())
 	}
-
-	version := int(binary.BigEndian.Uint32(buffer[0:4]))
-
-	if(version != config.LLD_PROTOCOL_VERSION) {
-		fmt.Println(">>>> Relay client version", version, "!= relay version", config.LLD_PROTOCOL_VERSION)
-		panic("fatal error")
-	}
-
-	nodeId := int(binary.BigEndian.Uint32(buffer[4:8]))
 
 	//check that the node ID is not used
-	idExists := false
 	nextFreeId := 0
 	for i:=0; i<len(relayState.clients); i++{
-		if relayState.clients[i].Id == nodeId {
-			idExists = true
-		}
+
 		if relayState.clients[i].Id == nextFreeId {
 			nextFreeId++
 		}
 	}
-	if idExists {
-		fmt.Println("Client with ID ", nodeId, "tried to connect, but some client already took that ID. changing ID to", nextFreeId)
-		nodeId = nextFreeId
-	}
-
-	keySize := int(binary.BigEndian.Uint32(buffer[8:12]))
-	keyBytes := buffer[12:(12+keySize)] 
+	fmt.Println("Client connected, assigning his ID to", nextFreeId)
+	nodeId := nextFreeId
 
 	publicKey := config.CryptoSuite.Point()
-	err3 := publicKey.UnmarshalBinary(keyBytes)
+	err2 := publicKey.UnmarshalBinary(message)
 
-	if err3 != nil {
-		panic(">>>>  Relay : can't unmarshal client key ! " + err3.Error())
+	if err2 != nil {
+		panic(">>>>  Relay : can't unmarshal client key ! " + err2.Error())
 	}
 
 	newClient := prifinet.NodeRepresentation{nodeId, conn, true, publicKey}
