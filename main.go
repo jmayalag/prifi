@@ -27,6 +27,7 @@ func main() {
 	interceptCtrlC()
 
 	//roles...
+	isLogSink         := flag.Bool("logsink", false, "Start log sink node")
 	isRelay           := flag.Bool("relay", false, "Start relay node")
 	clientId          := flag.Int("client", -1, "Start client node")
 	useSocksProxy     := flag.Bool("socks", true, "Starts a useSocksProxy proxy for the client")
@@ -35,6 +36,10 @@ func main() {
 	//parameters config
 	nClients          := flag.Int("nclients", 1, "The number of clients.")
 	nTrustees         := flag.Int("ntrustees", 1, "The number of trustees.")
+	logType           := flag.String("logtype", "file", "Choices : file, or netlogger.")
+	netLogPort		  := flag.String("logport", ":10000", "The network port of the log server")
+	netLogHost		  := flag.String("loghost", "localhost:10000", "The network host+port of the log server")
+	netLogStdOut	  := flag.Bool("logtostdout", true, "If the log is also copied to stdout")
 	cellSize          := flag.Int("cellsize", 512, "Sets the size of one cell, in bytes.")
 	relayPort         := flag.Int("relayport", 9876, "Sets listening port of the relay, waiting for clients.")
 	relayHostAddr     := flag.String("relayhostaddr", "localhost:9876", "The address of the relay, for the client to contact.")
@@ -50,6 +55,28 @@ func main() {
 	
 	config.ReadConfig()
 
+	//Little exception : 
+	if *isLogSink {
+		prifilog.StartSinkServer(*netLogPort, "sink.out")
+	}
+
+	//set up the log - default is a file
+	if *logType == "netlogger" {
+		prifilog.SetUpNetworkLogEngine(*netLogHost, *netLogStdOut)
+	}else{
+		var logFile string
+		if *isRelay {
+			logFile = "relay.log"
+		} else if *clientId >= 0 {
+			logFile = "client"+strconv.Itoa(*clientId)+".log"
+		} else if *isTrusteeServer {
+			logFile = "trusteeServer.log"
+		}else{
+			logFile = "dissent.log"
+		}
+		prifilog.SetUpFileLogEngine(logFile, *netLogStdOut)
+	}
+
 	//exception
 	if(*nTrustees > 5) {
 		fmt.Println("Only up to 5 trustees are supported for this prototype") //only limited because of the input parameters
@@ -59,7 +86,7 @@ func main() {
 	relayPortAddr := ":"+strconv.Itoa(*relayPort) //NOT "localhost:xxxx", or it will not listen on any interfaces
 
 	if *isRelay {
-		prifilog.StringDump("Relay - new run")
+		prifilog.SimpleStringDump("Relay - new run")
 		relay.StartRelay(*cellSize, relayPortAddr, *nClients, *nTrustees, trusteesIp, *relayReceiveLimit)
 	} else if *clientId >= 0 {
 		client.StartClient(*clientId, *relayHostAddr, *nClients, *nTrustees, *cellSize, *useSocksProxy)
