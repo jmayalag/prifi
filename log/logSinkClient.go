@@ -5,6 +5,7 @@ import (
 	"net"
 	"encoding/binary"
 	"errors"
+	"sync"
 	"strconv"
 	"strings"
 )
@@ -13,6 +14,7 @@ type SinkClient struct {
 	conn 			net.Conn
 	copyToStdOut 	bool
 	logLevel		int
+	sync.Mutex
 }
 
 func StartSinkClient(logLevel int, entity string, remoteHost string, copyToStdout bool) *SinkClient {
@@ -24,7 +26,7 @@ func StartSinkClient(logLevel int, entity string, remoteHost string, copyToStdou
 		panic("Exiting")
 	}
 
-	sc := SinkClient{conn, copyToStdout, logLevel}
+	sc := SinkClient{conn, copyToStdout, logLevel, sync.Mutex{}}
 	sc.writeData([]byte(entity))
 
 	fmt.Println("Connected to sink server...")
@@ -44,10 +46,15 @@ func (sc *SinkClient) WriteMessage(severity int, message string) error {
 		fmt.Println(s)
 	}
 
-	return sc.writeData([]byte(s))
+	go sc.writeData([]byte(s));
+
+	return nil
 }
 
 func (sc *SinkClient) writeData(message []byte) error {
+
+	sc.Lock()
+	defer sc.Unlock()
 
 	if sc.conn == nil {
 		panic("SinkServer : Not connected")

@@ -95,13 +95,21 @@ func StartClient(clientId int, relayHostAddr string, expectedNumberOfClients int
 		prifilog.SimpleStringDump(prifilog.NOTIFICATION, "Client " + strconv.Itoa(clientId) + "; Everything ready, assigned to round "+strconv.Itoa(myRound)+" out of "+strconv.Itoa(clientState.nClients))
 
 		//define downstream stream (relay -> client)
-		stopReadRelay := make(chan bool, 1)
-		go readDataFromRelay(relayConn, dataFromRelay, stopReadRelay, clientState)
+		stopReadRelay     := make(chan bool, 1)
+		relayDisconnected := make(chan bool, 1)
+		go readDataFromRelay(relayConn, dataFromRelay, stopReadRelay, relayDisconnected, clientState)
 
 		roundCount          := 0
 		continueToNextRound := true
 		for continueToNextRound {
 			select {
+
+				case d := <- relayDisconnected:
+					if d {
+						prifilog.SimpleStringDump(prifilog.WARNING, "Client " + strconv.Itoa(clientId) + "; Connection to relay lost, reconfigurating...")
+						continueToNextRound = false
+					}
+
 				//downstream slice from relay (normal DC-net cycle)
 				case data := <-dataFromRelay:
 					
@@ -312,7 +320,7 @@ func readPublicKeysFromRelay(relayConn net.Conn, clientState *ClientState) (Para
 	return params, nil
 }
 
-func readDataFromRelay(relayConn net.Conn, dataFromRelay chan<- prifinet.DataWithMessageTypeAndConnId, stopReadRelay chan bool, params *ClientState) {
+func readDataFromRelay(relayConn net.Conn, dataFromRelay chan<- prifinet.DataWithMessageTypeAndConnId, stopReadRelay chan bool, relayDisconnected chan bool, params *ClientState) {
 	totcells := uint64(0)
 	totbytes := uint64(0)
 
@@ -322,6 +330,7 @@ func readDataFromRelay(relayConn net.Conn, dataFromRelay chan<- prifinet.DataWit
 
 		if err != nil {
 			prifilog.SimpleStringDump(prifilog.RECOVERABLE_ERROR, "Client " + strconv.Itoa(params.Id) + "; ClientReadRelay error, relay probably disconnected, stopping goroutine")
+			relayDisconnected <- true
 			return
 		}
 
@@ -332,6 +341,7 @@ func readDataFromRelay(relayConn net.Conn, dataFromRelay chan<- prifinet.DataWit
 
 		if err != nil {
 			prifilog.SimpleStringDump(prifilog.RECOVERABLE_ERROR, "Client " + strconv.Itoa(params.Id) + "; ClientReadRelay error, relay probably disconnected, stopping goroutine")
+			relayDisconnected <- true
 			return
 		}
 

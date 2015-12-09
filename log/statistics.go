@@ -69,7 +69,7 @@ func (stats *Statistics) ReportJson() {
 		duration := now.Sub(stats.begin).Seconds()
 		instantUpSpeed := (float64(stats.instantUpstreamBytes)/stats.period.Seconds())
 
-		Printf(EXPERIMENT_OUTPUT, "@ %fs; cell %f (%f) /sec, up %f (%f) B/s, down %f (%f) B/s\n",
+		Printf(EXPERIMENT_OUTPUT, "@ %fs; cell %f (%f) /sec, up %f (%f) B/s, down %f (%f) B/s",
 			duration,
 			 float64(stats.totalUpstreamCells)/duration, float64(stats.instantUpstreamCells)/stats.period.Seconds(),
 			 float64(stats.totalUpstreamBytes)/duration, instantUpSpeed,
@@ -105,7 +105,7 @@ func (stats *Statistics) Report() {
 		duration := now.Sub(stats.begin).Seconds()
 		instantUpSpeed := (float64(stats.instantUpstreamBytes)/stats.period.Seconds())
 
-		Printf(EXPERIMENT_OUTPUT, "@ %fs; cell %f (%f) /sec, up %f (%f) B/s, down %f (%f) B/s\n",
+		Printf(EXPERIMENT_OUTPUT, "@ %fs; cell %f (%f) /sec, up %f (%f) B/s, down %f (%f) B/s",
 			duration,
 			 float64(stats.totalUpstreamCells)/duration, float64(stats.instantUpstreamCells)/stats.period.Seconds(),
 			 float64(stats.totalUpstreamBytes)/duration, instantUpSpeed,
