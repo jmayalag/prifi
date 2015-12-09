@@ -44,6 +44,7 @@ func main() {
 	netLogPort		  := flag.String("logport", ":10000", "The network port of the log server")
 	netLogHost		  := flag.String("loghost", "localhost:10000", "The network host+port of the log server")
 	netLogStdOut	  := flag.Bool("logtostdout", true, "If the log is also copied to stdout")
+	logPath			  := flag.String("logpath", "", "The path to the folder of the log files, by default empty, i.e. current directory")
 
 	//relay parameters
 	relayPort         := flag.Int("relayport", 9876, "Sets listening port of the relay, waiting for clients.")
@@ -64,7 +65,7 @@ func main() {
 
 	//Little exception : 
 	if *isLogSink {
-		prifilog.StartSinkServer(*netLogPort, "sink.log")
+		prifilog.StartSinkServer(*netLogPort, *logPath+"sink.log")
 	}
 
 	//set up the log - default is a file
@@ -91,7 +92,7 @@ func main() {
 		}else{
 			logFile = "dissent.log"
 		}
-		prifilog.SetUpFileLogEngine(*logLevel, logFile, *netLogStdOut)
+		prifilog.SetUpFileLogEngine(*logLevel, *logPath+logFile, *netLogStdOut)
 	}
 
 	//exception

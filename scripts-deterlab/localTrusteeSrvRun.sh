@@ -6,8 +6,6 @@ if [ $# -eq 0 ]
 fi
 echo "Killing processess..."
 pkill -f prifi
-echo "Removing old log files..."
-rm -f "trustee$1.out"
 echo "Starting the trustee server $1..."
-nohup ~/dissent/prifi -trusteesrv 1>>"trustee$1.out" 2>&1 &
+nohup ~/dissent/prifi -trusteesrv -logtype=netlogger -loghost=192.168.253.1:10000 &
 echo "Done."
