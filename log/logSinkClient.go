@@ -12,9 +12,10 @@ import (
 type SinkClient struct {
 	conn 			net.Conn
 	copyToStdOut 	bool
+	logLevel		int
 }
 
-func StartSinkClient(entity string, remoteHost string, copyToStdout bool) *SinkClient {
+func StartSinkClient(logLevel int, entity string, remoteHost string, copyToStdout bool) *SinkClient {
 
 	conn, err := net.Dial("tcp", remoteHost)
 
@@ -23,20 +24,27 @@ func StartSinkClient(entity string, remoteHost string, copyToStdout bool) *SinkC
 		panic("Exiting")
 	}
 
-	sc := SinkClient{conn, copyToStdout}
-	sc.WriteMessage(entity)
+	sc := SinkClient{conn, copyToStdout, logLevel}
+	sc.writeData([]byte(entity))
 
 	fmt.Println("Connected to sink server...")
 
 	return &sc
 }
 
-func (sc *SinkClient) WriteMessage(message string) error {
-	if sc.copyToStdOut && !strings.HasPrefix(message, "{")  {
-		fmt.Println(message)
+func (sc *SinkClient) WriteMessage(severity int, message string) error {
+
+	if severity > sc.logLevel { //unintuitive : severity 0 is highest
+		return nil
 	}
 
-	return sc.writeData([]byte(message))
+	s := "<"+SeverityToString(severity)+"> "+message
+
+	if sc.copyToStdOut && !strings.HasPrefix(message, "{")  {
+		fmt.Println(s)
+	}
+
+	return sc.writeData([]byte(s))
 }
 
 func (sc *SinkClient) writeData(message []byte) error {

@@ -2,7 +2,6 @@ package client
 
 import (
 	"encoding/binary"
-	"fmt"
 	"strconv"
 	"errors"
 	"io"
@@ -16,7 +15,7 @@ import (
 )
 
 func StartClient(clientId int, relayHostAddr string, expectedNumberOfClients int, nTrustees int, payloadLength int, useSocksProxy bool) {
-	prifilog.SimpleStringDump("Client " + strconv.Itoa(clientId) + "; Started")
+	prifilog.SimpleStringDump(prifilog.NOTIFICATION, "Client " + strconv.Itoa(clientId) + "; Started")
 
 	clientState := newClientState(clientId, nTrustees, expectedNumberOfClients, payloadLength, useSocksProxy)
 	stats := prifilog.EmptyStatistics(-1) //no limit
@@ -43,7 +42,7 @@ func StartClient(clientId int, relayHostAddr string, expectedNumberOfClients int
 	for !exitClient {
 
 		if relayConn == nil {
-			prifilog.SimpleStringDump("Client " + strconv.Itoa(clientId) + "; trying to configure, but relay not connected. connecting...")
+			prifilog.SimpleStringDump(prifilog.RECOVERABLE_ERROR, "Client " + strconv.Itoa(clientId) + "; trying to configure, but relay not connected. connecting...")
 			relayConn, err = connectToRelay(relayHostAddr, clientState)
 
 			if err != nil {
@@ -53,7 +52,7 @@ func StartClient(clientId int, relayHostAddr string, expectedNumberOfClients int
 			}
 		}
 
-		prifilog.SimpleStringDump("Client " + strconv.Itoa(clientId) + "; Waiting for relay params + public keys...")
+		prifilog.SimpleStringDump(prifilog.INFORMATION, "Client " + strconv.Itoa(clientId) + "; Waiting for relay params + public keys...")
 
 		params, err := readPublicKeysFromRelay(relayConn, clientState)
 		if err != nil {
@@ -76,7 +75,7 @@ func StartClient(clientId int, relayHostAddr string, expectedNumberOfClients int
 		//check that we got all keys
 		for i := 0; i<clientState.nTrustees; i++ {
 			if clientState.TrusteePublicKey[i] == nil {
-				prifilog.SimpleStringDump("Client " + strconv.Itoa(clientId) + "; Didn't get public key from trustee "+strconv.Itoa(i))
+				prifilog.SimpleStringDump(prifilog.RECOVERABLE_ERROR, "Client " + strconv.Itoa(clientId) + "; Didn't get public key from trustee "+strconv.Itoa(i))
 				relayConn.Close()
 				relayConn = nil
 				continue //redo everything
@@ -93,7 +92,7 @@ func StartClient(clientId int, relayHostAddr string, expectedNumberOfClients int
 		}
 
 		clientState.printSecrets()
-		prifilog.SimpleStringDump("Client " + strconv.Itoa(clientId) + "; Everything ready, assigned to round "+strconv.Itoa(myRound)+" out of "+strconv.Itoa(clientState.nClients))
+		prifilog.SimpleStringDump(prifilog.NOTIFICATION, "Client " + strconv.Itoa(clientId) + "; Everything ready, assigned to round "+strconv.Itoa(myRound)+" out of "+strconv.Itoa(clientState.nClients))
 
 		//define downstream stream (relay -> client)
 		stopReadRelay := make(chan bool, 1)
@@ -118,12 +117,12 @@ func StartClient(clientId int, relayHostAddr string, expectedNumberOfClients int
 
 						case prifinet.MESSAGE_TYPE_LAST_UPLOAD_FAILED :
 							//relay wants to re-setup (new key exchanges)
-							prifilog.SimpleStringDump("Client " + strconv.Itoa(clientId) + "; Relay warns that a client disconnected, gonna resync..")
+							prifilog.SimpleStringDump(prifilog.RECOVERABLE_ERROR, "Client " + strconv.Itoa(clientId) + "; Relay warns that a client disconnected, gonna resync..")
 							continueToNextRound = false
 
 						case prifinet.MESSAGE_TYPE_DATA_AND_RESYNC :
 							//relay wants to re-setup (new key exchanges)
-							prifilog.SimpleStringDump("Client " + strconv.Itoa(clientId) + "; Relay wants to resync...")
+							prifilog.SimpleStringDump(prifilog.RECOVERABLE_ERROR, "Client " + strconv.Itoa(clientId) + "; Relay wants to resync...")
 							continueToNextRound = false
 
 						case prifinet.MESSAGE_TYPE_DATA :
@@ -155,7 +154,7 @@ func StartClient(clientId int, relayHostAddr string, expectedNumberOfClients int
 
 func roundScheduling(relayConn net.Conn, clientState *ClientState) (int, error) {
 
-	prifilog.SimpleStringDump("Client " + strconv.Itoa(clientState.Id) + "; Generating ephemeral keys...")
+	prifilog.SimpleStringDump(prifilog.INFORMATION, "Client " + strconv.Itoa(clientState.Id) + "; Generating ephemeral keys...")
 	clientState.generateEphemeralKeys()
 
 	//tell the relay our public key
@@ -168,11 +167,11 @@ func roundScheduling(relayConn net.Conn, clientState *ClientState) (int, error) 
 
 	err := prifinet.WriteMessage(relayConn, buffer)
 	if err != nil {
-		prifilog.SimpleStringDump("Client " + strconv.Itoa(clientState.Id) + "; Error writing ephemeral key "+err.Error())
+		prifilog.SimpleStringDump(prifilog.SEVERE_ERROR, "Client " + strconv.Itoa(clientState.Id) + "; Error writing ephemeral key "+err.Error())
 		return -1, err
 	}
 
-	prifilog.SimpleStringDump("Client " + strconv.Itoa(clientState.Id) + "; waiting for the trustees signatures ")
+	prifilog.SimpleStringDump(prifilog.INFORMATION, "Client " + strconv.Itoa(clientState.Id) + "; waiting for the trustees signatures ")
 
 	G, ephPubKeys, signatures, err := prifinet.ParseBasePublicKeysAndTrusteeSignaturesFromConn(relayConn)
 
@@ -194,11 +193,11 @@ func roundScheduling(relayConn net.Conn, clientState *ClientState) (int, error) 
 		err := crypto.SchnorrVerify(config.CryptoSuite, M, clientState.TrusteePublicKey[j], signatures[j])
 
 		if err != nil {
-			prifilog.SimpleStringDump("Client " + strconv.Itoa(clientState.Id) + "; signature from trustee "+strconv.Itoa(j)+" is invalid")
+			prifilog.SimpleStringDump(prifilog.SEVERE_ERROR, "Client " + strconv.Itoa(clientState.Id) + "; signature from trustee "+strconv.Itoa(j)+" is invalid")
 			return -1, err
 		}
 	}
-	prifilog.SimpleStringDump("Client " + strconv.Itoa(clientState.Id) + "; all signatures Ok")
+	prifilog.SimpleStringDump(prifilog.INFORMATION, "Client " + strconv.Itoa(clientState.Id) + "; all signatures Ok")
 
 	//identify which slot we own
 	myPrivKey     := clientState.ephemeralPrivateKey
@@ -212,7 +211,7 @@ func roundScheduling(relayConn net.Conn, clientState *ClientState) (int, error) 
 	}
 
 	if mySlot == -1 {
-		prifilog.SimpleStringDump("Client " + strconv.Itoa(clientState.Id) + "; Can't recognize our slot !")
+		prifilog.SimpleStringDump(prifilog.SEVERE_ERROR, "Client " + strconv.Itoa(clientState.Id) + "; Can't recognize our slot !")
 		return -1, errors.New("We don't have a slot !")
 	} 
 
@@ -239,15 +238,14 @@ func writeNextUpstreamSlice(canWrite bool, dataForRelayBuffer chan []byte, relay
 	upstreamSlice := clientState.CellCoder.ClientEncode(nextUpstreamBytes, clientState.PayloadLength, clientState.MessageHistory)
 
 	if len(upstreamSlice) != clientState.UsablePayloadLength {
-		prifilog.SimpleStringDump("Client " + strconv.Itoa(clientState.Id) + "; Client slice wrong size, expected "+strconv.Itoa(clientState.UsablePayloadLength)+", but got "+strconv.Itoa(len(upstreamSlice)))
+		prifilog.SimpleStringDump(prifilog.RECOVERABLE_ERROR, "Client " + strconv.Itoa(clientState.Id) + "; Client slice wrong size, expected "+strconv.Itoa(clientState.UsablePayloadLength)+", but got "+strconv.Itoa(len(upstreamSlice)))
 		return -1 //relay probably disconnected
 	}
 
 	err := prifinet.WriteMessage(relayConn, upstreamSlice)
 
 	if err != nil {
-		prifilog.SimpleStringDump("Client " + strconv.Itoa(clientState.Id) + "; Client write to relay error, err : " + err.Error())
-		fmt.Println("Client write to relay error, err : " + err.Error())
+		prifilog.SimpleStringDump(prifilog.RECOVERABLE_ERROR, "Client " + strconv.Itoa(clientState.Id) + "; Client write to relay error, err : " + err.Error())
 		return -1 //relay probably disconnected
 	}
 
@@ -267,7 +265,7 @@ func connectToRelay(relayHost string, params *ClientState) (net.Conn, error) {
 	for conn == nil{
 		conn, err = net.Dial("tcp", relayHost)
 		if err != nil {
-			prifilog.SimpleStringDump("Client " + strconv.Itoa(params.Id) + "; Can't connect to relay on "+relayHost+", gonna retry")
+			prifilog.SimpleStringDump(prifilog.RECOVERABLE_ERROR, "Client " + strconv.Itoa(params.Id) + "; Can't connect to relay on "+relayHost+", gonna retry")
 			conn = nil
 			time.Sleep(FAILED_CONNECTION_WAIT_BEFORE_RETRY)
 		}
@@ -279,7 +277,7 @@ func connectToRelay(relayHost string, params *ClientState) (net.Conn, error) {
 	err2 := prifinet.WriteMessage(conn, publicKeyBytes)
 
 	if err2 != nil {
-		prifilog.SimpleStringDump("Client " + strconv.Itoa(params.Id) + "; Error writing message, "+err2.Error())
+		prifilog.SimpleStringDump(prifilog.SEVERE_ERROR, "Client " + strconv.Itoa(params.Id) + "; Error writing message, "+err2.Error())
 		return nil, err2
 	}
 
@@ -301,7 +299,7 @@ func readPublicKeysFromRelay(relayConn net.Conn, clientState *ClientState) (Para
 	data        := message[6:]
 
 	if messageType != prifinet.MESSAGE_TYPE_PUBLICKEYS {
-		prifilog.SimpleStringDump("Client " + strconv.Itoa(clientState.Id) + "; Expected message type "+strconv.Itoa(prifinet.MESSAGE_TYPE_PUBLICKEYS)+", got "+strconv.Itoa(messageType))
+		prifilog.SimpleStringDump(prifilog.RECOVERABLE_ERROR, "Client " + strconv.Itoa(clientState.Id) + "; Expected message type "+strconv.Itoa(prifinet.MESSAGE_TYPE_PUBLICKEYS)+", got "+strconv.Itoa(messageType))
 		return ParamsFromRelay{}, errors.New("Expecting params from relay, got another message")
 	}
 		
@@ -323,7 +321,7 @@ func readDataFromRelay(relayConn net.Conn, dataFromRelay chan<- prifinet.DataWit
 		message, err := prifinet.ReadMessage(relayConn)
 
 		if err != nil {
-			prifilog.SimpleStringDump("Client " + strconv.Itoa(params.Id) + "; ClientReadRelay error, relay probably disconnected, stopping goroutine")
+			prifilog.SimpleStringDump(prifilog.RECOVERABLE_ERROR, "Client " + strconv.Itoa(params.Id) + "; ClientReadRelay error, relay probably disconnected, stopping goroutine")
 			return
 		}
 
@@ -333,7 +331,7 @@ func readDataFromRelay(relayConn net.Conn, dataFromRelay chan<- prifinet.DataWit
 		data        := message[6:]
 
 		if err != nil {
-			prifilog.SimpleStringDump("Client " + strconv.Itoa(params.Id) + "; ClientReadRelay error, relay probably disconnected, stopping goroutine")
+			prifilog.SimpleStringDump(prifilog.RECOVERABLE_ERROR, "Client " + strconv.Itoa(params.Id) + "; ClientReadRelay error, relay probably disconnected, stopping goroutine")
 			return
 		}
 
@@ -345,7 +343,7 @@ func readDataFromRelay(relayConn net.Conn, dataFromRelay chan<- prifinet.DataWit
 		totbytes += uint64(len(data))
 
 		if messageType == prifinet.MESSAGE_TYPE_DATA_AND_RESYNC || messageType == prifinet.MESSAGE_TYPE_LAST_UPLOAD_FAILED {
-			prifilog.SimpleStringDump("Client " + strconv.Itoa(params.Id) + "next message is gonna be some parameters, not data. Stop this goroutine")
+			prifilog.SimpleStringDump(prifilog.RECOVERABLE_ERROR, "Client " + strconv.Itoa(params.Id) + "next message is gonna be some parameters, not data. Stop this goroutine")
 			return
 		} 
 	}
@@ -356,18 +354,18 @@ func readDataFromRelay(relayConn net.Conn, dataFromRelay chan<- prifinet.DataWit
  */
 
 func startSocksProxyServerListener(port string, newConnections chan<- net.Conn) {
-	fmt.Printf("Listening on port %s\n", port)
+	prifilog.SimpleStringDump(prifilog.NOTIFICATION, "Listening on port " + port)
 	
 	lsock, err := net.Listen("tcp", port)
 
 	if err != nil {
-		fmt.Printf("Can't open listen socket at port %s: %s", port, err.Error())
+		prifilog.Printf(prifilog.RECOVERABLE_ERROR, "Can't open listen socket at port %s: %s", port, err.Error())
 		return
 	}
 
 	for {
 		conn, err := lsock.Accept()
-		fmt.Printf("Accept on port %s\n", port)
+		prifilog.Printf(prifilog.INFORMATION, "Accept on port %s\n", port)
 
 		if err != nil {
 			lsock.Close()
@@ -403,7 +401,7 @@ func startSocksProxyServerHandler(socksProxyNewConnections chan net.Conn, dataFo
 				data          := dataTypeConn.Data
 				dataLength    := len(data)
 
-				fmt.Println("Read a message with type", messageType, " socks id ", socksConnId)
+				prifilog.Printf(prifilog.INFORMATION, "Read a message with type", messageType, " socks id ", socksConnId)
 				
 				//Handle the connections, forwards the downstream slice to the SOCKS proxy
 				//if there is no socks proxy, nothing to do (useless case indeed, only for debug)
@@ -411,11 +409,11 @@ func startSocksProxyServerHandler(socksProxyNewConnections chan net.Conn, dataFo
 					if dataLength > 0 && socksProxyActiveConnections[socksConnId] != nil {
 						n, err := socksProxyActiveConnections[socksConnId].Write(data)
 						if n < dataLength {
-							fmt.Println("Write to socks proxy: expected "+strconv.Itoa(dataLength)+" bytes, got "+strconv.Itoa(n)+", " + err.Error())
+							prifilog.Printf(prifilog.RECOVERABLE_ERROR, "Write to socks proxy: expected "+strconv.Itoa(dataLength)+" bytes, got "+strconv.Itoa(n)+", " + err.Error())
 						}
 					} else {
 						// Relay indicating EOF on this conn
-						fmt.Printf("Relay to client : closed socks conn %d", socksConnId)
+						prifilog.Printf(prifilog.RECOVERABLE_ERROR, "Relay to client : closed socks conn %d", socksConnId)
 						socksProxyActiveConnections[socksConnId].Close()
 					}
 				}
@@ -443,9 +441,9 @@ func readDataFromSocksProxy(socksConnId int, payloadLength int, conn net.Conn, d
 		// Connection error or EOF?
 		if n == 0 {
 			if err == io.EOF {
-				println("clientUpload: EOF, closing")
+				prifilog.Printf(prifilog.RECOVERABLE_ERROR, "clientUpload: EOF, closing")
 			} else {
-				println("clientUpload: " + err.Error())
+				prifilog.Printf(prifilog.RECOVERABLE_ERROR, "clientUpload: " + err.Error())
 			}
 			conn.Close()
 			closed <- socksConnId // signal that channel is closed

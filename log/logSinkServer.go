@@ -20,7 +20,7 @@ type EntityAndMessage struct {
 func StartSinkServer(listeningPort string, logFile string) {
 
 	//dump to a file
-	fileLogger := StartFileClient(logFile, false)
+	fileLogger := StartFileClient(INFORMATION, logFile, false)
 
 	dataChan := make(chan EntityAndMessage)
 	go serverListener(listeningPort, dataChan)
@@ -31,7 +31,7 @@ func StartSinkServer(listeningPort string, logFile string) {
 				entity := d.entity
 				msg    := d.message
 				s := "["+entity+"] "+msg
-				fileLogger.WriteMessage(s)
+				fileLogger.writeMessage(s)
 
 				if !strings.HasPrefix(msg, "{") {
 					switch(entity) {

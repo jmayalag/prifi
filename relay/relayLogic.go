@@ -2,7 +2,6 @@ package relay
 
 import (
 	"encoding/binary"
-	"encoding/hex"
 	"fmt"
 	"github.com/lbarman/prifi/config"
 	"github.com/lbarman/crypto/abstract"
@@ -24,7 +23,7 @@ var	deconnectedTrustees	  = make(chan int)
 
 func StartRelay(payloadLength int, relayPort string, nClients int, nTrustees int, trusteesIp []string, reportingLimit int) {
 
-	prifilog.SimpleStringDump("Relay started")
+	prifilog.SimpleStringDump(prifilog.NOTIFICATION, "Relay started")
 
 	stateMachineLogger = prifilog.NewStateMachineLogger("relay")
 	stateMachineLogger.StateChange("relay-init")
@@ -49,7 +48,7 @@ func StartRelay(payloadLength int, relayPort string, nClients int, nTrustees int
 
 	var isProtocolRunning = false
 	if err != nil {
-		prifilog.Println("Relay Handler : round scheduling went wrong, restarting the configuration protocol")
+		prifilog.Println(prifilog.RECOVERABLE_ERROR, "Relay Handler : round scheduling went wrong, restarting the configuration protocol")
 
 		//disconnect all clients
 		for i:=0; i<len(relayState.clients); i++{
@@ -72,38 +71,37 @@ func StartRelay(payloadLength int, relayPort string, nClients int, nTrustees int
 
 		select {
 			case protocolHasFailed := <- protocolFailed:
-				prifilog.Println(protocolHasFailed)
-				prifilog.Println("Relay Handler : Processing loop has failed")
+				prifilog.Println(prifilog.NOTIFICATION, "Relay Handler : Processing loop has failed with status", protocolHasFailed)
 				isProtocolRunning = false
 				//TODO : re-run setup, something went wrong. Maybe restart from 0 ?
 
 			case deconnectedClient := <- deconnectedClients:
-				prifilog.Println("Client", deconnectedClient, " has been indicated offline")
+				prifilog.Println(prifilog.WARNING, "Client", deconnectedClient, " has been indicated offline")
 				relayState.clients[deconnectedClient].Connected = false
 
 			case timedOutClient := <- timedOutClients:
-				prifilog.Println("Client", timedOutClient, " has been indicated offline (time out)")
+				prifilog.Println(prifilog.WARNING, "Client", timedOutClient, " has been indicated offline (time out)")
 				relayState.clients[timedOutClient].Conn.Close()
 				relayState.clients[timedOutClient].Connected = false
 
 			case deconnectedTrustee := <- deconnectedTrustees:
-				prifilog.Println("Trustee", deconnectedTrustee, " has been indicated offline")
+				prifilog.Println(prifilog.RECOVERABLE_ERROR, "Trustee", deconnectedTrustee, " has been indicated offline")
 
 			case newClient := <- newClientWithIdAndPublicKeyChan:
 				//we tell processMessageLoop to stop when possible
 				newClients = append(newClients, newClient)
 				if isProtocolRunning {
-					prifilog.Println("Relay Handler : new Client is ready, stopping processing loop")
+					prifilog.Println(prifilog.NOTIFICATION, "Relay Handler : new Client is ready, stopping processing loop")
 					indicateEndOfProtocol <- PROTOCOL_STATUS_GONNA_RESYNC
 				} else {
-					prifilog.Println("Relay Handler : new Client is ready, restarting processing loop")
+					prifilog.Println(prifilog.NOTIFICATION, "Relay Handler : new Client is ready, restarting processing loop")
 					isProtocolRunning = restartProtocol(relayState, newClients)
 					newClients = make([]prifinet.NodeRepresentation, 0)
-					prifilog.Println("Done...")
+					prifilog.Println(prifilog.INFORMATION, "Done...")
 				}
 
 			case endOfProtocolState = <- indicateEndOfProtocol:
-				prifilog.Println("Relay Handler : main loop stopped, resyncing")
+				prifilog.Println(prifilog.INFORMATION, "Relay Handler : main loop stopped (status",endOfProtocolState,"), resyncing")
 
 				if endOfProtocolState != PROTOCOL_STATUS_RESYNCING {
 					panic("something went wrong, should not happen")
@@ -126,14 +124,13 @@ func restartProtocol(relayState *RelayState, newClients []prifinet.NodeRepresent
 	//add the new clients to the previous (filtered) list
 	for i:=0; i<len(newClients); i++{
 		relayState.addNewClient(newClients[i])
-		prifilog.Println("Adding new client")
-		prifilog.Println(newClients[i])
+		prifilog.Println(prifilog.NOTIFICATION, "Adding new client", newClients[i])
 	}
 	relayState.nClients = len(relayState.clients)
 
 	//if we dont have enough client, stop.
 	if len(relayState.clients) == 0{
-		prifilog.Println("Relay Handler : not enough client, stopping and waiting...")
+		prifilog.Println(prifilog.WARNING, "Relay Handler : not enough client, stopping and waiting...")
 		return false
 	} else {
 		//re-advertise the configuration 	
@@ -141,7 +138,7 @@ func restartProtocol(relayState *RelayState, newClients []prifinet.NodeRepresent
 		relayState.advertisePublicKeys()
 		err := relayState.organizeRoundScheduling()
 		if err != nil {
-			prifilog.Println("Relay Handler : round scheduling went wrong, restarting the configuration protocol")
+			prifilog.Println(prifilog.RECOVERABLE_ERROR, "Relay Handler : round scheduling went wrong, restarting the configuration protocol")
 
 			//disconnect all clients
 			for i:=0; i<len(relayState.clients); i++{
@@ -151,8 +148,10 @@ func restartProtocol(relayState *RelayState, newClients []prifinet.NodeRepresent
 			return restartProtocol(relayState, make([]prifinet.NodeRepresentation, 0));
 		}
 
-		time.Sleep(INBETWEEN_CONFIG_SLEEP_TIME)
-		prifilog.StatisticReport("relay", "INBETWEEN_CONFIG_SLEEP_TIME", INBETWEEN_CONFIG_SLEEP_TIME.String())
+		if INBETWEEN_CONFIG_SLEEP_TIME != 0 {
+			time.Sleep(INBETWEEN_CONFIG_SLEEP_TIME)
+			prifilog.StatisticReport("relay", "INBETWEEN_CONFIG_SLEEP_TIME", INBETWEEN_CONFIG_SLEEP_TIME.String())
+		}
 
 		//process message loop
 		relayStateCopy := relayState.deepClone()
@@ -189,7 +188,7 @@ func (relayState *RelayState) advertisePublicKeys() error{
 	//broadcast to the clients
 	prifinet.NUnicastMessageToNodes(relayState.clients, messageForClients)
 	prifinet.NUnicastMessageToNodes(relayState.trustees, dataForTrustees)
-	prifilog.Println("Advertising done, to", len(relayState.clients), "clients and", len(relayState.trustees), "trustees")
+	prifilog.Println(prifilog.NOTIFICATION, "Advertising done, to", len(relayState.clients), "clients and", len(relayState.trustees), "trustees")
 
 	return nil
 }
@@ -200,7 +199,7 @@ func (relayState *RelayState) organizeRoundScheduling() error {
 	ephPublicKeys := make([]abstract.Point, relayState.nClients)
 
 	//collect ephemeral keys
-	prifilog.Println("Waiting for", relayState.nClients, "ephemeral keys")
+	prifilog.Println(prifilog.INFORMATION, "Waiting for", relayState.nClients, "ephemeral keys")
 	for i := 0; i < relayState.nClients; i++ {
 		ephPublicKeys[i] = nil
 		for ephPublicKeys[i] == nil {
@@ -218,7 +217,7 @@ func (relayState *RelayState) organizeRoundScheduling() error {
 					err2 := publicKey.UnmarshalBinary(buffer[2:])
 
 					if err2 != nil {
-						prifilog.Println("Reading client", i, "ephemeral key")
+						prifilog.Println(prifilog.INFORMATION, "Reading client", i, "ephemeral key")
 						return err
 					}
 					pk = publicKey
@@ -226,7 +225,7 @@ func (relayState *RelayState) organizeRoundScheduling() error {
 
 				} else if msgType != prifinet.MESSAGE_TYPE_PUBLICKEYS {
 					//append data in the buffer
-					prifilog.Println("organizeRoundScheduling: trying to read a public key message, got a data message; discarding, checking for public key in next message...")
+					prifilog.Println(prifilog.WARNING, "organizeRoundScheduling: trying to read a public key message, got a data message; discarding, checking for public key in next message...")
 					continue
 				}
 			}
@@ -235,7 +234,7 @@ func (relayState *RelayState) organizeRoundScheduling() error {
 		}
 	}
 
-	prifilog.Println("Relay: collected all ephemeral public keys")
+	prifilog.Println(prifilog.INFORMATION, "Relay: collected all ephemeral public keys")
 
 	// prepare transcript
 	G_s             := make([]abstract.Point, relayState.nTrustees)
@@ -247,7 +246,7 @@ func (relayState *RelayState) organizeRoundScheduling() error {
 	for j := 0; j < relayState.nTrustees; j++ {
 
 		prifinet.WriteBaseAndPublicKeyToConn(relayState.trustees[j].Conn, G, ephPublicKeys)
-		prifilog.Println("Trustee", j, "is shuffling...")
+		prifilog.Println(prifilog.INFORMATION, "Trustee", j, "is shuffling...")
 
 		base2, ephPublicKeys2, proof, err := prifinet.ParseBasePublicKeysAndProofFromConn(relayState.trustees[j].Conn)
 
@@ -255,7 +254,7 @@ func (relayState *RelayState) organizeRoundScheduling() error {
 			return err
 		}
 
-		prifilog.Println("Trustee", j, "is done shuffling")
+		prifilog.Println(prifilog.INFORMATION, "Trustee", j, "is done shuffling")
 
 		//collect transcript
 		G_s[j]             = base2
@@ -267,7 +266,7 @@ func (relayState *RelayState) organizeRoundScheduling() error {
 		ephPublicKeys = ephPublicKeys2
 	}
 
-	prifilog.Println("All trustees have shuffled, sending the transcript...")
+	prifilog.Println(prifilog.INFORMATION, "All trustees have shuffled, sending the transcript...")
 
 	//pack transcript
 	transcriptBytes := make([]byte, 0)
@@ -276,8 +275,8 @@ func (relayState *RelayState) organizeRoundScheduling() error {
 		transcriptBytes = append(transcriptBytes, prifinet.IntToBA(len(G_s_i_bytes))...)
 		transcriptBytes = append(transcriptBytes, G_s_i_bytes...)
 
-		prifilog.Println("G_S_", i)
-		prifilog.Println(hex.Dump(G_s_i_bytes))
+		//prifilog.Println("G_S_", i)
+		//prifilog.Println(hex.Dump(G_s_i_bytes))
 	}
 	for i:=0; i<len(ephPublicKeys_s); i++ {
 
@@ -286,21 +285,21 @@ func (relayState *RelayState) organizeRoundScheduling() error {
 			pkBytes, _ := ephPublicKeys_s[i][k].MarshalBinary()
 			pkArray = append(pkArray, prifinet.IntToBA(len(pkBytes))...)
 			pkArray = append(pkArray, pkBytes...)
-			prifilog.Println("Packing key", k)
+			//prifilog.Println("Packing key", k)
 		}
 
 		transcriptBytes = append(transcriptBytes, prifinet.IntToBA(len(pkArray))...)
 		transcriptBytes = append(transcriptBytes, pkArray...)
 
-		prifilog.Println("pkArray_", i)
-		prifilog.Println(hex.Dump(pkArray))
+		//prifilog.Println("pkArray_", i)
+		//prifilog.Println(hex.Dump(pkArray))
 	}
 	for i:=0; i<len(proof_s); i++ {
 		transcriptBytes = append(transcriptBytes, prifinet.IntToBA(len(proof_s[i]))...)
 		transcriptBytes = append(transcriptBytes, proof_s[i]...)
 
-		prifilog.Println("G_S_", i)
-		prifilog.Println(hex.Dump(proof_s[i]))
+		//prifilog.Println("G_S_", i)
+		//prifilog.Println(hex.Dump(proof_s[i]))
 	}
 
 	//broadcast to trustees
@@ -312,7 +311,7 @@ func (relayState *RelayState) organizeRoundScheduling() error {
  
  		buffer, err := prifinet.ReadMessage(relayState.trustees[j].Conn)
 		if err != nil {
-			prifilog.Println("Relay, couldn't read signature from trustee " + err.Error())
+			prifilog.Println(prifilog.RECOVERABLE_ERROR, "Relay, couldn't read signature from trustee " + err.Error())
 			return err
 		}
 
@@ -322,10 +321,10 @@ func (relayState *RelayState) organizeRoundScheduling() error {
 		
 		signatures[j] = sig
 
-		prifilog.Println("Collected signature from trustee", j)
+		prifilog.Println(prifilog.INFORMATION, "Collected signature from trustee", j)
 	}
 
-	prifilog.Println("Crafting signature message for clients...")
+	prifilog.Println(prifilog.INFORMATION, "Crafting signature message for clients...")
 
 	sigMsg := make([]byte, 0)
 
@@ -362,7 +361,7 @@ func (relayState *RelayState) organizeRoundScheduling() error {
 	//send to clients
 	prifinet.NUnicastMessageToNodes(relayState.clients, sigMsg)
 
-	prifilog.Println("Oblivious shuffle & signatures sent !")
+	prifilog.Println(prifilog.INFORMATION, "Oblivious shuffle & signatures sent !")
 	return nil
 
 	/* 
@@ -406,28 +405,30 @@ func processMessageLoop(relayState *RelayState){
 
 	stateMachineLogger.StateChange("protocol-mainloop")
 
-	prifilog.Println("")
-	prifilog.Println("#################################")
-	prifilog.Println("# Configuration updated, running")
-	prifilog.Println("#", relayState.nClients, "clients", relayState.nTrustees, "trustees")
+	/*
+	prifilog.Println(prifilog.NOTIFICATION, "")
+	prifilog.Println(prifilog.NOTIFICATION, "#################################")
+	prifilog.Println(prifilog.NOTIFICATION, "# Configuration updated, running")
+	prifilog.Println(prifilog.NOTIFICATION, "#", relayState.nClients, "clients", relayState.nTrustees, "trustees")
 
 	for i := 0; i<len(relayState.clients); i++ {
-		prifilog.Println("# Client", relayState.clients[i].Id, " on port ", relayState.clients[i].Conn.LocalAddr())
+		prifilog.Println(prifilog.NOTIFICATION, "# Client", relayState.clients[i].Id, " on port ", relayState.clients[i].Conn.LocalAddr())
 	}
 	for i := 0; i<len(relayState.trustees); i++ {
-		prifilog.Println("# Trustee", relayState.trustees[i].Id, " on port ", relayState.trustees[i].Conn.LocalAddr())
+		prifilog.Println(prifilog.NOTIFICATION, "# Trustee", relayState.trustees[i].Id, " on port ", relayState.trustees[i].Conn.LocalAddr())
 	}
-	prifilog.Println("#################################")
-	prifilog.Println("")
+	prifilog.Println(prifilog.NOTIFICATION, "#################################")
+	prifilog.Println(prifilog.NOTIFICATION, "")
+	*/
 
 
-	prifilog.InfoReport("relay", fmt.Sprintf("new setup, %v clients and %v trustees", relayState.nClients, relayState.nTrustees))
+	prifilog.InfoReport(prifilog.NOTIFICATION, "relay", fmt.Sprintf("new setup, %v clients and %v trustees", relayState.nClients, relayState.nTrustees))
 
 	for i := 0; i<len(relayState.clients); i++ {
-		prifilog.InfoReport("relay", fmt.Sprintf("new setup, client %v on %v", relayState.clients[i].Id, relayState.clients[i].Conn.LocalAddr()))
+		prifilog.InfoReport(prifilog.NOTIFICATION, "relay", fmt.Sprintf("new setup, client %v on %v", relayState.clients[i].Id, relayState.clients[i].Conn.LocalAddr()))
 	}
 	for i := 0; i<len(relayState.trustees); i++ {
-		prifilog.InfoReport("relay", fmt.Sprintf("new setup, trustee %v on %v", relayState.trustees[i].Id, relayState.trustees[i].Conn.LocalAddr()))
+		prifilog.InfoReport(prifilog.NOTIFICATION, "relay", fmt.Sprintf("new setup, trustee %v on %v", relayState.trustees[i].Id, relayState.trustees[i].Conn.LocalAddr()))
 	}
 
 	stats := prifilog.EmptyStatistics(relayState.ReportingLimit)
@@ -469,7 +470,7 @@ func processMessageLoop(relayState *RelayState){
 		select {
 			case mainThreadStatus = <- indicateEndOfProtocol:
 				if mainThreadStatus == PROTOCOL_STATUS_GONNA_RESYNC {
-					prifilog.Println("Main thread status is 1, gonna warn the clients")
+					prifilog.Println(prifilog.NOTIFICATION, "Main thread status is PROTOCOL_STATUS_GONNA_RESYNC, gonna warn the clients")
 					tellClientsToResync = true
 				}
 			default:
@@ -478,7 +479,7 @@ func processMessageLoop(relayState *RelayState){
 		//we report the speed, bytes exchanged, etc
 		stats.Report()
 		if stats.ReportingDone() {
-			prifilog.Println("Reporting limit matched; exiting the relay")
+			prifilog.Println(prifilog.WARNING, "Reporting limit matched; exiting the relay")
 			break;
 		}
 
@@ -551,7 +552,7 @@ func processMessageLoop(relayState *RelayState){
 
 		if errorInThisCell {
 			
-			prifilog.Println("Relay main loop : Cell will be invalid, some party disconnected. Warning the clients...")
+			prifilog.Println(prifilog.WARNING, "Relay main loop : Cell will be invalid, some party disconnected. Warning the clients...")
 
 			//craft the message for clients
 			downstreamData := make([]byte, 10)
@@ -600,7 +601,6 @@ func processMessageLoop(relayState *RelayState){
 	}
 
 	if INBETWEEN_CONFIG_SLEEP_TIME != 0 {
-		prifilog.Println("Relay main loop : waiting ",INBETWEEN_CONFIG_SLEEP_TIME," seconds, client should now be waiting for new parameters...")
 		time.Sleep(INBETWEEN_CONFIG_SLEEP_TIME)
 		prifilog.StatisticReport("relay", "INBETWEEN_CONFIG_SLEEP_TIME", INBETWEEN_CONFIG_SLEEP_TIME.String())
 	}
@@ -617,7 +617,7 @@ func newSOCKSProxyHandler(connId int, downstreamData chan<- prifinet.DataWithCon
 }
 
 func connectToTrustee(trusteeId int, trusteeHostAddr string, relayState *RelayState) error {
-	prifilog.Println("Relay connecting to trustee", trusteeId, "on address", trusteeHostAddr)
+	prifilog.Println(prifilog.NOTIFICATION, "Relay connecting to trustee", trusteeId, "on address", trusteeHostAddr)
 
 	var conn net.Conn = nil
 	var err error = nil
@@ -626,7 +626,7 @@ func connectToTrustee(trusteeId int, trusteeHostAddr string, relayState *RelaySt
 	for conn == nil{
 		conn, err = net.Dial("tcp", trusteeHostAddr)
 		if err != nil {
-			prifilog.Println("Can't connect to trustee on "+trusteeHostAddr+"; "+err.Error())
+			prifilog.Println(prifilog.RECOVERABLE_ERROR, "Can't connect to trustee on "+trusteeHostAddr+"; "+err.Error())
 			conn = nil
 			time.Sleep(FAILED_CONNECTION_WAIT_BEFORE_RETRY)
 		}
@@ -639,19 +639,19 @@ func connectToTrustee(trusteeId int, trusteeHostAddr string, relayState *RelaySt
 	binary.BigEndian.PutUint32(buffer[8:12], uint32(relayState.nTrustees))
 	binary.BigEndian.PutUint32(buffer[12:16], uint32(trusteeId))
 
-	prifilog.Println("Writing; setup is", relayState.nClients, relayState.nTrustees, "role is", trusteeId, "cellSize ", relayState.PayloadLength)
+	prifilog.Println(prifilog.NOTIFICATION, "Writing; setup is", relayState.nClients, relayState.nTrustees, "role is", trusteeId, "cellSize ", relayState.PayloadLength)
 
 	err2 := prifinet.WriteMessage(conn, buffer)
 
 	if err2 != nil {
-		prifilog.Println("Error writing to socket:" + err2.Error())
+		prifilog.Println(prifilog.RECOVERABLE_ERROR, "Error writing to socket:" + err2.Error())
 		return err2
 	}
 	
 	// Read the incoming connection into the buffer.
 	buffer2, err2 := prifinet.ReadMessage(conn)
 	if err2 != nil {
-	    prifilog.Println(">>>> Relay : error reading:", err.Error())
+	    prifilog.Println(prifilog.RECOVERABLE_ERROR, "error reading:", err.Error())
 	    return err2
 	}
 
@@ -659,11 +659,11 @@ func connectToTrustee(trusteeId int, trusteeHostAddr string, relayState *RelaySt
 	err3 := publicKey.UnmarshalBinary(buffer2)
 
 	if err3 != nil {
-		prifilog.Println(">>>>  Relay : can't unmarshal trustee key ! " + err3.Error())
+		prifilog.Println(prifilog.RECOVERABLE_ERROR, "can't unmarshal trustee key ! " + err3.Error())
 		return err3
 	}
 
-	prifilog.Println("Trustee", trusteeId, "is connected.")
+	prifilog.Println(prifilog.INFORMATION, "Trustee", trusteeId, "is connected.")
 	
 	newTrustee := prifinet.NodeRepresentation{trusteeId, conn, true, publicKey}
 
@@ -682,7 +682,7 @@ func relayServerListener(listeningPort string, newConnection chan net.Conn) {
 	for {
 		conn, err2 := listeningSocket.Accept()
 		if err != nil {
-			prifilog.Println("Relay : can't accept client. ", err2.Error())
+			prifilog.Println(prifilog.RECOVERABLE_ERROR, "Relay : can't accept client. ", err2.Error())
 		}
 		newConnection <- conn
 	}
@@ -703,14 +703,15 @@ func relayParseClientParamsAux(conn net.Conn) prifinet.NodeRepresentation {
 			nextFreeId++
 		}
 	}
-	prifilog.Println("Client connected, assigning his ID to", nextFreeId)
+	prifilog.Println(prifilog.NOTIFICATION, "Client connected, assigning his ID to", nextFreeId)
 	nodeId := nextFreeId
 
 	publicKey := config.CryptoSuite.Point()
 	err2 := publicKey.UnmarshalBinary(message)
 
 	if err2 != nil {
-		panic(">>>>  Relay : can't unmarshal client key ! " + err2.Error())
+		prifilog.Println(prifilog.SEVERE_ERROR, "can't unmarshal client key ! " + err2.Error())
+		panic("can't unmarshal client key ! " + err2.Error())
 	}
 
 	newClient := prifinet.NodeRepresentation{nodeId, conn, true, publicKey}

@@ -6,36 +6,69 @@ import (
     "encoding/json"
 )
 
+const (
+    SEVERE_ERROR = iota
+    RECOVERABLE_ERROR
+    EXPERIMENT_OUTPUT
+    WARNING
+    NOTIFICATION
+    INFORMATION
+)
+
+func SeverityToString(severity int) string {
+    switch(severity) {
+        case SEVERE_ERROR:
+            return "ERR0"
+            break
+        case RECOVERABLE_ERROR:
+            return "ERR1"
+            break
+        case EXPERIMENT_OUTPUT:
+            return "EXPE"
+            break
+        case WARNING:
+            return "WARN"
+            break
+        case NOTIFICATION:
+            return "NOTI"
+            break
+        case INFORMATION:
+            return "INFO"
+            break        
+    }
+    return "UNKN"
+}
+
 type LogInterface interface {
-    WriteMessage(message string) error
+    WriteMessage(severity int, message string) error
 }
 
 var logEngine LogInterface
 
-func SetUpNetworkLogEngine(entity string, remoteHost string, copyToStdout bool) {
-    logEngine = StartSinkClient(entity, remoteHost, copyToStdout)
+func SetUpNetworkLogEngine(logLevel int, entity string, remoteHost string, copyToStdout bool) {
+    logEngine = StartSinkClient(logLevel, entity, remoteHost, copyToStdout)
 }
 
-func SetUpFileLogEngine(logFile string, copyToStdout bool) {
-    logEngine = StartFileClient(logFile, copyToStdout)
+func SetUpFileLogEngine(logLevel int, logFile string, copyToStdout bool) {
+    logEngine = StartFileClient(logLevel, logFile, copyToStdout)
 }
 
 /*
  * Aux methods
  */
 
-func Println(a ...interface{}) {
+func Println(severity int, a ...interface{}) {
     s := fmt.Sprint(a)
-    SimpleStringDump(s)
+    SimpleStringDump(severity, s)
 }
 
-func Printf(s string, a ...interface{}) {
-    s2 := fmt.Sprintf(s, a)
-    SimpleStringDump(s2)
+func Printf(severity int, format string, a ...interface{}) {
+    s := fmt.Sprintf(format, a...)
+    SimpleStringDump(severity, s)
 }
 
-func SimpleStringDump(s string) {
-    logEngine.WriteMessage(s)
+func SimpleStringDump(severity int, s string) {
+    logEngine.WriteMessage(severity, s)
 }
 
 func JsonDump(data interface{}) {
@@ -46,19 +79,19 @@ func JsonDump(data interface{}) {
     }
     s := string(b)
 
-    logEngine.WriteMessage(s)
+    logEngine.WriteMessage(EXPERIMENT_OUTPUT, s)
 }
 
 func BenchmarkInt(experiment string, duration int) {
     when := time.Now().Format(time.StampMilli)
 	s := fmt.Sprintf("{\"time\":\"", when, "\", \"experiment\":\"%q\", \"time\":%d}", experiment, duration)
-	logEngine.WriteMessage(s)
+	logEngine.WriteMessage(EXPERIMENT_OUTPUT, s)
 }
 
 func BenchmarkFloat(experiment string, duration float64) {
     when := time.Now().Format(time.StampMilli)
 	s := fmt.Sprintf("{\"time\":\"", when, "\", \"experiment\":\"%q\", \"time\":%f}", experiment, duration)
-	logEngine.WriteMessage(s)
+	logEngine.WriteMessage(EXPERIMENT_OUTPUT, s)
 }
 
 /* Usage :
@@ -76,17 +109,17 @@ func TimeTrack(entity, task string, start time.Time) {
 func StatisticReport(entity, task, duration string) {
     when := time.Now().Format(time.StampMilli)
 	s := fmt.Sprint("[", when, "] Entity ", entity, " did ", task, " in ", duration)
-    logEngine.WriteMessage(s)
+    logEngine.WriteMessage(EXPERIMENT_OUTPUT, s)
 
     s2 := fmt.Sprint("{\"time\":\"", when, "\", \"entity\":\"", entity, "\", \"task\":\"", task, "\", \"duration\":\"", duration, "\"}")
-    logEngine.WriteMessage(s2)
+    logEngine.WriteMessage(EXPERIMENT_OUTPUT, s2)
 }
 
-func InfoReport(entity, info string) {
+func InfoReport(severity int, entity, info string) {
     when := time.Now().Format(time.StampMilli)
     s := fmt.Sprint("[", when, "] Entity ", entity, " did ", info)
-    logEngine.WriteMessage(s)
+    logEngine.WriteMessage(severity, s)
 
     s2 := fmt.Sprint("{\"time\":\"", when, "\", \"entity\":\"", entity, "\", \"info\":\"", info, "\"}")
-    logEngine.WriteMessage(s2)
+    logEngine.WriteMessage(severity, s2)
 }
