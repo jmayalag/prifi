@@ -64,7 +64,7 @@ func main() {
 
 	//Little exception : 
 	if *isLogSink {
-		prifilog.StartSinkServer(*netLogPort, "sink.out")
+		prifilog.StartSinkServer(*netLogPort, "sink.log")
 	}
 
 	//set up the log - default is a file
