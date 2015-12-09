@@ -1,4 +1,3 @@
-#!/bin/bash
 echo "Killing processess..."
 pkill -f prifi
 echo "Starting client $1..."

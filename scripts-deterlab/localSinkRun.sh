@@ -1,4 +1,3 @@
-#!/bin/bash
 echo "Killing processess..."
 pkill -f prifi
 echo "Deleting old log files..."
