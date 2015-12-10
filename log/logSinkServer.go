@@ -20,6 +20,7 @@ type EntityAndMessage struct {
 func StartSinkServer(listeningPort string, logFile string) {
 
 	//dump to a file
+	fmt.Println("SinkServer : file output is " + logFile)
 	fileLogger := StartFileClient(INFORMATION, logFile, false)
 
 	dataChan := make(chan EntityAndMessage)

@@ -1,4 +1,4 @@
-source ${programpath}config.sh
+source ~/config.sh
 
 echo "Killing processess named ${program}..."
 pkill -f ${program}
