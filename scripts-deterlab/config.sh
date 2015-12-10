@@ -28,4 +28,4 @@ t5host="10.0.1.5:9000"
 
 tXhostsString="-t1host=$t1host -t2host=$t2host -t3host=$t3host -t4host=$t4host -t5host=$t5host"
 
-logParamsString="-loglvl=$loglevel -logtostdout=$netLogStdOut -logpath=$logPath -logtype=$netlogger -loghost=$loghost"
+logParamsString="-loglvl=$loglevel -logtostdout=$netLogStdOut -logpath=$logPath -logtype=$logtype -loghost=$loghost"
