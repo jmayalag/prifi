@@ -12,10 +12,10 @@ for repeat in $(seq 0 $maxclient); do
 
 
 		echo "[$repeat/$nrepeat] Killing everything..."
-		~/users/lbarman/dissent/remoteKillAll.sh
+		/users/lbarman/dissent/remoteKillAll.sh
 
 		echo "[$repeat/$nrepeat] Starting the trustees..."
-		~/users/lbarman/dissent/remoteTrusteesSrvRun.sh
+		/users/lbarman/dissent/remoteTrusteesSrvRun.sh
 		sleep 10
 
 		echo "[$repeat/$nrepeat] Starting relay with $ntrustee trustees"
