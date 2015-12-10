@@ -1,8 +1,8 @@
 source ~/config.sh
 
 #max trustee minus one, really
-maxtrustee=9
-maxclient=4
+maxtrustee=4
+maxclient=9
 
 echo "Remoting inside relay"
 ssh router.LB-LLD.SAFER.isi.deterlab.net "pkill -f ${program}"
