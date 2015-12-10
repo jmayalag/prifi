@@ -2,6 +2,7 @@ package log
 
 import (
 	"os"
+	"time"
 	"fmt"
 	"strings"
 )
@@ -13,7 +14,10 @@ type FileClient struct {
 }
 
 func StartFileClient(logLevel int, path string, copyToStdout bool) *FileClient {
-	return &FileClient{path, copyToStdout, logLevel}
+	fc := FileClient{path, copyToStdout, logLevel}
+	when :=time.Now().Format(time.StampMilli)
+	fc.writeMessage("[" + when + "] Log started.")
+	return &fc
 }
 
 func (fc *FileClient) WriteMessage(severity int, message string) error {
