@@ -62,7 +62,7 @@ for {set i 0} {$i < $n_trustees} {incr i} {
 tb-set-ip-lan $router $lanclients 10.0.0.254
 tb-set-ip-lan $router $lantrustees 10.0.1.254
 
-tb-set-node-lan-delay $router $lanclients $trustee_delay
+#tb-set-node-lan-delay $router $lanclients $trustee_delay
 
 # Do not remove - automatically generated tunnelcode for connectivity
 set tunnel [$ns node]
