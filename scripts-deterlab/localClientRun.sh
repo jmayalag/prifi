@@ -1,3 +1,5 @@
+source config.sh
+
 echo "Killing processess..."
 pkill -f ${program}
 echo "Starting client $1..."
