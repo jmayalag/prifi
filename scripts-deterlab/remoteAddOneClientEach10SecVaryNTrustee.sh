@@ -12,10 +12,10 @@ for repeat in $(seq 0 $maxclient); do
 
 
 		echo "[$repeat/$nrepeat] Killing everything..."
-		. remoteKillAll.sh
+		~/users/lbarman/dissent/remoteKillAll.sh
 
 		echo "[$repeat/$nrepeat] Starting the trustees..."
-		. remoteTrusteesSrvRun.sh
+		~/users/lbarman/dissent/remoteTrusteesSrvRun.sh
 		sleep 10
 
 		echo "[$repeat/$nrepeat] Starting relay with $ntrustee trustees"
@@ -30,17 +30,5 @@ for repeat in $(seq 0 $maxclient); do
 		  echo "[$repeat/$nrepeat] Waiting 30 sec before starting next client..."
 		  sleep 30
 		done
-
-		echo "[$repeat/$nrepeat] Killing all the clients..."
-
-		for i in $(seq 0 $maxclient); do
-		  echo "[$repeat/$nrepeat] Killing client-$i"
-		  ssh client-$i.LB-LLD.SAFER.isi.deterlab.net "pkill -f prifi"
-		done
-
-		echo "[$repeat/$nrepeat] Killing relay"
-		ssh router.LB-LLD.SAFER.isi.deterlab.net "pkill -f prifi"
-		echo "[$repeat/$nrepeat] Waiting 10 sec before starting relay"
-		sleep 10
 	done
 done
