@@ -1,5 +1,7 @@
-echo "Killing processess..."
-pkill -f prifi
-echo "Starting the relay..."
-nohup ~/dissent/prifi -relay -t1host=10.0.1.1:9000 -t2host=10.0.1.2:9000 -t3host=10.0.1.3:9000 -t4host=10.0.1.4:9000 -t5host=10.0.1.4:9000 -logtype=netlogger -loghost=192.168.253.1:10000 &
+source ~/config.sh
+
+echo "Killing processess named ${program}..."
+pkill -f ${program}
+echo "Starting the relay, logtype=$netlogger -loghost=$loghost log redirected to ${nohupoutfolder}${nohuprelayname}${nohupext}..."
+nohup "${programpath}${program}" -relay -t1host=$t1host -t2host=$t2host -t3host=$t3host -t4host=$t4host -t5host=$t5host -logtype=$netlogger -loghost=$loghost 1>>${nohupoutfolder}${nohuprelayname}${nohupext} 2>&1 &
 echo "Done."
