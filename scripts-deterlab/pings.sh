@@ -1,4 +1,4 @@
-#!/usr/local/bin/bash
+#!/bin/bash
 
 echo "Pinging the control machine..."
 ping -c 20 192.168.253.1
