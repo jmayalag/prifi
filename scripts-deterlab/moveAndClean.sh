@@ -1,3 +1,5 @@
+#!/usr/local/bin/bash
+
 rm *.log
 rm *.out
 rm config.sh

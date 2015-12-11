@@ -1,3 +1,5 @@
+#!/usr/local/bin/bash
+
 #max trustee minus one, really
 maxclient=0
 

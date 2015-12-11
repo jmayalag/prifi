@@ -1,3 +1,5 @@
+#!/usr/local/bin/bash
+
 if [ $# -eq 0 ]
   then
     echo "First argument must be client id, numeric"

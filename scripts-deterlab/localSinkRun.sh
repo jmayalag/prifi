@@ -1,3 +1,5 @@
+#!/usr/local/bin/bash
+
 source ~/config.sh
 
 echo "Killing processess named ${programFreeBSD}..."

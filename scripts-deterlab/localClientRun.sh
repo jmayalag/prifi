@@ -1,3 +1,5 @@
+#!/usr/local/bin/bash
+
 source ~/config.sh
 
 id=$1

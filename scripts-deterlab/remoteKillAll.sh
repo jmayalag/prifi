@@ -1,3 +1,5 @@
+#!/usr/local/bin/bash
+
 source ~/config.sh
 
 #max trustee minus one, really
