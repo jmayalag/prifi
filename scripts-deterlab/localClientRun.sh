@@ -9,7 +9,7 @@ if [ $# -eq 0 ]
   id=0
 fi
 cellsize=" "
-if [ $# -eq 1 ]
+if [ $# -eq 2 ]
   then
     echo "Second argument argument given, cellsize=$2"
   cellsize="-cellsize=$2 "
