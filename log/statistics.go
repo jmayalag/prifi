@@ -179,13 +179,18 @@ func (stats *Statistics) ReportJson() {
 }
 
 func (stats *Statistics) Report() {
+	stats.ReportWithInfo("")
+}
+
+
+func (stats *Statistics) ReportWithInfo(info string) {
 	now := time.Now()
 	if now.After(stats.nextReport) {
 		duration := now.Sub(stats.begin).Seconds()
 		instantUpSpeed := (float64(stats.instantUpstreamBytes)/stats.period.Seconds())
 		latm, latv, latn := stats.LatencyStatistics()
 
-		Printf(EXPERIMENT_OUTPUT, "@ %fs; cell %f (%f) /sec, up %f (%f) B/s, down %f (%f) B/s, lat %s += %s over %s",
+		Printf(EXPERIMENT_OUTPUT, "@ %fs; cell %f (%f) /sec, up %f (%f) B/s, down %f (%f) B/s, lat %s += %s over %s "+info,
 			duration,
 			 float64(stats.totalUpstreamCells)/duration, float64(stats.instantUpstreamCells)/stats.period.Seconds(),
 			 float64(stats.totalUpstreamBytes)/duration, instantUpSpeed,

@@ -3,6 +3,7 @@ package client
 import (
 	"encoding/binary"
 	"strconv"
+	"fmt"
 	"errors"
 	"io"
 	"time"
@@ -171,7 +172,7 @@ func StartClient(clientId int, relayHostAddr string, expectedNumberOfClients int
 					stats.AddUpstreamCell(int64(nBytes))
 
 					//we report the speed, bytes exchanged, etc
-					stats.Report()
+					stats.ReportWithInfo(fmt.Sprintf("cellsize=%v ", payloadLength))
 			}
 			roundCount++
 		}
