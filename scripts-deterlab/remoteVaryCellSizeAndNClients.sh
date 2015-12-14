@@ -1,6 +1,7 @@
 #!/usr/local/bin/bash
 
 #max trustee minus one, really
+maxclient=9
 nrepeat=9
 ntrustee=3
 maxcellsize=5120
@@ -10,6 +11,7 @@ for repeat in $(seq 0 $nrepeat); do
 	echo "Repetition [$repeat/$nrepeat]"
 
 	for cellSize in $(seq 128 128 $maxcellsize); do
+
 
 		echo "[$repeat/$nrepeat] Killing everything..."
 		/users/lbarman/dissent/remoteKillAll.sh
@@ -22,12 +24,14 @@ for repeat in $(seq 0 $nrepeat); do
 		ssh router.LB-LLD.SAFER.isi.deterlab.net "./dissent/localRelayRunNTrustee.sh $ntrustee $cellSize"
 		echo "[$repeat/$nrepeat] Waiting 60 sec for relay to setup..."
 		sleep 60
-  
-     	echo "[$repeat/$nrepeat] Starting client-0 cellsize $cellSize"
-		ssh client-0.LB-LLD.SAFER.isi.deterlab.net "./dissent/localClientRun.sh 0 $cellSize"
-		echo "[$repeat/$nrepeat] Waiting 30 sec before starting next client..."
-		sleep 30
 
+		# Start clients
+		for i in $(seq 0 $maxclient); do
+		  echo "[$repeat/$nrepeat] Starting client-$i cellsize $cellSize"
+		  ssh client-$i.LB-LLD.SAFER.isi.deterlab.net "./dissent/localClientRun.sh $i $cellSize"
+		  echo "[$repeat/$nrepeat] Waiting 30 sec before starting next client..."
+		  sleep 30
+		done
 	done
 done
 
