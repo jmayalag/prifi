@@ -3,6 +3,7 @@ package log
 import (
 	"fmt"
 	"time"
+    "encoding/binary"
     "encoding/json"
 )
 
@@ -122,4 +123,21 @@ func InfoReport(severity int, entity, info string) {
 
     s2 := fmt.Sprint("{\"time\":\"", when, "\", \"entity\":\"", entity, "\", \"info\":\"", info, "\"}")
     logEngine.WriteMessage(severity, s2)
+}
+
+func MsTimeStamp() int64 {
+    //http://stackoverflow.com/questions/24122821/go-golang-time-now-unixnano-convert-to-milliseconds
+    return time.Now().UnixNano() / int64(time.Millisecond)
+}
+
+func MsTimeStampString() string {
+    currTime := MsTimeStamp()
+    return fmt.Sprintf("%v", currTime)
+}
+
+func MsTimeStampBytes() []byte {
+    currTime := MsTimeStamp()
+    buf := make([]byte, 8)
+    binary.BigEndian.PutUint64(buf[0:8], uint64(currTime))
+    return buf
 }

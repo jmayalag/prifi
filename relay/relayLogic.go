@@ -448,6 +448,7 @@ func processMessageLoop(relayState *RelayState){
 
 	socksProxyConnections := make(map[int]chan<- []byte)
 	downstream            := make(chan prifinet.DataWithConnectionId)
+	priorityDownStream    := make([]prifinet.DataWithConnectionId, 0)
 	nulldown              := prifinet.DataWithConnectionId{} // default empty downstream cell
 	window                := 2           // Maximum cells in-flight
 	inflight              := 0         // Current cells in-flight
@@ -484,11 +485,21 @@ func processMessageLoop(relayState *RelayState){
 		}
 
 		// See if there's any downstream data to forward.
-		var downbuffer prifinet.DataWithConnectionId
-		select {
-			case downbuffer = <-downstream: // some data to forward downstream
-			default: 
-				downbuffer = nulldown
+		var downbuffer prifinet.DataWithConnectionId 
+		if len(priorityDownStream) > 0 {
+			downbuffer         = priorityDownStream[0]
+
+			if len(priorityDownStream) == 1 {
+				priorityDownStream = nil
+			} else {
+				priorityDownStream = priorityDownStream[1:]
+			}
+		} else {
+			select {
+				case downbuffer = <-downstream: // some data to forward downstream
+				default: 
+					downbuffer = nulldown
+			}
 		}
 
 		//compute the message type; if MESSAGE_TYPE_DATA_AND_RESYNC, the clients know they will resync
@@ -568,6 +579,19 @@ func processMessageLoop(relayState *RelayState){
 			stats.AddUpstreamCell(int64(relayState.PayloadLength))
 
 			// Process the decoded cell
+
+			//check if we have a latency test message
+			pattern     := int(binary.BigEndian.Uint16(upstreamPlaintext[0:2]))
+			if pattern == 43690 { //1010101010101010
+				//clientId  := uint16(binary.BigEndian.Uint16(upstreamPlaintext[2:4]))
+				//timestamp := uint64(binary.BigEndian.Uint64(upstreamPlaintext[4:12]))
+
+				cellDown := prifinet.DataWithConnectionId{-1, upstreamPlaintext}
+				priorityDownStream = append(priorityDownStream, cellDown)
+
+				continue //the rest is for SOCKS
+			}
+
 			if upstreamPlaintext == nil {
 				continue // empty or corrupt upstream cell
 			}
@@ -612,7 +636,7 @@ func processMessageLoop(relayState *RelayState){
 
 func newSOCKSProxyHandler(connId int, downstreamData chan<- prifinet.DataWithConnectionId) chan<- []byte {
 	upstreamData := make(chan []byte)
-	go prifinet.RelaySocksProxy(connId, upstreamData, downstreamData)
+	//go prifinet.RelaySocksProxy(connId, upstreamData, downstreamData)
 	return upstreamData
 }
 

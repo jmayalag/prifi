@@ -3,7 +3,10 @@ package log
 import (
 	"fmt"
 	"time"
+	"math"
 )
+
+const MAX_LATENCY_STORED = 100
 
 type Statistics struct {
 	begin			time.Time
@@ -11,6 +14,8 @@ type Statistics struct {
 	nReports		int
 	maxNReports		int
 	period			time.Duration
+
+	latencies				[]int64
 
 	totalUpstreamCells		int64
 	totalUpstreamBytes 		int64
@@ -22,7 +27,7 @@ type Statistics struct {
 }
 
 func EmptyStatistics(reportingLimit int) *Statistics{
-	stats := Statistics{time.Now(), time.Now(), 0, reportingLimit, time.Duration(5)*time.Second, 0, 0, 0, 0, 0, 0, 0}
+	stats := Statistics{time.Now(), time.Now(), 0, reportingLimit, time.Duration(5)*time.Second, make([]int64, 0), 0, 0, 0, 0, 0, 0, 0}
 	return &stats
 }
 
@@ -50,6 +55,78 @@ func (stats *Statistics) Dump() {
 	fmt.Println(stats.instantDownstreamBytes)
 }
 
+func round(f float64) float64 {
+    return math.Floor(f + .5)
+}
+
+func round2(f float64, places int) float64 {
+    shift := math.Pow(10, float64(places))
+    return round(f * shift) / shift;    
+}
+
+func mean(data []int64) float64 {
+	sum := int64(0)
+	for i:=0; i<len(data); i++ {
+		sum += data[i]
+	}
+
+	mean := float64(sum) / float64(len(data))
+	return mean
+}
+
+func mean2(data []float64) float64 {
+	sum := float64(0)
+	for i:=0; i<len(data); i++ {
+		sum += data[i]
+	}
+
+	mean := float64(sum) / float64(len(data))
+	return mean
+}
+
+func confidence(data []int64) float64 {
+
+	if len(data) == 0{
+		return 0
+	}
+	mean_val := mean(data)
+
+	deviations := make([]float64, 0)
+	for i:=0; i<len(data); i++ {
+		diff := mean_val - float64(data[i])
+		deviations = append(deviations, diff*diff)
+	}
+
+	std := mean2(deviations)
+	stderr := math.Sqrt(std)
+	z_value_95 := 1.96
+	margin_error := stderr * z_value_95
+
+	return margin_error
+}
+
+func (stats *Statistics) LatencyStatistics() (string, string, string) {
+
+	if len(stats.latencies) == 0{
+		return "-1", "-1", "-1"
+	}
+
+	m := round2(mean(stats.latencies), 2)
+	v := round2(confidence(stats.latencies), 2)
+
+	return fmt.Sprintf("%v", m), fmt.Sprintf("%v", v), fmt.Sprintf("%v", len(stats.latencies))
+}
+
+func (stats *Statistics) AddLatency(latency int64) {
+	stats.latencies = append(stats.latencies, latency)
+
+	//we remove the first items
+	if len(stats.latencies) > MAX_LATENCY_STORED {
+		start := len(stats.latencies) - MAX_LATENCY_STORED
+		stats.latencies = stats.latencies[start:]
+	}
+}
+
 func (stats *Statistics) AddDownstreamCell(nBytes int64) {
 	stats.totalDownstreamCells += 1
 	stats.totalDownstreamBytes += nBytes
@@ -68,12 +145,14 @@ func (stats *Statistics) ReportJson() {
 	if now.After(stats.nextReport) {
 		duration := now.Sub(stats.begin).Seconds()
 		instantUpSpeed := (float64(stats.instantUpstreamBytes)/stats.period.Seconds())
+		latm, latv, latn := stats.LatencyStatistics()
 
-		Printf(EXPERIMENT_OUTPUT, "@ %fs; cell %f (%f) /sec, up %f (%f) B/s, down %f (%f) B/s",
+		Printf(EXPERIMENT_OUTPUT, "@ %fs; cell %f (%f) /sec, up %f (%f) B/s, down %f (%f) B/s, lat %s += %s over %s",
 			duration,
 			 float64(stats.totalUpstreamCells)/duration, float64(stats.instantUpstreamCells)/stats.period.Seconds(),
 			 float64(stats.totalUpstreamBytes)/duration, instantUpSpeed,
-			 float64(stats.totalDownstreamBytes)/duration, float64(stats.instantDownstreamBytes)/stats.period.Seconds())
+			 float64(stats.totalDownstreamBytes)/duration, float64(stats.instantDownstreamBytes)/stats.period.Seconds(),
+			 latm, latv, latn)
 
 		// Next report time
 		stats.instantUpstreamCells = 0
@@ -104,12 +183,14 @@ func (stats *Statistics) Report() {
 	if now.After(stats.nextReport) {
 		duration := now.Sub(stats.begin).Seconds()
 		instantUpSpeed := (float64(stats.instantUpstreamBytes)/stats.period.Seconds())
+		latm, latv, latn := stats.LatencyStatistics()
 
-		Printf(EXPERIMENT_OUTPUT, "@ %fs; cell %f (%f) /sec, up %f (%f) B/s, down %f (%f) B/s",
+		Printf(EXPERIMENT_OUTPUT, "@ %fs; cell %f (%f) /sec, up %f (%f) B/s, down %f (%f) B/s, lat %s += %s over %s",
 			duration,
 			 float64(stats.totalUpstreamCells)/duration, float64(stats.instantUpstreamCells)/stats.period.Seconds(),
 			 float64(stats.totalUpstreamBytes)/duration, instantUpSpeed,
-			 float64(stats.totalDownstreamBytes)/duration, float64(stats.instantDownstreamBytes)/stats.period.Seconds())
+			 float64(stats.totalDownstreamBytes)/duration, float64(stats.instantDownstreamBytes)/stats.period.Seconds(),
+			 latm, latv, latn)
 
 		// Next report time
 		stats.instantUpstreamCells = 0

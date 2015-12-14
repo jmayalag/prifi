@@ -36,7 +36,8 @@ func main() {
 	//parameters config
 	nClients          := flag.Int("nclients", 1, "The number of clients.")
 	nTrustees         := flag.Int("ntrustees", 1, "The number of trustees.")
-	cellSize          := flag.Int("cellsize", 512, "Sets the size of one cell, in bytes.")
+	cellSize          := flag.Int("cellsize", 5120, "Sets the size of one cell, in bytes.")
+	latencyTest       := flag.Bool("latencytest", true, "Makes the client run a latency test. Disables the SOCKS proxy.")
 
 	//logging stuff
 	logLevel          := flag.Int("loglvl", prifilog.INFORMATION, "The minimum level of logs to display.")
@@ -63,9 +64,13 @@ func main() {
 	
 	config.ReadConfig()
 
-	//Little exception : 
+	//starts the LOG sink server
 	if *isLogSink {
 		prifilog.StartSinkServer(*netLogPort, *logPath+"sink.log")
+	}
+
+	if *latencyTest {
+		*useSocksProxy = false
 	}
 
 	//set up the log - default is a file
@@ -106,7 +111,7 @@ func main() {
 	if *isRelay {
 		relay.StartRelay(*cellSize, relayPortAddr, *nClients, *nTrustees, trusteesIp, *relayReceiveLimit)
 	} else if *clientId >= 0 {
-		client.StartClient(*clientId, *relayHostAddr, *nClients, *nTrustees, *cellSize, *useSocksProxy)
+		client.StartClient(*clientId, *relayHostAddr, *nClients, *nTrustees, *cellSize, *useSocksProxy, *latencyTest)
 	} else if *isTrusteeServer {
 		trustee.StartTrusteeServer()
 	} else {

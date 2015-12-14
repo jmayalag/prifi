@@ -14,10 +14,10 @@ import (
 	prifilog "github.com/lbarman/prifi/log"
 )
 
-func StartClient(clientId int, relayHostAddr string, expectedNumberOfClients int, nTrustees int, payloadLength int, useSocksProxy bool) {
+func StartClient(clientId int, relayHostAddr string, expectedNumberOfClients int, nTrustees int, payloadLength int, useSocksProxy bool, latencyTest bool) {
 	prifilog.SimpleStringDump(prifilog.NOTIFICATION, "Client " + strconv.Itoa(clientId) + "; Started")
 
-	clientState := newClientState(clientId, nTrustees, expectedNumberOfClients, payloadLength, useSocksProxy)
+	clientState := newClientState(clientId, nTrustees, expectedNumberOfClients, payloadLength, useSocksProxy, latencyTest)
 	stats := prifilog.EmptyStatistics(-1) //no limit
 
 	//connect to relay
@@ -134,9 +134,27 @@ func StartClient(clientId int, relayHostAddr string, expectedNumberOfClients int
 							continueToNextRound = false
 
 						case prifinet.MESSAGE_TYPE_DATA :
-							//data for SOCKS proxy, just hand it over to the dedicated thread
-							if(clientState.UseSocksProxy){
-								dataForSocksProxy <- data
+
+							//test if it is the answer from a ping
+							if len(data.Data) > 2 {
+								pattern     := int(binary.BigEndian.Uint16(data.Data[0:2]))
+								if pattern == 43690 { //1010101010101010
+									clientId  := int(binary.BigEndian.Uint16(data.Data[2:4]))
+
+									if clientId == clientState.Id {
+										timestamp := int64(binary.BigEndian.Uint64(data.Data[4:12]))
+										diff := prifilog.MsTimeStamp() - timestamp
+
+										//prifilog.Println(prifilog.EXPERIMENT_OUTPUT, "Client "+strconv.Itoa(clientId) +"; Latency is ", fmt.Sprintf("%v", diff) + "ms")
+
+										stats.AddLatency(diff)
+									}
+								} 
+							} else {
+								//data for SOCKS proxy, just hand it over to the dedicated thread
+								if(clientState.UseSocksProxy){
+									dataForSocksProxy <- data
+								}
 							}
 							stats.AddDownstreamCell(int64(len(data.Data)))
 					}
@@ -230,15 +248,31 @@ func roundScheduling(relayConn net.Conn, clientState *ClientState) (int, error) 
  * Creates the next cell
  */
 
-func writeNextUpstreamSlice(canWrite bool, dataForRelayBuffer chan []byte, relayConn net.Conn, clientState *ClientState) int {
+func writeNextUpstreamSlice(isMySlot bool, dataForRelayBuffer chan []byte, relayConn net.Conn, clientState *ClientState) int {
 	var nextUpstreamBytes []byte
 
-	if canWrite {
+	if isMySlot {
 		select
 		{
 			case nextUpstreamBytes = <-dataForRelayBuffer:
 
 			default:
+				if clientState.LatencyTest {
+
+					if clientState.PayloadLength < 12 {
+						panic("Trying to do a Latency test, but payload is smaller than 10 bytes.")
+					}
+
+					buffer   := make([]byte, clientState.PayloadLength)
+					pattern  := uint16(43690) //1010101010101010
+					currTime := prifilog.MsTimeStamp() //timestamp in Ms
+					
+					binary.BigEndian.PutUint16(buffer[0:2], pattern)
+					binary.BigEndian.PutUint16(buffer[2:4], uint16(clientState.Id))
+					binary.BigEndian.PutUint64(buffer[4:12], uint64(currTime))
+
+					nextUpstreamBytes = buffer
+				}
 		}
 	}		
 

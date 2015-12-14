@@ -37,6 +37,7 @@ type ClientState struct {
 	PayloadLength		int
 	UsablePayloadLength	int
 	UseSocksProxy		bool
+	LatencyTest			bool
 
 	TrusteePublicKey	[]abstract.Point
 	sharedSecrets		[]abstract.Point
@@ -46,7 +47,7 @@ type ClientState struct {
 	MessageHistory		abstract.Cipher
 }
 
-func newClientState(clientId int, nTrustees int, nClients int, payloadLength int, useSocksProxy bool) *ClientState {
+func newClientState(clientId int, nTrustees int, nClients int, payloadLength int, useSocksProxy bool, latencyTest bool) *ClientState {
 
 	params := new(ClientState)
 
@@ -56,6 +57,7 @@ func newClientState(clientId int, nTrustees int, nClients int, payloadLength int
 	params.nTrustees           = nTrustees
 	params.PayloadLength       = payloadLength
 	params.UseSocksProxy       = useSocksProxy
+	params.LatencyTest 		   = latencyTest
 
 	//prepare the crypto parameters
 	rand 	:= config.CryptoSuite.Cipher([]byte(params.Name))
