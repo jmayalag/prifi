@@ -42,7 +42,10 @@ for {set i 0} {$i < $n_trustees} {incr i} {
 
 
 set lanclients [$ns make-lan "$lanstr_clients" 100Mb 0ms]
+tb-set-lan-loss $lanclients .0
+
 set lantrustees [$ns make-lan "$lanstr_trustees" 100Mb $trustee_delay]
+tb-set-lan-loss $lantrustees .0
 
 set ip 10.0.0.250
 tb-set-ip-lan $relay $lanclients $ip
