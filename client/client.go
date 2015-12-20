@@ -312,7 +312,8 @@ func writeNextUpstreamSlice(isMySlot bool, dataForRelayBuffer chan []byte, relay
 
 func connectToRelay(relayHost string, params *ClientState) (net.Conn, net.Conn, error) {
 	
-	var conn, conn2 net.Conn = nil, nil
+	var conn net.Conn = nil
+	var conn2 *net.UDPConn = nil
 	var err error = nil
 
 	//connect with TCP
@@ -355,8 +356,27 @@ func connectToRelay(relayHost string, params *ClientState) (net.Conn, net.Conn, 
 	if params.UseUDP {
 
 		prifilog.Println(prifilog.INFORMATION, "Gonna read an UDP packet on conn ", conn2.LocalAddr().String())
-		message, err := prifinet.ReadMessage(conn2)
-		prifilog.Println(prifilog.INFORMATION, "Received an UDP packet ! ", string(message))
+
+		header := make([]byte, 6)
+		n,addr,err := conn2.ReadFromUDP(header)
+
+		if n != 6 {
+			prifilog.Println(prifilog.RECOVERABLE_ERROR, "Header not of 6 bytes! ", n, " - ", addr, " - ", err)
+		}
+
+		version := int(binary.BigEndian.Uint16(header[0:2]))
+		bodySize := int(binary.BigEndian.Uint32(header[2:6]))
+
+		prifilog.Println(prifilog.INFORMATION, "Version ", version, " -  BodySize", bodySize)
+		body := make([]byte, bodySize)
+		_, _, err2 := conn2.ReadFromUDP(body)
+
+		if err2 != nil{
+			prifilog.Println(prifilog.RECOVERABLE_ERROR, "Error reading ",  err2)
+		}
+
+
+		prifilog.Println(prifilog.INFORMATION, "Received an UDP packet ! ", string(body))
 		prifilog.Println(prifilog.INFORMATION, "error is ", err.Error())
 		panic("done")
 	}

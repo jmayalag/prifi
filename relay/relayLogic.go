@@ -743,18 +743,34 @@ func relayParseClientParamsAux(tcpConn net.Conn, clientsUseUDP bool) prifinet.No
 
 	//client ready, say hello over UDP
 	if clientsUseUDP {
+
+		time.Sleep(time.Second * 5)
+
+		ServerAddr,_ := net.ResolveUDPAddr("udp",tcpConn.RemoteAddr().String())	 
+	    LocalAddr, _ := net.ResolveUDPAddr("udp", tcpConn.LocalAddr().String())
+
 		prifilog.Println(prifilog.INFORMATION, " writing hello Message to udp")
 		m := []byte("You're client "+strconv.Itoa(nodeId))
 
-		prifilog.Println(prifilog.SEVERE_ERROR, "Connecting on UDP to  " + tcpConn.RemoteAddr().String())
-		udpConn, err3 := net.Dial("udp", tcpConn.RemoteAddr().String())
+		prifilog.Println(prifilog.SEVERE_ERROR, "Connecting on UDP to  " + ServerAddr.String())
+		udpConn, err3 := net.DialUDP("udp", LocalAddr, ServerAddr)
 
 		if err3 != nil {
 			prifilog.Println(prifilog.SEVERE_ERROR, "can't udp conn ! " + err3.Error())
 			panic("panic")
 		}
 
-		prifinet.WriteMessage(udpConn, m)
+		buffer := make([]byte, len(m)+6)
+		binary.BigEndian.PutUint16(buffer[0:2], uint16(config.LLD_PROTOCOL_VERSION))
+		binary.BigEndian.PutUint32(buffer[2:6], uint32(len(m)))
+		copy(buffer[6:], m)
+
+		udpConn.WriteToUDP(buffer, ServerAddr)
+
+		prifilog.Println(prifilog.INFORMATION, "Message written")
+		time.Sleep(time.Second * 100)
+
+		//prifinet.WriteMessage(udpConn, m)
 	}
 
 	return newClient
