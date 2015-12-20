@@ -8,6 +8,7 @@ import (
 	"time"
 	"log"
 	"net"
+	"strconv"
 	prifinet "github.com/lbarman/prifi/net"
 	prifilog "github.com/lbarman/prifi/log"
 )
@@ -21,14 +22,14 @@ var	deconnectedClients	  = make(chan int)
 var	timedOutClients   	  = make(chan int)
 var	deconnectedTrustees	  = make(chan int)
 
-func StartRelay(payloadLength int, relayPort string, nClients int, nTrustees int, trusteesIp []string, reportingLimit int) {
+func StartRelay(payloadLength int, relayPort string, nClients int, nTrustees int, trusteesIp []string, reportingLimit int, useUDP bool) {
 
 	prifilog.SimpleStringDump(prifilog.NOTIFICATION, "Relay started")
 
 	stateMachineLogger = prifilog.NewStateMachineLogger("relay")
 	stateMachineLogger.StateChange("relay-init")
 
-	relayState = initiateRelayState(relayPort, nTrustees, nClients, payloadLength, reportingLimit, trusteesIp)
+	relayState = initiateRelayState(relayPort, nTrustees, nClients, payloadLength, reportingLimit, trusteesIp, useUDP)
 
 	//start the server waiting for clients
 	newClientConnectionsChan        := make(chan net.Conn) 	          //channel with unparsed clients
@@ -36,7 +37,7 @@ func StartRelay(payloadLength int, relayPort string, nClients int, nTrustees int
 
 	//start the client parser
 	newClientWithIdAndPublicKeyChan := make(chan prifinet.NodeRepresentation)  //channel with parsed clients
-	go welcomeNewClients(newClientConnectionsChan, newClientWithIdAndPublicKeyChan)
+	go welcomeNewClients(newClientConnectionsChan, newClientWithIdAndPublicKeyChan, useUDP)
 
 	stateMachineLogger.StateChange("protocol-setup")
 
@@ -712,9 +713,9 @@ func relayServerListener(listeningPort string, newConnection chan net.Conn) {
 	}
 }
 
-func relayParseClientParamsAux(conn net.Conn) prifinet.NodeRepresentation {
+func relayParseClientParamsAux(tcpConn net.Conn, clientsUseUDP bool) prifinet.NodeRepresentation {
 
-	message, err := prifinet.ReadMessage(conn)
+	message, err := prifinet.ReadMessage(tcpConn)
 	if err != nil {
 		panic("Read error:" + err.Error())
 	}
@@ -738,13 +739,29 @@ func relayParseClientParamsAux(conn net.Conn) prifinet.NodeRepresentation {
 		panic("can't unmarshal client key ! " + err2.Error())
 	}
 
-	newClient := prifinet.NodeRepresentation{nodeId, conn, true, publicKey}
+	newClient := prifinet.NodeRepresentation{nodeId, tcpConn, true, publicKey}
+
+	//client ready, say hello over UDP
+	if clientsUseUDP {
+		prifilog.Println(prifilog.INFORMATION, " writing hello Message to udp")
+		m := []byte("You're client "+strconv.Itoa(nodeId))
+
+		prifilog.Println(prifilog.SEVERE_ERROR, "Connecting on UDP to  " + tcpConn.RemoteAddr().String())
+		udpConn, err3 := net.Dial("udp", tcpConn.RemoteAddr().String())
+
+		if err3 != nil {
+			prifilog.Println(prifilog.SEVERE_ERROR, "can't udp conn ! " + err3.Error())
+			panic("panic")
+		}
+
+		prifinet.WriteMessage(udpConn, m)
+	}
 
 	return newClient
 }
 
-func relayParseClientParams(conn net.Conn, newClientChan chan prifinet.NodeRepresentation) {
+func relayParseClientParams(tcpConn net.Conn, newClientChan chan prifinet.NodeRepresentation, clientsUseUDP bool) {
 
-	newClient := relayParseClientParamsAux(conn)
+	newClient := relayParseClientParamsAux(tcpConn, clientsUseUDP)
 	newClientChan <- newClient
 }

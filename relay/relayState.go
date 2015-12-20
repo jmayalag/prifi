@@ -9,13 +9,14 @@ import (
 	prifilog "github.com/lbarman/prifi/log"
 )
 
-func initiateRelayState(relayPort string, nTrustees int, nClients int, payloadLength int, reportingLimit int, trusteesHosts []string) *RelayState {
+func initiateRelayState(relayPort string, nTrustees int, nClients int, payloadLength int, reportingLimit int, trusteesHosts []string, useUDP bool) *RelayState {
 	params := new(RelayState)
 
 	params.Name           = "Relay"
 	params.RelayPort      = relayPort
 	params.PayloadLength  = payloadLength
 	params.ReportingLimit = reportingLimit
+	params.UseUDP 		  = useUDP
 
 	//prepare the crypto parameters
 	rand 	:= config.CryptoSuite.Cipher([]byte(params.Name))
@@ -101,14 +102,14 @@ func (relayState *RelayState) disconnectFromAllTrustees() {
 }
 
 
-func welcomeNewClients(newConnectionsChan chan net.Conn, newClientChan chan prifinet.NodeRepresentation) {	
+func welcomeNewClients(newConnectionsChan chan net.Conn, newClientChan chan prifinet.NodeRepresentation, clientsUseUDP bool) {	
 	newClientsToParse := make(chan prifinet.NodeRepresentation)
 
 	for {
 		select{
 			//accept the TCP connection, and parse the parameters
 			case newConnection := <-newConnectionsChan: 
-				go relayParseClientParams(newConnection, newClientsToParse)
+				go relayParseClientParams(newConnection, newClientsToParse, clientsUseUDP)
 			
 			//once client is ready (we have params+pk), forward to the other channel
 			case newClient := <-newClientsToParse: 

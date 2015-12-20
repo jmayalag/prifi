@@ -38,6 +38,8 @@ type RelayState struct {
 	nClients			int
 	nTrustees			int
 
+	UseUDP 				bool
+
 	trusteesHosts		[]string
 
 	clients  			[]prifinet.NodeRepresentation
