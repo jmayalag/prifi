@@ -29,26 +29,27 @@ type IdConnectionAndPublicKey struct{
 }
 
 type RelayState struct {
-	Name				string
-	RelayPort			string
+	Name					string
+	RelayPort				string
 
-	PublicKey			abstract.Point
-	privateKey			abstract.Secret
+	PublicKey				abstract.Point
+	privateKey				abstract.Secret
 	
-	nClients			int
-	nTrustees			int
+	nClients				int
+	nTrustees				int
 
-	UseUDP 				bool
+	UseUDP 					bool
 
-	trusteesHosts		[]string
+	trusteesHosts			[]string
 
-	clients  			[]prifinet.NodeRepresentation
-	trustees  			[]prifinet.NodeRepresentation
+	clients  				[]prifinet.NodeRepresentation
+	trustees  				[]prifinet.NodeRepresentation
 	
-	CellCoder			dcnet.CellCoder
+	CellCoder				dcnet.CellCoder
 	
-	MessageHistory		abstract.Cipher
+	MessageHistory			abstract.Cipher
 
-	PayloadLength		int
-	ReportingLimit		int
+	UpstreamCellSize		int
+	DownstreamCellSize		int
+	ReportingLimit			int
 }

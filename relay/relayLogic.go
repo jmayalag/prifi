@@ -22,17 +22,17 @@ var	deconnectedClients	  = make(chan int)
 var	timedOutClients   	  = make(chan int)
 var	deconnectedTrustees	  = make(chan int)
 
-func StartRelay(payloadLength int, relayPort string, nClients int, nTrustees int, trusteesIp []string, reportingLimit int, useUDP bool) {
+func StartRelay(upstreamCellSize int, downstreamCellSize int, relayPort string, nClients int, nTrustees int, trusteesIp []string, reportingLimit int, useUDP bool) {
 
 	prifilog.SimpleStringDump(prifilog.NOTIFICATION, "Relay started")
 
 	stateMachineLogger = prifilog.NewStateMachineLogger("relay")
 	stateMachineLogger.StateChange("relay-init")
 
-	relayState = initiateRelayState(relayPort, nTrustees, nClients, payloadLength, reportingLimit, trusteesIp, useUDP)
+	relayState = initiateRelayState(relayPort, nTrustees, nClients, upstreamCellSize, downstreamCellSize, reportingLimit, trusteesIp, useUDP)
 
 	//start the server waiting for clients
-	newClientConnectionsChan        := make(chan net.Conn) 	          //channel with unparsed clients
+	newClientConnectionsChan        := make(chan net.Conn) 	          			//channel with unparsed clients
 	go relayServerListener(relayPort, newClientConnectionsChan)
 
 	//start the client parser
@@ -58,7 +58,7 @@ func StartRelay(payloadLength int, relayPort string, nClients int, nTrustees int
 		}	
 		restartProtocol(relayState, make([]prifinet.NodeRepresentation, 0));
 	} else {
-		//copy for subtrhead
+		//copy for subthread, run subthread for processing the messages
 		relayStateCopy := relayState.deepClone()
 		go processMessageLoop(relayStateCopy)
 		isProtocolRunning = true
@@ -110,6 +110,7 @@ func StartRelay(payloadLength int, relayPort string, nClients int, nTrustees int
 
 				isProtocolRunning = restartProtocol(relayState, newClients)
 				newClients = make([]prifinet.NodeRepresentation, 0)
+				
 			default: 
 				//all clear! keep this thread handler load low, (accept changes every X millisecond)
 				time.Sleep(CONTROL_LOOP_SLEEP_TIME)
@@ -275,9 +276,6 @@ func (relayState *RelayState) organizeRoundScheduling() error {
 		G_s_i_bytes, _ := G_s[i].MarshalBinary()
 		transcriptBytes = append(transcriptBytes, prifinet.IntToBA(len(G_s_i_bytes))...)
 		transcriptBytes = append(transcriptBytes, G_s_i_bytes...)
-
-		//prifilog.Println("G_S_", i)
-		//prifilog.Println(hex.Dump(G_s_i_bytes))
 	}
 	for i:=0; i<len(ephPublicKeys_s); i++ {
 
@@ -286,21 +284,15 @@ func (relayState *RelayState) organizeRoundScheduling() error {
 			pkBytes, _ := ephPublicKeys_s[i][k].MarshalBinary()
 			pkArray = append(pkArray, prifinet.IntToBA(len(pkBytes))...)
 			pkArray = append(pkArray, pkBytes...)
-			//prifilog.Println("Packing key", k)
 		}
 
 		transcriptBytes = append(transcriptBytes, prifinet.IntToBA(len(pkArray))...)
 		transcriptBytes = append(transcriptBytes, pkArray...)
-
-		//prifilog.Println("pkArray_", i)
-		//prifilog.Println(hex.Dump(pkArray))
 	}
+
 	for i:=0; i<len(proof_s); i++ {
 		transcriptBytes = append(transcriptBytes, prifinet.IntToBA(len(proof_s[i]))...)
 		transcriptBytes = append(transcriptBytes, proof_s[i]...)
-
-		//prifilog.Println("G_S_", i)
-		//prifilog.Println(hex.Dump(proof_s[i]))
 	}
 
 	//broadcast to trustees
@@ -364,40 +356,6 @@ func (relayState *RelayState) organizeRoundScheduling() error {
 
 	prifilog.Println(prifilog.INFORMATION, "Oblivious shuffle & signatures sent !")
 	return nil
-
-	/* 
-	//obsolete, of course in practice the client do the verification (relay is untrusted)
-	prifilog.Println("We verify on behalf of client")
-
-	M := make([]byte, 0)
-	M = append(M, G_s_i_bytes...)
-	for k:=0; k<len(ephPublicKeys_s[lastPermutation]); k++{
-		prifilog.Println("Embedding eph key")
-		prifilog.Println(ephPublicKeys_s[lastPermutation][k])
-		pkBytes, _ := ephPublicKeys_s[lastPermutation][k].MarshalBinary()
-		M = append(M, pkBytes...)
-	}
-
-	prifilog.Println("The message we're gonna verify is :")
-	prifilog.Println(hex.Dump(M))
-
-	for j := 0; j < relayState.nTrustees; j++ {
-		sigMsg = append(sigMsg, prifinet.IntToBA(len(signatures[j]))...)
-		sigMsg = append(sigMsg, signatures[j]...)
-
-		prifilog.Println("Verifying for trustee", j)
-		err := crypto.SchnorrVerify(config.CryptoSuite, M, relayState.trustees[j].PublicKey, signatures[j])
-
-		prifilog.Println("Signature was :")
-		prifilog.Println(hex.Dump(signatures[j]))
-
-		if err == nil {
-			prifilog.Println("Signature OK !")
-		} else {
-			panic(err.Error())
-		}
-	}
-	*/
 }
 
 
@@ -405,23 +363,6 @@ func processMessageLoop(relayState *RelayState){
 	//TODO : if something fail, send true->protocolFailed
 
 	stateMachineLogger.StateChange("protocol-mainloop")
-
-	/*
-	prifilog.Println(prifilog.NOTIFICATION, "")
-	prifilog.Println(prifilog.NOTIFICATION, "#################################")
-	prifilog.Println(prifilog.NOTIFICATION, "# Configuration updated, running")
-	prifilog.Println(prifilog.NOTIFICATION, "#", relayState.nClients, "clients", relayState.nTrustees, "trustees")
-
-	for i := 0; i<len(relayState.clients); i++ {
-		prifilog.Println(prifilog.NOTIFICATION, "# Client", relayState.clients[i].Id, " on port ", relayState.clients[i].Conn.LocalAddr())
-	}
-	for i := 0; i<len(relayState.trustees); i++ {
-		prifilog.Println(prifilog.NOTIFICATION, "# Trustee", relayState.trustees[i].Id, " on port ", relayState.trustees[i].Conn.LocalAddr())
-	}
-	prifilog.Println(prifilog.NOTIFICATION, "#################################")
-	prifilog.Println(prifilog.NOTIFICATION, "")
-	*/
-
 
 	prifilog.InfoReport(prifilog.NOTIFICATION, "relay", fmt.Sprintf("new setup, %v clients and %v trustees", relayState.nClients, relayState.nTrustees))
 
@@ -435,24 +376,25 @@ func processMessageLoop(relayState *RelayState){
 	stats := prifilog.EmptyStatistics(relayState.ReportingLimit)
 
 	// Create ciphertext slice bufferfers for all clients and trustees
-	clientPayloadLength := relayState.CellCoder.ClientCellSize(relayState.PayloadLength)
+	clientupstreamCellSize := relayState.CellCoder.ClientCellSize(relayState.UpstreamCellSize)
 	clientsPayloadData  := make([][]byte, relayState.nClients)
 	for i := 0; i < relayState.nClients; i++ {
-		clientsPayloadData[i] = make([]byte, clientPayloadLength)
+		clientsPayloadData[i] = make([]byte, clientupstreamCellSize)
 	}
 
-	trusteePayloadLength := relayState.CellCoder.TrusteeCellSize(relayState.PayloadLength)
+	trusteeupstreamCellSize := relayState.CellCoder.TrusteeCellSize(relayState.UpstreamCellSize)
 	trusteesPayloadData  := make([][]byte, relayState.nTrustees)
 	for i := 0; i < relayState.nTrustees; i++ {
-		trusteesPayloadData[i] = make([]byte, trusteePayloadLength)
+		trusteesPayloadData[i] = make([]byte, trusteeupstreamCellSize)
 	}
 
 	socksProxyConnections := make(map[int]chan<- []byte)
 	downstream            := make(chan prifinet.DataWithConnectionId)
 	priorityDownStream    := make([]prifinet.DataWithConnectionId, 0)
 	nulldown              := prifinet.DataWithConnectionId{} // default empty downstream cell
-	window                := 2           // Maximum cells in-flight
-	inflight              := 0         // Current cells in-flight
+	
+	//window                := 2           // Maximum cells in-flight
+	//inflight              := 0         // Current cells in-flight
 
 	currentSetupContinues := true
 	
@@ -511,55 +453,51 @@ func processMessageLoop(relayState *RelayState){
 		}
 
 		//craft the message for clients
-		downstreamDataPayloadLength := len(downbuffer.Data)
-		downstreamData := make([]byte, 6+downstreamDataPayloadLength)
+		downstreamDataupstreamCellSize := len(downbuffer.Data)
+		downstreamData := make([]byte, 6+downstreamDataupstreamCellSize)
 		binary.BigEndian.PutUint16(downstreamData[0:2], uint16(msgType))
 		binary.BigEndian.PutUint32(downstreamData[2:6], uint32(downbuffer.ConnectionId)) //this is the SOCKS connection ID
 		copy(downstreamData[6:], downbuffer.Data)
 
 		// Broadcast the downstream data to all clients.
 		prifinet.NUnicastMessageToNodes(relayState.clients, downstreamData)
-		stats.AddDownstreamCell(int64(downstreamDataPayloadLength))
+		stats.AddDownstreamCell(int64(downstreamDataupstreamCellSize))
 
+		/* LBARMAN : disabled, until effect on performance is clear
 		inflight++
 		if inflight < window {
 			continue // Get more cells in flight
-		}
+		}*/
 
-		relayState.CellCoder.DecodeStart(relayState.PayloadLength, relayState.MessageHistory)
+		relayState.CellCoder.DecodeStart(relayState.UpstreamCellSize, relayState.MessageHistory)
 
 		// Collect a cell ciphertext from each trustee
 		errorInThisCell := false
 		for i := 0; i < relayState.nTrustees; i++ {	
 
-			if errorInThisCell {
-				break
-			}
-
 			//TODO : add a channel for timeout trustee
-			data, err := prifinet.ReadWithTimeOut(i, relayState.trustees[i].Conn, trusteePayloadLength, CLIENT_READ_TIMEOUT, deconnectedTrustees, deconnectedTrustees)
+			data, err := prifinet.ReadWithTimeOut(i, relayState.trustees[i].Conn, trusteeupstreamCellSize, CLIENT_READ_TIMEOUT, deconnectedTrustees, deconnectedTrustees)
 
 			if err {
 				errorInThisCell = true
-			}
-
-			relayState.CellCoder.DecodeTrustee(data)
+				break
+			} else {
+				relayState.CellCoder.DecodeTrustee(data)
+			}			
 		}
 
 		// Collect an upstream ciphertext from each client
-		for i := 0; i < relayState.nClients; i++ {
+		if !errorInThisCell {
+			for i := 0; i < relayState.nClients; i++ {
+				data, err := prifinet.ReadWithTimeOut(i, relayState.clients[i].Conn, clientupstreamCellSize, CLIENT_READ_TIMEOUT, timedOutClients, deconnectedClients)
 
-			if errorInThisCell {
-				break
+				if err {
+					errorInThisCell = true
+					break
+				} else {
+					relayState.CellCoder.DecodeClient(data)
+				}
 			}
-
-			data, err := prifinet.ReadWithTimeOut(i, relayState.clients[i].Conn, clientPayloadLength, CLIENT_READ_TIMEOUT, timedOutClients, deconnectedClients)
-
-			if err {
-				errorInThisCell = true
-			}
-
-			relayState.CellCoder.DecodeClient(data)
 		}
 
 		if errorInThisCell {
@@ -575,9 +513,9 @@ func processMessageLoop(relayState *RelayState){
 			break
 		} else {
 			upstreamPlaintext := relayState.CellCoder.DecodeCell()
-			inflight--
+			//inflight--
 
-			stats.AddUpstreamCell(int64(relayState.PayloadLength))
+			stats.AddUpstreamCell(int64(relayState.UpstreamCellSize))
 
 			// Process the decoded cell
 
@@ -596,7 +534,7 @@ func processMessageLoop(relayState *RelayState){
 			if upstreamPlaintext == nil {
 				continue // empty or corrupt upstream cell
 			}
-			if len(upstreamPlaintext) != relayState.PayloadLength {
+			if len(upstreamPlaintext) != relayState.UpstreamCellSize {
 				panic("DecodeCell produced wrong-size payload")
 			}
 
@@ -616,7 +554,7 @@ func processMessageLoop(relayState *RelayState){
 				socksProxyConnections[socksConnId] = socksConn
 			}
 
-			if 6+socksDataLength > relayState.PayloadLength {
+			if 6+socksDataLength > relayState.UpstreamCellSize {
 				log.Printf("upstream cell invalid length %d", 6+socksDataLength)
 				continue
 			}
@@ -659,12 +597,12 @@ func connectToTrustee(trusteeId int, trusteeHostAddr string, relayState *RelaySt
 
 	//tell the trustee server our parameters
 	buffer := make([]byte, 16)
-	binary.BigEndian.PutUint32(buffer[0:4], uint32(relayState.PayloadLength))
+	binary.BigEndian.PutUint32(buffer[0:4], uint32(relayState.UpstreamCellSize))
 	binary.BigEndian.PutUint32(buffer[4:8], uint32(relayState.nClients))
 	binary.BigEndian.PutUint32(buffer[8:12], uint32(relayState.nTrustees))
 	binary.BigEndian.PutUint32(buffer[12:16], uint32(trusteeId))
 
-	prifilog.Println(prifilog.NOTIFICATION, "Writing; setup is", relayState.nClients, relayState.nTrustees, "role is", trusteeId, "cellSize ", relayState.PayloadLength)
+	prifilog.Println(prifilog.NOTIFICATION, "Writing; setup is", relayState.nClients, relayState.nTrustees, "role is", trusteeId, "cellSize ", relayState.UpstreamCellSize)
 
 	err2 := prifinet.WriteMessage(conn, buffer)
 
@@ -711,6 +649,12 @@ func relayServerListener(listeningPort string, newConnection chan net.Conn) {
 		}
 		newConnection <- conn
 	}
+}
+
+func relayParseClientParams(tcpConn net.Conn, newClientChan chan prifinet.NodeRepresentation, clientsUseUDP bool) {
+
+	newClient := relayParseClientParamsAux(tcpConn, clientsUseUDP)
+	newClientChan <- newClient
 }
 
 func relayParseClientParamsAux(tcpConn net.Conn, clientsUseUDP bool) prifinet.NodeRepresentation {
@@ -769,10 +713,4 @@ func relayParseClientParamsAux(tcpConn net.Conn, clientsUseUDP bool) prifinet.No
 	}
 
 	return newClient
-}
-
-func relayParseClientParams(tcpConn net.Conn, newClientChan chan prifinet.NodeRepresentation, clientsUseUDP bool) {
-
-	newClient := relayParseClientParamsAux(tcpConn, clientsUseUDP)
-	newClientChan <- newClient
 }

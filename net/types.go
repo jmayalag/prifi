@@ -31,6 +31,8 @@ type DataWithMessageTypeAndConnId struct {
 
 const SOCKS_CONNECTION_ID_EMPTY = 0
 
+const UDP_DATAGRAM_READING_MESSAGE_BUFFER_SIZE = 1024 //UDP max size is 65535. Should be BIGGER than the sent datagram (or data will be lost)
+
 const (
 	MESSAGE_TYPE_DATA = iota
 	MESSAGE_TYPE_DATA_AND_RESYNC

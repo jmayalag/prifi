@@ -34,11 +34,12 @@ func main() {
 	isTrusteeServer   := flag.Bool("trusteesrv", false, "Start a trustee server")
 
 	//parameters config
-	nClients          := flag.Int("nclients", 1, "The number of clients.")
-	nTrustees         := flag.Int("ntrustees", 1, "The number of trustees.")
-	cellSize          := flag.Int("cellsize", 5120, "Sets the size of one cell, in bytes.")
-	latencyTest       := flag.Bool("latencytest", true, "Makes the client run a latency test. Disables the SOCKS proxy.")
-	useUdp			  := flag.Bool("udp", true, "Improves performances by adding UDP broadcast from relay to clients")
+	nClients           := flag.Int("nclients", 1, "The number of clients.")
+	nTrustees          := flag.Int("ntrustees", 1, "The number of trustees.")
+	upstreamCellSize   := flag.Int("upcellsize", 5120, "Sets the size of one upstream cell, in bytes.")
+	downstreamCellSize := flag.Int("downcellsize", 5120, "Sets the size of one downstream cell, in bytes.")
+	latencyTest        := flag.Bool("latencytest", true, "Makes the client run a latency test. Disables the SOCKS proxy.")
+	useUdp             := flag.Bool("udp", true, "Improves performances by adding UDP broadcast from relay to clients")
 
 	//logging stuff
 	logLevel          := flag.Int("loglvl", prifilog.INFORMATION, "The minimum level of logs to display.")
@@ -110,9 +111,9 @@ func main() {
 	relayPortAddr := ":"+strconv.Itoa(*relayPort) //NOT "localhost:xxxx", or it will not listen on any interfaces
 
 	if *isRelay {
-		relay.StartRelay(*cellSize, relayPortAddr, *nClients, *nTrustees, trusteesIp, *relayReceiveLimit, *useUdp)
+		relay.StartRelay(*upstreamCellSize, *downstreamCellSize, relayPortAddr, *nClients, *nTrustees, trusteesIp, *relayReceiveLimit, *useUdp)
 	} else if *clientId >= 0 {
-		client.StartClient(*clientId, *relayHostAddr, *nClients, *nTrustees, *cellSize, *useSocksProxy, *latencyTest, *useUdp)
+		client.StartClient(*clientId, *relayHostAddr, *nClients, *nTrustees, *upstreamCellSize, *useSocksProxy, *latencyTest, *useUdp)
 	} else if *isTrusteeServer {
 		trustee.StartTrusteeServer()
 	} else {

@@ -9,14 +9,15 @@ import (
 	prifilog "github.com/lbarman/prifi/log"
 )
 
-func initiateRelayState(relayPort string, nTrustees int, nClients int, payloadLength int, reportingLimit int, trusteesHosts []string, useUDP bool) *RelayState {
+func initiateRelayState(relayPort string, nTrustees int, nClients int, upstreamCellSize int, downstreamCellSize int, reportingLimit int, trusteesHosts []string, useUDP bool) *RelayState {
 	params := new(RelayState)
-
-	params.Name           = "Relay"
-	params.RelayPort      = relayPort
-	params.PayloadLength  = payloadLength
-	params.ReportingLimit = reportingLimit
-	params.UseUDP 		  = useUDP
+	
+	params.Name               = "Relay"
+	params.RelayPort          = relayPort
+	params.UpstreamCellSize   = upstreamCellSize
+	params.DownstreamCellSize = downstreamCellSize
+	params.ReportingLimit     = reportingLimit
+	params.UseUDP             = useUDP
 
 	//prepare the crypto parameters
 	rand 	:= config.CryptoSuite.Cipher([]byte(params.Name))
@@ -39,19 +40,20 @@ func initiateRelayState(relayPort string, nTrustees int, nClients int, payloadLe
 func (relayState *RelayState) deepClone() *RelayState {
 	newRelayState := new(RelayState)
 
-	newRelayState.Name           = relayState.Name
-	newRelayState.RelayPort      = relayState.RelayPort
-	newRelayState.PublicKey      = relayState.PublicKey
-	newRelayState.privateKey     = relayState.privateKey
-	newRelayState.nClients       = relayState.nClients
-	newRelayState.nTrustees      = relayState.nTrustees
-	newRelayState.trusteesHosts  = make([]string, len(relayState.trusteesHosts))
-	newRelayState.clients        = make([]prifinet.NodeRepresentation, len(relayState.clients))
-	newRelayState.trustees       = make([]prifinet.NodeRepresentation, len(relayState.trustees))
-	newRelayState.CellCoder      = config.Factory()
-	newRelayState.MessageHistory = relayState.MessageHistory
-	newRelayState.PayloadLength  = relayState.PayloadLength
-	newRelayState.ReportingLimit = relayState.ReportingLimit
+	newRelayState.Name               = relayState.Name
+	newRelayState.RelayPort          = relayState.RelayPort
+	newRelayState.PublicKey          = relayState.PublicKey
+	newRelayState.privateKey         = relayState.privateKey
+	newRelayState.nClients           = relayState.nClients
+	newRelayState.nTrustees          = relayState.nTrustees
+	newRelayState.trusteesHosts      = make([]string, len(relayState.trusteesHosts))
+	newRelayState.clients            = make([]prifinet.NodeRepresentation, len(relayState.clients))
+	newRelayState.trustees           = make([]prifinet.NodeRepresentation, len(relayState.trustees))
+	newRelayState.CellCoder          = config.Factory()
+	newRelayState.MessageHistory     = relayState.MessageHistory
+	newRelayState.UpstreamCellSize   = relayState.UpstreamCellSize
+	newRelayState.DownstreamCellSize = relayState.DownstreamCellSize
+	newRelayState.ReportingLimit     = relayState.ReportingLimit
 
 	copy(newRelayState.trusteesHosts, relayState.trusteesHosts)
 

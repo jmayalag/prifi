@@ -79,7 +79,7 @@ func ReadMessage(conn net.Conn) ([]byte, error) {
 
 func ReadDatagram(conn net.Conn) ([]byte, error) {
 
-	buffer := make([]byte, 1024)
+	buffer := make([]byte, UDP_DATAGRAM_READING_MESSAGE_BUFFER_SIZE)
 	emptyMessage := make([]byte, 0)
 
 	//read header
