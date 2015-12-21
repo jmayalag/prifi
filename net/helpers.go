@@ -5,8 +5,8 @@ import (
 	"encoding/hex"
 	"fmt"
 	"strconv"
-	"io"
 	"time"
+	"io"
 	"errors"
 	"net"
 	"github.com/lbarman/crypto/abstract"
@@ -71,6 +71,38 @@ func ReadMessage(conn net.Conn) ([]byte, error) {
 
 	if n2 != bodySize {
 		return emptyMessage, errors.New("Couldn't read the full" + strconv.Itoa(bodySize) +" body bytes, only read "+strconv.Itoa(n2))
+	}
+
+	return body, nil
+}
+
+
+func ReadDatagram(conn net.Conn) ([]byte, error) {
+
+	buffer := make([]byte, 1024)
+	emptyMessage := make([]byte, 0)
+
+	//read header
+	n, err := conn.Read(buffer)
+
+	if err != nil{
+		return emptyMessage, err
+	}
+
+	//parse header
+	version := int(binary.BigEndian.Uint16(buffer[0:2]))
+	bodySize := int(binary.BigEndian.Uint32(buffer[2:6]))
+
+	if version != config.LLD_PROTOCOL_VERSION {
+		return emptyMessage, errors.New("Read a datagram with protocol "+strconv.Itoa(version)+" bytes, but our version is "+strconv.Itoa(config.LLD_PROTOCOL_VERSION)+".")
+	}
+
+	//read body
+	body := make([]byte, bodySize) //here we should take N into account, and keep reading if it is smaller
+	copy(body, buffer[6:])
+
+	if n < bodySize+6 {
+		return body, errors.New("Read a truncated datagram of "+strconv.Itoa(n-6)+" bytes, expected "+strconv.Itoa(bodySize)+".")
 	}
 
 	return body, nil

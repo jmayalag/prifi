@@ -7,6 +7,7 @@ import (
 	"errors"
 	"io"
 	"time"
+	"strings"
 	"github.com/lbarman/crypto/abstract"
 	"github.com/lbarman/prifi/crypto"
 	"net"
@@ -312,16 +313,16 @@ func writeNextUpstreamSlice(isMySlot bool, dataForRelayBuffer chan []byte, relay
 
 func connectToRelay(relayHost string, params *ClientState) (net.Conn, net.Conn, error) {
 	
-	var conn net.Conn = nil
-	var conn2 *net.UDPConn = nil
+	var tcpConn net.Conn = nil
+	var udpConn net.Conn = nil
 	var err error = nil
 
 	//connect with TCP
-	for conn == nil{
-		conn, err = net.Dial("tcp", relayHost)
+	for tcpConn == nil{
+		tcpConn, err = net.Dial("tcp", relayHost)
 		if err != nil {
 			prifilog.SimpleStringDump(prifilog.RECOVERABLE_ERROR, "Client " + strconv.Itoa(params.Id) + "; Can't TCP connect to relay on "+relayHost+", gonna retry")
-			conn = nil
+			tcpConn = nil
 			time.Sleep(FAILED_CONNECTION_WAIT_BEFORE_RETRY)
 		}
 	}
@@ -330,22 +331,33 @@ func connectToRelay(relayHost string, params *ClientState) (net.Conn, net.Conn, 
 		prifilog.SimpleStringDump(prifilog.INFORMATION, "Client " + strconv.Itoa(params.Id) + "; Skipping UDP connection.")
 	} else {
 		//connect with UDP
-		for conn2 == nil{
-			addr, err := net.ResolveUDPAddr("udp", conn.LocalAddr().String())
-			conn2, err = net.ListenUDP("udp", addr)
+		localAddr := tcpConn.LocalAddr().String()
+		startIndex := strings.LastIndex(localAddr, ":")+1
+		fmt.Println(startIndex)
+		localPort := ":10101" // ":"+localAddr[startIndex:] //remove localhost
+
+		for udpConn == nil{
+			addr, err := net.ResolveUDPAddr("udp4", localPort)
+
+			if err != nil {
+				prifilog.SimpleStringDump(prifilog.RECOVERABLE_ERROR, "Client " + strconv.Itoa(params.Id) + "; Can't resolve UDP address "+localPort+", gonna retry")
+				time.Sleep(FAILED_CONNECTION_WAIT_BEFORE_RETRY)
+				continue
+			}
+
+			udpConn, err = net.ListenUDP("udp4", addr)
 			if err != nil {
 				prifilog.SimpleStringDump(prifilog.RECOVERABLE_ERROR, "Client " + strconv.Itoa(params.Id) + "; Can't listen on UDP on "+relayHost+", gonna retry")
-				conn2 = nil
+				udpConn = nil
 				time.Sleep(FAILED_CONNECTION_WAIT_BEFORE_RETRY)
 			}
 		}
-		prifilog.Println(prifilog.INFORMATION, "UPD connection done ")
+		prifilog.Println(prifilog.INFORMATION, "Listening on UDP addr "+localPort)
 	}
 
 	//tell the relay our public key
 	publicKeyBytes, _ := params.PublicKey.MarshalBinary()
-
-	err2 := prifinet.WriteMessage(conn, publicKeyBytes)
+	err2              := prifinet.WriteMessage(tcpConn, publicKeyBytes)
 
 	if err2 != nil {
 		prifilog.SimpleStringDump(prifilog.SEVERE_ERROR, "Client " + strconv.Itoa(params.Id) + "; Error writing message, "+err2.Error())
@@ -355,33 +367,20 @@ func connectToRelay(relayHost string, params *ClientState) (net.Conn, net.Conn, 
 	//test UDP settings
 	if params.UseUDP {
 
-		prifilog.Println(prifilog.INFORMATION, "Gonna read an UDP packet on conn ", conn2.LocalAddr().String())
+		prifilog.Println(prifilog.INFORMATION, "Gonna read an UDP packet on conn ", udpConn.LocalAddr().String())
 
-		header := make([]byte, 6)
-		n,addr,err := conn2.ReadFromUDP(header)
+		for {
+			message, err := prifinet.ReadDatagram(udpConn)
+			prifilog.Println(prifilog.INFORMATION, "Received an UDP packet ! ", string(message))
 
-		if n != 6 {
-			prifilog.Println(prifilog.RECOVERABLE_ERROR, "Header not of 6 bytes! ", n, " - ", addr, " - ", err)
+			if err != nil {
+				prifilog.Println(prifilog.INFORMATION, "Error reading UDP datagram ! ", err.Error())
+			}
 		}
-
-		version := int(binary.BigEndian.Uint16(header[0:2]))
-		bodySize := int(binary.BigEndian.Uint32(header[2:6]))
-
-		prifilog.Println(prifilog.INFORMATION, "Version ", version, " -  BodySize", bodySize)
-		body := make([]byte, bodySize)
-		_, _, err2 := conn2.ReadFromUDP(body)
-
-		if err2 != nil{
-			prifilog.Println(prifilog.RECOVERABLE_ERROR, "Error reading ",  err2)
-		}
-
-
-		prifilog.Println(prifilog.INFORMATION, "Received an UDP packet ! ", string(body))
-		prifilog.Println(prifilog.INFORMATION, "error is ", err.Error())
 		panic("done")
 	}
 
-	return conn, conn2, nil
+	return tcpConn, udpConn, nil
 }
 
 func readPublicKeysFromRelay(relayTCPConn net.Conn, clientState *ClientState) (ParamsFromRelay, error) {
