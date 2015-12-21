@@ -363,23 +363,7 @@ func connectToRelay(relayHost string, params *ClientState) (net.Conn, net.Conn, 
 		prifilog.SimpleStringDump(prifilog.SEVERE_ERROR, "Client " + strconv.Itoa(params.Id) + "; Error writing message, "+err2.Error())
 		return nil, nil, err2
 	}
-
-	//test UDP settings
-	if params.UseUDP {
-
-		prifilog.Println(prifilog.INFORMATION, "Gonna read an UDP packet on conn ", udpConn.LocalAddr().String())
-
-		for {
-			message, err := prifinet.ReadDatagram(udpConn)
-			prifilog.Println(prifilog.INFORMATION, "Received an UDP packet ! ", string(message))
-
-			if err != nil {
-				prifilog.Println(prifilog.INFORMATION, "Error reading UDP datagram ! ", err.Error())
-			}
-		}
-		panic("done")
-	}
-
+	
 	return tcpConn, udpConn, nil
 }
 

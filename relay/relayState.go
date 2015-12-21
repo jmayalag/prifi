@@ -54,6 +54,8 @@ func (relayState *RelayState) deepClone() *RelayState {
 	newRelayState.UpstreamCellSize   = relayState.UpstreamCellSize
 	newRelayState.DownstreamCellSize = relayState.DownstreamCellSize
 	newRelayState.ReportingLimit     = relayState.ReportingLimit
+	newRelayState.UseUDP 			 = relayState.UseUDP
+	newRelayState.UDPBroadcastConn 	 = relayState.UDPBroadcastConn
 
 	copy(newRelayState.trusteesHosts, relayState.trusteesHosts)
 

@@ -7,7 +7,7 @@ import (
 
 type NodeRepresentation struct {
 	Id				int
-	Conn 			net.Conn
+	Conn 			net.Conn 		//classical TCP connection
 	Connected 		bool
 	PublicKey		abstract.Point
 }
@@ -30,7 +30,7 @@ type DataWithMessageTypeAndConnId struct {
 
 
 const SOCKS_CONNECTION_ID_EMPTY = 0
-
+const IPV4_BROADCAST_ADDR = "255.255.255.255"
 const UDP_DATAGRAM_READING_MESSAGE_BUFFER_SIZE = 1024 //UDP max size is 65535. Should be BIGGER than the sent datagram (or data will be lost)
 
 const (

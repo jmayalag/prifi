@@ -39,6 +39,7 @@ type RelayState struct {
 	nTrustees				int
 
 	UseUDP 					bool
+	UDPBroadcastConn 		net.Conn
 
 	trusteesHosts			[]string
 

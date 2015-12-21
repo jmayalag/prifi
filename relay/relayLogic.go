@@ -8,7 +8,6 @@ import (
 	"time"
 	"log"
 	"net"
-	"strconv"
 	prifinet "github.com/lbarman/prifi/net"
 	prifilog "github.com/lbarman/prifi/log"
 )
@@ -38,6 +37,20 @@ func StartRelay(upstreamCellSize int, downstreamCellSize int, relayPort string, 
 	//start the client parser
 	newClientWithIdAndPublicKeyChan := make(chan prifinet.NodeRepresentation)  //channel with parsed clients
 	go welcomeNewClients(newClientConnectionsChan, newClientWithIdAndPublicKeyChan, useUDP)
+
+	//prepare the UDP broadcast
+	if relayState.UseUDP {
+		addr := prifinet.IPV4_BROADCAST_ADDR+relayPort
+		prifilog.Println(prifilog.INFORMATION, "Preparing UDP broadcast socket on " + addr)
+		udpConn, err3 := net.Dial("udp4", addr)
+
+		if err3 != nil {
+			prifilog.Println(prifilog.RECOVERABLE_ERROR, "Failed preparing UDP broadcast socket on " + addr + ", switching off UDP")
+			relayState.UseUDP = false
+		} else {
+			relayState.UDPBroadcastConn = udpConn
+		}
+	}
 
 	stateMachineLogger.StateChange("protocol-setup")
 
@@ -110,7 +123,7 @@ func StartRelay(upstreamCellSize int, downstreamCellSize int, relayPort string, 
 
 				isProtocolRunning = restartProtocol(relayState, newClients)
 				newClients = make([]prifinet.NodeRepresentation, 0)
-				
+
 			default: 
 				//all clear! keep this thread handler load low, (accept changes every X millisecond)
 				time.Sleep(CONTROL_LOOP_SLEEP_TIME)
@@ -460,7 +473,29 @@ func processMessageLoop(relayState *RelayState){
 		copy(downstreamData[6:], downbuffer.Data)
 
 		// Broadcast the downstream data to all clients.
-		prifinet.NUnicastMessageToNodes(relayState.clients, downstreamData)
+
+		if !relayState.UseUDP {
+			//simple version, N unicast through TCP
+			prifinet.NUnicastMessageToNodes(relayState.clients, downstreamData)
+		} else {
+			//1. broadcast message through UDP
+
+			//2. tell via TCP the length of the message
+			sizeMessage := make([]byte, 4)
+			binary.BigEndian.PutUint32(sizeMessage[0:4], uint32(len(downstreamData)))
+			prifinet.NUnicastMessageToNodes(relayState.clients, sizeMessage)
+
+			//TODO : this could happen in parallel
+			//acks := make([]bool, relayState.nClients)
+			for i := 0; i < relayState.nClients; i++ {
+				buffer, err := prifinet.ReadMessage(relayState.clients[i].Conn)
+
+				if err != nil || len(buffer) != 1 || buffer[0] == 0{
+					prifilog.Println(prifilog.RECOVERABLE_ERROR, "Client", i, "did not fully get the UDP broadcast, transmitting over TCP...")
+					prifinet.WriteMessage(relayState.clients[i].Conn, downstreamData)
+				} 
+			}
+		}
 		stats.AddDownstreamCell(int64(downstreamDataupstreamCellSize))
 
 		/* LBARMAN : disabled, until effect on performance is clear
@@ -684,33 +719,6 @@ func relayParseClientParamsAux(tcpConn net.Conn, clientsUseUDP bool) prifinet.No
 	}
 
 	newClient := prifinet.NodeRepresentation{nodeId, tcpConn, true, publicKey}
-
-	//client ready, say hello over UDP
-	if clientsUseUDP {
-		prifilog.Println(prifilog.INFORMATION, " writing hello Message to udp")
-
-		addr := "127.0.0.1:10101" // tcpConn.RemoteAddr().String()
-		prifilog.Println(prifilog.SEVERE_ERROR, "Connecting on UDP to  " + addr)
-		udpConn, err3 := net.Dial("udp4", addr)
-
-		if err3 != nil {
-			prifilog.Println(prifilog.SEVERE_ERROR, "can't udp conn ! " + err3.Error())
-			panic("panic")
-		}
-		
-		i := 0
-		for {
-        msg := "Hi ! "+strconv.Itoa(i)
-        i++
-        buf := []byte(msg)
-        err := prifinet.WriteMessage(udpConn, buf)
-        if err != nil {
-            fmt.Println(msg, err)
-        }
-        time.Sleep(time.Second * 1)
-    }
-
-	}
 
 	return newClient
 }
