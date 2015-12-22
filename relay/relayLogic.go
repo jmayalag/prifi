@@ -694,15 +694,18 @@ func relayServerListener(listeningPort string, newConnection chan net.Conn) {
 
 func relayParseClientParams(tcpConn net.Conn, newClientChan chan prifinet.NodeRepresentation, clientsUseUDP bool) {
 
-	newClient := relayParseClientParamsAux(tcpConn, clientsUseUDP)
-	newClientChan <- newClient
+	newClient, success := relayParseClientParamsAux(tcpConn, clientsUseUDP)
+	if success {
+		newClientChan <- newClient
+	}
 }
 
-func relayParseClientParamsAux(tcpConn net.Conn, clientsUseUDP bool) prifinet.NodeRepresentation {
+func relayParseClientParamsAux(tcpConn net.Conn, clientsUseUDP bool) (prifinet.NodeRepresentation, bool) {
 
 	message, err := prifinet.ReadMessage(tcpConn)
 	if err != nil {
-		panic("Read error:" + err.Error())
+		prifilog.Println(prifilog.SEVERE_ERROR, "Can't read client parameters " + err.Error())
+		return prifinet.NodeRepresentation{}, false
 	}
 
 	//check that the node ID is not used
@@ -721,10 +724,10 @@ func relayParseClientParamsAux(tcpConn net.Conn, clientsUseUDP bool) prifinet.No
 
 	if err2 != nil {
 		prifilog.Println(prifilog.SEVERE_ERROR, "can't unmarshal client key ! " + err2.Error())
-		panic("can't unmarshal client key ! " + err2.Error())
+		return prifinet.NodeRepresentation{}, false
 	}
 
 	newClient := prifinet.NodeRepresentation{nodeId, tcpConn, true, publicKey}
 
-	return newClient
+	return newClient, true
 }

@@ -344,7 +344,7 @@ func connectToRelay(relayHost string, params *ClientState) (net.Conn, net.Conn, 
 
 			udpConn, err = net.ListenUDP("udp4", addr)
 			if err != nil {
-				prifilog.SimpleStringDump(prifilog.RECOVERABLE_ERROR, "Client " + strconv.Itoa(params.Id) + "; Can't listen on UDP on "+relayHost+", gonna retry")
+				prifilog.SimpleStringDump(prifilog.RECOVERABLE_ERROR, "Client " + strconv.Itoa(params.Id) + "; Can't listen on UDP on "+addr.String()+", gonna retry")
 				udpConn = nil
 				time.Sleep(FAILED_CONNECTION_WAIT_BEFORE_RETRY)
 			}
