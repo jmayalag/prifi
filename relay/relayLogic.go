@@ -416,9 +416,9 @@ func processMessageLoop(relayState *RelayState){
 		//prifilog.Println(".")
 
 		//if needed, we bound the number of round per second
-		if INBETWEEN_ROUND_SLEEP_TIME != 0 {
-			time.Sleep(INBETWEEN_ROUND_SLEEP_TIME)
-			prifilog.StatisticReport("relay", "INBETWEEN_ROUND_SLEEP_TIME", INBETWEEN_ROUND_SLEEP_TIME.String())
+		if PROCESSING_LOOP_SLEEP_TIME != 0 {
+			time.Sleep(PROCESSING_LOOP_SLEEP_TIME)
+			prifilog.StatisticReport("relay", "PROCESSING_LOOP_SLEEP_TIME", PROCESSING_LOOP_SLEEP_TIME.String())
 		}
 
 		//if the main thread tells us to stop (for re-setup)
@@ -476,14 +476,20 @@ func processMessageLoop(relayState *RelayState){
 
 		if !relayState.UseUDP {
 			//simple version, N unicast through TCP
+
+			//prifilog.Println(prifilog.NOTIFICATION, "Sending", len(downstreamData), "bytes over NUnicast TCP")
 			prifinet.NUnicastMessageToNodes(relayState.clients, downstreamData)
 		} else {
-			//1. broadcast message through UDP
 
-			//2. tell via TCP the length of the message
+			//prifilog.Println(prifilog.NOTIFICATION, "Sending", len(downstreamData), "bytes over UDP Broadcast")
+
+			//1. tell via TCP the length of the message
 			sizeMessage := make([]byte, 4)
 			binary.BigEndian.PutUint32(sizeMessage[0:4], uint32(len(downstreamData)))
 			prifinet.NUnicastMessageToNodes(relayState.clients, sizeMessage)
+			
+			//2. broadcast message through UDP
+			prifinet.WriteMessage(relayState.UDPBroadcastConn, downstreamData)
 
 			//TODO : this could happen in parallel
 			//acks := make([]bool, relayState.nClients)

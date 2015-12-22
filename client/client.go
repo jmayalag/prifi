@@ -110,7 +110,7 @@ func StartClient(clientId int, relayHostAddr string, expectedNumberOfClients int
 		//define downstream stream (relay -> client)
 		stopReadRelay     := make(chan bool, 1)
 		relayDisconnected := make(chan bool, 1)
-		go readDataFromRelay(relayTCPConn, dataFromRelay, stopReadRelay, relayDisconnected, clientState)
+		go readDataFromRelay(relayTCPConn, relayUDPConn, dataFromRelay, stopReadRelay, relayDisconnected, clientState)
 
 		roundCount          := 0
 		continueToNextRound := true
@@ -132,7 +132,6 @@ func StartClient(clientId int, relayHostAddr string, expectedNumberOfClients int
 					if currentRound == myRound {
 						isMySlot = true
 					}
-					
 
 					switch data.MessageType {
 
@@ -331,10 +330,8 @@ func connectToRelay(relayHost string, params *ClientState) (net.Conn, net.Conn, 
 		prifilog.SimpleStringDump(prifilog.INFORMATION, "Client " + strconv.Itoa(params.Id) + "; Skipping UDP connection.")
 	} else {
 		//connect with UDP
-		localAddr := tcpConn.LocalAddr().String()
-		startIndex := strings.LastIndex(localAddr, ":")+1
-		fmt.Println(startIndex)
-		localPort := ":10101" // ":"+localAddr[startIndex:] //remove localhost
+		startIndex := strings.LastIndex(relayHost, ":")+1
+		localPort := ":"+relayHost[startIndex:] //remove localhost
 
 		for udpConn == nil{
 			addr, err := net.ResolveUDPAddr("udp4", localPort)
@@ -395,9 +392,7 @@ func readPublicKeysFromRelay(relayTCPConn net.Conn, clientState *ClientState) (P
 	return params, nil
 }
 
-func readDataFromRelay(relayTCPConn net.Conn, dataFromRelay chan<- prifinet.DataWithMessageTypeAndConnId, stopReadRelay chan bool, relayDisconnected chan bool, params *ClientState) {
-	totcells := uint64(0)
-	totbytes := uint64(0)
+func readDataFromRelay(relayTCPConn net.Conn, relayUDPConn net.Conn, dataFromRelay chan<- prifinet.DataWithMessageTypeAndConnId, stopReadRelay chan bool, relayDisconnected chan bool, params *ClientState) {
 
 	for {
 		// Read the next (downstream) header from the relay
@@ -409,28 +404,53 @@ func readDataFromRelay(relayTCPConn net.Conn, dataFromRelay chan<- prifinet.Data
 			return
 		}
 
+		//switch : if it's 4 bytes, it indicates the size of a message of UDP
+		if relayUDPConn != nil && len(message) == 4 {
+
+
+			udpMessageLength := int(binary.BigEndian.Uint32(message[0:4]))
+			udpMessage, err2  := prifinet.ReadDatagram(relayUDPConn, udpMessageLength)
+			ack              := make([]byte, 1)
+
+			if len(udpMessage) == udpMessageLength && err2 == nil {
+				//send ACK
+				ack[0] = 1
+				prifinet.WriteMessage(relayTCPConn, ack)
+				//prifilog.Println(prifilog.INFORMATION, "Client " + strconv.Itoa(params.Id) + "; ClientReadRelay UDP success, received", len(udpMessage), "bytes over UDP")
+				message = udpMessage
+			} else {
+				//send NACK
+				ack[0] = 0
+				if err2 != nil {
+					prifilog.Println(prifilog.RECOVERABLE_ERROR, "Client " + strconv.Itoa(params.Id) + "; ClientReadRelay UDP warning, received", len(udpMessage), "instead of advertised", udpMessageLength, "bytes, err is", err2.Error() ,"gonna send NACK and read over TCP")
+				} else {
+					prifilog.Println(prifilog.RECOVERABLE_ERROR, "Client " + strconv.Itoa(params.Id) + "; ClientReadRelay UDP warning, received", len(udpMessage), "instead of advertised", udpMessageLength, "bytes, gonna send NACK read over TCP")
+				}
+				prifinet.WriteMessage(relayTCPConn, ack)
+				messageRetransmittedOverTCP, err := prifinet.ReadMessage(relayTCPConn)
+
+				if err != nil {
+					prifilog.SimpleStringDump(prifilog.RECOVERABLE_ERROR, "Client " + strconv.Itoa(params.Id) + "; ClientReadRelay error (over retransmitted TCP message), relay probably disconnected, stopping goroutine")
+					relayDisconnected <- true
+					return
+				}
+
+				message = messageRetransmittedOverTCP
+			}
+		}
+
 		//parse the header
 		messageType := int(binary.BigEndian.Uint16(message[0:2]))
 		socksConnId := int(binary.BigEndian.Uint32(message[2:6]))
 		data        := message[6:]
 
-		if err != nil {
-			prifilog.SimpleStringDump(prifilog.RECOVERABLE_ERROR, "Client " + strconv.Itoa(params.Id) + "; ClientReadRelay error, relay probably disconnected, stopping goroutine")
-			relayDisconnected <- true
-			return
-		}
-
 		//communicate to main thread
 		dataFromRelay <- prifinet.DataWithMessageTypeAndConnId{messageType, socksConnId, data}
-
-		//statistics
-		totcells++
-		totbytes += uint64(len(data))
 
 		if messageType == prifinet.MESSAGE_TYPE_DATA_AND_RESYNC || messageType == prifinet.MESSAGE_TYPE_LAST_UPLOAD_FAILED {
 			prifilog.SimpleStringDump(prifilog.RECOVERABLE_ERROR, "Client " + strconv.Itoa(params.Id) + "next message is gonna be some parameters, not data. Stop this goroutine")
 			return
-		} 
+		}		
 	}
 }
 

@@ -76,10 +76,10 @@ func ReadMessage(conn net.Conn) ([]byte, error) {
 	return body, nil
 }
 
+//tips : expectedSize could be UDP_DATAGRAM_READING_MESSAGE_BUFFER_SIZE
+func ReadDatagram(conn net.Conn, expectedSize int) ([]byte, error) {
 
-func ReadDatagram(conn net.Conn) ([]byte, error) {
-
-	buffer := make([]byte, UDP_DATAGRAM_READING_MESSAGE_BUFFER_SIZE)
+	buffer := make([]byte, expectedSize+6) //6 for application header
 	emptyMessage := make([]byte, 0)
 
 	//read header

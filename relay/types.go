@@ -8,11 +8,10 @@ import (
 	prifinet "github.com/lbarman/prifi/net"
 )
 
-const CONTROL_LOOP_SLEEP_TIME             = time.Second
-const PROCESSING_LOOP_SLEEP_TIME          = 0 * time.Second
+const CONTROL_LOOP_SLEEP_TIME             = 1 * time.Second
+const PROCESSING_LOOP_SLEEP_TIME          = 3 * time.Second
 const INBETWEEN_CONFIG_SLEEP_TIME         = 0 * time.Second
 const NEWCLIENT_CHECK_SLEEP_TIME          = 100 * time.Millisecond
-const INBETWEEN_ROUND_SLEEP_TIME          = 0 * time.Second
 const CLIENT_READ_TIMEOUT                 = 5 * time.Second
 const FAILED_CONNECTION_WAIT_BEFORE_RETRY = 10 * time.Second
 
