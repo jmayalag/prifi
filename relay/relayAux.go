@@ -80,7 +80,7 @@ func newSOCKSProxyHandler(connId int, downstreamData chan<- prifinet.DataWithCon
 	return upstreamData
 }
 
-func connectToTrustee(trusteeId int, trusteeHostAddr string, relayState *RelayState) error {
+func connectToTrustee(trusteeId int, trusteeHostAddr string, relayState *RelayState) (prifinet.NodeRepresentation, error) {
 	prifilog.Println(prifilog.NOTIFICATION, "Relay connecting to trustee", trusteeId, "on address", trusteeHostAddr)
 
 	var conn net.Conn = nil
@@ -109,14 +109,14 @@ func connectToTrustee(trusteeId int, trusteeHostAddr string, relayState *RelaySt
 
 	if err2 != nil {
 		prifilog.Println(prifilog.RECOVERABLE_ERROR, "Error writing to socket:" + err2.Error())
-		return err2
+		return prifinet.NodeRepresentation{}, err2
 	}
 	
 	// Read the incoming connection into the buffer.
 	buffer2, err2 := prifinet.ReadMessage(conn)
 	if err2 != nil {
 	    prifilog.Println(prifilog.RECOVERABLE_ERROR, "error reading:", err.Error())
-	    return err2
+	    return prifinet.NodeRepresentation{}, err2
 	}
 
 	publicKey := config.CryptoSuite.Point()
@@ -124,17 +124,14 @@ func connectToTrustee(trusteeId int, trusteeHostAddr string, relayState *RelaySt
 
 	if err3 != nil {
 		prifilog.Println(prifilog.RECOVERABLE_ERROR, "can't unmarshal trustee key ! " + err3.Error())
-		return err3
+		return prifinet.NodeRepresentation{}, err3
 	}
 
 	prifilog.Println(prifilog.INFORMATION, "Trustee", trusteeId, "is connected.")
 	
 	newTrustee := prifinet.NodeRepresentation{trusteeId, conn, true, publicKey}
 
-	//side effects
-	relayState.trustees = append(relayState.trustees, newTrustee)
-
-	return nil
+	return newTrustee, nil
 }
 
 func relayServerListener(listeningPort string, newConnection chan net.Conn) {

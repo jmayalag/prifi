@@ -5,6 +5,8 @@ import (
 	"github.com/lbarman/prifi/config"
 	"time"
 	"net"
+	"errors"
+	"strconv"
 	prifinet "github.com/lbarman/prifi/net"
 	prifilog "github.com/lbarman/prifi/log"
 )
@@ -80,17 +82,46 @@ func (relayState *RelayState) addNewClient(newClient prifinet.NodeRepresentation
 	relayState.clients  = append(relayState.clients, newClient)
 }
 
+func connectToTrusteeAsync(trusteeChan chan prifinet.NodeRepresentation, id int, host string, relayState *RelayState) {
+		
+	var err error = errors.New("empty")
+	trustee := prifinet.NodeRepresentation{}
+
+	for err != nil {
+		trustee, err = connectToTrustee(id, host,relayState)
+
+		if err != nil { 
+			prifilog.Println(prifilog.RECOVERABLE_ERROR, "Failed to connect to trustee " + strconv.Itoa(id) + " host " + host + ", retrying...")
+		}
+	}
+	
+	trusteeChan <- trustee
+}
+
 func (relayState *RelayState) connectToAllTrustees() {
 
 	defer prifilog.TimeTrack("relay", "connectToAllTrustees", time.Now())
 
-	//connect to the trustees
+	trusteeChan := make(chan prifinet.NodeRepresentation, relayState.nTrustees)
+
+	//connect to all the trustees
 	for i:= 0; i < relayState.nTrustees; i++ {
-		err := connectToTrustee(i, relayState.trusteesHosts[i], relayState)
-		if err != nil {
-			i--
+		connectToTrusteeAsync(trusteeChan, i, relayState.trusteesHosts[i], relayState)
+	}
+
+	//wait for all the trustees to be connected
+	i := 0
+	for i < relayState.nTrustees {
+		select {
+			case trustee := <- trusteeChan:
+				relayState.trustees = append(relayState.trustees, trustee)
+				i++
+
+			default:
+				time.Sleep(10 * time.Millisecond)
 		}
 	}
+
 	fmt.Println("Trustees connecting done, ", len(relayState.trustees), "trustees connected")
 }
 
