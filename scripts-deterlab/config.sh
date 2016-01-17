@@ -1,7 +1,7 @@
 programpath="/users/lbarman/dissent/"
 program="prifi"
 programFreeBSD="prifi-freebsd-amd64"
-
+useUdp="false"
 socks="false"
 relayhostaddr="10.0.0.254:9876"
 
@@ -28,4 +28,4 @@ t5host="10.0.1.5:9000"
 
 tXhostsString="-t1host=$t1host -t2host=$t2host -t3host=$t3host -t4host=$t4host -t5host=$t5host"
 
-logParamsString="-loglvl=$loglevel -logtostdout=$netLogStdOut -logpath=$logPath -logtype=$logtype -loghost=$loghost"
+logParamsString="-loglvl=$loglevel -udp=$useUdp -logtostdout=$netLogStdOut -logpath=$logPath -logtype=$logtype -loghost=$loghost"
