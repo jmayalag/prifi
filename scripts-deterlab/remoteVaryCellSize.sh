@@ -9,7 +9,7 @@ for repeat in $(seq 0 $nrepeat); do
 
 	echo "Repetition [$repeat/$nrepeat]"
 
-	for cellSize in $(seq 2048 2048 $maxcellsize); do
+	for cellSize in $(seq 1024 1024 $maxcellsize); do
 
 		echo "[$repeat/$nrepeat] Killing everything..."
 		/users/lbarman/dissent/remoteKillAll.sh
