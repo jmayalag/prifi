@@ -106,7 +106,7 @@ func (relayState *RelayState) connectToAllTrustees() {
 
 	//connect to all the trustees
 	for i:= 0; i < relayState.nTrustees; i++ {
-		connectToTrusteeAsync(trusteeChan, i, relayState.trusteesHosts[i], relayState)
+		go connectToTrusteeAsync(trusteeChan, i, relayState.trusteesHosts[i], relayState)
 	}
 
 	//wait for all the trustees to be connected
