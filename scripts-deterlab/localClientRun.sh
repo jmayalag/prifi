@@ -17,7 +17,7 @@ fi
 downcellsize=" "
 if [ $# -eq 3 ]
   then
-    echo "Second argument argument given, downcellsize=$3"
+    echo "Third argument argument given, downcellsize=$3"
   downcellsize="-downcellsize=$3 "
 fi
 

@@ -237,7 +237,7 @@ func processMessageLoop(relayState *RelayState){
 		}
 
 		//we report the speed, bytes exchanged, etc
-		stats.Report()
+		stats.ReportWithInfo("upCellSize "+strconv.Itoa(relayState.UpstreamCellSize)+" DownCellSize "+strconv.Itoa(relayState.DownstreamCellSize))
 		if stats.ReportingDone() {
 			prifilog.Println(prifilog.WARNING, "Reporting limit matched; exiting the relay")
 			break;
