@@ -8,13 +8,13 @@ if [ $# -eq 0 ]
   exit 1
 fi
 upcellsize=" "
-if [ $# -eq 2 ]
+if (( $# > 1 ))
   then
     echo "Second argument argument given, upcellsize=$2"
   upcellsize="-upcellsize=$2 "
 fi
 downcellsize=" "
-if [ $# -eq 3 ]
+if (( $# > 2 ))
   then
     echo "Third argument argument given, downcellsize=$3"
   downcellsize="-downcellsize=$3 "
