@@ -36,16 +36,16 @@ func main() {
 	//parameters config
 	nClients           := flag.Int("nclients", 1, "The number of clients.")
 	nTrustees          := flag.Int("ntrustees", 1, "The number of trustees.")
-	upstreamCellSize   := flag.Int("upcellsize", 5120, "Sets the size of one upstream cell, in bytes.")
-	downstreamCellSize := flag.Int("downcellsize", 5120, "Sets the size of one downstream cell, in bytes.")
+	upstreamCellSize   := flag.Int("upcellsize", 30720, "Sets the size of one upstream cell, in bytes.")
+	downstreamCellSize := flag.Int("downcellsize", 30720, "Sets the size of one downstream cell, in bytes.")
 	latencyTest        := flag.Bool("latencytest", true, "Makes the client run a latency test. Disables the SOCKS proxy.")
 	useUdp             := flag.Bool("udp", true, "Improves performances by adding UDP broadcast from relay to clients")
 
 	//logging stuff
 	logLevel          := flag.Int("loglvl", prifilog.INFORMATION, "The minimum level of logs to display.")
 	logType           := flag.String("logtype", "file", "Choices : file, or netlogger.")
-	netLogPort		  := flag.String("logport", ":10000", "The network port of the log server")
-	netLogHost		  := flag.String("loghost", "localhost:10000", "The network host+port of the log server")
+	netLogPort		  := flag.String("logport", ":10305", "The network port of the log server")
+	netLogHost		  := flag.String("loghost", "localhost:10305", "The network host+port of the log server")
 	netLogStdOut	  := flag.Bool("logtostdout", true, "If the log is also copied to stdout")
 	logPath			  := flag.String("logpath", "", "The path to the folder of the log files, by default empty, i.e. current directory")
 
