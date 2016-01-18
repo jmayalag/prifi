@@ -6,6 +6,7 @@ import (
 	"time"
 	"log"
 	"net"
+	"strconv"
 	prifinet "github.com/lbarman/prifi/net"
 	prifilog "github.com/lbarman/prifi/log"
 )
@@ -281,6 +282,7 @@ func processMessageLoop(relayState *RelayState){
 
 			//prifilog.Println(prifilog.NOTIFICATION, "Sending", len(downstreamData), "bytes over NUnicast TCP")
 			prifinet.NUnicastMessageToNodes(relayState.clients, downstreamData)
+			stats.AddDownstreamCell(int64(downstreamDataupstreamCellSize))
 		} else {
 
 			//prifilog.Println(prifilog.NOTIFICATION, "Sending", len(downstreamData), "bytes over UDP Broadcast")
@@ -289,9 +291,11 @@ func processMessageLoop(relayState *RelayState){
 			sizeMessage := make([]byte, 4)
 			binary.BigEndian.PutUint32(sizeMessage[0:4], uint32(len(downstreamData)))
 			prifinet.NUnicastMessageToNodes(relayState.clients, sizeMessage)
+			stats.AddDownstreamCell(int64(downstreamDataupstreamCellSize))
 			
 			//2. broadcast message through UDP
 			prifinet.WriteMessage(relayState.UDPBroadcastConn, downstreamData)
+			stats.AddDownstreamUDPCell(int64(downstreamDataupstreamCellSize))
 
 			//TODO : this could happen in parallel
 			//acks := make([]bool, relayState.nClients)
@@ -299,12 +303,11 @@ func processMessageLoop(relayState *RelayState){
 				buffer, err := prifinet.ReadMessage(relayState.clients[i].Conn)
 
 				if err != nil || len(buffer) != 1 || buffer[0] == 0{
-					prifilog.Println(prifilog.RECOVERABLE_ERROR, "Client", i, "did not fully get the UDP broadcast, transmitting over TCP...")
+					prifilog.Println(prifilog.RECOVERABLE_ERROR, "Client", i, "did not fully get the UDP broadcast, re-transmitting "+strconv.Itoa(len(downstreamData))+" bytes over TCP...")
 					prifinet.WriteMessage(relayState.clients[i].Conn, downstreamData)
 				} 
 			}
 		}
-		stats.AddDownstreamCell(int64(downstreamDataupstreamCellSize))
 
 		/* LBARMAN : disabled, until effect on performance is clear
 		inflight++

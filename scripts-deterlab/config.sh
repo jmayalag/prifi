@@ -9,7 +9,7 @@ loglevel=5 #log everything
 netLogStdOut="true" #also output log to STDOUT
 logPath="/tmp/"
 logtype="netlogger" #or "file"
-loghost="192.168.253.1:10000"
+loghost="192.168.253.1:10305"
 
 logsinkname="sink.log"
 
