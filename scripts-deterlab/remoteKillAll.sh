@@ -18,5 +18,7 @@ done
 # Start trustees
 for i in $(seq 0 $maxtrustee); do
   echo "Remoting inside trustee-$i; pkill -f ${program}; rm -rf ${nohupoutfolder}${nohuptrusteesrvname}${nohupext}; rm -rf ${logPath}trusteeServer.log;"
-  ssh trustee-$i.LB-LLD.SAFER.isi.deterlab.net "pkill -f ${program}; rm -rf ${nohupoutfolder}${nohuptrusteesrvname}${nohupext}; rm -rf ${logPath}trusteeServer.log;"
+  ssh trustee-$i.LB-LLD.SAFER.isi.deterlab.net "pkill -f ${program}; rm -rf ${nohupoutfolder}${nohuptrusteesrvname}${i}${nohupext}; rm -rf ${logPath}trusteeServer.log;"
 done
+
+ssh router.LB-LLD.SAFER.isi.deterlab.net "rm -rf /tmp/relay.nohup;"
