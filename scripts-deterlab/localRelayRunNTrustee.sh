@@ -11,7 +11,7 @@ cellsize=" "
 if [ $# -eq 2 ]
   then
     echo "Second argument argument given, cellsize=$2"
-  cellsize="-cellsize=$2 "
+  cellsize="-upcellsize=$2 "
 fi
 
 echo "Killing processess named ${program}..."
