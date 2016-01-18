@@ -11,8 +11,8 @@ ssh router.LB-LLD.SAFER.isi.deterlab.net "pkill -f ${program}; rm -rf ${nohupout
 
 # Start clients
 for i in $(seq 0 $maxclient); do
-  echo "Remoting inside client-$i; pkill -f ${program}; rm -rf ${nohupoutfolder}${nohupclientname}${id}${nohupext}; rm -rf ${logPath}client${i}.out;"
-  ssh client-$i.LB-LLD.SAFER.isi.deterlab.net "pkill -f ${program}; rm -rf ${nohupoutfolder}${nohupclientname}${id}${nohupext}; rm -rf ${logPath}client${i}.out;"
+  echo "Remoting inside client-$i; pkill -f ${program}; rm -rf ${nohupoutfolder}${nohupclientname}${i}${nohupext}; rm -rf ${logPath}client${i}.out;"
+  ssh client-$i.LB-LLD.SAFER.isi.deterlab.net "pkill -f ${program}; rm -rf ${nohupoutfolder}${nohupclientname}${i}${nohupext}; rm -rf ${logPath}client${i}.out;"
 done
 
 # Start trustees
