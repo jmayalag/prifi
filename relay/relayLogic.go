@@ -270,10 +270,9 @@ func processMessageLoop(relayState *RelayState){
 
 		//craft the message for clients
 		downstreamDataCellSize := len(downbuffer.Data)		
-		if(relayState.UseDummyDataDown)
-		{
+		if relayState.UseDummyDataDown {
 			//if we want dummy traffic down, force the size to be as big as the specified down cell size. The rest will be 0
-			downstreamDataCellSize = relayState.DownCellSize
+			downstreamDataCellSize = relayState.DownstreamCellSize
 		}
 		downstreamData := make([]byte, 6+downstreamDataCellSize)
 		binary.BigEndian.PutUint16(downstreamData[0:2], uint16(msgType))
