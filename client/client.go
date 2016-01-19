@@ -8,6 +8,7 @@ import (
 	"io"
 	"time"
 	"strings"
+	"encoding/hex"
 	"github.com/lbarman/crypto/abstract"
 	"github.com/lbarman/prifi/crypto"
 	"net"
@@ -452,7 +453,7 @@ func readDataFromRelay(relayTCPConn net.Conn, relayUDPConn net.Conn, dataFromRel
 		socksConnId := int(binary.BigEndian.Uint32(message[2:6]))
 		data        := message[6:]
 
-		prifilog.Println(prifilog.SEVERE_ERROR, "MESSAGE TYPE "+strconv.Itoa(messageType)+" SOCKS# "+strconv.Itoa(socksConnId)+" DATALEN "+strconv.Itoa(len(data)))
+		prifilog.Println(prifilog.SEVERE_ERROR, "MESSAGE TYPE "+strconv.Itoa(messageType)+" SOCKS# "+strconv.Itoa(socksConnId)+" DATALEN "+strconv.Itoa(len(data)) +" -- " + hex.Dump(message[0:6]))
 
 		//communicate to main thread
 		dataFromRelay <- prifinet.DataWithMessageTypeAndConnId{messageType, socksConnId, data}
