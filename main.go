@@ -53,6 +53,7 @@ func main() {
 	relayPort         := flag.Int("relayport", 9876, "Sets listening port of the relay, waiting for clients.")
 	relayHostAddr     := flag.String("relayhostaddr", "localhost:9876", "The address of the relay, for the client to contact.")
 	relayReceiveLimit := flag.Int("reportlimit", -1, "Sets the limit of cells to receive before stopping the relay")
+	relayDummyDown    := flag.Bool("relaydummydown", false, "The relays sends dummy data down, instead of empty cells.")
 
 	//trustees host
 	trustee1Host      := flag.String("t1host", "localhost", "The Ip address of the 1st trustee, or localhost")
@@ -111,7 +112,7 @@ func main() {
 	relayPortAddr := ":"+strconv.Itoa(*relayPort) //NOT "localhost:xxxx", or it will not listen on any interfaces
 
 	if *isRelay {
-		relay.StartRelay(*upstreamCellSize, *downstreamCellSize, relayPortAddr, *nClients, *nTrustees, trusteesIp, *relayReceiveLimit, *useUdp)
+		relay.StartRelay(*upstreamCellSize, *downstreamCellSize, *relayDummyDown, relayPortAddr, *nClients, *nTrustees, trusteesIp, *relayReceiveLimit, *useUdp)
 	} else if *clientId >= 0 {
 		client.StartClient(*clientId, *relayHostAddr, *nClients, *nTrustees, *upstreamCellSize, *useSocksProxy, *latencyTest, *useUdp)
 	} else if *isTrusteeServer {

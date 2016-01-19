@@ -11,7 +11,7 @@ import (
 	prifilog "github.com/lbarman/prifi/log"
 )
 
-func initiateRelayState(relayPort string, nTrustees int, nClients int, upstreamCellSize int, downstreamCellSize int, reportingLimit int, trusteesHosts []string, useUDP bool) *RelayState {
+func initiateRelayState(relayPort string, nTrustees int, nClients int, upstreamCellSize int, downstreamCellSize int, useDummyDataDown bool, reportingLimit int, trusteesHosts []string, useUDP bool) *RelayState {
 	params := new(RelayState)
 	
 	params.Name               = "Relay"
@@ -20,6 +20,7 @@ func initiateRelayState(relayPort string, nTrustees int, nClients int, upstreamC
 	params.DownstreamCellSize = downstreamCellSize
 	params.ReportingLimit     = reportingLimit
 	params.UseUDP             = useUDP
+	params.UseDummyDataDown   = useDummyDataDown
 
 	//prepare the crypto parameters
 	rand 	:= config.CryptoSuite.Cipher([]byte(params.Name))
@@ -57,6 +58,7 @@ func (relayState *RelayState) deepClone() *RelayState {
 	newRelayState.DownstreamCellSize = relayState.DownstreamCellSize
 	newRelayState.ReportingLimit     = relayState.ReportingLimit
 	newRelayState.UseUDP 			 = relayState.UseUDP
+	newRelayState.UseDummyDataDown   = relayState.UseDummyDataDown
 	newRelayState.UDPBroadcastConn 	 = relayState.UDPBroadcastConn
 
 	copy(newRelayState.trusteesHosts, relayState.trusteesHosts)

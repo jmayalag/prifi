@@ -20,14 +20,14 @@ var	deconnectedClients	  = make(chan int)
 var	timedOutClients   	  = make(chan int)
 var	deconnectedTrustees	  = make(chan int)
 
-func StartRelay(upstreamCellSize int, downstreamCellSize int, relayPort string, nClients int, nTrustees int, trusteesIp []string, reportingLimit int, useUDP bool) {
+func StartRelay(upstreamCellSize int, downstreamCellSize int, dummyDataDown bool, relayPort string, nClients int, nTrustees int, trusteesIp []string, reportingLimit int, useUDP bool) {
 
 	prifilog.SimpleStringDump(prifilog.NOTIFICATION, "Relay started")
 
 	stateMachineLogger = prifilog.NewStateMachineLogger("relay")
 	stateMachineLogger.StateChange("relay-init")
 
-	relayState = initiateRelayState(relayPort, nTrustees, nClients, upstreamCellSize, downstreamCellSize, reportingLimit, trusteesIp, useUDP)
+	relayState = initiateRelayState(relayPort, nTrustees, nClients, upstreamCellSize, downstreamCellSize, dummyDataDown, reportingLimit, trusteesIp, useUDP)
 
 	//start the server waiting for clients
 	newClientConnectionsChan        := make(chan net.Conn) 	          			//channel with unparsed clients
@@ -269,8 +269,13 @@ func processMessageLoop(relayState *RelayState){
 		}
 
 		//craft the message for clients
-		downstreamDataupstreamCellSize := len(downbuffer.Data)
-		downstreamData := make([]byte, 6+downstreamDataupstreamCellSize)
+		downstreamDataCellSize := len(downbuffer.Data)		
+		if(relayState.UseDummyDataDown)
+		{
+			//if we want dummy traffic down, force the size to be as big as the specified down cell size. The rest will be 0
+			downstreamDataCellSize = relayState.DownCellSize
+		}
+		downstreamData := make([]byte, 6+downstreamDataCellSize)
 		binary.BigEndian.PutUint16(downstreamData[0:2], uint16(msgType))
 		binary.BigEndian.PutUint32(downstreamData[2:6], uint32(downbuffer.ConnectionId)) //this is the SOCKS connection ID
 		copy(downstreamData[6:], downbuffer.Data)
@@ -282,7 +287,7 @@ func processMessageLoop(relayState *RelayState){
 
 			//prifilog.Println(prifilog.NOTIFICATION, "Sending", len(downstreamData), "bytes over NUnicast TCP")
 			prifinet.NUnicastMessageToNodes(relayState.clients, downstreamData)
-			stats.AddDownstreamCell(int64(downstreamDataupstreamCellSize))
+			stats.AddDownstreamCell(int64(downstreamDataCellSize))
 		} else {
 
 			//prifilog.Println(prifilog.NOTIFICATION, "Sending", len(downstreamData), "bytes over UDP Broadcast")
@@ -291,11 +296,11 @@ func processMessageLoop(relayState *RelayState){
 			sizeMessage := make([]byte, 4)
 			binary.BigEndian.PutUint32(sizeMessage[0:4], uint32(len(downstreamData)))
 			prifinet.NUnicastMessageToNodes(relayState.clients, sizeMessage)
-			stats.AddDownstreamCell(int64(downstreamDataupstreamCellSize))
+			stats.AddDownstreamCell(int64(downstreamDataCellSize))
 			
 			//2. broadcast message through UDP
 			prifinet.WriteMessage(relayState.UDPBroadcastConn, downstreamData)
-			stats.AddDownstreamUDPCell(int64(downstreamDataupstreamCellSize))
+			stats.AddDownstreamUDPCell(int64(downstreamDataCellSize))
 
 			//TODO : this could happen in parallel
 			//acks := make([]bool, relayState.nClients)
