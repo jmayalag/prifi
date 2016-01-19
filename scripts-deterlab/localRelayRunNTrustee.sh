@@ -23,6 +23,6 @@ fi
 echo "Killing processess named ${program}..."
 pkill -f ${program}
 
-echo "Starting the relay with -ntrustees=$1, $cellsize $logParamsString log redirected to ${nohupoutfolder}${nohuprelayname}${nohupext}..."
-nohup "${programpath}${program}" -relay -ntrustees=$1 $tXhostsString $upcellsize $downcellsize $logParamsString 1>>${nohupoutfolder}${nohuprelayname}${nohupext} 2>&1 &
+echo "Starting the relay with -ntrustees=$1 $upcellsize -relaydummydown $downcellsize $logParamsString log redirected to ${nohupoutfolder}${nohuprelayname}${nohupext}..."
+nohup "${programpath}${program}" -relay -ntrustees=$1 $tXhostsString -relaydummydown $upcellsize $downcellsize $logParamsString 1>>${nohupoutfolder}${nohuprelayname}${nohupext} 2>&1 &
 echo "Done."
