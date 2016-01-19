@@ -37,7 +37,7 @@ type Statistics struct {
 }
 
 func EmptyStatistics(reportingLimit int) *Statistics{
-	stats := Statistics{time.Now(), time.Now(), 0, reportingLimit, time.Duration(5)*time.Second, make([]int64, 0), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+	stats := Statistics{time.Now(), time.Now(), 0, reportingLimit, time.Duration(2)*time.Second, make([]int64, 0), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 	return &stats
 }
 

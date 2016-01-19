@@ -14,11 +14,12 @@ import (
 var relayState 			*RelayState 
 var stateMachineLogger 	*prifilog.StateMachineLogger
 
-var	protocolFailed        = make(chan bool)
-var	indicateEndOfProtocol = make(chan int)
-var	deconnectedClients	  = make(chan int)
-var	timedOutClients   	  = make(chan int)
-var	deconnectedTrustees	  = make(chan int)
+var	protocolFailed          = make(chan bool)
+var	messagesTowardsProcessingLoop = make(chan int)
+var	messagesFromProcessingLoop    = make(chan int)
+var	deconnectedClients      = make(chan int)
+var	timedOutClients         = make(chan int)
+var	deconnectedTrustees     = make(chan int)
 
 func StartRelay(upstreamCellSize int, downstreamCellSize int, dummyDataDown bool, relayPort string, nClients int, nTrustees int, trusteesIp []string, reportingLimit int, useUDP bool) {
 
@@ -105,7 +106,7 @@ func StartRelay(upstreamCellSize int, downstreamCellSize int, dummyDataDown bool
 				newClients = append(newClients, newClient)
 				if isProtocolRunning {
 					prifilog.Println(prifilog.NOTIFICATION, "Relay Handler : new Client is ready, stopping processing loop")
-					indicateEndOfProtocol <- PROTOCOL_STATUS_GONNA_RESYNC
+					messagesTowardsProcessingLoop <- PROTOCOL_STATUS_GONNA_RESYNC
 				} else {
 					prifilog.Println(prifilog.NOTIFICATION, "Relay Handler : new Client is ready, restarting processing loop")
 					isProtocolRunning = restartProtocol(relayState, newClients)
@@ -113,7 +114,7 @@ func StartRelay(upstreamCellSize int, downstreamCellSize int, dummyDataDown bool
 					prifilog.Println(prifilog.INFORMATION, "Done...")
 				}
 
-			case endOfProtocolState = <- indicateEndOfProtocol:
+			case endOfProtocolState = <- messagesFromProcessingLoop:
 				prifilog.Println(prifilog.INFORMATION, "Relay Handler : main loop stopped (status",endOfProtocolState,"), resyncing")
 
 				if endOfProtocolState != PROTOCOL_STATUS_RESYNCING {
@@ -228,7 +229,7 @@ func processMessageLoop(relayState *RelayState){
 		tellClientsToResync := false
 		var mainThreadStatus int
 		select {
-			case mainThreadStatus = <- indicateEndOfProtocol:
+			case mainThreadStatus = <- messagesTowardsProcessingLoop:
 				if mainThreadStatus == PROTOCOL_STATUS_GONNA_RESYNC {
 					prifilog.Println(prifilog.NOTIFICATION, "Main thread status is PROTOCOL_STATUS_GONNA_RESYNC, gonna warn the clients")
 					tellClientsToResync = true
@@ -420,7 +421,7 @@ func processMessageLoop(relayState *RelayState){
 		prifilog.StatisticReport("relay", "INBETWEEN_CONFIG_SLEEP_TIME", INBETWEEN_CONFIG_SLEEP_TIME.String())
 	}
 
-	indicateEndOfProtocol <- PROTOCOL_STATUS_RESYNCING
+	messagesFromProcessingLoop <- PROTOCOL_STATUS_RESYNCING
 
 	stateMachineLogger.StateChange("protocol-resync")
 }

@@ -111,7 +111,7 @@ func StartClient(clientId int, relayHostAddr string, expectedNumberOfClients int
 			continue //redo everything
 		}
 
-		clientState.printSecrets()
+		//clientState.printSecrets()
 		prifilog.SimpleStringDump(prifilog.NOTIFICATION, "Client " + strconv.Itoa(clientId) + "; Everything ready, assigned to round "+strconv.Itoa(myRound)+" out of "+strconv.Itoa(clientState.nClients))
 
 		//define downstream stream (relay -> client)

@@ -10,7 +10,7 @@ for repeat in $(seq 0 $nrepeat); do
 
 	echo "Repetition [$repeat/$nrepeat]"
 
-	for upCellSize in 1024 61440; do #$(seq 1024 1024 61440); do
+	for upCellSize in $(seq 10240 10240 61440); do
 		downCellSize=`expr $total - $upCellSize`
 
 		echo "[$repeat/$nrepeat][$upCellSize|$downCellSize] Killing everything..."
@@ -29,8 +29,8 @@ for repeat in $(seq 0 $nrepeat); do
 		for i in $(seq 0 $maxclient); do
 		  echo "[$repeat/$nrepeat][$upCellSize|$downCellSize]  Starting client-$i upCellSize $upCellSize downCellSize $downCellSize"
 		  ssh client-$i.LB-LLD.SAFER.isi.deterlab.net "./dissent/localClientRun.sh $i $upCellSize $downCellSize"
-		  echo "[$repeat/$nrepeat][$upCellSize|$downCellSize]  Waiting 10 sec before starting next client..."
-		  sleep 10
+		  echo "[$repeat/$nrepeat][$upCellSize|$downCellSize]  Waiting 20 sec before starting next client..."
+		  sleep 20
 		done
 
 		echo "[$repeat/$nrepeat][$upCellSize|$downCellSize] Waiting 30 sec..."
