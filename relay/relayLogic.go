@@ -270,7 +270,7 @@ func processMessageLoop(relayState *RelayState){
 
 		//craft the message for clients
 		downstreamDataCellSize := len(downbuffer.Data)		
-		if relayState.UseDummyDataDown {
+		if relayState.UseDummyDataDown && relayState.DownstreamCellSize > len(downbuffer.Data){
 			//if we want dummy traffic down, force the size to be as big as the specified down cell size. The rest will be 0
 			downstreamDataCellSize = relayState.DownstreamCellSize
 		}
