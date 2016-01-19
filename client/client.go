@@ -8,7 +8,6 @@ import (
 	"io"
 	"time"
 	"strings"
-	"encoding/hex"
 	"github.com/lbarman/crypto/abstract"
 	"github.com/lbarman/prifi/crypto"
 	"net"
@@ -416,8 +415,8 @@ func readDataFromRelay(relayTCPConn net.Conn, relayUDPConn net.Conn, dataFromRel
 		//switch : if it's 4 bytes, it indicates the size of a message of UDP
 		if relayUDPConn != nil && len(message) == 4 {
 
-
 			udpMessageLength := int(binary.BigEndian.Uint32(message[0:4]))
+			prifilog.Println(prifilog.RECOVERABLE_ERROR, "Great ! waiting on an UDP message " + strconv.Itoa(udpMessageLength) + ";")
 			udpMessage, err2  := prifinet.ReadDatagram(relayUDPConn, udpMessageLength)
 			ack              := make([]byte, 1)
 
@@ -453,7 +452,7 @@ func readDataFromRelay(relayTCPConn net.Conn, relayUDPConn net.Conn, dataFromRel
 		socksConnId := int(binary.BigEndian.Uint32(message[2:6]))
 		data        := message[6:]
 
-		prifilog.Println(prifilog.SEVERE_ERROR, "MESSAGE TYPE "+strconv.Itoa(messageType)+" SOCKS# "+strconv.Itoa(socksConnId)+" DATALEN "+strconv.Itoa(len(data)) +" -- " + hex.Dump(message[0:6]))
+		prifilog.Println(prifilog.SEVERE_ERROR, "MESSAGE TYPE "+strconv.Itoa(messageType)+" SOCKS# "+strconv.Itoa(socksConnId)+" DATALEN "+strconv.Itoa(len(data)))
 
 		//communicate to main thread
 		dataFromRelay <- prifinet.DataWithMessageTypeAndConnId{messageType, socksConnId, data}

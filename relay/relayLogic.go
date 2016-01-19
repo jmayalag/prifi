@@ -6,7 +6,6 @@ import (
 	"time"
 	"log"
 	"net"
-	"encoding/hex"
 	"strconv"
 	prifinet "github.com/lbarman/prifi/net"
 	prifilog "github.com/lbarman/prifi/log"
@@ -285,7 +284,7 @@ func processMessageLoop(relayState *RelayState){
 		COUNTER = COUNTER + 1
 		copy(downstreamData[6:], downbuffer.Data)
 
-		prifilog.Println(prifilog.RECOVERABLE_ERROR, "MESSAGE TYPE "+strconv.Itoa(msgType)+" SOCKS# "+strconv.Itoa(downbuffer.ConnectionId)+" DATALEN "+strconv.Itoa(len(downbuffer.Data))+" -- "+hex.Dump(downstreamData[0:6]))
+		prifilog.Println(prifilog.RECOVERABLE_ERROR, "MESSAGE TYPE "+strconv.Itoa(msgType)+" SOCKS# "+strconv.Itoa(COUNTER)+" DATALEN "+strconv.Itoa(len(downbuffer.Data)))
 					
 
 		// Broadcast the downstream data to all clients.
