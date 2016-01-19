@@ -1,7 +1,6 @@
 package relay
 
 import (
-	"fmt"
 	"github.com/lbarman/prifi/config"
 	"time"
 	"net"
@@ -124,7 +123,7 @@ func (relayState *RelayState) connectToAllTrustees() {
 		}
 	}
 
-	fmt.Println("Trustees connecting done, ", len(relayState.trustees), "trustees connected")
+	prifilog.Println(prifilog.INFORMATION, "Trustees connecting done, ", len(relayState.trustees), "trustees connected")
 }
 
 func (relayState *RelayState) disconnectFromAllTrustees() {
@@ -135,7 +134,7 @@ func (relayState *RelayState) disconnectFromAllTrustees() {
 		relayState.trustees[i].Conn.Close()
 	}
 	relayState.trustees = make([]prifinet.NodeRepresentation, 0)
-	fmt.Println("Trustees disonnecting done, ", len(relayState.trustees), "trustees disconnected")
+	prifilog.Println(prifilog.INFORMATION, "Trustees disonnecting done, ", len(relayState.trustees), "trustees disconnected")
 }
 
 
@@ -150,8 +149,9 @@ func welcomeNewClients(newConnectionsChan chan net.Conn, newClientChan chan prif
 			
 			//once client is ready (we have params+pk), forward to the other channel
 			case newClient := <-newClientsToParse: 
-				fmt.Println("welcomeNewClients : New client is ready !")
+				prifilog.Println(prifilog.INFORMATION, "welcomeNewClients : New client is ready !")
 				newClientChan <- newClient
+
 			default: 
 				time.Sleep(NEWCLIENT_CHECK_SLEEP_TIME) //todo : check this duration
 				//prifilog.StatisticReport("relay", "NEWCLIENT_CHECK_SLEEP_TIME", "NEWCLIENT_CHECK_SLEEP_TIME")
@@ -164,20 +164,20 @@ func (relayState *RelayState) waitForDefaultNumberOfClients(newClientConnections
 
 	currentClients := 0
 
-	fmt.Printf("Waiting for %d clients (on port %s)\n", relayState.nClients - currentClients, relayState.RelayPort)
+	prifilog.Printf(prifilog.INFORMATION, "Waiting for %d clients (on port %s)\n", relayState.nClients - currentClients, relayState.RelayPort)
 
 	for currentClients < relayState.nClients {
 		select{
 				case newClient := <-newClientConnectionsChan: 
 					relayState.clients = append(relayState.clients, newClient)
 					currentClients += 1
-					fmt.Printf("Waiting for %d clients (on port %s)\n", relayState.nClients - currentClients, relayState.RelayPort)
+					prifilog.Printf(prifilog.INFORMATION, "Waiting for %d clients (on port %s)\n", relayState.nClients - currentClients, relayState.RelayPort)
 				default: 
 					time.Sleep(100 * time.Millisecond)
 					//prifilog.StatisticReport("relay", "SLEEP_100ms", "100ms")
 		}
 	}
-	fmt.Println("Client connecting done, ", len(relayState.clients), "clients connected")
+	prifilog.Println(prifilog.INFORMATION, "Client connecting done, ", len(relayState.clients), "clients connected")
 }
 
 func (relayState *RelayState) excludeDisconnectedClients(){
@@ -187,7 +187,7 @@ func (relayState *RelayState) excludeDisconnectedClients(){
 	nClientsDisconnected := 0
 	for i := 0; i<len(relayState.clients); i++ {
 		if !relayState.clients[i].Connected {
-			fmt.Println("Relay Handler : Client ", i, " discarded, seems he disconnected...")
+			prifilog.Println(prifilog.INFORMATION, "Relay Handler : Client ", i, " discarded, seems he disconnected...")
 			nClientsDisconnected++
 		}
 	}
@@ -201,7 +201,7 @@ func (relayState *RelayState) excludeDisconnectedClients(){
 	for i := 0; i<len(relayState.clients); i++ {
 		if relayState.clients[i].Connected {
 			newClients[j] = relayState.clients[i]
-			fmt.Println("Adding Client ", i, "who's not disconnected")
+			prifilog.Println(prifilog.INFORMATION, "Adding Client ", i, "who's not disconnected")
 			j++
 		}
 	}

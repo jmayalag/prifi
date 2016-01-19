@@ -237,7 +237,8 @@ func processMessageLoop(relayState *RelayState){
 		}
 
 		//we report the speed, bytes exchanged, etc
-		stats.ReportWithInfo("upCellSize "+strconv.Itoa(relayState.UpstreamCellSize)+" DownCellSize "+strconv.Itoa(relayState.DownstreamCellSize))
+		stats.ReportWithInfo("upCellSize "+strconv.Itoa(relayState.UpstreamCellSize)+" downCellSize "+
+			strconv.Itoa(relayState.DownstreamCellSize)+" nClients"+strconv.Itoa(relayState.nClients)+" nTrustees"+strconv.Itoa(relayState.nTrustees))
 		if stats.ReportingDone() {
 			prifilog.Println(prifilog.WARNING, "Reporting limit matched; exiting the relay")
 			break;
@@ -305,10 +306,11 @@ func processMessageLoop(relayState *RelayState){
 			//acks := make([]bool, relayState.nClients)
 			for i := 0; i < relayState.nClients; i++ {
 				buffer, err := prifinet.ReadMessage(relayState.clients[i].Conn)
-
+				
 				if err != nil || len(buffer) != 1 || buffer[0] == 0{
 					prifilog.Println(prifilog.RECOVERABLE_ERROR, "Client", i, "did not fully get the UDP broadcast, re-transmitting "+strconv.Itoa(len(downstreamData))+" bytes over TCP...")
 					prifinet.WriteMessage(relayState.clients[i].Conn, downstreamData)
+					stats.AddDownstreamRetransmitCell(int64(6+downstreamDataCellSize))
 				} 
 			}
 		}

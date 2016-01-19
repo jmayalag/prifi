@@ -30,10 +30,14 @@ type Statistics struct {
 	totalDownstreamUDPCells 	int64
 	totalDownstreamUDPBytes 	int64
 	instantDownstreamUDPBytes 	int64
+
+	totalDownstreamRetransmitCells 	int64
+	totalDownstreamRetransmitBytes 	int64
+	instantDownstreamRetransmitBytes 	int64
 }
 
 func EmptyStatistics(reportingLimit int) *Statistics{
-	stats := Statistics{time.Now(), time.Now(), 0, reportingLimit, time.Duration(5)*time.Second, make([]int64, 0), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+	stats := Statistics{time.Now(), time.Now(), 0, reportingLimit, time.Duration(5)*time.Second, make([]int64, 0), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 	return &stats
 }
 
@@ -62,6 +66,9 @@ func (stats *Statistics) Dump() {
 	fmt.Println(stats.instantUpstreamBytes)
 	fmt.Println(stats.instantDownstreamBytes)
 	fmt.Println(stats.instantDownstreamUDPBytes)
+	fmt.Println(stats.totalDownstreamRetransmitCells)
+	fmt.Println(stats.totalDownstreamRetransmitBytes)
+	fmt.Println(stats.instantDownstreamRetransmitBytes)
 }
 
 func round(f float64) float64 {
@@ -145,6 +152,12 @@ func (stats *Statistics) AddDownstreamCell(nBytes int64) {
 func (stats *Statistics) AddDownstreamUDPCell(nBytes int64) {
 	stats.totalDownstreamUDPCells += 1
 	stats.totalDownstreamUDPBytes += nBytes
+	stats.instantDownstreamRetransmitBytes += nBytes
+}
+
+func (stats *Statistics) AddDownstreamRetransmitCell(nBytes int64) {
+	stats.totalDownstreamRetransmitCells += 1
+	stats.totalDownstreamRetransmitBytes += nBytes
 	stats.instantDownstreamUDPBytes += nBytes
 }
 
@@ -162,12 +175,13 @@ func (stats *Statistics) ReportJson() {
 		instantUpSpeed := (float64(stats.instantUpstreamBytes)/stats.period.Seconds())
 		latm, latv, latn := stats.LatencyStatistics()
 
-		Printf(EXPERIMENT_OUTPUT, "@ %fs; cell %f (%f) /sec, up %f (%f) B/s, down %f (%f) B/s, udp down %f (%f) B/s, lat %s += %s over %s",
+		Printf(EXPERIMENT_OUTPUT, "@ %fs; cell %f (%f) /sec, up %f (%f) B/s, down %f (%f) B/s, udp down %f (%f) B/s, retransmit down %f - %f (%f) B/s, lat %s += %s over %s",
 			duration,
 			 float64(stats.totalUpstreamCells)/duration, float64(stats.instantUpstreamCells)/stats.period.Seconds(),
 			 float64(stats.totalUpstreamBytes)/duration, instantUpSpeed,
 			 float64(stats.totalDownstreamBytes)/duration, float64(stats.instantDownstreamBytes)/stats.period.Seconds(),
 			 float64(stats.totalDownstreamUDPBytes)/duration, float64(stats.instantDownstreamUDPBytes)/stats.period.Seconds(),
+			 float64(stats.totalDownstreamRetransmitCells)/duration, float64(stats.totalDownstreamRetransmitBytes)/duration, float64(stats.instantDownstreamRetransmitBytes)/stats.period.Seconds(),
 			 latm, latv, latn)
 
 		// Next report time
@@ -175,6 +189,7 @@ func (stats *Statistics) ReportJson() {
 		stats.instantUpstreamBytes = 0
 		stats.instantDownstreamBytes = 0
 		stats.instantDownstreamUDPBytes = 0
+		stats.instantDownstreamRetransmitBytes = 0
 
 		//prifilog.BenchmarkFloat(fmt.Sprintf("cellsize-%d-upstream-bytes", payloadLength), instantUpSpeed)
 
@@ -207,12 +222,13 @@ func (stats *Statistics) ReportWithInfo(info string) {
 		instantUpSpeed := (float64(stats.instantUpstreamBytes)/stats.period.Seconds())
 		latm, latv, latn := stats.LatencyStatistics()
 
-		Printf(EXPERIMENT_OUTPUT, "@ %fs; cell %f (%f) /sec, up %f (%f) B/s, down %f (%f) B/s, udp down %f (%f) B/s, lat %s += %s over %s "+info,
-			duration,
+		Printf(EXPERIMENT_OUTPUT, "%v @ %fs; cell %f (%f) /sec, up %f (%f) B/s, down %f (%f) B/s, udp down %f (%f) B/s, retransmit down %f - %f (%f) B/s, lat %s += %s over %s "+info,
+			 stats.nReports, duration,
 			 float64(stats.totalUpstreamCells)/duration, float64(stats.instantUpstreamCells)/stats.period.Seconds(),
 			 float64(stats.totalUpstreamBytes)/duration, instantUpSpeed,
 			 float64(stats.totalDownstreamBytes)/duration, float64(stats.instantDownstreamBytes)/stats.period.Seconds(),
 			 float64(stats.totalDownstreamUDPBytes)/duration, float64(stats.instantDownstreamUDPBytes)/stats.period.Seconds(),
+			 float64(stats.totalDownstreamRetransmitCells)/duration, float64(stats.totalDownstreamRetransmitBytes)/duration, float64(stats.instantDownstreamRetransmitBytes)/stats.period.Seconds(),
 			 latm, latv, latn)
 
 		// Next report time
@@ -220,6 +236,7 @@ func (stats *Statistics) ReportWithInfo(info string) {
 		stats.instantUpstreamBytes = 0
 		stats.instantDownstreamBytes = 0
 		stats.instantDownstreamUDPBytes = 0
+		stats.instantDownstreamRetransmitBytes = 0
 
 		stats.nextReport = now.Add(stats.period)
 		stats.nReports += 1
