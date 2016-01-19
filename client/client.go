@@ -452,11 +452,13 @@ func readDataFromRelay(relayTCPConn net.Conn, relayUDPConn net.Conn, dataFromRel
 		socksConnId := int(binary.BigEndian.Uint32(message[2:6]))
 		data        := message[6:]
 
+		prifilog.Println(prifilog.SEVERE_ERROR, "MESSAGE TYPE "+strconv.Itoa(messageType)+" SOCKS# "+strconv.Itoa(socksConnId)+" DATALEN "+strconv.Itoa(len(data)))
+
 		//communicate to main thread
 		dataFromRelay <- prifinet.DataWithMessageTypeAndConnId{messageType, socksConnId, data}
 
 		if messageType == prifinet.MESSAGE_TYPE_DATA_AND_RESYNC || messageType == prifinet.MESSAGE_TYPE_LAST_UPLOAD_FAILED {
-			prifilog.SimpleStringDump(prifilog.RECOVERABLE_ERROR, "Client " + strconv.Itoa(params.Id) + "next message is gonna be some parameters, not data. Stop this goroutine")
+			prifilog.SimpleStringDump(prifilog.RECOVERABLE_ERROR, "Client " + strconv.Itoa(params.Id) + " next message is gonna be some parameters, not data. Stop this goroutine")
 			return
 		}		
 	}

@@ -6,6 +6,8 @@ maxclient=5
 ntrustee=3
 total=61440
 
+sed -i -- 's/useUdp="false"/useUdp="true"/g' config.sh
+
 for repeat in $(seq 0 $nrepeat); do
 
 	echo "Repetition [$repeat/$nrepeat]"
