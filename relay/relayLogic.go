@@ -280,6 +280,8 @@ func processMessageLoop(relayState *RelayState){
 		binary.BigEndian.PutUint16(downstreamData[0:2], uint16(msgType))
 		binary.BigEndian.PutUint32(downstreamData[2:6], uint32(downbuffer.ConnectionId)) //this is the SOCKS connection ID
 		copy(downstreamData[6:], downbuffer.Data)
+		prifilog.Println(prifilog.RECOVERABLE_ERROR, "MESSAGE TYPE "+strconv.Itoa(msgType)+" SOCKS# "+strconv.Itoa(downbuffer.ConnectionId)+" DATALEN "+strconv.Itoa(len(downbuffer.Data)))
+					
 
 		// Broadcast the downstream data to all clients.
 
