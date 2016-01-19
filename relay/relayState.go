@@ -165,14 +165,14 @@ func (relayState *RelayState) waitForDefaultNumberOfClients(newClientConnections
 
 	currentClients := 0
 
-	prifilog.Printf(prifilog.INFORMATION, "Waiting for %d clients (on port %s)\n", relayState.nClients - currentClients, relayState.RelayPort)
+	prifilog.Printf(prifilog.INFORMATION, "Waiting for %d clients (on port %s)", relayState.nClients - currentClients, relayState.RelayPort)
 
 	for currentClients < relayState.nClients {
 		select{
 				case newClient := <-newClientConnectionsChan: 
 					relayState.clients = append(relayState.clients, newClient)
 					currentClients += 1
-					prifilog.Printf(prifilog.INFORMATION, "Waiting for %d clients (on port %s)\n", relayState.nClients - currentClients, relayState.RelayPort)
+					prifilog.Printf(prifilog.INFORMATION, "Waiting for %d clients (on port %s)", relayState.nClients - currentClients, relayState.RelayPort)
 				default: 
 					time.Sleep(100 * time.Millisecond)
 					//prifilog.StatisticReport("relay", "SLEEP_100ms", "100ms")
