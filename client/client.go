@@ -417,7 +417,7 @@ func readDataFromRelay(relayTCPConn net.Conn, relayUDPConn net.Conn, dataFromRel
 
 			udpMessageLength := int(binary.BigEndian.Uint32(message[0:4]))
 			prifilog.Println(prifilog.RECOVERABLE_ERROR, "Great ! waiting on an UDP message " + strconv.Itoa(udpMessageLength) + ";")
-			udpMessage, err2  := prifinet.ReadDatagram(relayUDPConn, udpMessageLength)
+			udpMessage, err2  := prifinet.ReadDatagramWithTimeOut(relayUDPConn, udpMessageLength, UDP_DATAGRAM_WAIT_TIMEOUT)
 			ack              := make([]byte, 1)
 
 			if len(udpMessage) == udpMessageLength && err2 == nil {

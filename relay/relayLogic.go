@@ -335,7 +335,7 @@ func processMessageLoop(relayState *RelayState){
 		for i := 0; i < relayState.nTrustees; i++ {	
 
 			//TODO : add a channel for timeout trustee
-			data, err := prifinet.ReadWithTimeOut(i, relayState.trustees[i].Conn, trusteeupstreamCellSize, CLIENT_READ_TIMEOUT, deconnectedTrustees, deconnectedTrustees)
+			data, err := prifinet.ReadMessageWithTimeOut(i, relayState.trustees[i].Conn, CLIENT_READ_TIMEOUT, deconnectedTrustees, deconnectedTrustees)
 
 			if err {
 				errorInThisCell = true
@@ -348,7 +348,7 @@ func processMessageLoop(relayState *RelayState){
 		// Collect an upstream ciphertext from each client
 		if !errorInThisCell {
 			for i := 0; i < relayState.nClients; i++ {
-				data, err := prifinet.ReadWithTimeOut(i, relayState.clients[i].Conn, clientupstreamCellSize, CLIENT_READ_TIMEOUT, timedOutClients, deconnectedClients)
+				data, err := prifinet.ReadMessageWithTimeOut(i, relayState.clients[i].Conn, CLIENT_READ_TIMEOUT, timedOutClients, deconnectedClients)
 
 				if err {
 					errorInThisCell = true

@@ -111,7 +111,7 @@ func ReadDatagram(conn net.Conn, expectedSize int) ([]byte, error) {
 }
 
 // return data, error
-func ReadWithTimeOut(nodeId int, conn net.Conn, length int, timeout time.Duration, chanForTimeoutNode chan int, chanForDisconnectedNode chan int) ([]byte, bool) {
+func ReadMessageWithTimeOut(nodeId int, conn net.Conn, timeout time.Duration, chanForTimeoutNode chan int, chanForDisconnectedNode chan int) ([]byte, bool) {
 	
 	//read with timeout
 	timeoutChan := make(chan bool, 1)
@@ -149,6 +149,46 @@ func ReadWithTimeOut(nodeId int, conn net.Conn, length int, timeout time.Duratio
 	}
 
 	return data, errorDuringRead
+}
+
+
+// return data, error
+func ReadDatagramWithTimeOut(conn net.Conn, expectedSize int, timeout time.Duration) ([]byte, error) {
+	
+	//read with timeout
+	timeoutChan := make(chan bool, 1)
+	errorChan   := make(chan error, 1)
+	dataChan    := make(chan []byte)
+	
+	go func() {
+	    time.Sleep(timeout)
+	    timeoutChan <- true
+	}()
+	
+	go func() {
+		dataHolder, err := ReadDatagram(conn, expectedSize)
+
+		if err != nil {
+			errorChan <- err
+		} else {
+	    	dataChan <- dataHolder
+		}
+	}()
+
+	var data []byte
+	var err error
+	select
+	{
+		case err2 := <-errorChan:
+			err = err2
+
+		case data = <- dataChan:
+
+		case <-timeoutChan:
+			err = errors.New("ReadDatagramWithTimeOut - timeout")
+	}
+
+	return data, err
 }
 
 func ParseTranscript(conn net.Conn, nClients int, nTrustees int) ([]abstract.Point, [][]abstract.Point, [][]byte, error) {
