@@ -2,6 +2,7 @@
 
 #max trustee minus one, really
 nrepeat=9
+maxclient=5
 ntrustee=3
 total=61440
 
@@ -23,9 +24,15 @@ for repeat in $(seq 0 $nrepeat); do
 		ssh router.LB-LLD.SAFER.isi.deterlab.net "./dissent/localRelayRunNTrustee.sh $ntrustee $upCellSize $downCellSize"
 		echo "[$repeat/$nrepeat][$upCellSize|$downCellSize] Waiting 10 sec for relay to setup..."
 		sleep 10
-  
-     	echo "[$repeat/$nrepeat][$upCellSize|$downCellSize] Starting client-0 upCellSize $upCellSize downCellSize $downCellSize"
-		ssh client-0.LB-LLD.SAFER.isi.deterlab.net "./dissent/localClientRun.sh 0 $upCellSize $downCellSize"
+
+		# Start clients
+		for i in $(seq 0 $maxclient); do
+		  echo "[$repeat/$nrepeat][$upCellSize|$downCellSize]  Starting client-$i upCellSize $upCellSize downCellSize $downCellSize"
+		  ssh client-$i.LB-LLD.SAFER.isi.deterlab.net "./dissent/localClientRun.sh $i $upCellSize $downCellSize"
+		  echo "[$repeat/$nrepeat][$upCellSize|$downCellSize]  Waiting 10 sec before starting next client..."
+		  sleep 10
+		done
+
 		echo "[$repeat/$nrepeat][$upCellSize|$downCellSize] Waiting 30 sec..."
 		sleep 30
 
