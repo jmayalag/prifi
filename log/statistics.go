@@ -174,6 +174,7 @@ func (stats *Statistics) ReportJson() {
 		stats.instantUpstreamCells = 0
 		stats.instantUpstreamBytes = 0
 		stats.instantDownstreamBytes = 0
+		stats.instantDownstreamUDPBytes = 0
 
 		//prifilog.BenchmarkFloat(fmt.Sprintf("cellsize-%d-upstream-bytes", payloadLength), instantUpSpeed)
 
@@ -218,6 +219,7 @@ func (stats *Statistics) ReportWithInfo(info string) {
 		stats.instantUpstreamCells = 0
 		stats.instantUpstreamBytes = 0
 		stats.instantDownstreamBytes = 0
+		stats.instantDownstreamUDPBytes = 0
 
 		stats.nextReport = now.Add(stats.period)
 		stats.nReports += 1

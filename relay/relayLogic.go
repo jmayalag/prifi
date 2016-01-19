@@ -295,7 +295,7 @@ func processMessageLoop(relayState *RelayState){
 			sizeMessage := make([]byte, 4)
 			binary.BigEndian.PutUint32(sizeMessage[0:4], uint32(len(downstreamData)))
 			prifinet.NUnicastMessageToNodes(relayState.clients, sizeMessage)
-			stats.AddDownstreamCell(int64(downstreamDataCellSize))
+			stats.AddDownstreamCell(int64(4))
 			
 			//2. broadcast message through UDP
 			prifinet.WriteMessage(relayState.UDPBroadcastConn, downstreamData)
