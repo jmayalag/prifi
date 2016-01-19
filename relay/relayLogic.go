@@ -11,6 +11,8 @@ import (
 	prifilog "github.com/lbarman/prifi/log"
 )
 
+var COUNTER int = 100
+
 var relayState 			*RelayState 
 var stateMachineLogger 	*prifilog.StateMachineLogger
 
@@ -278,7 +280,8 @@ func processMessageLoop(relayState *RelayState){
 		}
 		downstreamData := make([]byte, 6+downstreamDataCellSize)
 		binary.BigEndian.PutUint16(downstreamData[0:2], uint16(msgType))
-		binary.BigEndian.PutUint32(downstreamData[2:6], uint32(downbuffer.ConnectionId)) //this is the SOCKS connection ID
+		binary.BigEndian.PutUint32(downstreamData[2:6], uint32(COUNTER))//downbuffer.ConnectionId)) //this is the SOCKS connection ID
+		COUNTER = COUNTER + 1
 		copy(downstreamData[6:], downbuffer.Data)
 		prifilog.Println(prifilog.RECOVERABLE_ERROR, "MESSAGE TYPE "+strconv.Itoa(msgType)+" SOCKS# "+strconv.Itoa(downbuffer.ConnectionId)+" DATALEN "+strconv.Itoa(len(downbuffer.Data)))
 					
