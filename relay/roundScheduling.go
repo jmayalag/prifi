@@ -25,6 +25,7 @@ func (relayState *RelayState) organizeRoundScheduling() error {
 
 			for !pkRead {
 
+				prifilog.Println(prifilog.INFORMATION, "Waiting on client ", i, "'s ephemeral key")
 				buffer, err := prifinet.ReadMessage(relayState.clients[i].Conn)
 				publicKey := config.CryptoSuite.Point()
 				msgType := int(binary.BigEndian.Uint16(buffer[0:2]))
@@ -33,7 +34,7 @@ func (relayState *RelayState) organizeRoundScheduling() error {
 					err2 := publicKey.UnmarshalBinary(buffer[2:])
 
 					if err2 != nil {
-						prifilog.Println(prifilog.INFORMATION, "Reading client", i, "ephemeral key")
+						prifilog.Println(prifilog.INFORMATION, "Reading client ", i, "ephemeral key")
 						return err
 					}
 					pk = publicKey

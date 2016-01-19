@@ -13,4 +13,4 @@ echo "Starting log sink -logpath=$logPath, log redirected to ${nohupoutfolder}${
 nohup "${programpath}${programFreeBSD}" -logsink -logpath=$logPath 1>>${nohupoutfolder}${nohupsinkname}${nohupext} 2>&1 &
 echo "Done."
 
-tail -f ${nohupoutfolder}${nohupsinkname}${nohupext}
+#tail -f ${nohupoutfolder}${nohupsinkname}${nohupext}

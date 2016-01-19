@@ -145,11 +145,12 @@ func welcomeNewClients(newConnectionsChan chan net.Conn, newClientChan chan prif
 		select{
 			//accept the TCP connection, and parse the parameters
 			case newConnection := <-newConnectionsChan: 
+				prifilog.Println(prifilog.INFORMATION, "welcomeNewClients : New connection is ready")
 				go relayParseClientParams(newConnection, newClientsToParse, clientsUseUDP)
 			
 			//once client is ready (we have params+pk), forward to the other channel
 			case newClient := <-newClientsToParse: 
-				prifilog.Println(prifilog.INFORMATION, "welcomeNewClients : New client is ready !")
+				prifilog.Println(prifilog.INFORMATION, "welcomeNewClients : New client is ready")
 				newClientChan <- newClient
 
 			default: 

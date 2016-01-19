@@ -35,6 +35,7 @@ func StartClient(clientId int, relayHostAddr string, expectedNumberOfClients int
 	
 	if(clientState.UseSocksProxy){
 		port := ":" + strconv.Itoa(1080+clientId)
+		prifilog.SimpleStringDump(prifilog.INFORMATION, "Client " + strconv.Itoa(clientId) + "; Starting SOCKS proxy on port "+port)
 		go startSocksProxyServerListener(port, socksProxyNewConnections)
 		go startSocksProxyServerHandler(socksProxyNewConnections, dataForRelayBuffer, dataForSocksProxy, clientState)
 	}
@@ -48,6 +49,8 @@ func StartClient(clientId int, relayHostAddr string, expectedNumberOfClients int
 			relayTCPConn, relayUDPConn, err = connectToRelay(relayHostAddr, clientState)
 
 			if err != nil {
+
+				prifilog.SimpleStringDump(prifilog.RECOVERABLE_ERROR, "Client " + strconv.Itoa(clientId) + "; Could not TCP connect to the relay, restarting")
 				relayTCPConn.Close()
 				relayTCPConn = nil
 
@@ -63,7 +66,11 @@ func StartClient(clientId int, relayHostAddr string, expectedNumberOfClients int
 		prifilog.SimpleStringDump(prifilog.INFORMATION, "Client " + strconv.Itoa(clientId) + "; Waiting for relay params + public keys...")
 
 		params, err := readPublicKeysFromRelay(relayTCPConn, clientState)
+
+		prifilog.SimpleStringDump(prifilog.INFORMATION, "Client " + strconv.Itoa(clientId) + "; Got the parameters from relay")
+
 		if err != nil {
+			prifilog.SimpleStringDump(prifilog.RECOVERABLE_ERROR, "Client " + strconv.Itoa(clientId) + "; Could not get the parameters from the relay, restarting")
 			relayTCPConn.Close()
 			relayTCPConn = nil
 
@@ -88,7 +95,7 @@ func StartClient(clientId int, relayHostAddr string, expectedNumberOfClients int
 		//check that we got all keys
 		for i := 0; i<clientState.nTrustees; i++ {
 			if clientState.TrusteePublicKey[i] == nil {
-				prifilog.SimpleStringDump(prifilog.RECOVERABLE_ERROR, "Client " + strconv.Itoa(clientId) + "; Didn't get public key from trustee "+strconv.Itoa(i))
+				prifilog.SimpleStringDump(prifilog.RECOVERABLE_ERROR, "Client " + strconv.Itoa(clientId) + "; Didn't get public key from trustee "+strconv.Itoa(i)+", restarting")
 				relayTCPConn.Close()
 				relayTCPConn = nil
 				continue //redo everything
@@ -385,6 +392,7 @@ func readPublicKeysFromRelay(relayTCPConn net.Conn, clientState *ClientState) (P
 		
 	publicKeys, err := prifinet.UnMarshalPublicKeyArrayFromByteArray(data, config.CryptoSuite)
 	if err != nil {
+		prifilog.SimpleStringDump(prifilog.SEVERE_ERROR, "Client " + strconv.Itoa(clientState.Id) + "; Could not unmarshall the keys")
 		return ParamsFromRelay{}, err
 	}
 

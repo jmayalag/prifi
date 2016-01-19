@@ -429,6 +429,9 @@ func relayParseClientParams(tcpConn net.Conn, newClientChan chan prifinet.NodeRe
 
 	newClient, success := relayParseClientParamsAux(tcpConn, clientsUseUDP)
 	if success {
+		prifilog.Println(prifilog.INFORMATION, "Client parameter parsed, sending back...")
 		newClientChan <- newClient
+	} else {
+		prifilog.Println(prifilog.WARNING, "Could not parse client parameters, ignoring him...")
 	}
 }
