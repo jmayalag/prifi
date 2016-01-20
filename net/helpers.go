@@ -29,8 +29,6 @@ func WriteMessage(conn net.Conn, message []byte) error {
 		return errors.New("Couldn't write the full"+strconv.Itoa(length+6)+" bytes, only wrote "+strconv.Itoa(n))
 	}
 
-	time.Sleep(200 * time.Millisecond)
-
 	if err != nil {
 		return err
 	}

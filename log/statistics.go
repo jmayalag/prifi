@@ -37,7 +37,7 @@ type Statistics struct {
 }
 
 func EmptyStatistics(reportingLimit int) *Statistics{
-	stats := Statistics{time.Now(), time.Now(), 0, reportingLimit, time.Duration(2)*time.Second, make([]int64, 0), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+	stats := Statistics{time.Now(), time.Now(), 0, reportingLimit, time.Duration(5)*time.Second, make([]int64, 0), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 	return &stats
 }
 
@@ -220,7 +220,12 @@ func (stats *Statistics) ReportWithInfo(info string) {
 	if now.After(stats.nextReport) {
 		duration := now.Sub(stats.begin).Seconds()
 		latm, latv, latn := stats.LatencyStatistics()
-		retransmitPercentage := float64(stats.instantDownstreamRetransmitBytes)/float64(stats.instantDownstreamRetransmitBytes+stats.totalDownstreamUDPBytes)
+
+		if stats.instantDownstreamRetransmitBytes+stats.totalDownstreamUDPBytes != 0 {
+			retransmitPercentage := float64(stats.instantDownstreamRetransmitBytes)/float64(stats.instantDownstreamRetransmitBytes+stats.totalDownstreamUDPBytes)
+		} else {
+			retransmitPercentage := float64(0)
+		}
 
 		Printf(EXPERIMENT_OUTPUT, "%v @ %fs; cell %f (%f) /sec, up %f (%f) B/s, down %f (%f) B/s, udp down %f (%f) B/s, retransmit %v, lat %s += %s over %s "+info,
 			stats.nReports, duration,
@@ -228,7 +233,7 @@ func (stats *Statistics) ReportWithInfo(info string) {
 			float64(stats.totalUpstreamBytes)/duration,	 	 float64(stats.instantUpstreamBytes)/stats.period.Seconds(),
 			float64(stats.totalDownstreamBytes)/duration, 	 float64(stats.instantDownstreamBytes)/stats.period.Seconds(),
 			float64(stats.totalDownstreamUDPBytes)/duration, float64(stats.instantDownstreamUDPBytes)/stats.period.Seconds(),
-			retransmitPercentage, latm, latv, latn)
+			float64(int(retransmitPercentage*10000)/100), latm, latv, latn)
 
 		// Next report time
 		stats.instantUpstreamCells = 0

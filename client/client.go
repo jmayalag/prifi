@@ -417,6 +417,7 @@ func readDataFromRelay(relayTCPConn net.Conn, relayUDPConn net.Conn, dataFromRel
 
 			udpMessageExpectedSeq    := uint32(binary.BigEndian.Uint32(message[0:4]))
 			udpMessageLength 		 := int(binary.BigEndian.Uint32(message[4:8]))
+			udpMessageSeq 			 := uint32(0)
 
 			prifilog.Println(prifilog.RECOVERABLE_ERROR, "Expecting packet " + strconv.Itoa(int(udpMessageExpectedSeq)) + " size "+strconv.Itoa(int(udpMessageLength)))
 
@@ -441,12 +442,12 @@ func readDataFromRelay(relayTCPConn net.Conn, relayUDPConn net.Conn, dataFromRel
 
 			//here, the seq number if correct
 			ack := make([]byte, 1)
-			if len(udpMessage) == udpMessageLength && err2 == nil {
+			if len(udpMessage) == udpMessageLength && err2 == nil && udpMessageExpectedSeq == udpMessageSeq {
 				//send ACK
 				ack[0] = 1
 				prifinet.WriteMessage(relayTCPConn, ack)
 
-				//prifilog.Println(prifilog.INFORMATION, "Client " + strconv.Itoa(params.Id) + "; ClientReadRelay UDP success, received", len(udpMessage), "bytes over UDP")
+				prifilog.Println(prifilog.RECOVERABLE_ERROR, "Received packet "+strconv.Itoa(int(udpMessageSeq)))
 				message = udpMessage[4:]
 			} else {
 				//send NACK
