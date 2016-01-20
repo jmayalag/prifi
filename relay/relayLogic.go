@@ -305,7 +305,7 @@ func processMessageLoop(relayState *RelayState){
 			udp_packet_segment_number = (udp_packet_segment_number + 1) % MaxUint
 			sizeMessage := make([]byte, 8)
 			binary.BigEndian.PutUint32(sizeMessage[0:4], udp_packet_segment_number)
-			binary.BigEndian.PutUint32(sizeMessage[4:8], uint32(len(downstreamData)))
+			binary.BigEndian.PutUint32(sizeMessage[4:8], uint32(4+len(downstreamData)))
 			prifinet.NUnicastMessageToNodes(relayState.clients, sizeMessage)
 			stats.AddDownstreamCell(int64(8))
 			

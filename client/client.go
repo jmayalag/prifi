@@ -440,7 +440,7 @@ func readDataFromRelay(relayTCPConn net.Conn, relayUDPConn net.Conn, dataFromRel
 
 			//here, the seq number if correct
 			ack := make([]byte, 1)
-			if len(udpMessage) == (udpMessageLength + 4) && err2 == nil {
+			if len(udpMessage) == udpMessageLength && err2 == nil {
 				//send ACK
 				ack[0] = 1
 				prifinet.WriteMessage(relayTCPConn, ack)
