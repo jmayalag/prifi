@@ -489,7 +489,7 @@ func readUdpDataFromRelay(relayUDPConn net.Conn, receivedMessages chan<- prifine
 
 	for {
 		// Read the next (downstream) header from the relay
-		message, err := prifinet.ReadDatagram(relayUDPConn, params.downStreamCellSize+4) //first 4 bytes are the seq number
+		message, err := prifinet.ReadDatagram(relayUDPConn, params.downStreamCellSize+6) //first 4 bytes are the seq number
 
 		if err != nil {
 			prifilog.SimpleStringDump(prifilog.RECOVERABLE_ERROR, "Client " + strconv.Itoa(params.Id) + "; readUdpDataFromRelay("+strconv.Itoa(params.downStreamCellSize+4)+") error ("+err.Error()+"), skipping and continuing...")
