@@ -303,6 +303,8 @@ func processMessageLoop(relayState *RelayState){
 			binary.BigEndian.PutUint32(sizeMessage[4:8], uint32(4+len(downstreamData)))
 			prifinet.NUnicastMessageToNodes(relayState.clients, sizeMessage)
 			stats.AddDownstreamCell(int64(8))
+
+			prifilog.Println(prifilog.RECOVERABLE_ERROR, "Gonna send udp packet " + strconv.Itoa(int(udp_packet_segment_number)) + " size "+strconv.Itoa(int(4+len(downstreamData))))
 			
 			//2. broadcast message through UDP
 			udpDownstreamData := make([]byte, 4+len(downstreamData))
