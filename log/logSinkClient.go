@@ -5,6 +5,7 @@ import (
 	"net"
 	"encoding/binary"
 	"errors"
+	"time"
 	"sync"
 	"strconv"
 	"strings"
@@ -40,7 +41,8 @@ func (sc *SinkClient) WriteMessage(severity int, message string) error {
 		return nil
 	}
 
-	s := "<"+SeverityToString(severity)+"> "+message
+	when := time.Now().Format(time.StampMilli)
+	s    := when + "<"+SeverityToString(severity)+"> "+message
 
 	if sc.copyToStdOut && !strings.HasPrefix(message, "{")  {
 		fmt.Println(s)

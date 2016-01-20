@@ -223,12 +223,12 @@ func (stats *Statistics) ReportWithInfo(info string) {
 
 		instantRetransmitPercentage := float64(0)
 		if stats.instantDownstreamRetransmitBytes + stats.totalDownstreamUDPBytes != 0 {
-			instantRetransmitPercentage = float64(100 * stats.instantDownstreamRetransmitBytes)/float64(stats.instantDownstreamRetransmitBytes + stats.instantDownstreamUDPBytes)
+			instantRetransmitPercentage = float64(100 * stats.instantDownstreamRetransmitBytes)/float64(stats.instantDownstreamUDPBytes)
 		}
 
 		totalRetransmitPercentage := float64(0)
 		if stats.instantDownstreamRetransmitBytes + stats.totalDownstreamUDPBytes != 0 {
-			totalRetransmitPercentage = float64(100 * stats.totalDownstreamRetransmitBytes)/float64(stats.totalDownstreamRetransmitBytes + stats.totalDownstreamUDPBytes)
+			totalRetransmitPercentage = float64(100 * stats.totalDownstreamRetransmitBytes)/float64(stats.totalDownstreamUDPBytes)
 		}
 
 		Printf(EXPERIMENT_OUTPUT, "%v @ %fs; cell %f (%f) /sec, up %f (%f) B/s, down %f (%f) B/s, udp down %f (%f) B/s, retransmit %v (%v), lat %s += %s over %s "+info,
