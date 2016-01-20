@@ -426,6 +426,8 @@ func readDataFromRelay(relayTCPConn net.Conn, relayUDPConn net.Conn, dataFromRel
 			if err2 == nil && len(udpMessage) >= 4 {
 				udpMessageSeq 	 := uint32(binary.BigEndian.Uint32(udpMessage[0:4]))
 
+				prifilog.Println(prifilog.RECOVERABLE_ERROR, "Got one packet with seq " + strconv.Itoa(int(udpMessageLength)))
+
 				//if we're behind, quickly read the rest
 				for udpMessageSeq != udpMessageExpectedSeq {
 
@@ -435,6 +437,8 @@ func readDataFromRelay(relayTCPConn net.Conn, relayUDPConn net.Conn, dataFromRel
 					if err2 == nil && len(udpMessage) >= 4 {
 						udpMessageSeq    = uint32(binary.BigEndian.Uint32(udpMessage[0:4]))
 					} else {
+
+						prifilog.Println(prifilog.RECOVERABLE_ERROR, "Client " + strconv.Itoa(params.Id) + "; ClientReadRelay UDP warning, error receiving second message, giving up. gonna send NACK and read over TCP")
 						break
 					}
 				}
@@ -447,7 +451,7 @@ func readDataFromRelay(relayTCPConn net.Conn, relayUDPConn net.Conn, dataFromRel
 				ack[0] = 1
 				prifinet.WriteMessage(relayTCPConn, ack)
 
-				prifilog.Println(prifilog.RECOVERABLE_ERROR, "Received packet "+strconv.Itoa(int(udpMessageSeq)))
+				prifilog.Println(prifilog.RECOVERABLE_ERROR, "Well received UDP packet "+strconv.Itoa(int(udpMessageSeq))+", wrote ACK back")
 				message = udpMessage[4:]
 			} else {
 				//send NACK

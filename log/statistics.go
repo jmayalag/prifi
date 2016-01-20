@@ -221,19 +221,18 @@ func (stats *Statistics) ReportWithInfo(info string) {
 		duration := now.Sub(stats.begin).Seconds()
 		latm, latv, latn := stats.LatencyStatistics()
 
-		if stats.instantDownstreamRetransmitBytes+stats.totalDownstreamUDPBytes != 0 {
-			retransmitPercentage := float64(stats.instantDownstreamRetransmitBytes)/float64(stats.instantDownstreamRetransmitBytes+stats.totalDownstreamUDPBytes)
-		} else {
-			retransmitPercentage := float64(0)
+		retransmitPercentage := float64(0)
+		if stats.instantDownstreamRetransmitBytes + stats.totalDownstreamUDPBytes != 0 {
+			retransmitPercentage = float64(stats.instantDownstreamRetransmitBytes)/float64(stats.instantDownstreamRetransmitBytes + stats.totalDownstreamUDPBytes)
 		}
 
-		Printf(EXPERIMENT_OUTPUT, "%v @ %fs; cell %f (%f) /sec, up %f (%f) B/s, down %f (%f) B/s, udp down %f (%f) B/s, retransmit %v, lat %s += %s over %s "+info,
+		Printf(EXPERIMENT_OUTPUT, "%v @ %fs; cell %f (%f) /sec, up %f (%f) B/s, down %f (%f) B/s, udp down %f (%f) B/s, retransmit %v %v, lat %s += %s over %s "+info,
 			stats.nReports, duration,
 			float64(stats.totalUpstreamCells)/duration, 	 float64(stats.instantUpstreamCells)/stats.period.Seconds(),
 			float64(stats.totalUpstreamBytes)/duration,	 	 float64(stats.instantUpstreamBytes)/stats.period.Seconds(),
 			float64(stats.totalDownstreamBytes)/duration, 	 float64(stats.instantDownstreamBytes)/stats.period.Seconds(),
 			float64(stats.totalDownstreamUDPBytes)/duration, float64(stats.instantDownstreamUDPBytes)/stats.period.Seconds(),
-			float64(int(retransmitPercentage*10000)/100), latm, latv, latn)
+			float64(stats.instantDownstreamRetransmitBytes), float64(retransmitPercentage), latm, latv, latn)
 
 		// Next report time
 		stats.instantUpstreamCells = 0

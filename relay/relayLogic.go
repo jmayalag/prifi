@@ -301,18 +301,18 @@ func processMessageLoop(relayState *RelayState){
 			sizeMessage := make([]byte, 8)
 			binary.BigEndian.PutUint32(sizeMessage[0:4], udp_packet_segment_number)
 			binary.BigEndian.PutUint32(sizeMessage[4:8], uint32(4+len(downstreamData)))
+
+			prifilog.Println(prifilog.RECOVERABLE_ERROR, "Gonna send udp packet " + strconv.Itoa(int(udp_packet_segment_number)) + " size "+strconv.Itoa(int(4+len(downstreamData))))
 			prifinet.NUnicastMessageToNodes(relayState.clients, sizeMessage)
 			stats.AddDownstreamCell(int64(8))
 
-			prifilog.Println(prifilog.RECOVERABLE_ERROR, "Gonna send udp packet " + strconv.Itoa(int(udp_packet_segment_number)) + " size "+strconv.Itoa(int(4+len(downstreamData))))
-			
 			//2. broadcast message through UDP
 			udpDownstreamData := make([]byte, 4+len(downstreamData))
 			binary.BigEndian.PutUint32(udpDownstreamData[0:4], udp_packet_segment_number)
 			copy(udpDownstreamData[4:], downstreamData)
 
 			prifinet.WriteMessage(relayState.UDPBroadcastConn, udpDownstreamData)
-			stats.AddDownstreamUDPCell(int64(4+len(downstreamData)))
+			stats.AddDownstreamUDPCell(int64(len(udpDownstreamData)))
 
 			//TODO : this could happen in parallel
 			//acks := make([]bool, relayState.nClients)
@@ -322,8 +322,10 @@ func processMessageLoop(relayState *RelayState){
 				if err != nil || len(buffer) != 1 || buffer[0] == 0{
 					prifilog.Println(prifilog.RECOVERABLE_ERROR, "Client", i, "did not fully get the UDP broadcast n°"+strconv.Itoa(int(udp_packet_segment_number))+", re-transmitting "+strconv.Itoa(len(downstreamData))+" bytes over TCP...")
 					prifinet.WriteMessage(relayState.clients[i].Conn, downstreamData)
-					stats.AddDownstreamRetransmitCell(int64(6+downstreamDataCellSize))
-				} 
+					stats.AddDownstreamRetransmitCell(int64(len(downstreamData)))
+				} else {
+					prifilog.Println(prifilog.RECOVERABLE_ERROR, "Client", i, "ACK'ed broadcast n°"+strconv.Itoa(int(udp_packet_segment_number)))
+				}
 			}
 		}
 
