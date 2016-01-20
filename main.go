@@ -114,7 +114,7 @@ func main() {
 	if *isRelay {
 		relay.StartRelay(*upstreamCellSize, *downstreamCellSize, *relayDummyDown, relayPortAddr, *nClients, *nTrustees, trusteesIp, *relayReceiveLimit, *useUdp)
 	} else if *clientId >= 0 {
-		client.StartClient(*clientId, *relayHostAddr, *nClients, *nTrustees, *upstreamCellSize, *useSocksProxy, *latencyTest, *useUdp)
+		client.StartClient(*clientId, *relayHostAddr, *nClients, *nTrustees, *upstreamCellSize, *downstreamCellSize, *useSocksProxy, *latencyTest, *useUdp)
 	} else if *isTrusteeServer {
 		trustee.StartTrusteeServer()
 	} else {

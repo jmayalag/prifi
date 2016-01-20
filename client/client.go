@@ -16,17 +16,28 @@ import (
 	prifilog "github.com/lbarman/prifi/log"
 )
 
-func StartClient(clientId int, relayHostAddr string, expectedNumberOfClients int, nTrustees int, payloadLength int, useSocksProxy bool, latencyTest bool, useUDP bool) {
+func StartClient(clientId int, relayHostAddr string, expectedNumberOfClients int, nTrustees int, upStreamCellSize int, downStreamCellSize int, useSocksProxy bool, latencyTest bool, useUDP bool) {
 	prifilog.SimpleStringDump(prifilog.NOTIFICATION, "Client " + strconv.Itoa(clientId) + "; Started")
 
-	clientState := newClientState(clientId, nTrustees, expectedNumberOfClients, payloadLength, useSocksProxy, latencyTest, useUDP)
+	clientState := newClientState(clientId, nTrustees, expectedNumberOfClients, upStreamCellSize, downStreamCellSize, useSocksProxy, latencyTest, useUDP)
 	stats := prifilog.EmptyStatistics(-1) //no limit
 
 	//connect to relay
 	relayTCPConn, relayUDPConn, err := connectToRelay(relayHostAddr, clientState)
 
 	//define downstream stream (relay -> client)
-	dataFromRelay       := make(chan prifinet.DataWithMessageTypeAndConnId)
+	tcpDataFromRelay  		:= make(chan prifinet.DataWithMessageTypeAndConnId)
+	receivedDatagrams 		:= make(chan prifinet.Datagram)
+	datagramRequests  		:= make(chan uint32)
+	datagramDontHave  		:= make(chan uint32)
+	datagramFound     		:= make(chan prifinet.DataWithMessageTypeAndConnId)
+	datagramRequestTimeOut  := make(chan uint32)
+
+	//prepare the datagram store
+	go udpMessageStore(receivedDatagrams, datagramRequests, datagramFound, datagramDontHave)
+
+	//continuously read UDP messages
+	go readUdpDataFromRelay(relayUDPConn, receivedDatagrams, clientState)
 
 	//start the socks proxy
 	socksProxyNewConnections := make(chan net.Conn)
@@ -44,6 +55,7 @@ func StartClient(clientId int, relayHostAddr string, expectedNumberOfClients int
 
 	for !exitClient {
 
+		//if we lost the connection, reconnect
 		if relayTCPConn == nil {
 			prifilog.SimpleStringDump(prifilog.RECOVERABLE_ERROR, "Client " + strconv.Itoa(clientId) + "; trying to configure, but relay not connected. connecting...")
 			relayTCPConn, relayUDPConn, err = connectToRelay(relayHostAddr, clientState)
@@ -54,17 +66,13 @@ func StartClient(clientId int, relayHostAddr string, expectedNumberOfClients int
 				relayTCPConn.Close()
 				relayTCPConn = nil
 
-				if relayUDPConn != nil {
-					relayUDPConn.Close()
-					relayUDPConn = nil
-				}
-
 				continue //redo everything
 			}
 		}
 
 		prifilog.SimpleStringDump(prifilog.INFORMATION, "Client " + strconv.Itoa(clientId) + "; Waiting for relay params + public keys...")
 
+		//read the relay's public key
 		params, err := readPublicKeysFromRelay(relayTCPConn, clientState)
 
 		prifilog.SimpleStringDump(prifilog.INFORMATION, "Client " + strconv.Itoa(clientId) + "; Got the parameters from relay")
@@ -74,10 +82,6 @@ func StartClient(clientId int, relayHostAddr string, expectedNumberOfClients int
 			relayTCPConn.Close()
 			relayTCPConn = nil
 
-			if relayUDPConn != nil {
-				relayUDPConn.Close()
-				relayUDPConn = nil
-			}
 			continue //redo everything
 		}
 		clientState.nClients = params.nClients
@@ -117,7 +121,7 @@ func StartClient(clientId int, relayHostAddr string, expectedNumberOfClients int
 		//define downstream stream (relay -> client)
 		stopReadRelay     := make(chan bool, 1)
 		relayDisconnected := make(chan bool, 1)
-		go readDataFromRelay(relayTCPConn, relayUDPConn, dataFromRelay, stopReadRelay, relayDisconnected, clientState)
+		go readTcpDataFromRelay(relayTCPConn, tcpDataFromRelay, stopReadRelay, relayDisconnected, clientState)
 
 		roundCount          := 0
 		continueToNextRound := true
@@ -131,7 +135,7 @@ func StartClient(clientId int, relayHostAddr string, expectedNumberOfClients int
 					}
 
 				//downstream slice from relay (normal DC-net cycle)
-				case data := <-dataFromRelay:
+				case data := <-tcpDataFromRelay:
 					
 					//compute in which round we are (respective to the number of Clients)
 					currentRound := roundCount % clientState.nClients
@@ -151,31 +155,74 @@ func StartClient(clientId int, relayHostAddr string, expectedNumberOfClients int
 							//relay wants to re-setup (new key exchanges)
 							prifilog.SimpleStringDump(prifilog.RECOVERABLE_ERROR, "Client " + strconv.Itoa(clientId) + "; Relay wants to resync...")
 							continueToNextRound = false
+							//todo : should threat the data here !
+
+						case prifinet.MESSAGE_TYPE_UDP_DATA_DECLARATION:
+							//at this point, we should have received the UDP packet already. relay is waiting for our confirmation
+							seqNum := uint32(binary.BigEndian.Uint32(data.Data[0:4]))
+
+							prifilog.Println(prifilog.INFORMATION, "Requesting datagram "+strconv.Itoa(int(seqNum))+" to store")
+							datagramRequests <- seqNum
+
+							//timeout in 2 seconds
+							go func() {
+							    time.Sleep(2 * time.Second)
+							    datagramRequestTimeOut <- seqNum
+							}()
+
+
+							ack := make([]byte, 1)
+							select
+							{
+								case <- datagramRequestTimeOut:
+									prifilog.Println(prifilog.INFORMATION, "Requested datagram "+strconv.Itoa(int(seqNum))+" timed out")
+									ack[0] = 0
+
+								case <- datagramDontHave:
+									prifilog.Println(prifilog.INFORMATION, "Requested datagram "+strconv.Itoa(int(seqNum))+" not possessed")
+									ack[0] = 0
+
+								case dataUdp := <- datagramFound:
+									prifilog.Println(prifilog.INFORMATION, "Requested datagram "+strconv.Itoa(int(seqNum))+" found")
+									ack[0] = 1
+
+									//do something with the data
+									data = dataUdp
+							}
+
+							//write (N)ACK
+							prifinet.WriteMessage(relayTCPConn, ack)
 
 						case prifinet.MESSAGE_TYPE_DATA :
+							//nothing to do, will be treated after
+							
+					}
 
-							//test if it is the answer from a ping
-							if len(data.Data) > 2 {
-								pattern     := int(binary.BigEndian.Uint16(data.Data[0:2]))
-								if pattern == 43690 { //1010101010101010
-									clientId  := int(binary.BigEndian.Uint16(data.Data[2:4]))
+					//if rawData is not null, treat it
+					if len(data.Data) != 0 {
 
-									if clientId == clientState.Id {
-										timestamp := int64(binary.BigEndian.Uint64(data.Data[4:12]))
-										diff := prifilog.MsTimeStamp() - timestamp
+						//test if it is the answer from a ping
+						if len(data.Data) > 2 {
+							pattern     := int(binary.BigEndian.Uint16(data.Data[0:2]))
+							if pattern == 43690 { //1010101010101010
+								clientId  := int(binary.BigEndian.Uint16(data.Data[2:4]))
 
-										//prifilog.Println(prifilog.EXPERIMENT_OUTPUT, "Client "+strconv.Itoa(clientId) +"; Latency is ", fmt.Sprintf("%v", diff) + "ms")
+								if clientId == clientState.Id {
+									timestamp := int64(binary.BigEndian.Uint64(data.Data[4:12]))
+									diff := prifilog.MsTimeStamp() - timestamp
 
-										stats.AddLatency(diff)
-									}
-								} 
-							} else {
-								//data for SOCKS proxy, just hand it over to the dedicated thread
-								if(clientState.UseSocksProxy){
-									dataForSocksProxy <- data
+									//prifilog.Println(prifilog.EXPERIMENT_OUTPUT, "Client "+strconv.Itoa(clientId) +"; Latency is ", fmt.Sprintf("%v", diff) + "ms")
+
+									stats.AddLatency(diff)
 								}
+							} 
+						} else {
+							//data for SOCKS proxy, just hand it over to the dedicated thread
+							if(clientState.UseSocksProxy){
+								dataForSocksProxy <- data
 							}
-							stats.AddDownstreamCell(int64(len(data.Data)))
+						}
+						stats.AddDownstreamCell(int64(len(data.Data)))
 					}
 
 					// TODO Should account the downstream cell in the history
@@ -190,7 +237,7 @@ func StartClient(clientId int, relayHostAddr string, expectedNumberOfClients int
 					stats.AddUpstreamCell(int64(nBytes))
 
 					//we report the speed, bytes exchanged, etc
-					stats.ReportWithInfo(fmt.Sprintf("cellsize=%v ", payloadLength))
+					stats.ReportWithInfo(fmt.Sprintf("cellsize=%v ", upStreamCellSize))
 			}
 			roundCount++
 		}
@@ -278,11 +325,11 @@ func writeNextUpstreamSlice(isMySlot bool, dataForRelayBuffer chan []byte, relay
 			default:
 				if clientState.LatencyTest {
 
-					if clientState.PayloadLength < 12 {
+					if clientState.upStreamCellSize < 12 {
 						panic("Trying to do a Latency test, but payload is smaller than 10 bytes.")
 					}
 
-					buffer   := make([]byte, clientState.PayloadLength)
+					buffer   := make([]byte, clientState.upStreamCellSize)
 					pattern  := uint16(43690) //1010101010101010
 					currTime := prifilog.MsTimeStamp() //timestamp in Ms
 					
@@ -296,10 +343,10 @@ func writeNextUpstreamSlice(isMySlot bool, dataForRelayBuffer chan []byte, relay
 	}		
 
 	//produce the next upstream cell
-	upstreamSlice := clientState.CellCoder.ClientEncode(nextUpstreamBytes, clientState.PayloadLength, clientState.MessageHistory)
+	upstreamSlice := clientState.CellCoder.ClientEncode(nextUpstreamBytes, clientState.upStreamCellSize, clientState.MessageHistory)
 
-	if len(upstreamSlice) != clientState.UsablePayloadLength {
-		prifilog.SimpleStringDump(prifilog.RECOVERABLE_ERROR, "Client " + strconv.Itoa(clientState.Id) + "; Client slice wrong size, expected "+strconv.Itoa(clientState.UsablePayloadLength)+", but got "+strconv.Itoa(len(upstreamSlice)))
+	if len(upstreamSlice) != clientState.upStreamCellSize {
+		prifilog.SimpleStringDump(prifilog.RECOVERABLE_ERROR, "Client " + strconv.Itoa(clientState.Id) + "; Client slice wrong size, expected "+strconv.Itoa(clientState.upStreamCellSize)+", but got "+strconv.Itoa(len(upstreamSlice)))
 		return -1 //relay probably disconnected
 	}
 
@@ -400,87 +447,69 @@ func readPublicKeysFromRelay(relayTCPConn net.Conn, clientState *ClientState) (P
 	return params, nil
 }
 
-func readDataFromRelay(relayTCPConn net.Conn, relayUDPConn net.Conn, dataFromRelay chan<- prifinet.DataWithMessageTypeAndConnId, stopReadRelay chan bool, relayDisconnected chan bool, params *ClientState) {
+func udpMessageStore(incomingMessages <-chan prifinet.Datagram,
+					requestMessage <-chan uint32,
+					outgoingMessages chan<- prifinet.DataWithMessageTypeAndConnId, 
+					dontHave chan<- uint32){
+	store := make(map[uint32]prifinet.DataWithMessageTypeAndConnId)
+
+	for 
+	{
+		select {
+			case m := <-incomingMessages:
+				store[m.SeqNumber] = m.Data
+				prifilog.Println(prifilog.INFORMATION, "[udp_store] "+strconv.Itoa(int(m.SeqNumber))+" received")
+
+			case req := <-requestMessage:
+				prifilog.Println(prifilog.INFORMATION, "[udp_store] "+strconv.Itoa(int(req))+" requested")
+				data, exists := store[req]
+				if !exists {
+					prifilog.Println(prifilog.RECOVERABLE_ERROR, "[udp_store] "+strconv.Itoa(int(req))+" don't have")
+					dontHave <- req
+				} else {
+					outgoingMessages <- data
+					delete(store, req)
+				}
+			default:
+				time.Sleep(10 * time.Millisecond)
+		}
+	}
+}
+
+func readUdpDataFromRelay(relayUDPConn net.Conn, receivedMessages chan<- prifinet.Datagram, params *ClientState) {
+
+	for {
+		// Read the next (downstream) header from the relay
+		message, err := prifinet.ReadDatagram(relayUDPConn, params.downStreamCellSize+4) //first 4 bytes are the seq number
+
+		if err != nil {
+			prifilog.SimpleStringDump(prifilog.RECOVERABLE_ERROR, "Client " + strconv.Itoa(params.Id) + "; readUdpDataFromRelay error, skipping and continuing...")
+			continue
+		}
+		
+
+		//parse the header
+		seqNumber   := uint32(binary.BigEndian.Uint32(message[0:4]))
+		messageType := int(binary.BigEndian.Uint16(message[4:6]))
+		socksConnId := int(binary.BigEndian.Uint32(message[6:10]))
+		data        := message[10:]
+		
+		//communicate to main thread
+		m := prifinet.DataWithMessageTypeAndConnId{messageType, socksConnId, data}
+		receivedMessages <- prifinet.Datagram{seqNumber, m}
+	}
+}
+
+func readTcpDataFromRelay(relayTCPConn net.Conn, dataFromRelay chan<- prifinet.DataWithMessageTypeAndConnId, stopReadRelay chan bool, relayDisconnected chan bool, params *ClientState) {
 
 	for {
 		// Read the next (downstream) header from the relay
 		message, err := prifinet.ReadMessage(relayTCPConn)
 
 		if err != nil {
-			prifilog.SimpleStringDump(prifilog.RECOVERABLE_ERROR, "Client " + strconv.Itoa(params.Id) + "; ClientReadRelay error, relay probably disconnected, stopping goroutine")
+			prifilog.SimpleStringDump(prifilog.RECOVERABLE_ERROR, "Client " + strconv.Itoa(params.Id) + "; readTcpDataFromRelay error, relay probably disconnected, stopping goroutine")
 			relayDisconnected <- true
 			return
-		}
-
-		//switch : if it's 8 bytes, it indicates the size of a message of UDP
-		if relayUDPConn != nil && len(message) == 8 {
-
-			udpMessageExpectedSeq    := uint32(binary.BigEndian.Uint32(message[0:4]))
-			udpMessageLength 		 := int(binary.BigEndian.Uint32(message[4:8]))
-			udpMessageSeq 			 := uint32(0)
-
-			//prifilog.Println(prifilog.RECOVERABLE_ERROR, "Expecting packet " + strconv.Itoa(int(udpMessageExpectedSeq)) + " size "+strconv.Itoa(int(udpMessageLength)))
-
-			udpMessage, err2 := prifinet.ReadDatagramWithTimeOut(relayUDPConn, udpMessageLength, UDP_DATAGRAM_WAIT_TIMEOUT)
-
-			if err2 == nil && len(udpMessage) >= 4 {
-				udpMessageSeq 	 = uint32(binary.BigEndian.Uint32(udpMessage[0:4]))
-
-				//prifilog.Println(prifilog.RECOVERABLE_ERROR, "Got one packet with seq " + strconv.Itoa(int(udpMessageSeq)) + " size " + strconv.Itoa(len(udpMessage)))
-
-				//if we're behind, quickly read the rest
-				for udpMessageSeq != udpMessageExpectedSeq {
-
-					prifilog.Println(prifilog.RECOVERABLE_ERROR, "I'm behind, expected UDP segment " + strconv.Itoa(int(udpMessageExpectedSeq)) + ", just got "+strconv.Itoa(int(udpMessageSeq)))
-					udpMessage, err2 = prifinet.ReadDatagramWithTimeOut(relayUDPConn, udpMessageLength, UDP_DATAGRAM_WAIT_TIMEOUT/10)
-
-					if err2 == nil && len(udpMessage) >= 4 {
-						udpMessageSeq    = uint32(binary.BigEndian.Uint32(udpMessage[0:4]))
-					} else {
-
-						prifilog.Println(prifilog.RECOVERABLE_ERROR, "Client " + strconv.Itoa(params.Id) + "; ClientReadRelay UDP warning, error receiving second message, giving up. gonna send NACK and read over TCP")
-
-						//empty UDP buffer 
-						m, _ := prifinet.ReadDatagramWithTimeOut(relayUDPConn, 1, UDP_DATAGRAM_WAIT_TIMEOUT/10)
-						for m != nil {
-							m, _ = prifinet.ReadDatagramWithTimeOut(relayUDPConn, 1, UDP_DATAGRAM_WAIT_TIMEOUT/10)
-						}
-
-						break
-					}
-				}
-			}
-
-			//here, the seq number if correct
-			ack := make([]byte, 1)
-			if len(udpMessage) == udpMessageLength && err2 == nil && udpMessageExpectedSeq == udpMessageSeq {
-				//send ACK
-				ack[0] = 1
-				prifinet.WriteMessage(relayTCPConn, ack)
-
-				//prifilog.Println(prifilog.RECOVERABLE_ERROR, "Well received UDP packet "+strconv.Itoa(int(udpMessageSeq))+", wrote ACK back")
-				message = udpMessage[4:]
-			} else {
-				//send NACK
-				ack[0] = 0
-				if err2 != nil {
-					prifilog.Println(prifilog.RECOVERABLE_ERROR, "Client " + strconv.Itoa(params.Id) + "; ClientReadRelay UDP warning, received", len(udpMessage), "instead of advertised", udpMessageLength, "bytes, err is", err2.Error() ," gonna send NACK and read over TCP")
-				} else if udpMessageExpectedSeq != udpMessageSeq {
-					prifilog.Println(prifilog.RECOVERABLE_ERROR, "Client " + strconv.Itoa(params.Id) + "; ClientReadRelay UDP warning, received seq ", udpMessageSeq, "instead of advertised seq", udpMessageExpectedSeq, ". gonna send NACK and read over TCP")
-				} else {
-					prifilog.Println(prifilog.RECOVERABLE_ERROR, "Client " + strconv.Itoa(params.Id) + "; ClientReadRelay UDP warning, received", len(udpMessage), "instead of advertised", udpMessageLength, "bytes, gonna send NACK read over TCP")
-				}
-				prifinet.WriteMessage(relayTCPConn, ack)
-				messageRetransmittedOverTCP, err := prifinet.ReadMessage(relayTCPConn)
-
-				if err != nil {
-					prifilog.SimpleStringDump(prifilog.RECOVERABLE_ERROR, "Client " + strconv.Itoa(params.Id) + "; ClientReadRelay error (over retransmitted TCP message), relay probably disconnected, stopping goroutine")
-					relayDisconnected <- true
-					return
-				}
-
-				message = messageRetransmittedOverTCP
-			}
 		}
 
 		//parse the header
@@ -537,7 +566,7 @@ func startSocksProxyServerHandler(socksProxyNewConnections chan net.Conn, dataFo
 			case conn := <-socksProxyNewConnections: 
 				newSocksProxyId := len(socksProxyActiveConnections)
 				socksProxyActiveConnections = append(socksProxyActiveConnections, conn)
-				go readDataFromSocksProxy(newSocksProxyId, clientState.PayloadLength, conn, socksProxyData, socksProxyConnClosed)
+				go readDataFromSocksProxy(newSocksProxyId, clientState.upStreamCellSize, conn, socksProxyData, socksProxyConnClosed)
 
 			// Data to anonymize from SOCKS proxy
 			case data := <-socksProxyData: 
@@ -575,10 +604,10 @@ func startSocksProxyServerHandler(socksProxyNewConnections chan net.Conn, dataFo
 }
 
 
-func readDataFromSocksProxy(socksConnId int, payloadLength int, conn net.Conn, data chan<- []byte, closed chan<- int) {
+func readDataFromSocksProxy(socksConnId int, upStreamCellSize int, conn net.Conn, data chan<- []byte, closed chan<- int) {
 	for {
 		// Read up to a cell worth of data to send upstream
-		buffer := make([]byte, payloadLength)
+		buffer := make([]byte, upStreamCellSize)
 		n, err := conn.Read(buffer[socksHeaderLength:])
 
 		// Encode the connection number and actual data length

@@ -28,6 +28,11 @@ type DataWithMessageTypeAndConnId struct {
 	Data 			[]byte
 }
 
+type Datagram struct {
+	SeqNumber	 	uint32    
+	Data 			DataWithMessageTypeAndConnId
+}
+
 
 const SOCKS_CONNECTION_ID_EMPTY = 0
 const IPV4_BROADCAST_ADDR = "255.255.255.255"
@@ -38,4 +43,5 @@ const (
 	MESSAGE_TYPE_DATA_AND_RESYNC
 	MESSAGE_TYPE_PUBLICKEYS
 	MESSAGE_TYPE_LAST_UPLOAD_FAILED
+	MESSAGE_TYPE_UDP_DATA_DECLARATION
 )

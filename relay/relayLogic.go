@@ -280,7 +280,7 @@ func processMessageLoop(relayState *RelayState){
 		}
 		downstreamData := make([]byte, 6+downstreamDataCellSize)
 		binary.BigEndian.PutUint16(downstreamData[0:2], uint16(msgType))
-		binary.BigEndian.PutUint32(downstreamData[2:6], uint32(downbuffer.ConnectionId))//downbuffer.ConnectionId)) //this is the SOCKS connection ID
+		binary.BigEndian.PutUint32(downstreamData[2:6], uint32(downbuffer.ConnectionId))//this is the SOCKS connection ID
 		copy(downstreamData[6:], downbuffer.Data)
 					
 
@@ -296,23 +296,25 @@ func processMessageLoop(relayState *RelayState){
 
 			//prifilog.Println(prifilog.NOTIFICATION, "Sending", len(downstreamData), "bytes over UDP Broadcast")
 
-			//1. tell via TCP the sequence number + the length of the message
+			//1. broadcast message through UDP
 			udp_packet_segment_number = (udp_packet_segment_number + 1) % MaxUint
-			sizeMessage := make([]byte, 8)
-			binary.BigEndian.PutUint32(sizeMessage[0:4], udp_packet_segment_number)
-			binary.BigEndian.PutUint32(sizeMessage[4:8], uint32(4+len(downstreamData)))
-
-			//prifilog.Println(prifilog.RECOVERABLE_ERROR, "Gonna send udp packet " + strconv.Itoa(int(udp_packet_segment_number)) + " size "+strconv.Itoa(int(4+len(downstreamData))))
-			prifinet.NUnicastMessageToNodes(relayState.clients, sizeMessage)
-			stats.AddDownstreamCell(int64(8))
-
-			//2. broadcast message through UDP
 			udpDownstreamData := make([]byte, 4+len(downstreamData))
 			binary.BigEndian.PutUint32(udpDownstreamData[0:4], udp_packet_segment_number)
 			copy(udpDownstreamData[4:], downstreamData)
-
 			prifinet.WriteMessage(relayState.UDPBroadcastConn, udpDownstreamData)
 			stats.AddDownstreamUDPCell(int64(len(udpDownstreamData)), relayState.nClients)
+
+			prifilog.Println(prifilog.INFORMATION, "Sent udp packet " + strconv.Itoa(int(udp_packet_segment_number)))
+
+			//2. tell via TCP the sequence number
+			sizeMessage := make([]byte, 10)
+			binary.BigEndian.PutUint16(sizeMessage[0:2], uint16(prifinet.MESSAGE_TYPE_UDP_DATA_DECLARATION))
+			binary.BigEndian.PutUint32(sizeMessage[2:6], uint32(downbuffer.ConnectionId)) //this is the SOCKS connection ID
+			binary.BigEndian.PutUint32(sizeMessage[6:10], udp_packet_segment_number)
+			prifinet.NUnicastMessageToNodes(relayState.clients, sizeMessage)
+			stats.AddDownstreamCell(int64(4))
+
+			prifilog.Println(prifilog.INFORMATION, "Sent TCP UDP_DATA_DECLARATION packet for udp packet " + strconv.Itoa(int(udp_packet_segment_number)))
 
 			//TODO : this could happen in parallel
 			//acks := make([]bool, relayState.nClients)
@@ -327,6 +329,8 @@ func processMessageLoop(relayState *RelayState){
 					prifilog.Println(prifilog.RECOVERABLE_ERROR, "Client", i, " NACK'ed UDP broadcast n°"+strconv.Itoa(int(udp_packet_segment_number))+", re-transmitting "+strconv.Itoa(len(downstreamData))+" bytes over TCP...")
 					prifinet.WriteMessage(relayState.clients[i].Conn, downstreamData)
 					stats.AddDownstreamRetransmitCell(int64(len(downstreamData)))
+				}else{
+					prifilog.Println(prifilog.INFORMATION, "Client", i, " ACK'ed UDP broadcast n°"+strconv.Itoa(int(udp_packet_segment_number))+".")
 				}
 			}
 		}
