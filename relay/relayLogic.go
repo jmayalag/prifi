@@ -302,7 +302,7 @@ func processMessageLoop(relayState *RelayState){
 			binary.BigEndian.PutUint32(sizeMessage[0:4], udp_packet_segment_number)
 			binary.BigEndian.PutUint32(sizeMessage[4:8], uint32(4+len(downstreamData)))
 
-			prifilog.Println(prifilog.RECOVERABLE_ERROR, "Gonna send udp packet " + strconv.Itoa(int(udp_packet_segment_number)) + " size "+strconv.Itoa(int(4+len(downstreamData))))
+			//prifilog.Println(prifilog.RECOVERABLE_ERROR, "Gonna send udp packet " + strconv.Itoa(int(udp_packet_segment_number)) + " size "+strconv.Itoa(int(4+len(downstreamData))))
 			prifinet.NUnicastMessageToNodes(relayState.clients, sizeMessage)
 			stats.AddDownstreamCell(int64(8))
 
@@ -312,7 +312,7 @@ func processMessageLoop(relayState *RelayState){
 			copy(udpDownstreamData[4:], downstreamData)
 
 			prifinet.WriteMessage(relayState.UDPBroadcastConn, udpDownstreamData)
-			stats.AddDownstreamUDPCell(int64(len(udpDownstreamData)))
+			stats.AddDownstreamUDPCell(int64(len(udpDownstreamData)), relayState.nClients)
 
 			//TODO : this could happen in parallel
 			//acks := make([]bool, relayState.nClients)

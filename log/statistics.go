@@ -30,6 +30,8 @@ type Statistics struct {
 	totalDownstreamUDPCells 	int64
 	totalDownstreamUDPBytes 	int64
 	instantDownstreamUDPBytes 	int64
+	totalDownstreamUDPBytesTimesClients 	int64
+	instantDownstreamUDPBytesTimesClients 	int64
 
 	totalDownstreamRetransmitCells 	int64
 	totalDownstreamRetransmitBytes 	int64
@@ -37,7 +39,7 @@ type Statistics struct {
 }
 
 func EmptyStatistics(reportingLimit int) *Statistics{
-	stats := Statistics{time.Now(), time.Now(), 0, reportingLimit, time.Duration(5)*time.Second, make([]int64, 0), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+	stats := Statistics{time.Now(), time.Now(), 0, reportingLimit, time.Duration(5)*time.Second, make([]int64, 0), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 	return &stats
 }
 
@@ -149,10 +151,13 @@ func (stats *Statistics) AddDownstreamCell(nBytes int64) {
 	stats.instantDownstreamBytes += nBytes
 }
 
-func (stats *Statistics) AddDownstreamUDPCell(nBytes int64) {
+func (stats *Statistics) AddDownstreamUDPCell(nBytes int64, nclients int) {
 	stats.totalDownstreamUDPCells += 1
 	stats.totalDownstreamUDPBytes += nBytes
 	stats.instantDownstreamRetransmitBytes += nBytes
+
+	stats.totalDownstreamUDPBytesTimesClients += (nBytes * int64(nclients))
+	stats.instantDownstreamUDPBytesTimesClients += (nBytes * int64(nclients))
 }
 
 func (stats *Statistics) AddDownstreamRetransmitCell(nBytes int64) {
@@ -190,6 +195,7 @@ func (stats *Statistics) ReportJson() {
 		stats.instantDownstreamBytes = 0
 		stats.instantDownstreamUDPBytes = 0
 		stats.instantDownstreamRetransmitBytes = 0
+		stats.instantDownstreamUDPBytesTimesClients = 0
 
 		//prifilog.BenchmarkFloat(fmt.Sprintf("cellsize-%d-upstream-bytes", payloadLength), instantUpSpeed)
 
@@ -223,12 +229,12 @@ func (stats *Statistics) ReportWithInfo(info string) {
 
 		instantRetransmitPercentage := float64(0)
 		if stats.instantDownstreamRetransmitBytes + stats.totalDownstreamUDPBytes != 0 {
-			instantRetransmitPercentage = float64(100 * stats.instantDownstreamRetransmitBytes)/float64(stats.instantDownstreamUDPBytes)
+			instantRetransmitPercentage = float64(100 * stats.instantDownstreamRetransmitBytes)/float64(stats.instantDownstreamUDPBytesTimesClients)
 		}
 
 		totalRetransmitPercentage := float64(0)
 		if stats.instantDownstreamRetransmitBytes + stats.totalDownstreamUDPBytes != 0 {
-			totalRetransmitPercentage = float64(100 * stats.totalDownstreamRetransmitBytes)/float64(stats.totalDownstreamUDPBytes)
+			totalRetransmitPercentage = float64(100 * stats.totalDownstreamRetransmitBytes)/float64(stats.totalDownstreamUDPBytesTimesClients)
 		}
 
 		Printf(EXPERIMENT_OUTPUT, "%v @ %fs; cell %f (%f) /sec, up %f (%f) B/s, down %f (%f) B/s, udp down %f (%f) B/s, retransmit %v (%v), lat %s += %s over %s "+info,
@@ -246,6 +252,7 @@ func (stats *Statistics) ReportWithInfo(info string) {
 		stats.instantDownstreamBytes = 0
 		stats.instantDownstreamUDPBytes = 0
 		stats.instantDownstreamRetransmitBytes = 0
+		stats.instantDownstreamUDPBytesTimesClients = 0
 
 		stats.nextReport = now.Add(stats.period)
 		stats.nReports += 1
