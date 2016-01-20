@@ -319,8 +319,12 @@ func processMessageLoop(relayState *RelayState){
 			for i := 0; i < relayState.nClients; i++ {
 				buffer, err := prifinet.ReadMessage(relayState.clients[i].Conn)
 				
-				if err != nil || len(buffer) != 1 || buffer[0] == 0{
-					prifilog.Println(prifilog.RECOVERABLE_ERROR, "Client", i, "did not fully get the UDP broadcast n°"+strconv.Itoa(int(udp_packet_segment_number))+", re-transmitting "+strconv.Itoa(len(downstreamData))+" bytes over TCP...")
+				if err != nil || len(buffer) != 1{
+					prifilog.Println(prifilog.RECOVERABLE_ERROR, "Client", i, " presumably did not fully get the UDP broadcast n°"+strconv.Itoa(int(udp_packet_segment_number))+", re-transmitting "+strconv.Itoa(len(downstreamData))+" bytes over TCP...")
+					prifinet.WriteMessage(relayState.clients[i].Conn, downstreamData)
+					stats.AddDownstreamRetransmitCell(int64(len(downstreamData)))
+				} else if buffer[0] == 0{
+					prifilog.Println(prifilog.RECOVERABLE_ERROR, "Client", i, " NACK'ed UDP broadcast n°"+strconv.Itoa(int(udp_packet_segment_number))+", re-transmitting "+strconv.Itoa(len(downstreamData))+" bytes over TCP...")
 					prifinet.WriteMessage(relayState.clients[i].Conn, downstreamData)
 					stats.AddDownstreamRetransmitCell(int64(len(downstreamData)))
 				} else {
