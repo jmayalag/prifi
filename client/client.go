@@ -157,6 +157,12 @@ func StartClient(clientId int, relayHostAddr string, expectedNumberOfClients int
 							continueToNextRound = false
 							//todo : should threat the data here !
 
+						case prifinet.MESSAGE_TYPE_UDP_DATA_DECLARATION_AND_RESYNC:
+							//relay wants to re-setup (new key exchanges)
+							prifilog.SimpleStringDump(prifilog.RECOVERABLE_ERROR, "Client " + strconv.Itoa(clientId) + "; Relay wants to resync...")
+							continueToNextRound = false
+							//todo : should threat the SeqNumber here
+
 						case prifinet.MESSAGE_TYPE_UDP_DATA_DECLARATION:
 							//at this point, we should have received the UDP packet already. relay is waiting for our confirmation
 							/*
@@ -486,7 +492,7 @@ func readUdpDataFromRelay(relayUDPConn net.Conn, receivedMessages chan<- prifine
 		message, err := prifinet.ReadDatagram(relayUDPConn, params.downStreamCellSize+4) //first 4 bytes are the seq number
 
 		if err != nil {
-			prifilog.SimpleStringDump(prifilog.RECOVERABLE_ERROR, "Client " + strconv.Itoa(params.Id) + "; readUdpDataFromRelay error, skipping and continuing...")
+			prifilog.SimpleStringDump(prifilog.RECOVERABLE_ERROR, "Client " + strconv.Itoa(params.Id) + "; readUdpDataFromRelay("+strconv.Itoa(params.downStreamCellSize+4)+") error ("+err.Error()+"), skipping and continuing...")
 			continue
 		}
 		

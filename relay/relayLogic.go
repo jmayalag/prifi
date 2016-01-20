@@ -307,14 +307,19 @@ func processMessageLoop(relayState *RelayState){
 			prifilog.Println(prifilog.INFORMATION, "Sent udp packet " + strconv.Itoa(int(udp_packet_segment_number)))
 
 			//2. tell via TCP the sequence number
+			msgType := prifinet.MESSAGE_TYPE_UDP_DATA_DECLARATION
+			if tellClientsToResync{
+				msgType = prifinet.MESSAGE_TYPE_UDP_DATA_DECLARATION_AND_RESYNC
+				currentSetupContinues = false
+			}
 			sizeMessage := make([]byte, 10)
-			binary.BigEndian.PutUint16(sizeMessage[0:2], uint16(prifinet.MESSAGE_TYPE_UDP_DATA_DECLARATION))
+			binary.BigEndian.PutUint16(sizeMessage[0:2], uint16(msgType))
 			binary.BigEndian.PutUint32(sizeMessage[2:6], uint32(downbuffer.ConnectionId)) //this is the SOCKS connection ID
 			binary.BigEndian.PutUint32(sizeMessage[6:10], udp_packet_segment_number)
 			prifinet.NUnicastMessageToNodes(relayState.clients, sizeMessage)
 			stats.AddDownstreamCell(int64(10))
 
-			prifilog.Println(prifilog.INFORMATION, "Sent TCP UDP_DATA_DECLARATION packet for udp packet " + strconv.Itoa(int(udp_packet_segment_number)))
+			//prifilog.Println(prifilog.INFORMATION, "Sent TCP UDP_DATA_DECLARATION packet for udp packet " + strconv.Itoa(int(udp_packet_segment_number)))
 
 			//TODO : this could happen in parallel
 			//acks := make([]bool, relayState.nClients)
@@ -335,17 +340,6 @@ func processMessageLoop(relayState *RelayState){
 				}
 			}
 			*/
-
-			//transmit the flags over TCP
-			if tellClientsToResync{
-				//2. tell via TCP the sequence number
-				sizeMessage := make([]byte, 6)
-				binary.BigEndian.PutUint16(sizeMessage[0:2], uint16(prifinet.MESSAGE_TYPE_DATA_AND_RESYNC))
-				binary.BigEndian.PutUint32(sizeMessage[2:6], uint32(downbuffer.ConnectionId)) //this is the SOCKS connection ID
-				prifinet.NUnicastMessageToNodes(relayState.clients, sizeMessage)
-				stats.AddDownstreamCell(int64(6))
-				currentSetupContinues = false
-			}
 		}
 
 		/* LBARMAN : disabled, until effect on performance is clear
