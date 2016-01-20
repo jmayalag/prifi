@@ -31,7 +31,7 @@ func StartClient(clientId int, relayHostAddr string, expectedNumberOfClients int
 	datagramRequests  		:= make(chan uint32)
 	datagramDontHave  		:= make(chan uint32)
 	datagramFound     		:= make(chan prifinet.DataWithMessageTypeAndConnId)
-	datagramRequestTimeOut  := make(chan uint32)
+	//datagramRequestTimeOut  := make(chan uint32)
 
 	//prepare the datagram store
 	go udpMessageStore(receivedDatagrams, datagramRequests, datagramFound, datagramDontHave)
@@ -159,8 +159,10 @@ func StartClient(clientId int, relayHostAddr string, expectedNumberOfClients int
 
 						case prifinet.MESSAGE_TYPE_UDP_DATA_DECLARATION:
 							//at this point, we should have received the UDP packet already. relay is waiting for our confirmation
+							/*
 							seqNum := uint32(binary.BigEndian.Uint32(data.Data[0:4]))
 
+							
 							prifilog.Println(prifilog.INFORMATION, "Requesting datagram "+strconv.Itoa(int(seqNum))+" to store")
 							datagramRequests <- seqNum
 
@@ -192,6 +194,7 @@ func StartClient(clientId int, relayHostAddr string, expectedNumberOfClients int
 
 							//write (N)ACK
 							prifinet.WriteMessage(relayTCPConn, ack)
+							*/
 
 						case prifinet.MESSAGE_TYPE_DATA :
 							//nothing to do, will be treated after
