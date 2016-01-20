@@ -446,7 +446,7 @@ func readDataFromRelay(relayTCPConn net.Conn, relayUDPConn net.Conn, dataFromRel
 				ack[0] = 1
 				prifinet.WriteMessage(relayTCPConn, ack)
 
-				prifilog.Println(prifilog.SEVERE_ERROR, hex.Dump(udpMessage))
+				prifilog.Println(prifilog.SEVERE_ERROR, hex.Dump(udpMessage[:20]))
 
 				//prifilog.Println(prifilog.INFORMATION, "Client " + strconv.Itoa(params.Id) + "; ClientReadRelay UDP success, received", len(udpMessage), "bytes over UDP")
 				message = udpMessage[4:]
