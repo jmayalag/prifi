@@ -17,7 +17,7 @@ const socksHeaderLength = 6
 
 const WAIT_FOR_PUBLICKEY_SLEEP_TIME       = 100 * time.Millisecond
 const FAILED_CONNECTION_WAIT_BEFORE_RETRY = 1000 * time.Millisecond
-const UDP_DATAGRAM_WAIT_TIMEOUT           = 1 * time.Second
+const UDP_DATAGRAM_WAIT_TIMEOUT           = 5 * time.Second
 
 type ParamsFromRelay struct {
 	trusteesPublicKeys 	[]abstract.Point

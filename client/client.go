@@ -457,7 +457,9 @@ func readDataFromRelay(relayTCPConn net.Conn, relayUDPConn net.Conn, dataFromRel
 				//send NACK
 				ack[0] = 0
 				if err2 != nil {
-					prifilog.Println(prifilog.RECOVERABLE_ERROR, "Client " + strconv.Itoa(params.Id) + "; ClientReadRelay UDP warning, received", len(udpMessage), "instead of advertised", udpMessageLength, "bytes, err is", err2.Error() ,"gonna send NACK and read over TCP")
+					prifilog.Println(prifilog.RECOVERABLE_ERROR, "Client " + strconv.Itoa(params.Id) + "; ClientReadRelay UDP warning, received", len(udpMessage), "instead of advertised", udpMessageLength, "bytes, err is", err2.Error() ," gonna send NACK and read over TCP")
+				} else if udpMessageExpectedSeq != udpMessageSeq {
+					prifilog.Println(prifilog.RECOVERABLE_ERROR, "Client " + strconv.Itoa(params.Id) + "; ClientReadRelay UDP warning, received seq ", udpMessageSeq, "instead of advertised seq", udpMessageExpectedSeq, ". gonna send NACK and read over TCP")
 				} else {
 					prifilog.Println(prifilog.RECOVERABLE_ERROR, "Client " + strconv.Itoa(params.Id) + "; ClientReadRelay UDP warning, received", len(udpMessage), "instead of advertised", udpMessageLength, "bytes, gonna send NACK read over TCP")
 				}
