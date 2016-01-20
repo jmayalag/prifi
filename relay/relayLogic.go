@@ -313,7 +313,7 @@ func processMessageLoop(relayState *RelayState){
 			//2. broadcast message through UDP
 			udpDownstreamData := make([]byte, 4+len(downstreamData))
 			binary.BigEndian.PutUint32(udpDownstreamData[0:4], udp_packet_segment_number)
-			copy(udpDownstreamData[4:], downbuffer.Data)
+			copy(udpDownstreamData[4:], downstreamData)
 
 			prifilog.Println(prifilog.SEVERE_ERROR, hex.Dump(udpDownstreamData[:20]))
 			prifinet.WriteMessage(relayState.UDPBroadcastConn, udpDownstreamData)
