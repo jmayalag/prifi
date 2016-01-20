@@ -2,6 +2,7 @@ package relay
 
 import (
 	"encoding/binary"
+	"encoding/hex"
 	"fmt"
 	"time"
 	"log"
@@ -314,6 +315,7 @@ func processMessageLoop(relayState *RelayState){
 			binary.BigEndian.PutUint32(udpDownstreamData[0:4], udp_packet_segment_number)
 			copy(udpDownstreamData[4:], downbuffer.Data)
 
+			prifilog.Println(prifilog.SEVERE_ERROR, hex.Dump(udpDownstreamData))
 			prifinet.WriteMessage(relayState.UDPBroadcastConn, udpDownstreamData)
 			stats.AddDownstreamUDPCell(int64(4+len(downstreamData)))
 

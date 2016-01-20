@@ -2,6 +2,7 @@ package client
 
 import (
 	"encoding/binary"
+	"encoding/hex"
 	"strconv"
 	"fmt"
 	"errors"
@@ -444,6 +445,9 @@ func readDataFromRelay(relayTCPConn net.Conn, relayUDPConn net.Conn, dataFromRel
 				//send ACK
 				ack[0] = 1
 				prifinet.WriteMessage(relayTCPConn, ack)
+
+				prifilog.Println(prifilog.SEVERE_ERROR, hex.Dump(udpMessage))
+
 				//prifilog.Println(prifilog.INFORMATION, "Client " + strconv.Itoa(params.Id) + "; ClientReadRelay UDP success, received", len(udpMessage), "bytes over UDP")
 				message = udpMessage[4:]
 			} else {
