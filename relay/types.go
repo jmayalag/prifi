@@ -7,6 +7,7 @@ import (
 	"time"
 	prifinet "github.com/lbarman/prifi/net"
 )
+const MaxUint uint32 = uint32(4294967295)
 
 const CONTROL_LOOP_SLEEP_TIME             = 1 * time.Second
 const PROCESSING_LOOP_SLEEP_TIME          = 0 * time.Second

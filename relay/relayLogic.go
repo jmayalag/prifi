@@ -13,6 +13,8 @@ import (
 
 var COUNTER int = 100
 
+var udp_packet_segment_number uint32 = 0 //todo : this should be random to provide better security (maybe? TCP does so)
+
 var relayState 			*RelayState 
 var stateMachineLogger 	*prifilog.StateMachineLogger
 
@@ -299,15 +301,21 @@ func processMessageLoop(relayState *RelayState){
 
 			//prifilog.Println(prifilog.NOTIFICATION, "Sending", len(downstreamData), "bytes over UDP Broadcast")
 
-			//1. tell via TCP the length of the message
-			sizeMessage := make([]byte, 4)
-			binary.BigEndian.PutUint32(sizeMessage[0:4], uint32(len(downstreamData)))
+			//1. tell via TCP the sequence number + the length of the message
+			udp_packet_segment_number = (udp_packet_segment_number + 1) % MaxUint
+			sizeMessage := make([]byte, 8)
+			binary.BigEndian.PutUint32(sizeMessage[0:4], udp_packet_segment_number)
+			binary.BigEndian.PutUint32(sizeMessage[4:8], uint32(len(downstreamData)))
 			prifinet.NUnicastMessageToNodes(relayState.clients, sizeMessage)
-			stats.AddDownstreamCell(int64(4))
+			stats.AddDownstreamCell(int64(8))
 			
 			//2. broadcast message through UDP
-			prifinet.WriteMessage(relayState.UDPBroadcastConn, downstreamData)
-			stats.AddDownstreamUDPCell(int64(downstreamDataCellSize))
+			udpDownstreamData := make([]byte, 4+len(downstreamData))
+			binary.BigEndian.PutUint32(udpDownstreamData[0:4], udp_packet_segment_number)
+			copy(udpDownstreamData[4:], downbuffer.Data)
+
+			prifinet.WriteMessage(relayState.UDPBroadcastConn, udpDownstreamData)
+			stats.AddDownstreamUDPCell(int64(4+len(downstreamData)))
 
 			//TODO : this could happen in parallel
 			//acks := make([]bool, relayState.nClients)
@@ -315,7 +323,7 @@ func processMessageLoop(relayState *RelayState){
 				buffer, err := prifinet.ReadMessage(relayState.clients[i].Conn)
 				
 				if err != nil || len(buffer) != 1 || buffer[0] == 0{
-					prifilog.Println(prifilog.RECOVERABLE_ERROR, "Client", i, "did not fully get the UDP broadcast, re-transmitting "+strconv.Itoa(len(downstreamData))+" bytes over TCP...")
+					prifilog.Println(prifilog.RECOVERABLE_ERROR, "Client", i, "did not fully get the UDP broadcast n°"+strconv.Itoa(int(udp_packet_segment_number))+", re-transmitting "+strconv.Itoa(len(downstreamData))+" bytes over TCP...")
 					prifinet.WriteMessage(relayState.clients[i].Conn, downstreamData)
 					stats.AddDownstreamRetransmitCell(int64(6+downstreamDataCellSize))
 				} 

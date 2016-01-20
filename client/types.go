@@ -10,6 +10,8 @@ import (
 	"github.com/lbarman/prifi/config"
 )
 
+const MaxUint uint32 = uint32(4294967295)
+
 // Number of bytes of cell payload to reserve for connection header, length
 const socksHeaderLength = 6
 

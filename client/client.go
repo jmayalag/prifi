@@ -412,20 +412,32 @@ func readDataFromRelay(relayTCPConn net.Conn, relayUDPConn net.Conn, dataFromRel
 			return
 		}
 
-		//switch : if it's 4 bytes, it indicates the size of a message of UDP
-		if relayUDPConn != nil && len(message) == 4 {
+		//switch : if it's 8 bytes, it indicates the size of a message of UDP
+		if relayUDPConn != nil && len(message) == 8 {
 
-			udpMessageLength := int(binary.BigEndian.Uint32(message[0:4]))
-			prifilog.Println(prifilog.RECOVERABLE_ERROR, "Great ! waiting on an UDP message " + strconv.Itoa(udpMessageLength) + ";")
-			udpMessage, err2  := prifinet.ReadDatagramWithTimeOut(relayUDPConn, udpMessageLength, UDP_DATAGRAM_WAIT_TIMEOUT)
-			ack              := make([]byte, 1)
+			udpMessageExpectedSeq    := uint32(binary.BigEndian.Uint32(message[0:4]))
+			udpMessageLength 		 := int(binary.BigEndian.Uint32(message[4:8]))
 
-			if len(udpMessage) == udpMessageLength && err2 == nil {
+			prifilog.Println(prifilog.RECOVERABLE_ERROR, "Great ! waiting on an UDP message " + strconv.Itoa(udpMessageLength))
+			udpMessage, err2 := prifinet.ReadDatagramWithTimeOut(relayUDPConn, udpMessageLength, UDP_DATAGRAM_WAIT_TIMEOUT)
+			udpMessageSeq 	 := uint32(binary.BigEndian.Uint32(udpMessage[0:4]))
+
+			//if we're behind, quickly read the rest
+			for udpMessageSeq != udpMessageExpectedSeq {
+
+				prifilog.Println(prifilog.RECOVERABLE_ERROR, "I'm behind, expected UDP segment " + strconv.Itoa(int(udpMessageExpectedSeq)) + ", just got "+strconv.Itoa(int(udpMessageSeq)))
+				udpMessage, err2 = prifinet.ReadDatagramWithTimeOut(relayUDPConn, udpMessageLength, UDP_DATAGRAM_WAIT_TIMEOUT)
+				udpMessageSeq    = uint32(binary.BigEndian.Uint32(udpMessage[0:4]))
+			}
+
+			//here, the seq number if correct
+			ack := make([]byte, 1)
+			if len(udpMessage) == (udpMessageLength + 4) && err2 == nil {
 				//send ACK
 				ack[0] = 1
 				prifinet.WriteMessage(relayTCPConn, ack)
 				//prifilog.Println(prifilog.INFORMATION, "Client " + strconv.Itoa(params.Id) + "; ClientReadRelay UDP success, received", len(udpMessage), "bytes over UDP")
-				message = udpMessage
+				message = udpMessage[4:]
 			} else {
 				//send NACK
 				ack[0] = 0
