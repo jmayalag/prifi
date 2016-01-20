@@ -327,8 +327,6 @@ func processMessageLoop(relayState *RelayState){
 					prifilog.Println(prifilog.RECOVERABLE_ERROR, "Client", i, " NACK'ed UDP broadcast n°"+strconv.Itoa(int(udp_packet_segment_number))+", re-transmitting "+strconv.Itoa(len(downstreamData))+" bytes over TCP...")
 					prifinet.WriteMessage(relayState.clients[i].Conn, downstreamData)
 					stats.AddDownstreamRetransmitCell(int64(len(downstreamData)))
-				} else {
-					prifilog.Println(prifilog.RECOVERABLE_ERROR, "Client", i, "ACK'ed broadcast n°"+strconv.Itoa(int(udp_packet_segment_number)))
 				}
 			}
 		}

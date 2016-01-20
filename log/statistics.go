@@ -237,7 +237,8 @@ func (stats *Statistics) ReportWithInfo(info string) {
 			float64(stats.totalUpstreamBytes)/duration,	 	 float64(stats.instantUpstreamBytes)/stats.period.Seconds(),
 			float64(stats.totalDownstreamBytes)/duration, 	 float64(stats.instantDownstreamBytes)/stats.period.Seconds(),
 			float64(stats.totalDownstreamUDPBytes)/duration, float64(stats.instantDownstreamUDPBytes)/stats.period.Seconds(),
-			float64(stats.instantDownstreamRetransmitBytes), float64(totalRetransmitPercentage), float64(instantRetransmitPercentage), latm, latv, latn)
+			float64(totalRetransmitPercentage), 			 float64(instantRetransmitPercentage), 
+			latm, latv, latn)
 
 		// Next report time
 		stats.instantUpstreamCells = 0
