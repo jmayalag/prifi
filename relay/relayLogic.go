@@ -2,7 +2,6 @@ package relay
 
 import (
 	"encoding/binary"
-	"encoding/hex"
 	"fmt"
 	"time"
 	"log"
@@ -11,8 +10,6 @@ import (
 	prifinet "github.com/lbarman/prifi/net"
 	prifilog "github.com/lbarman/prifi/log"
 )
-
-var COUNTER int = 100
 
 var udp_packet_segment_number uint32 = 0 //todo : this should be random to provide better security (maybe? TCP does so)
 
@@ -283,11 +280,8 @@ func processMessageLoop(relayState *RelayState){
 		}
 		downstreamData := make([]byte, 6+downstreamDataCellSize)
 		binary.BigEndian.PutUint16(downstreamData[0:2], uint16(msgType))
-		binary.BigEndian.PutUint32(downstreamData[2:6], uint32(COUNTER))//downbuffer.ConnectionId)) //this is the SOCKS connection ID
-		COUNTER = COUNTER + 1
+		binary.BigEndian.PutUint32(downstreamData[2:6], uint32(downbuffer.ConnectionId))//downbuffer.ConnectionId)) //this is the SOCKS connection ID
 		copy(downstreamData[6:], downbuffer.Data)
-
-		prifilog.Println(prifilog.RECOVERABLE_ERROR, "MESSAGE TYPE "+strconv.Itoa(msgType)+" SOCKS# "+strconv.Itoa(COUNTER)+" DATALEN "+strconv.Itoa(len(downbuffer.Data)))
 					
 
 		// Broadcast the downstream data to all clients.
@@ -315,7 +309,6 @@ func processMessageLoop(relayState *RelayState){
 			binary.BigEndian.PutUint32(udpDownstreamData[0:4], udp_packet_segment_number)
 			copy(udpDownstreamData[4:], downstreamData)
 
-			prifilog.Println(prifilog.SEVERE_ERROR, hex.Dump(udpDownstreamData[:20]))
 			prifinet.WriteMessage(relayState.UDPBroadcastConn, udpDownstreamData)
 			stats.AddDownstreamUDPCell(int64(4+len(downstreamData)))
 

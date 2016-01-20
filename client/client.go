@@ -2,7 +2,6 @@ package client
 
 import (
 	"encoding/binary"
-	"encoding/hex"
 	"strconv"
 	"fmt"
 	"errors"
@@ -419,7 +418,6 @@ func readDataFromRelay(relayTCPConn net.Conn, relayUDPConn net.Conn, dataFromRel
 			udpMessageExpectedSeq    := uint32(binary.BigEndian.Uint32(message[0:4]))
 			udpMessageLength 		 := int(binary.BigEndian.Uint32(message[4:8]))
 
-			prifilog.Println(prifilog.RECOVERABLE_ERROR, "Great ! waiting on an UDP message " + strconv.Itoa(udpMessageLength))
 			udpMessage, err2 := prifinet.ReadDatagramWithTimeOut(relayUDPConn, udpMessageLength, UDP_DATAGRAM_WAIT_TIMEOUT)
 
 			if err2 == nil && len(udpMessage) >= 4 {
@@ -445,8 +443,6 @@ func readDataFromRelay(relayTCPConn net.Conn, relayUDPConn net.Conn, dataFromRel
 				//send ACK
 				ack[0] = 1
 				prifinet.WriteMessage(relayTCPConn, ack)
-
-				prifilog.Println(prifilog.SEVERE_ERROR, hex.Dump(udpMessage[:20]))
 
 				//prifilog.Println(prifilog.INFORMATION, "Client " + strconv.Itoa(params.Id) + "; ClientReadRelay UDP success, received", len(udpMessage), "bytes over UDP")
 				message = udpMessage[4:]
@@ -475,9 +471,7 @@ func readDataFromRelay(relayTCPConn net.Conn, relayUDPConn net.Conn, dataFromRel
 		messageType := int(binary.BigEndian.Uint16(message[0:2]))
 		socksConnId := int(binary.BigEndian.Uint32(message[2:6]))
 		data        := message[6:]
-
-		prifilog.Println(prifilog.SEVERE_ERROR, "MESSAGE TYPE "+strconv.Itoa(messageType)+" SOCKS# "+strconv.Itoa(socksConnId)+" DATALEN "+strconv.Itoa(len(data)))
-
+		
 		//communicate to main thread
 		dataFromRelay <- prifinet.DataWithMessageTypeAndConnId{messageType, socksConnId, data}
 
