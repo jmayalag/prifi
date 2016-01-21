@@ -42,7 +42,7 @@ func (sc *SinkClient) WriteMessage(severity int, message string) error {
 	}
 
 	when := time.Now().Format(time.StampMilli)
-	s    := when + " <"+SeverityToString(severity)+"> "+message
+	s    := when + "<"+SeverityToString(severity)+"> "+message
 
 	if sc.copyToStdOut && !strings.HasPrefix(message, "{")  {
 		fmt.Println(s)

@@ -37,8 +37,8 @@ type ClientState struct {
 	nClients			int
 	nTrustees			int
 
-	upStreamCellSize	int
-	downStreamCellSize  int
+	PayloadLength		int
+	UsablePayloadLength	int
 	UseSocksProxy		bool
 	LatencyTest			bool
 	UseUDP				bool
@@ -51,7 +51,7 @@ type ClientState struct {
 	MessageHistory		abstract.Cipher
 }
 
-func newClientState(clientId int, nTrustees int, nClients int, upStreamCellSize int, downStreamCellSize int, useSocksProxy bool, latencyTest bool, useUDP bool) *ClientState {
+func newClientState(clientId int, nTrustees int, nClients int, payloadLength int, useSocksProxy bool, latencyTest bool, useUDP bool) *ClientState {
 
 	params := new(ClientState)
 
@@ -59,8 +59,7 @@ func newClientState(clientId int, nTrustees int, nClients int, upStreamCellSize 
 	params.Id 				   = clientId
 	params.nClients            = nClients
 	params.nTrustees           = nTrustees
-	params.upStreamCellSize    = upStreamCellSize
-	params.downStreamCellSize  = downStreamCellSize
+	params.PayloadLength       = payloadLength
 	params.UseSocksProxy       = useSocksProxy
 	params.LatencyTest 		   = latencyTest
 	params.UseUDP 			   = useUDP
@@ -79,7 +78,7 @@ func newClientState(clientId int, nTrustees int, nClients int, upStreamCellSize 
 
 	//sets the cell coder, and the history
 	params.CellCoder           = config.Factory()
-	params.upStreamCellSize = params.CellCoder.ClientCellSize(upStreamCellSize)
+	params.UsablePayloadLength = params.CellCoder.ClientCellSize(payloadLength)
 
 	return params
 }
