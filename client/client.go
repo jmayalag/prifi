@@ -27,6 +27,8 @@ func StartClient(clientId int, relayHostAddr string, expectedNumberOfClients int
 
 	//define downstream stream (relay -> client)
 	tcpDataFromRelay  		:= make(chan prifinet.DataWithMessageTypeAndConnId)
+	tcpParamsFromRelay      := make(chan ParamsFromRelay)
+	relayDisconnected       := make(chan bool, 1)
 	receivedDatagrams 		:= make(chan prifinet.Datagram)
 	datagramRequests  		:= make(chan uint32)
 	datagramDontHave  		:= make(chan uint32)
@@ -36,8 +38,8 @@ func StartClient(clientId int, relayHostAddr string, expectedNumberOfClients int
 	//prepare the datagram store
 	go udpMessageStore(receivedDatagrams, datagramRequests, datagramFound, datagramDontHave)
 
-	//continuously read UDP messages
 	go readUdpDataFromRelay(relayUDPConn, receivedDatagrams, clientState)
+	go readTcpDataFromRelay(relayTCPConn, tcpDataFromRelay, tcpParamsFromRelay, relayDisconnected, clientState)
 
 	//start the socks proxy
 	socksProxyNewConnections := make(chan net.Conn)
@@ -59,6 +61,7 @@ func StartClient(clientId int, relayHostAddr string, expectedNumberOfClients int
 		if relayTCPConn == nil {
 			prifilog.SimpleStringDump(prifilog.RECOVERABLE_ERROR, "Client " + strconv.Itoa(clientId) + "; trying to configure, but relay not connected. connecting...")
 			relayTCPConn, relayUDPConn, err = connectToRelay(relayHostAddr, clientState)
+			go readTcpDataFromRelay(relayTCPConn, tcpDataFromRelay, tcpParamsFromRelay, relayDisconnected, clientState)
 
 			if err != nil {
 
@@ -73,17 +76,19 @@ func StartClient(clientId int, relayHostAddr string, expectedNumberOfClients int
 		prifilog.SimpleStringDump(prifilog.INFORMATION, "Client " + strconv.Itoa(clientId) + "; Waiting for relay params + public keys...")
 
 		//read the relay's public key
-		params, err := readPublicKeysFromRelay(relayTCPConn, clientState)
+		hasPublicKey := false
+		params 		 := ParamsFromRelay{}
+		for !hasPublicKey {
+			select {
+				case params = <-tcpParamsFromRelay:
+					hasPublicKey = true
+
+				default:
+					time.Sleep(10 * time.Millisecond)
+			}
+		}		
 
 		prifilog.SimpleStringDump(prifilog.INFORMATION, "Client " + strconv.Itoa(clientId) + "; Got the parameters from relay")
-
-		if err != nil {
-			prifilog.SimpleStringDump(prifilog.RECOVERABLE_ERROR, "Client " + strconv.Itoa(clientId) + "; Could not get the parameters from the relay, restarting")
-			relayTCPConn.Close()
-			relayTCPConn = nil
-
-			continue //redo everything
-		}
 		clientState.nClients = params.nClients
 
 		//Parse the trustee's public keys, generate the shared secrets
@@ -117,11 +122,6 @@ func StartClient(clientId int, relayHostAddr string, expectedNumberOfClients int
 
 		//clientState.printSecrets()
 		prifilog.SimpleStringDump(prifilog.NOTIFICATION, "Client " + strconv.Itoa(clientId) + "; Everything ready, assigned to round "+strconv.Itoa(myRound)+" out of "+strconv.Itoa(clientState.nClients))
-
-		//define downstream stream (relay -> client)
-		stopReadRelay     := make(chan bool, 1)
-		relayDisconnected := make(chan bool, 1)
-		go readTcpDataFromRelay(relayTCPConn, tcpDataFromRelay, stopReadRelay, relayDisconnected, clientState)
 
 		roundCount          := 0
 		continueToNextRound := true
@@ -427,35 +427,6 @@ func connectToRelay(relayHost string, params *ClientState) (net.Conn, net.Conn, 
 	return tcpConn, udpConn, nil
 }
 
-func readPublicKeysFromRelay(relayTCPConn net.Conn, clientState *ClientState) (ParamsFromRelay, error) {
-
-	// Read the next (downstream) header from the relay
-	message, err := prifinet.ReadMessage(relayTCPConn)
-
-	if err != nil {
-		return ParamsFromRelay{}, errors.New("readPublicKeysFromRelay: " + err.Error())
-	}
-
-	//parse the header
-	messageType := int(binary.BigEndian.Uint16(message[0:2]))
-	nClients    := int(binary.BigEndian.Uint32(message[2:6]))
-	data        := message[6:]
-
-	if messageType != prifinet.MESSAGE_TYPE_PUBLICKEYS {
-		prifilog.SimpleStringDump(prifilog.RECOVERABLE_ERROR, "Client " + strconv.Itoa(clientState.Id) + "; Expected message type "+strconv.Itoa(prifinet.MESSAGE_TYPE_PUBLICKEYS)+", got "+strconv.Itoa(messageType))
-		return ParamsFromRelay{}, errors.New("Expecting params from relay, got another message")
-	}
-		
-	publicKeys, err := prifinet.UnMarshalPublicKeyArrayFromByteArray(data, config.CryptoSuite)
-	if err != nil {
-		prifilog.SimpleStringDump(prifilog.SEVERE_ERROR, "Client " + strconv.Itoa(clientState.Id) + "; Could not unmarshall the keys")
-		return ParamsFromRelay{}, err
-	}
-
-	params := ParamsFromRelay{publicKeys, nClients}
-	return params, nil
-}
-
 func udpMessageStore(incomingMessages <-chan prifinet.Datagram,
 					requestMessage <-chan uint32,
 					outgoingMessages chan<- prifinet.DataWithMessageTypeAndConnId, 
@@ -465,15 +436,15 @@ func udpMessageStore(incomingMessages <-chan prifinet.Datagram,
 	for 
 	{
 		select {
-			case m := <-incomingMessages:
-				store[m.SeqNumber] = m.Data
-				prifilog.Println(prifilog.INFORMATION, "[udp_store] "+strconv.Itoa(int(m.SeqNumber))+" received")
+			case <-incomingMessages:
+				//store[m.SeqNumber] = m.Data
+				//prifilog.Println(prifilog.INFORMATION, "[udp_store] "+strconv.Itoa(int(m.SeqNumber))+" received")
 
 			case req := <-requestMessage:
-				prifilog.Println(prifilog.INFORMATION, "[udp_store] "+strconv.Itoa(int(req))+" requested")
+				//prifilog.Println(prifilog.INFORMATION, "[udp_store] "+strconv.Itoa(int(req))+" requested")
 				data, exists := store[req]
 				if !exists {
-					prifilog.Println(prifilog.RECOVERABLE_ERROR, "[udp_store] "+strconv.Itoa(int(req))+" don't have")
+					//prifilog.Println(prifilog.RECOVERABLE_ERROR, "[udp_store] "+strconv.Itoa(int(req))+" don't have")
 					dontHave <- req
 				} else {
 					outgoingMessages <- data
@@ -509,7 +480,7 @@ func readUdpDataFromRelay(relayUDPConn net.Conn, receivedMessages chan<- prifine
 	}
 }
 
-func readTcpDataFromRelay(relayTCPConn net.Conn, dataFromRelay chan<- prifinet.DataWithMessageTypeAndConnId, stopReadRelay chan bool, relayDisconnected chan bool, params *ClientState) {
+func readTcpDataFromRelay(relayTCPConn net.Conn, dataFromRelay chan<- prifinet.DataWithMessageTypeAndConnId, paramsFromRelay chan<- ParamsFromRelay, relayDisconnected chan bool, params *ClientState) {
 
 	for {
 		// Read the next (downstream) header from the relay
@@ -522,17 +493,23 @@ func readTcpDataFromRelay(relayTCPConn net.Conn, dataFromRelay chan<- prifinet.D
 		}
 
 		//parse the header
-		messageType := int(binary.BigEndian.Uint16(message[0:2]))
-		socksConnId := int(binary.BigEndian.Uint32(message[2:6]))
-		data        := message[6:]
-		
-		//communicate to main thread
-		dataFromRelay <- prifinet.DataWithMessageTypeAndConnId{messageType, socksConnId, data}
+		messageType  			:= int(binary.BigEndian.Uint16(message[0:2]))
+		socksConnIdOrNClients   := int(binary.BigEndian.Uint32(message[2:6]))
+		data       				:= message[6:]
 
-		if messageType == prifinet.MESSAGE_TYPE_DATA_AND_RESYNC || messageType == prifinet.MESSAGE_TYPE_LAST_UPLOAD_FAILED {
-			prifilog.SimpleStringDump(prifilog.RECOVERABLE_ERROR, "Client " + strconv.Itoa(params.Id) + " next message is gonna be some parameters, not data. Stop this goroutine")
-			return
-		}		
+		if messageType == prifinet.MESSAGE_TYPE_PUBLICKEYS {
+
+			prifilog.SimpleStringDump(prifilog.RECOVERABLE_ERROR, "Client " + strconv.Itoa(params.Id) + "; Got a public keys message")
+			publicKeys, err := prifinet.UnMarshalPublicKeyArrayFromByteArray(data, config.CryptoSuite)
+
+			if err != nil {
+				prifilog.SimpleStringDump(prifilog.SEVERE_ERROR, "Client " + strconv.Itoa(params.Id) + "; Could not unmarshall the keys")
+			}
+			paramsFromRelay <- ParamsFromRelay{publicKeys, socksConnIdOrNClients}
+		} else {
+			//communicate to main thread
+			dataFromRelay <- prifinet.DataWithMessageTypeAndConnId{messageType, socksConnIdOrNClients, data}
+		}
 	}
 }
 

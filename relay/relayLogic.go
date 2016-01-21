@@ -141,7 +141,7 @@ func restartProtocol(relayState *RelayState, newClients []prifinet.NodeRepresent
 	//add the new clients to the previous (filtered) list
 	for i:=0; i<len(newClients); i++{
 		relayState.addNewClient(newClients[i])
-		prifilog.Println(prifilog.NOTIFICATION, "Adding new client", newClients[i])
+		prifilog.Println(prifilog.NOTIFICATION, "Adding new client ", newClients[i].Id)
 	}
 	relayState.nClients = len(relayState.clients)
 
@@ -304,7 +304,7 @@ func processMessageLoop(relayState *RelayState){
 			prifinet.WriteMessage(relayState.UDPBroadcastConn, udpDownstreamData)
 			stats.AddDownstreamUDPCell(int64(len(udpDownstreamData)), relayState.nClients)
 
-			prifilog.Println(prifilog.INFORMATION, "Sent udp packet " + strconv.Itoa(int(udp_packet_segment_number)))
+			//prifilog.Println(prifilog.INFORMATION, "Sent udp packet " + strconv.Itoa(int(udp_packet_segment_number)))
 
 			//2. tell via TCP the sequence number
 			msgType := prifinet.MESSAGE_TYPE_UDP_DATA_DECLARATION
