@@ -16,12 +16,13 @@ var udp_packet_segment_number uint32 = 0 //todo : this should be random to provi
 var relayState 			*RelayState 
 var stateMachineLogger 	*prifilog.StateMachineLogger
 
-var	protocolFailed          = make(chan bool)
+var	protocolFailed                = make(chan bool)
 var	messagesTowardsProcessingLoop = make(chan int)
 var	messagesFromProcessingLoop    = make(chan int)
-var	deconnectedClients      = make(chan int)
-var	timedOutClients         = make(chan int)
-var	deconnectedTrustees     = make(chan int)
+var	disconnectedClients           = make(chan int)
+var	timedOutClients               = make(chan int)
+var	disconnectedTrustees          = make(chan int)
+var	timedOutTrustees              = make(chan int)
 
 func StartRelay(upstreamCellSize int, downstreamCellSize int, dummyDataDown bool, relayPort string, nClients int, nTrustees int, trusteesIp []string, reportingLimit int, useUDP bool) {
 
@@ -91,17 +92,20 @@ func StartRelay(upstreamCellSize int, downstreamCellSize int, dummyDataDown bool
 				isProtocolRunning = false
 				//TODO : re-run setup, something went wrong. Maybe restart from 0 ?
 
-			case deconnectedClient := <- deconnectedClients:
-				prifilog.Println(prifilog.WARNING, "Client", deconnectedClient, " has been indicated offline")
-				relayState.clients[deconnectedClient].Connected = false
+			case disconnectedClient := <- disconnectedClients:
+				prifilog.Println(prifilog.WARNING, "Client", disconnectedClient, " has been indicated offline")
+				relayState.clients[disconnectedClient].Connected = false
 
 			case timedOutClient := <- timedOutClients:
 				prifilog.Println(prifilog.WARNING, "Client", timedOutClient, " has been indicated offline (time out)")
 				relayState.clients[timedOutClient].Conn.Close()
 				relayState.clients[timedOutClient].Connected = false
 
-			case deconnectedTrustee := <- deconnectedTrustees:
-				prifilog.Println(prifilog.RECOVERABLE_ERROR, "Trustee", deconnectedTrustee, " has been indicated offline")
+			case disconnectedTrustee := <- disconnectedTrustees:
+				prifilog.Println(prifilog.SEVERE_ERROR, "Trustee", disconnectedTrustee, " has been indicated offline")
+
+			case timedOutTrustee := <- timedOutTrustees:
+				prifilog.Println(prifilog.SEVERE_ERROR, "Trustee", timedOutTrustee, " has been indicated offline")
 
 			case newClient := <- newClientWithIdAndPublicKeyChan:
 				//we tell processMessageLoop to stop when possible
@@ -208,9 +212,8 @@ func processMessageLoop(relayState *RelayState){
 	}
 
 	socksProxyConnections := make(map[int]chan<- []byte)
-	downstream            := make(chan prifinet.DataWithConnectionId)
+	downStream            := make(chan prifinet.DataWithConnectionId)
 	priorityDownStream    := make([]prifinet.DataWithConnectionId, 0)
-	nulldown              := prifinet.DataWithConnectionId{} // default empty downstream cell
 	
 	//window                := 2           // Maximum cells in-flight
 	//inflight              := 0         // Current cells in-flight
@@ -219,117 +222,24 @@ func processMessageLoop(relayState *RelayState){
 	
 	for currentSetupContinues {
 
-		//prifilog.Println(".")
-
 		//if needed, we bound the number of round per second
 		if PROCESSING_LOOP_SLEEP_TIME != 0 {
 			time.Sleep(PROCESSING_LOOP_SLEEP_TIME)
 			prifilog.StatisticReport("relay", "PROCESSING_LOOP_SLEEP_TIME", PROCESSING_LOOP_SLEEP_TIME.String())
 		}
 
-		//if the main thread tells us to stop (for re-setup)
-		tellClientsToResync := false
-		var mainThreadStatus int
-		select {
-			case mainThreadStatus = <- messagesTowardsProcessingLoop:
-				if mainThreadStatus == PROTOCOL_STATUS_GONNA_RESYNC {
-					prifilog.Println(prifilog.NOTIFICATION, "Main thread status is PROTOCOL_STATUS_GONNA_RESYNC, gonna warn the clients")
-					tellClientsToResync = true
-				}
-			default:
-		}
-
 		//we report the speed, bytes exchanged, etc
 		stats.ReportWithInfo("upCellSize "+strconv.Itoa(relayState.UpstreamCellSize)+" downCellSize "+
 			strconv.Itoa(relayState.DownstreamCellSize)+" nClients"+strconv.Itoa(relayState.nClients)+" nTrustees"+strconv.Itoa(relayState.nTrustees))
+
+		//if needed for logs, we kill after N iterations
 		if stats.ReportingDone() {
 			prifilog.Println(prifilog.WARNING, "Reporting limit matched; exiting the relay")
 			break;
 		}
 
-		// See if there's any downstream data to forward.
-		var downbuffer prifinet.DataWithConnectionId 
-		if len(priorityDownStream) > 0 {
-			downbuffer         = priorityDownStream[0]
-
-			if len(priorityDownStream) == 1 {
-				priorityDownStream = nil
-			} else {
-				priorityDownStream = priorityDownStream[1:]
-			}
-		} else {
-			select {
-				case downbuffer = <-downstream: // some data to forward downstream
-				default: 
-					downbuffer = nulldown
-			}
-		}
-
-		//compute the message type; if MESSAGE_TYPE_DATA_AND_RESYNC, the clients know they will resync
-		msgType := prifinet.MESSAGE_TYPE_DATA
-		if tellClientsToResync{
-			msgType = prifinet.MESSAGE_TYPE_DATA_AND_RESYNC
-			currentSetupContinues = false
-		}
-
-		//craft the message for clients
-		downstreamDataCellSize := len(downbuffer.Data)		
-		if relayState.UseDummyDataDown && relayState.DownstreamCellSize > len(downbuffer.Data){
-			//if we want dummy traffic down, force the size to be as big as the specified down cell size. The rest will be 0
-			downstreamDataCellSize = relayState.DownstreamCellSize
-		}
-		downstreamData := make([]byte, 6+downstreamDataCellSize)
-		binary.BigEndian.PutUint16(downstreamData[0:2], uint16(msgType))
-		binary.BigEndian.PutUint32(downstreamData[2:6], uint32(downbuffer.ConnectionId))//downbuffer.ConnectionId)) //this is the SOCKS connection ID
-		copy(downstreamData[6:], downbuffer.Data)
-					
-
-		// Broadcast the downstream data to all clients.
-
-		if !relayState.UseUDP {
-			//simple version, N unicast through TCP
-
-			//prifilog.Println(prifilog.NOTIFICATION, "Sending", len(downstreamData), "bytes over NUnicast TCP")
-			prifinet.NUnicastMessageToNodes(relayState.clients, downstreamData)
-			stats.AddDownstreamCell(int64(downstreamDataCellSize))
-		} else {
-
-			//prifilog.Println(prifilog.NOTIFICATION, "Sending", len(downstreamData), "bytes over UDP Broadcast")
-
-			//1. tell via TCP the sequence number + the length of the message
-			udp_packet_segment_number = (udp_packet_segment_number + 1) % MaxUint
-			sizeMessage := make([]byte, 8)
-			binary.BigEndian.PutUint32(sizeMessage[0:4], udp_packet_segment_number)
-			binary.BigEndian.PutUint32(sizeMessage[4:8], uint32(4+len(downstreamData)))
-
-			//prifilog.Println(prifilog.RECOVERABLE_ERROR, "Gonna send udp packet " + strconv.Itoa(int(udp_packet_segment_number)) + " size "+strconv.Itoa(int(4+len(downstreamData))))
-			prifinet.NUnicastMessageToNodes(relayState.clients, sizeMessage)
-			stats.AddDownstreamCell(int64(8))
-
-			//2. broadcast message through UDP
-			udpDownstreamData := make([]byte, 4+len(downstreamData))
-			binary.BigEndian.PutUint32(udpDownstreamData[0:4], udp_packet_segment_number)
-			copy(udpDownstreamData[4:], downstreamData)
-
-			prifinet.WriteMessage(relayState.UDPBroadcastConn, udpDownstreamData)
-			stats.AddDownstreamUDPCell(int64(len(udpDownstreamData)), relayState.nClients)
-
-			//TODO : this could happen in parallel
-			//acks := make([]bool, relayState.nClients)
-			for i := 0; i < relayState.nClients; i++ {
-				buffer, err := prifinet.ReadMessage(relayState.clients[i].Conn)
-				
-				if err != nil || len(buffer) != 1{
-					prifilog.Println(prifilog.RECOVERABLE_ERROR, "Client", i, " presumably did not fully get the UDP broadcast n°"+strconv.Itoa(int(udp_packet_segment_number))+", re-transmitting "+strconv.Itoa(len(downstreamData))+" bytes over TCP...")
-					prifinet.WriteMessage(relayState.clients[i].Conn, downstreamData)
-					stats.AddDownstreamRetransmitCell(int64(len(downstreamData)))
-				} else if buffer[0] == 0{
-					prifilog.Println(prifilog.RECOVERABLE_ERROR, "Client", i, " NACK'ed UDP broadcast n°"+strconv.Itoa(int(udp_packet_segment_number))+", re-transmitting "+strconv.Itoa(len(downstreamData))+" bytes over TCP...")
-					prifinet.WriteMessage(relayState.clients[i].Conn, downstreamData)
-					stats.AddDownstreamRetransmitCell(int64(len(downstreamData)))
-				}
-			}
-		}
+		//process the downstream cell
+		currentSetupContinues = relaySendDownStreamCell(messagesTowardsProcessingLoop, priorityDownStream, downStream, stats, relayState)
 
 		/* LBARMAN : disabled, until effect on performance is clear
 		inflight++
@@ -337,98 +247,9 @@ func processMessageLoop(relayState *RelayState){
 			continue // Get more cells in flight
 		}*/
 
-		relayState.CellCoder.DecodeStart(relayState.UpstreamCellSize, relayState.MessageHistory)
+		//process the upstream cell
+		currentSetupContinues = relayGetUpStreamCell(priorityDownStream, downStream, socksProxyConnections, stats, relayState)
 
-		// Collect a cell ciphertext from each trustee
-		errorInThisCell := false
-		for i := 0; i < relayState.nTrustees; i++ {	
-
-			//TODO : add a channel for timeout trustee
-			data, err := prifinet.ReadMessageWithTimeOut(i, relayState.trustees[i].Conn, CLIENT_READ_TIMEOUT, deconnectedTrustees, deconnectedTrustees)
-
-			if err {
-				errorInThisCell = true
-				break
-			} else {
-				relayState.CellCoder.DecodeTrustee(data)
-			}			
-		}
-
-		// Collect an upstream ciphertext from each client
-		if !errorInThisCell {
-			for i := 0; i < relayState.nClients; i++ {
-				data, err := prifinet.ReadMessageWithTimeOut(i, relayState.clients[i].Conn, CLIENT_READ_TIMEOUT, timedOutClients, deconnectedClients)
-
-				if err {
-					errorInThisCell = true
-					break
-				} else {
-					relayState.CellCoder.DecodeClient(data)
-				}
-			}
-		}
-
-		if errorInThisCell {
-			
-			prifilog.Println(prifilog.WARNING, "Relay main loop : Cell will be invalid, some party disconnected. Warning the clients...")
-
-			//craft the message for clients
-			downstreamData := make([]byte, 10)
-			binary.BigEndian.PutUint16(downstreamData[0:2], uint16(prifinet.MESSAGE_TYPE_LAST_UPLOAD_FAILED))
-			binary.BigEndian.PutUint32(downstreamData[2:6], uint32(downbuffer.ConnectionId)) //this is the SOCKS connection ID
-			prifinet.NUnicastMessageToNodes(relayState.clients, downstreamData)
-
-			break
-		} else {
-			upstreamPlaintext := relayState.CellCoder.DecodeCell()
-			//inflight--
-
-			stats.AddUpstreamCell(int64(relayState.UpstreamCellSize))
-
-			// Process the decoded cell
-
-			//check if we have a latency test message
-			pattern     := int(binary.BigEndian.Uint16(upstreamPlaintext[0:2]))
-			if pattern == 43690 { //1010101010101010
-				//clientId  := uint16(binary.BigEndian.Uint16(upstreamPlaintext[2:4]))
-				//timestamp := uint64(binary.BigEndian.Uint64(upstreamPlaintext[4:12]))
-
-				cellDown := prifinet.DataWithConnectionId{-1, upstreamPlaintext}
-				priorityDownStream = append(priorityDownStream, cellDown)
-
-				continue //the rest is for SOCKS
-			}
-
-			if upstreamPlaintext == nil {
-				continue // empty or corrupt upstream cell
-			}
-			if len(upstreamPlaintext) != relayState.UpstreamCellSize {
-				panic("DecodeCell produced wrong-size payload")
-			}
-
-			// Decode the upstream cell header (may be empty, all zeros)
-			socksConnId     := int(binary.BigEndian.Uint32(upstreamPlaintext[0:4]))
-			socksDataLength := int(binary.BigEndian.Uint16(upstreamPlaintext[4:6]))
-
-			if socksConnId == prifinet.SOCKS_CONNECTION_ID_EMPTY {
-				continue 
-			}
-
-			socksConn := socksProxyConnections[socksConnId]
-
-			// client initiating new connection
-			if socksConn == nil { 
-				socksConn = newSOCKSProxyHandler(socksConnId, downstream)
-				socksProxyConnections[socksConnId] = socksConn
-			}
-
-			if 6+socksDataLength > relayState.UpstreamCellSize {
-				log.Printf("upstream cell invalid length %d", 6+socksDataLength)
-				continue
-			}
-
-			socksConn <- upstreamPlaintext[6 : 6+socksDataLength]
-		}
 	}
 
 	if INBETWEEN_CONFIG_SLEEP_TIME != 0 {
@@ -439,6 +260,182 @@ func processMessageLoop(relayState *RelayState){
 	messagesFromProcessingLoop <- PROTOCOL_STATUS_RESYNCING
 
 	stateMachineLogger.StateChange("protocol-resync")
+}
+
+func relaySendDownStreamCell(messagesTowardsProcessingLoop chan int, priorityDownStream []prifinet.DataWithConnectionId, downStream chan prifinet.DataWithConnectionId, stats *prifilog.Statistics, relayState *RelayState) bool {
+
+	//this is the value we want to return to the relay's processing loop
+	currentSetupContinues := true
+
+	//if the main thread tells us to stop (for re-setup)
+	tellClientsToResync := false
+	var mainThreadStatus int
+	select {
+		case mainThreadStatus = <- messagesTowardsProcessingLoop:
+			if mainThreadStatus == PROTOCOL_STATUS_GONNA_RESYNC {
+				prifilog.Println(prifilog.NOTIFICATION, "Main thread status is PROTOCOL_STATUS_GONNA_RESYNC, gonna warn the clients")
+				tellClientsToResync = true
+			}
+		default:
+	}
+
+	nulldown := prifinet.DataWithConnectionId{} // default empty downstream cell
+	var downbuffer prifinet.DataWithConnectionId 
+
+	// See if there's any downstream data to forward.
+	if len(priorityDownStream) > 0 {
+		downbuffer         = priorityDownStream[0]
+
+		if len(priorityDownStream) == 1 {
+			priorityDownStream = nil
+		} else {
+			priorityDownStream = priorityDownStream[1:]
+		}
+	} else {
+		select {
+			case downbuffer = <-downStream: // some data to forward downstream
+			default: 
+				downbuffer = nulldown
+		}
+	}
+
+	//compute the message type; if MESSAGE_TYPE_DATA_AND_RESYNC, the clients know they will resync
+	msgType := prifinet.MESSAGE_TYPE_DATA
+	if tellClientsToResync{
+		msgType = prifinet.MESSAGE_TYPE_DATA_AND_RESYNC
+		currentSetupContinues = false
+	}
+
+	//craft the message for clients
+	downstreamDataCellSize := len(downbuffer.Data)		
+	if relayState.UseDummyDataDown && relayState.DownstreamCellSize > len(downbuffer.Data){
+		//if we want dummy traffic down, force the size to be as big as the specified down cell size. The rest will be 0
+		downstreamDataCellSize = relayState.DownstreamCellSize
+	}
+	downstreamData := make([]byte, 6+downstreamDataCellSize)
+	binary.BigEndian.PutUint16(downstreamData[0:2], uint16(msgType))
+	binary.BigEndian.PutUint32(downstreamData[2:6], uint32(downbuffer.ConnectionId))//downbuffer.ConnectionId)) //this is the SOCKS connection ID
+	copy(downstreamData[6:], downbuffer.Data)
+					
+
+	// Broadcast the downstream data to all clients.
+	if !relayState.UseUDP {
+		//simple version, N unicast through TCP
+
+		//prifilog.Println(prifilog.NOTIFICATION, "Sending", len(downstreamData), "bytes over NUnicast TCP")
+		prifinet.NUnicastMessageToNodes(relayState.clients, downstreamData)
+		stats.AddDownstreamCell(int64(downstreamDataCellSize))
+	}
+
+	return currentSetupContinues
+}
+
+func relayGetUpStreamCell(priorityDownStream []prifinet.DataWithConnectionId, downStream chan prifinet.DataWithConnectionId, socksProxyConnections map[int]chan<- []byte, stats *prifilog.Statistics, relayState *RelayState) bool {
+
+	//this is the value we want to return to the relay's processing loop
+	currentSetupContinues := true
+
+	relayState.CellCoder.DecodeStart(relayState.UpstreamCellSize, relayState.MessageHistory)
+
+	// Collect a cell ciphertext from each trustee
+	errorInThisCell := false
+	for i := 0; i < relayState.nTrustees; i++ {	
+
+		//TODO : add a channel for timeout trustee
+		data, err := prifinet.ReadMessageWithTimeOut(i, relayState.trustees[i].Conn, CLIENT_READ_TIMEOUT, timedOutTrustees, disconnectedTrustees)
+
+		if err {
+			errorInThisCell = true
+			break
+		} else {
+			relayState.CellCoder.DecodeTrustee(data)
+		}			
+	}
+
+	// Collect an upstream ciphertext from each client
+	if !errorInThisCell {
+		for i := 0; i < relayState.nClients; i++ {
+			data, err := prifinet.ReadMessageWithTimeOut(i, relayState.clients[i].Conn, CLIENT_READ_TIMEOUT, timedOutClients, disconnectedClients)
+
+			if err {
+				errorInThisCell = true
+				break
+			} else {
+				relayState.CellCoder.DecodeClient(data)
+				}
+		}
+	}
+
+	if errorInThisCell {
+			
+		prifilog.Println(prifilog.WARNING, "Relay main loop : Cell will be invalid, some party disconnected. Warning the clients...")
+
+		//craft the message for clients
+		downstreamData := make([]byte, 10)
+		binary.BigEndian.PutUint16(downstreamData[0:2], uint16(prifinet.MESSAGE_TYPE_LAST_UPLOAD_FAILED))
+		binary.BigEndian.PutUint32(downstreamData[2:6], uint32(prifinet.SOCKS_CONNECTION_ID_EMPTY)) //this is the SOCKS connection ID
+		prifinet.NUnicastMessageToNodes(relayState.clients, downstreamData)
+
+		currentSetupContinues = false
+
+	} else {
+
+		upstreamPlaintext := relayState.CellCoder.DecodeCell()
+		//inflight--
+
+		stats.AddUpstreamCell(int64(relayState.UpstreamCellSize))
+
+		// Process the decoded cell
+
+		//check if we have a latency test message
+		pattern     := int(binary.BigEndian.Uint16(upstreamPlaintext[0:2]))
+		if pattern == 43690 { //1010101010101010
+			//clientId  := uint16(binary.BigEndian.Uint16(upstreamPlaintext[2:4]))
+			//timestamp := uint64(binary.BigEndian.Uint64(upstreamPlaintext[4:12]))
+
+			cellDown := prifinet.DataWithConnectionId{-1, upstreamPlaintext}
+			priorityDownStream = append(priorityDownStream, cellDown)
+
+			return currentSetupContinues//the rest is for SOCKS
+		}
+
+		if upstreamPlaintext == nil {
+			return currentSetupContinues// empty or corrupt upstream cell
+		}
+			
+		if len(upstreamPlaintext) != relayState.UpstreamCellSize {
+			panic("DecodeCell produced wrong-size payload")
+		}
+
+		/*
+		 * SOCKS stuff
+		 */
+
+		// Decode the upstream cell header (may be empty, all zeros)
+		socksConnId     := int(binary.BigEndian.Uint32(upstreamPlaintext[0:4]))
+		socksDataLength := int(binary.BigEndian.Uint16(upstreamPlaintext[4:6]))
+
+		if socksConnId == prifinet.SOCKS_CONNECTION_ID_EMPTY {
+			return currentSetupContinues
+		}
+
+		socksConn := socksProxyConnections[socksConnId]
+
+		// client initiating new connection
+		if socksConn == nil { 
+			socksConn = newSOCKSProxyHandler(socksConnId, downStream)
+			socksProxyConnections[socksConnId] = socksConn
+		}
+
+		if 6+socksDataLength > relayState.UpstreamCellSize {
+			log.Printf("upstream cell invalid length %d", 6+socksDataLength)
+			return currentSetupContinues
+		}
+
+		socksConn <- upstreamPlaintext[6 : 6+socksDataLength]
+	}
+
+	return currentSetupContinues
 }
 
 func relayParseClientParams(tcpConn net.Conn, newClientChan chan prifinet.NodeRepresentation, clientsUseUDP bool) {

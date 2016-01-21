@@ -42,6 +42,8 @@ func main() {
 	useUdp             := flag.Bool("udp", true, "Improves performances by adding UDP broadcast from relay to clients")
 	windows            := flag.Int("window", 1, "The size of the relay's window")
 
+	_ = windows
+
 	//logging stuff
 	logLevel          := flag.Int("loglvl", prifilog.INFORMATION, "The minimum level of logs to display.")
 	logType           := flag.String("logtype", "file", "Choices : file, or netlogger.")
