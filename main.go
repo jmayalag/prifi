@@ -40,6 +40,7 @@ func main() {
 	downstreamCellSize := flag.Int("downcellsize", 30720, "Sets the size of one downstream cell, in bytes.")
 	latencyTest        := flag.Bool("latencytest", true, "Makes the client run a latency test. Disables the SOCKS proxy.")
 	useUdp             := flag.Bool("udp", true, "Improves performances by adding UDP broadcast from relay to clients")
+	windows            := flag.Int("window", 1, "The size of the relay's window")
 
 	//logging stuff
 	logLevel          := flag.Int("loglvl", prifilog.INFORMATION, "The minimum level of logs to display.")
@@ -66,6 +67,9 @@ func main() {
 	trusteesIp := []string{*trustee1Host, *trustee2Host, *trustee3Host, *trustee4Host, *trustee5Host}
 	
 	config.ReadConfig()
+
+	//hard reset
+	*useUdp = false
 
 	//starts the LOG sink server
 	if *isLogSink {
