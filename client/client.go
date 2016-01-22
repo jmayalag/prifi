@@ -157,10 +157,12 @@ func StartClient(clientId int, relayHostAddr string, expectedNumberOfClients int
 							//test if it is the answer from a ping
 							if len(data.Data) > 2 {
 								pattern     := int(binary.BigEndian.Uint16(data.Data[0:2]))
+
 								if pattern == 43690 { //1010101010101010
 									clientId  := int(binary.BigEndian.Uint16(data.Data[2:4]))
 
 									if clientId == clientState.Id {
+									
 										timestamp := int64(binary.BigEndian.Uint64(data.Data[4:12]))
 										diff := prifilog.MsTimeStamp() - timestamp
 

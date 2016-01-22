@@ -231,7 +231,7 @@ func processMessageLoop(relayState *RelayState){
 
 		//we report the speed, bytes exchanged, etc
 		stats.ReportWithInfo("upCellSize "+strconv.Itoa(relayState.UpstreamCellSize)+" downCellSize "+
-			strconv.Itoa(relayState.DownstreamCellSize)+" nClients"+strconv.Itoa(relayState.nClients)+" nTrustees"+strconv.Itoa(relayState.nTrustees))
+			strconv.Itoa(relayState.DownstreamCellSize)+" nClients "+strconv.Itoa(relayState.nClients)+" nTrustees "+strconv.Itoa(relayState.nTrustees)+" window "+strconv.Itoa(relayState.WindowSize))
 
 		//if needed for logs, we kill after N iterations
 		if stats.ReportingDone() {
@@ -240,7 +240,7 @@ func processMessageLoop(relayState *RelayState){
 		}
 
 		//process the downstream cell
-		currentSetupContinues = relaySendDownStreamCell(messagesTowardsProcessingLoop, priorityDownStream, downStream, stats, relayState)
+		currentSetupContinues, priorityDownStream = relaySendDownStreamCell(messagesTowardsProcessingLoop, priorityDownStream, downStream, stats, relayState)
 
 		inflightCells++ //we just sent one extra cell on the wire
 		if inflightCells < relayState.WindowSize {
@@ -248,7 +248,7 @@ func processMessageLoop(relayState *RelayState){
 		}
 
 		//process the upstream cell
-		currentSetupContinues = relayGetUpStreamCell(priorityDownStream, downStream, socksProxyConnections, stats, relayState)
+		currentSetupContinues, priorityDownStream = relayGetUpStreamCell(priorityDownStream, downStream, socksProxyConnections, stats, relayState)
 
 		inflightCells--
 	}
@@ -263,7 +263,7 @@ func processMessageLoop(relayState *RelayState){
 	stateMachineLogger.StateChange("protocol-resync")
 }
 
-func relaySendDownStreamCell(messagesTowardsProcessingLoop chan int, priorityDownStream []prifinet.DataWithConnectionId, downStream chan prifinet.DataWithConnectionId, stats *prifilog.Statistics, relayState *RelayState) bool {
+func relaySendDownStreamCell(messagesTowardsProcessingLoop chan int, priorityDownStream []prifinet.DataWithConnectionId, downStream chan prifinet.DataWithConnectionId, stats *prifilog.Statistics, relayState *RelayState) (bool, []prifinet.DataWithConnectionId) {
 
 	//this is the value we want to return to the relay's processing loop
 	currentSetupContinues := true
@@ -285,6 +285,7 @@ func relaySendDownStreamCell(messagesTowardsProcessingLoop chan int, priorityDow
 
 	// See if there's any downstream data to forward.
 	if len(priorityDownStream) > 0 {
+		
 		downbuffer         = priorityDownStream[0]
 
 		if len(priorityDownStream) == 1 {
@@ -328,10 +329,10 @@ func relaySendDownStreamCell(messagesTowardsProcessingLoop chan int, priorityDow
 		stats.AddDownstreamCell(int64(downstreamDataCellSize))
 	}
 
-	return currentSetupContinues
+	return currentSetupContinues, priorityDownStream
 }
 
-func relayGetUpStreamCell(priorityDownStream []prifinet.DataWithConnectionId, downStream chan prifinet.DataWithConnectionId, socksProxyConnections map[int]chan<- []byte, stats *prifilog.Statistics, relayState *RelayState) bool {
+func relayGetUpStreamCell(priorityDownStream []prifinet.DataWithConnectionId, downStream chan prifinet.DataWithConnectionId, socksProxyConnections map[int]chan<- []byte, stats *prifilog.Statistics, relayState *RelayState) (bool, []prifinet.DataWithConnectionId) {
 
 	//this is the value we want to return to the relay's processing loop
 	currentSetupContinues := true
@@ -397,11 +398,11 @@ func relayGetUpStreamCell(priorityDownStream []prifinet.DataWithConnectionId, do
 			cellDown := prifinet.DataWithConnectionId{-1, upstreamPlaintext}
 			priorityDownStream = append(priorityDownStream, cellDown)
 
-			return currentSetupContinues//the rest is for SOCKS
+			return currentSetupContinues, priorityDownStream//the rest is for SOCKS
 		}
 
 		if upstreamPlaintext == nil {
-			return currentSetupContinues// empty or corrupt upstream cell
+			return currentSetupContinues, priorityDownStream// empty or corrupt upstream cell
 		}
 			
 		if len(upstreamPlaintext) != relayState.UpstreamCellSize {
@@ -417,7 +418,7 @@ func relayGetUpStreamCell(priorityDownStream []prifinet.DataWithConnectionId, do
 		socksDataLength := int(binary.BigEndian.Uint16(upstreamPlaintext[4:6]))
 
 		if socksConnId == prifinet.SOCKS_CONNECTION_ID_EMPTY {
-			return currentSetupContinues
+			return currentSetupContinues, priorityDownStream
 		}
 
 		socksConn := socksProxyConnections[socksConnId]
@@ -430,13 +431,13 @@ func relayGetUpStreamCell(priorityDownStream []prifinet.DataWithConnectionId, do
 
 		if 6+socksDataLength > relayState.UpstreamCellSize {
 			log.Printf("upstream cell invalid length %d", 6+socksDataLength)
-			return currentSetupContinues
+			return currentSetupContinues, priorityDownStream
 		}
 
 		socksConn <- upstreamPlaintext[6 : 6+socksDataLength]
 	}
 
-	return currentSetupContinues
+	return currentSetupContinues, priorityDownStream
 }
 
 func relayParseClientParams(tcpConn net.Conn, newClientChan chan prifinet.NodeRepresentation, clientsUseUDP bool) {
