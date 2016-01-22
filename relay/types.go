@@ -53,5 +53,6 @@ type RelayState struct {
 
 	UpstreamCellSize		int
 	DownstreamCellSize		int
+	WindowSize				int
 	ReportingLimit			int
 }

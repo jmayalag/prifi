@@ -24,14 +24,14 @@ var	timedOutClients               = make(chan int)
 var	disconnectedTrustees          = make(chan int)
 var	timedOutTrustees              = make(chan int)
 
-func StartRelay(upstreamCellSize int, downstreamCellSize int, dummyDataDown bool, relayPort string, nClients int, nTrustees int, trusteesIp []string, reportingLimit int, useUDP bool) {
+func StartRelay(upstreamCellSize int, downstreamCellSize int, windowSize int, dummyDataDown bool, relayPort string, nClients int, nTrustees int, trusteesIp []string, reportingLimit int, useUDP bool) {
 
 	prifilog.SimpleStringDump(prifilog.NOTIFICATION, "Relay started")
 
 	stateMachineLogger = prifilog.NewStateMachineLogger("relay")
 	stateMachineLogger.StateChange("relay-init")
 
-	relayState = initiateRelayState(relayPort, nTrustees, nClients, upstreamCellSize, downstreamCellSize, dummyDataDown, reportingLimit, trusteesIp, useUDP)
+	relayState = initiateRelayState(relayPort, nTrustees, nClients, upstreamCellSize, downstreamCellSize, windowSize, dummyDataDown, reportingLimit, trusteesIp, useUDP)
 
 	//start the server waiting for clients
 	newClientConnectionsChan        := make(chan net.Conn) 	          			//channel with unparsed clients
@@ -187,7 +187,7 @@ func processMessageLoop(relayState *RelayState){
 
 	stateMachineLogger.StateChange("protocol-mainloop")
 
-	prifilog.InfoReport(prifilog.NOTIFICATION, "relay", fmt.Sprintf("new setup, %v clients and %v trustees", relayState.nClients, relayState.nTrustees))
+	prifilog.InfoReport(prifilog.NOTIFICATION, "relay", fmt.Sprintf("new setup : %v clients and %v trustees", relayState.nClients, relayState.nTrustees))
 
 	for i := 0; i<len(relayState.clients); i++ {
 		prifilog.InfoReport(prifilog.NOTIFICATION, "relay", fmt.Sprintf("new setup, client %v on %v", relayState.clients[i].Id, relayState.clients[i].Conn.LocalAddr()))
@@ -195,6 +195,8 @@ func processMessageLoop(relayState *RelayState){
 	for i := 0; i<len(relayState.trustees); i++ {
 		prifilog.InfoReport(prifilog.NOTIFICATION, "relay", fmt.Sprintf("new setup, trustee %v on %v", relayState.trustees[i].Id, relayState.trustees[i].Conn.LocalAddr()))
 	}
+
+	prifilog.InfoReport(prifilog.NOTIFICATION, "relay", fmt.Sprintf("window size is %v", relayState.WindowSize))
 
 	stats := prifilog.EmptyStatistics(relayState.ReportingLimit)
 
@@ -216,7 +218,7 @@ func processMessageLoop(relayState *RelayState){
 	priorityDownStream    := make([]prifinet.DataWithConnectionId, 0)
 	
 	//window                := 2           // Maximum cells in-flight
-	//inflight              := 0         // Current cells in-flight
+	inflightCells := 0
 
 	currentSetupContinues := true
 	
@@ -241,11 +243,10 @@ func processMessageLoop(relayState *RelayState){
 		//process the downstream cell
 		currentSetupContinues = relaySendDownStreamCell(messagesTowardsProcessingLoop, priorityDownStream, downStream, stats, relayState)
 
-		/* LBARMAN : disabled, until effect on performance is clear
-		inflight++
-		if inflight < window {
-			continue // Get more cells in flight
-		}*/
+		inflightCells++ //we just sent one extra cell on the wire
+		if inflightCells < relayState.WindowSize {
+			continue //send a new cell before waiting on the client's upstream ciphertexts
+		}
 
 		//process the upstream cell
 		currentSetupContinues = relayGetUpStreamCell(priorityDownStream, downStream, socksProxyConnections, stats, relayState)

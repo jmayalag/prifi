@@ -10,13 +10,14 @@ import (
 	prifilog "github.com/lbarman/prifi/log"
 )
 
-func initiateRelayState(relayPort string, nTrustees int, nClients int, upstreamCellSize int, downstreamCellSize int, useDummyDataDown bool, reportingLimit int, trusteesHosts []string, useUDP bool) *RelayState {
+func initiateRelayState(relayPort string, nTrustees int, nClients int, upstreamCellSize int, downstreamCellSize int, windowSize int, useDummyDataDown bool, reportingLimit int, trusteesHosts []string, useUDP bool) *RelayState {
 	params := new(RelayState)
 	
 	params.Name               = "Relay"
 	params.RelayPort          = relayPort
 	params.UpstreamCellSize   = upstreamCellSize
 	params.DownstreamCellSize = downstreamCellSize
+	params.WindowSize  		  = windowSize
 	params.ReportingLimit     = reportingLimit
 	params.UseUDP             = useUDP
 	params.UseDummyDataDown   = useDummyDataDown
@@ -55,6 +56,7 @@ func (relayState *RelayState) deepClone() *RelayState {
 	newRelayState.MessageHistory     = relayState.MessageHistory
 	newRelayState.UpstreamCellSize   = relayState.UpstreamCellSize
 	newRelayState.DownstreamCellSize = relayState.DownstreamCellSize
+	newRelayState.WindowSize  		 = relayState.WindowSize
 	newRelayState.ReportingLimit     = relayState.ReportingLimit
 	newRelayState.UseUDP 			 = relayState.UseUDP
 	newRelayState.UseDummyDataDown   = relayState.UseDummyDataDown
