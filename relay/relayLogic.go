@@ -217,7 +217,6 @@ func processMessageLoop(relayState *RelayState){
 	downStream            := make(chan prifinet.DataWithConnectionId)
 	priorityDownStream    := make([]prifinet.DataWithConnectionId, 0)
 	
-	//window                := 2           // Maximum cells in-flight
 	inflightCells := 0
 
 	currentSetupContinues := true
@@ -251,6 +250,7 @@ func processMessageLoop(relayState *RelayState){
 		//process the upstream cell
 		currentSetupContinues = relayGetUpStreamCell(priorityDownStream, downStream, socksProxyConnections, stats, relayState)
 
+		inflightCells--
 	}
 
 	if INBETWEEN_CONFIG_SLEEP_TIME != 0 {
