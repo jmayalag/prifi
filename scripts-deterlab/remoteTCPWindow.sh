@@ -9,7 +9,7 @@ for repeat in $(seq 0 $nrepeat); do
 
 	echo "Repetition [TCP-$repeat/$nrepeat]"
 
-	for window in $(seq 1 1 maxwindow); do
+	for window in $(seq 1 1 $maxwindow); do
 		for downCellSize in $(seq 10240 10240 61440); do
 			upCellSize=1024
 
@@ -32,9 +32,7 @@ for repeat in $(seq 0 $nrepeat); do
 			sleep 20
 
 		done
-	for
-
-	cp /tmp/sink.nohup /tmp/sink_TCP_${repeat}.nohup
+	done
 done
 
-cp /tmp/sink.nohup /tmp/sink_TCP_FINAL.nohup
+cp /tmp/sink.nohup /tmp/sink_TCP_WINDOW.nohup
