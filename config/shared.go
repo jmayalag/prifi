@@ -1,7 +1,7 @@
 package config
 
 import (
-	"github.com/lbarman/crypto/nist"
+	"github.com/dedis/crypto/nist"
 	"github.com/lbarman/prifi/dcnet"
 )
 

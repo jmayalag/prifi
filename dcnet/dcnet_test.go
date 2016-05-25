@@ -1,7 +1,7 @@
 package dcnet
 
 import (
-	"github.com/lbarman/crypto/nist"
+	"github.com/dedis/crypto/nist"
 	"testing"
 )
 

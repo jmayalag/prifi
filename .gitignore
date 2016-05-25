@@ -19,3 +19,4 @@ dissent/main.exe
 dissent/client
 dissent/client.exe
 *.exe
+.idea*

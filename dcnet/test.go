@@ -3,7 +3,7 @@ package dcnet
 import (
 	"bytes"
 	"fmt"
-	"github.com/lbarman/crypto/abstract"
+	"github.com/dedis/crypto/abstract"
 	"os"
 	"testing"
 	"time"

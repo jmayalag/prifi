@@ -7,25 +7,26 @@ import (
 	"net"
 	prifinet "github.com/lbarman/prifi/net"
 	prifilog "github.com/lbarman/prifi/log"
+	"github.com/lbarman/prifi/node"
+	"strconv"
 )
 
+// Invoked by the relay to advertise trustees' and clients' long-term public keys to each other
+// TODO: DAGA -- This function should advertise ephemeral keys not long-term ones.
 func (relayState *RelayState) advertisePublicKeys() error{
 	defer prifilog.TimeTrack("relay", "advertisePublicKeys", time.Now())
 
-	//Prepare the messages
-	dataForClients, err  := prifinet.MarshalNodeRepresentationArrayToByteArray(relayState.trustees)
-
+	dataForClients, err  := prifinet.MarshalNodeRepresentations(relayState.trustees)
 	if err != nil {
 		return err
 	}
 
-	dataForTrustees, err := prifinet.MarshalNodeRepresentationArrayToByteArray(relayState.clients)
-
+	dataForTrustees, err := prifinet.MarshalNodeRepresentations(relayState.clients)
 	if err != nil {
 		return err
 	}
 
-	//craft the message for clients
+	// Craft the message for clients
 	messageForClients := make([]byte, 6 + len(dataForClients))
 	binary.BigEndian.PutUint16(messageForClients[0:2], uint16(prifinet.MESSAGE_TYPE_PUBLICKEYS))
 	binary.BigEndian.PutUint32(messageForClients[2:6], uint32(relayState.nClients))
@@ -33,7 +34,7 @@ func (relayState *RelayState) advertisePublicKeys() error{
 
 	//TODO : would be cleaner if the trustees used the same structure for the message
 
-	//broadcast to the clients
+	// Broadcast to the clients
 	prifinet.NUnicastMessageToNodes(relayState.clients, messageForClients)
 	prifinet.NUnicastMessageToNodes(relayState.trustees, dataForTrustees)
 	prifilog.Println(prifilog.NOTIFICATION, "Advertising done, to", len(relayState.clients), "clients and", len(relayState.trustees), "trustees")
@@ -73,37 +74,36 @@ func relayParseClientParamsAux(tcpConn net.Conn, clientsUseUDP bool) (prifinet.N
 	return newClient, true
 }
 
-
 func newSOCKSProxyHandler(connId int, downstreamData chan<- prifinet.DataWithConnectionId) chan<- []byte {
 	upstreamData := make(chan []byte)
 	//go prifinet.RelaySocksProxy(connId, upstreamData, downstreamData)
 	return upstreamData
 }
 
-func connectToTrustee(trusteeId int, trusteeHostAddr string, relayState *RelayState) (prifinet.NodeRepresentation, error) {
-	prifilog.Println(prifilog.NOTIFICATION, "Relay connecting to trustee", trusteeId, "on address", trusteeHostAddr)
+func connectToTrustee(trusteeHostAddr string, relayState *RelayState) (prifinet.NodeRepresentation, error) {
+
+	prifilog.Println(prifilog.NOTIFICATION, "Relay connecting to trustee on address", trusteeHostAddr)
 
 	var conn net.Conn = nil
 	var err error = nil
 
-	//connect
-	for conn == nil{
+	// Connect to the trustee
+	for conn == nil {
 		conn, err = net.Dial("tcp", trusteeHostAddr)
 		if err != nil {
-			prifilog.Println(prifilog.RECOVERABLE_ERROR, "Can't connect to trustee on "+trusteeHostAddr+"; "+err.Error())
+			prifilog.Println(prifilog.RECOVERABLE_ERROR, "Can't connect to trustee on " + trusteeHostAddr + "; "+err.Error())
 			conn = nil
 			time.Sleep(FAILED_CONNECTION_WAIT_BEFORE_RETRY)
 		}
 	}
 
-	//tell the trustee server our parameters
+	// Tell the trustee server our parameters
 	buffer := make([]byte, 16)
 	binary.BigEndian.PutUint32(buffer[0:4], uint32(relayState.UpstreamCellSize))
 	binary.BigEndian.PutUint32(buffer[4:8], uint32(relayState.nClients))
 	binary.BigEndian.PutUint32(buffer[8:12], uint32(relayState.nTrustees))
-	binary.BigEndian.PutUint32(buffer[12:16], uint32(trusteeId))
 
-	prifilog.Println(prifilog.NOTIFICATION, "Writing; setup is", relayState.nClients, relayState.nTrustees, "role is", trusteeId, "cellSize ", relayState.UpstreamCellSize)
+	prifilog.Println(prifilog.NOTIFICATION, "Writing; setup is", relayState.nClients, relayState.nTrustees, "cellSize ", relayState.UpstreamCellSize)
 
 	err2 := prifinet.WriteMessage(conn, buffer)
 
@@ -112,29 +112,19 @@ func connectToTrustee(trusteeId int, trusteeHostAddr string, relayState *RelaySt
 		return prifinet.NodeRepresentation{}, err2
 	}
 	
-	// Read the incoming connection into the buffer.
-	buffer2, err2 := prifinet.ReadMessage(conn)
-	if err2 != nil {
-	    prifilog.Println(prifilog.RECOVERABLE_ERROR, "error reading:", err.Error())
-	    return prifinet.NodeRepresentation{}, err2
-	}
-
-	publicKey := config.CryptoSuite.Point()
-	err3 := publicKey.UnmarshalBinary(buffer2)
+	// Authenticate the trustee
+	newTrustee, err3 := node.RelayAuthentication(conn, relayState.PublicKeyRoster)
 
 	if err3 != nil {
-		prifilog.Println(prifilog.RECOVERABLE_ERROR, "can't unmarshal trustee key ! " + err3.Error())
+		prifilog.Println(prifilog.RECOVERABLE_ERROR, "Trustee authentication failed. " + err3.Error())
 		return prifinet.NodeRepresentation{}, err3
 	}
-
-	prifilog.Println(prifilog.INFORMATION, "Trustee", trusteeId, "is connected.")
-	
-	newTrustee := prifinet.NodeRepresentation{trusteeId, conn, true, publicKey}
+	prifilog.Println(prifilog.INFORMATION, "Trustee " + strconv.Itoa(newTrustee.Id) + " authenticated successfully.")
 
 	return newTrustee, nil
 }
 
-func relayServerListener(listeningPort string, newConnection chan net.Conn) {
+func relayListener(listeningPort string, newConnection chan net.Conn) {
 	listeningSocket, err := net.Listen("tcp", listeningPort)
 	if err != nil {
 		panic("Can't open listen socket:" + err.Error())

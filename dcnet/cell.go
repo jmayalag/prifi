@@ -1,7 +1,7 @@
 package dcnet
 
 import (
-	"github.com/lbarman/crypto/abstract"
+	"github.com/dedis/crypto/abstract"
 )
 
 // Cell encoding, decoding, and accountability interface.

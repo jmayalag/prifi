@@ -2,7 +2,7 @@ package relay
 
 import (
 	"github.com/lbarman/prifi/dcnet"
-	"github.com/lbarman/crypto/abstract"
+	"github.com/dedis/crypto/abstract"
 	"net"
 	"time"
 	prifinet "github.com/lbarman/prifi/net"
@@ -37,6 +37,7 @@ type RelayState struct {
 	
 	nClients				int
 	nTrustees				int
+	PublicKeyRoster         map[int]abstract.Point
 
 	UseUDP 					bool
 	UseDummyDataDown		bool

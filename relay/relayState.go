@@ -8,12 +8,14 @@ import (
 	"strconv"
 	prifinet "github.com/lbarman/prifi/net"
 	prifilog "github.com/lbarman/prifi/log"
+	"github.com/lbarman/prifi/node"
 )
 
-func initiateRelayState(relayPort string, nTrustees int, nClients int, upstreamCellSize int, downstreamCellSize int, windowSize int, useDummyDataDown bool, reportingLimit int, trusteesHosts []string, useUDP bool) *RelayState {
+func initRelayState(nodeConfig config.NodeConfig, relayPort string, nTrustees int, nClients int, upstreamCellSize int, downstreamCellSize int, windowSize int, useDummyDataDown bool, reportingLimit int, trusteesHosts []string, useUDP bool) *RelayState {
+
 	params := new(RelayState)
 	
-	params.Name               = "Relay"
+	params.Name               = nodeConfig.Name
 	params.RelayPort          = relayPort
 	params.UpstreamCellSize   = upstreamCellSize
 	params.DownstreamCellSize = downstreamCellSize
@@ -22,21 +24,16 @@ func initiateRelayState(relayPort string, nTrustees int, nClients int, upstreamC
 	params.UseUDP             = useUDP
 	params.UseDummyDataDown   = useDummyDataDown
 
-	//prepare the crypto parameters
-	rand 	:= config.CryptoSuite.Cipher([]byte(params.Name))
-	base	:= config.CryptoSuite.Point().Base()
+	// Generate own parameters
+	params.privateKey       = nodeConfig.PrivateKey
+	params.PublicKey        = nodeConfig.PublicKey
 
-	//generate own parameters
-	params.privateKey       = config.CryptoSuite.Secret().Pick(rand)
-	params.PublicKey        = config.CryptoSuite.Point().Mul(base, params.privateKey)
+	params.nClients        = nClients
+	params.nTrustees       = nTrustees
+	params.trusteesHosts   = trusteesHosts
+	params.PublicKeyRoster = nodeConfig.PublicKeyRoster
 
-	params.nClients      = nClients
-	params.nTrustees     = nTrustees
-	params.trusteesHosts = trusteesHosts
-
-	//sets the cell coder, and the history
 	params.CellCoder = config.Factory()
-
 	return params
 }
 
@@ -90,15 +87,19 @@ func connectToTrusteeAsync(trusteeChan chan prifinet.NodeRepresentation, id int,
 	var err error = errors.New("empty")
 	trustee := prifinet.NodeRepresentation{}
 
-	for err != nil {
-		trustee, err = connectToTrustee(id, host,relayState)
+	for i := 0; i < 3 && err != nil; i++ {
+		trustee, err = connectToTrustee(host, relayState)
 
 		if err != nil { 
-			prifilog.Println(prifilog.RECOVERABLE_ERROR, "Failed to connect to trustee " + strconv.Itoa(id) + " host " + host + ", retrying...")
+			prifilog.Println(prifilog.RECOVERABLE_ERROR, "Failed to connect to trustee " + strconv.Itoa(id) + " host " + host + ", retrying after two second...")
+			time.Sleep(2 * time.Second)
 		}
 	}
-	
-	trusteeChan <- trustee
+
+	if err == nil {
+		trusteeChan <- trustee
+	}
+	prifilog.Println(prifilog.RECOVERABLE_ERROR, "Cannot connect to the trustee.")
 }
 
 func (relayState *RelayState) connectToAllTrustees() {
@@ -107,12 +108,12 @@ func (relayState *RelayState) connectToAllTrustees() {
 
 	trusteeChan := make(chan prifinet.NodeRepresentation, relayState.nTrustees)
 
-	//connect to all the trustees
+	// Connect to all the trustees
 	for i:= 0; i < relayState.nTrustees; i++ {
 		go connectToTrusteeAsync(trusteeChan, i, relayState.trusteesHosts[i], relayState)
 	}
 
-	//wait for all the trustees to be connected
+	// Wait for all the trustees to be connected
 	i := 0
 	for i < relayState.nTrustees {
 		select {
@@ -125,7 +126,7 @@ func (relayState *RelayState) connectToAllTrustees() {
 		}
 	}
 
-	prifilog.Println(prifilog.INFORMATION, "Trustees connecting done, ", len(relayState.trustees), "trustees connected")
+	prifilog.Println(prifilog.INFORMATION, "Trustee connected,", len(relayState.trustees), "trustees connected")
 }
 
 func (relayState *RelayState) disconnectFromAllTrustees() {
@@ -139,25 +140,32 @@ func (relayState *RelayState) disconnectFromAllTrustees() {
 	prifilog.Println(prifilog.INFORMATION, "Trustees disonnecting done, ", len(relayState.trustees), "trustees disconnected")
 }
 
+func welcomeNewClients(newConnectionsChan chan net.Conn, newClientChan chan prifinet.NodeRepresentation, clientsUseUDP bool) {
 
-func welcomeNewClients(newConnectionsChan chan net.Conn, newClientChan chan prifinet.NodeRepresentation, clientsUseUDP bool) {	
 	newClientsToParse := make(chan prifinet.NodeRepresentation)
 
 	for {
 		select{
-			//accept the TCP connection, and parse the parameters
-			case newConnection := <-newConnectionsChan: 
-				prifilog.Println(prifilog.INFORMATION, "welcomeNewClients : New connection is ready")
-				go relayParseClientParams(newConnection, newClientsToParse, clientsUseUDP)
+			// Accept the TCP connection and authenticate the client
+			case newConnection := <-newConnectionsChan:
+				go func() {
+					// Authenticate the client
+					newClient, err := node.RelayAuthentication(newConnection, relayState.PublicKeyRoster)
+
+					if err == nil {
+						prifilog.Println(prifilog.INFORMATION, "Client " + strconv.Itoa(newClient.Id) + " authenticated successfully.")
+						newClientsToParse <- newClient
+					} else {
+						prifilog.Println(prifilog.WARNING, "Client " + strconv.Itoa(newClient.Id) + " authentication failed.")
+					}
+				}()
 			
-			//once client is ready (we have params+pk), forward to the other channel
+			// Once client is ready, forward to the other channel
 			case newClient := <-newClientsToParse: 
-				prifilog.Println(prifilog.INFORMATION, "welcomeNewClients : New client is ready")
 				newClientChan <- newClient
 
 			default: 
 				time.Sleep(NEWCLIENT_CHECK_SLEEP_TIME) //todo : check this duration
-				//prifilog.StatisticReport("relay", "NEWCLIENT_CHECK_SLEEP_TIME", "NEWCLIENT_CHECK_SLEEP_TIME")
 		}
 	}
 }
@@ -180,7 +188,7 @@ func (relayState *RelayState) waitForDefaultNumberOfClients(newClientConnections
 					//prifilog.StatisticReport("relay", "SLEEP_100ms", "100ms")
 		}
 	}
-	prifilog.Println(prifilog.INFORMATION, "Client connecting done, ", len(relayState.clients), "clients connected")
+	prifilog.Println(prifilog.INFORMATION, "Client connected,", len(relayState.clients), "clients connected")
 }
 
 func (relayState *RelayState) excludeDisconnectedClients(){
