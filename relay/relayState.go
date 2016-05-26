@@ -87,7 +87,7 @@ func connectToTrusteeAsync(trusteeChan chan prifinet.NodeRepresentation, id int,
 	var err error = errors.New("empty")
 	trustee := prifinet.NodeRepresentation{}
 
-	for i := 0; i < 3 && err != nil; i++ {
+	for i := 0; i < config.NUM_RETRY_CONNECT && err != nil; i++ {
 		trustee, err = connectToTrustee(host, relayState)
 
 		if err != nil { 

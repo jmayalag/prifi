@@ -69,7 +69,7 @@ func (c *NodeConfig) Load(name string) error {
 
 	// Reconstruct and verify the public key
 	c.PublicKey = suite.Point().Mul(nil, c.PrivateKey)
-	if PubId(suite, c.PublicKey) != c.PubId {
+	if getPublicStringIdentifier(suite, c.PublicKey) != c.PubId {
 		return errors.New("Secret does not yield public key " + c.PubId)
 	}
 
@@ -153,10 +153,10 @@ func (c *NodeConfig) GenKeyPair(suite abstract.Suite, random cipher.Stream) {
 	c.Suite = suite.String()
 	c.PrivateKey = suite.Secret().Pick(random)
 	c.PublicKey = suite.Point().Mul(nil, c.PrivateKey)
-	c.PubId = PubId(suite, c.PublicKey)
+	c.PubId = getPublicStringIdentifier(suite, c.PublicKey)
 }
 
-func PubId(suite abstract.Suite, publicKey abstract.Point) string {
+func getPublicStringIdentifier(suite abstract.Suite, publicKey abstract.Point) string {
 	buf, _ := publicKey.MarshalBinary()
 	hash := abstract.Sum(suite, buf)
 	return base64.RawURLEncoding.EncodeToString(hash)
