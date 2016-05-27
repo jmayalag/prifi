@@ -3,7 +3,7 @@ package relay
 import (
 	"encoding/binary"
 	"github.com/lbarman/prifi/config"
-	"github.com/lbarman/crypto/abstract"
+	"github.com/dedis/crypto/abstract"
 	"time"
 	prifinet "github.com/lbarman/prifi/net"
 	prifilog "github.com/lbarman/prifi/log"

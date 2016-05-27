@@ -2,7 +2,7 @@ package net
 
 import (
 	"net"
-	"github.com/lbarman/crypto/abstract"
+	"github.com/dedis/crypto/abstract"
 )
 
 type NodeRepresentation struct {

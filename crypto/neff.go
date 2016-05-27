@@ -3,7 +3,7 @@ package crypto
 import (
 	"math/rand"
 	"fmt"
-	"github.com/lbarman/crypto/abstract"
+	"github.com/dedis/crypto/abstract"
 )
 
 func NeffShuffle(x []abstract.Point, base abstract.Point, suite abstract.Suite) ([]abstract.Point, abstract.Point) {

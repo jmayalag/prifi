@@ -9,7 +9,7 @@ import (
 	"io"
 	"errors"
 	"net"
-	"github.com/lbarman/crypto/abstract"
+	"github.com/dedis/crypto/abstract"
 	"github.com/lbarman/prifi/config"
 )
 
@@ -544,7 +544,7 @@ func WriteBasePublicKeysAndProofToConn(conn net.Conn, base abstract.Point, keys 
 	return nil
 }
 
-func MarshalNodeRepresentationArrayToByteArray(nodes []NodeRepresentation) ([]byte, error) {
+func MarshalNodeRepresentations(nodes []NodeRepresentation) ([]byte, error) {
 	var byteArray []byte
 
 	msgType := make([]byte, 2)
@@ -692,4 +692,37 @@ func UnMarshalPublicKeyArrayFromByteArray(buffer []byte, cryptoSuite abstract.Su
 	}
 
 	return publicKeys, nil
+}
+
+// Marshals a sequence of byte arrays
+// Each input array must have less than 65536 bytes (65KB)
+func MarshalArrays(arrs ...[]byte) []byte {
+	size := 0
+	for _, arr := range arrs {
+		size += len(arr) + 2
+	}
+
+	i := 0
+	res := make([]byte, size)
+	for _, arr := range arrs {
+		len := len(arr)
+		binary.BigEndian.PutUint16(res[i:i + 2], uint16(len))
+		copy(res[i + 2 : i + len + 2], arr)
+		i += len + 2
+	}
+	return res
+}
+
+// Unmarshals a sequence of byte arrays
+func UnmarshalArrays(input []byte) [][]byte {
+	var arrs [][]byte
+
+	for i := 0; i < len(input); {
+		len := int(binary.BigEndian.Uint16(input[i : i + 2]))
+		arr := make([]byte, len)
+		copy(arr, input[i + 2 : i + 2 + len])
+		arrs = append(arrs, arr)
+		i += len + 2
+	}
+	return arrs
 }

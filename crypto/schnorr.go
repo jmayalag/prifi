@@ -6,8 +6,8 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/lbarman/crypto/abstract"
-	"github.com/lbarman/crypto/nist"
+	"github.com/dedis/crypto/abstract"
+	"github.com/dedis/crypto/nist"
 )
 
 // A basic, verifiable signature
