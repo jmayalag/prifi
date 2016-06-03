@@ -7,31 +7,45 @@ PriFi: Low-Latency Tracking-Resistant Mobile Computing
 
 1. Introduction
    
-   PriFi is an anonymous communication protocol with provable traffic-analysis resistance and small latency suitable 
-   for wireless networks. This provides a network access mechanism for protecting members of an organization who 
-   access the Internet while on-site (via privacy-preserving WiFi networking) and while off-site (via 
-   privacy-preserving virtual private networking or VPN). The small latency cost is acheved by leveraging the 
-   client-relay-server topology common in WiFi networks.
+   PriFi is an anonymous communication protocol with provable traffic-analysis resistance and 
+   small latency suitable for wireless networks. This provides a network access mechanism for 
+   protecting members of an organization who access the Internet while on-site (via 
+   privacy-preserving WiFi networking) and while off-site (via privacy-preserving virtual private 
+   networking or VPN). The small latency cost is acheved by leveraging the client-relay-server 
+   topology common in WiFi networks.
    
    Main entities :
       * Relay
       * TrusteeServer (spawns Trustees)
       * Clients
 
-   These collaborate to implement a Dining Cryptographer's network that can anonymize the client upstream traffic.
+   These collaborate to implement a Dining Cryptographer's network that can anonymize the client 
+   upstream traffic.
    
 2. Coding style
    
    Gofmt:
-      We use Gofmt which is the official formating style for Go. Gofmt automatically formats Go source code, and 
-      thus there's no need to spend time lining up the code or think how many spaces are needed between math operators.
-      This formatting style is recommended by Effective Go: https://golang.org/doc/effective_go.html#formatting
+      We use Gofmt which is the official formating style for Go. Gofmt automatically formats Go 
+      source code, and thus there's no need to spend time lining up the code or think how many 
+      spaces are needed between math operators. Tis formatting style is recommended by 
+      Effective Go: https://golang.org/doc/effective_go.html#formatting
        
       More details on how to use Gofmt: https://blog.golang.org/go-fmt-your-code
        
    Line width:
-       The preferred number of characters per line is 120. This makes coding in laptops easier. One or two characters
-       beyond 120 is fine. Queries and regular expressions may go beyond this for obvious reasons. Gofmt uses tabs 
-       for indentation so feel free to change your editor's tab length if 120 characters is still large for your screen.    
+       The preferred number of characters per line is 120. This makes coding in laptops easier. 
+       One or two characters beyond 120 is fine. Queries and regular expressions may go beyond 
+       this for obvious reasons. Gofmt uses tabs for indentation so feel free to change your 
+       editor's tab length if 120 characters is still large for your screen.
+        
+   Comments:
+       Comments should start with a capital letter and there's one space after // and /*.
+       For example:
+
+       // Prepare crypto parameters
+       rand := config.CryptoSuite.Cipher([]byte(nodeState.Name))
+
+       Every exported (public) function should have at least one line of comment right before
+       the function signature describing what the function is supposed to do.
 
    
