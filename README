@@ -3,7 +3,8 @@ PriFi: Low-Latency Tracking-Resistant Mobile Computing
    Table Of Contents:
 
       1. Introduction
-      2. Coding style
+      2. How to run the system
+      3. Coding style
 
 1. Introduction
    
@@ -21,8 +22,56 @@ PriFi: Low-Latency Tracking-Resistant Mobile Computing
 
    These collaborate to implement a Dining Cryptographer's network that can anonymize the client 
    upstream traffic.
+
+2. How to run the system
+
+2.1. Compiling PriFi
+
+   Use the following command to compile the project:
+   >>> go build -o prifi main.go
+
+   Run this in the project main folder. This will create an executable file named "prifi" that can
+   run ant type of node (client, relay, or trustee).
+
+2.2. Initial Configuration
+
+   After compiling the program, run the following command to create configuration directories for each node:
+   >>> prifi -config
+
+   This will create configuration data for a default setting, which consists of one client, one trustee
+   server and one relay. To generate configuration data for a specific setting, run:
+   >>> prifi -config -nclients=3 -ntrustees=2
+
+   The configuraton generator will create one directory for each node in the local users directory.
+   Depending on the node's type, its config directory will be named with the following format:
+   prifi-client-<client's sequence number>
+   prifi-trustee-<trustee's sequence number>
+   prifi-relay
+
+   For example, for the setting with 3 clients and 2 trustees, five directories will be created:
+   prifi-client-0
+   prifi-client-1
+   prifi-client-2
+   prifi-trustee-0
+   prifi-trustee-1
+   prifi-relay
+
+   For each client and trustee, the config directory will contain two files:
+   config.tml: A human-readable TOML-format file with the node's configuration information
+   A .sec file containing the node's secret key
+
+   For the relay, the config folder will contain a the above two files as well as a file named "roster"
+   which will contain a roster of all public keys of all clients and trustees.
+
+2.3. Running a node
+
+   A node can be run using the following command:
+   >>> prifi -node-name=<name of the node>
+
+   The name of the node is set automatically by the configuration generator and is euqal to the name
+   of node's configuration directory (see Initial Configuration section).
    
-2. Coding style
+3. Coding style
    
    Gofmt:
       We use Gofmt which is the official formating style for Go. Gofmt automatically formats Go 
