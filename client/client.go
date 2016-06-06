@@ -53,6 +53,7 @@ func StartClient(nodeConfig config.NodeConfig, relayHostAddr string, expectedNum
 	}
 
 	exitClient := false
+	authenticated := false
 
 	for !exitClient {
 
@@ -75,11 +76,14 @@ func StartClient(nodeConfig config.NodeConfig, relayHostAddr string, expectedNum
 			}
 		}
 
-		// Authenticate the client via the relay
-		if err := node.NodeAuthentication(relayTCPConn, clientState.NodeState); err != nil {
-			// TODO: Client authentication failed. Retry a few times.
-			prifilog.SimpleStringDump(prifilog.SEVERE_ERROR, "Authentication failed.")
-			os.Exit(1)
+		if !authenticated {
+			// Authenticate the client via the relay
+			if err := node.NodeAuthentication(relayTCPConn, clientState.NodeState); err != nil {
+				// TODO: Client authentication failed. Retry a few times.
+				prifilog.SimpleStringDump(prifilog.SEVERE_ERROR, "Authentication failed.")
+				os.Exit(1)
+			}
+			authenticated = true
 		}
 
 		prifilog.SimpleStringDump(prifilog.INFORMATION, "Client "+strconv.Itoa(nodeConfig.Id)+"; Waiting for relay params + public keys...")
