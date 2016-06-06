@@ -1,4 +1,4 @@
 @echo off
 cd ..\\
-go run main.go -trusteesrv -logtype=netlogger
+go run main.go -node=prifi-trustee-0 -logtype=netlogger
 pause

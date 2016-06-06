@@ -29,7 +29,7 @@ func main() {
 
 	// Roles
 	isLogSink := flag.Bool("logsink", false, "Start log sink node")
-	nodeName := flag.String("nodeName", "", "Node name")
+	nodeName := flag.String("node", "", "Node name")
 	useSocksProxy := flag.Bool("socks", true, "Starts a useSocksProxy proxy for the client")
 	isConfig := flag.Bool("config", false, "Configure the system")
 

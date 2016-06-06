@@ -13,6 +13,7 @@ PriFi: Low-Latency Tracking-Resistant Mobile Computing
          3.1. Client authentication
       4. Code structure
       5. Coding style
+      6. References
 
 1. Introduction
    
@@ -33,28 +34,33 @@ PriFi: Low-Latency Tracking-Resistant Mobile Computing
 2.1. Compiling PriFi
 
    Use the following command to compile the project:
+
    >>> go build -o prifi main.go
 
-   Run this in the project main folder. This will create an executable file named "prifi" that can
-   run ant type of node (client, relay, or trustee).
+   Run this in the project main directory. This will create an executable file named "prifi" that
+   can run ant type of node (client, relay, or trustee).
 
 2.2. Initial configuration
 
    After compiling the program, run the following command to create configuration directories for
    each node:
+
    >>> prifi -config
 
    This will create configuration data for a default setting, which consists of one client, one
    trustee server and one relay. To generate configuration data for a specific setting, run:
+
    >>> prifi -config -nclients=3 -ntrustees=2
 
    The configuraton generator will create one directory for each node in the local users directory.
    Depending on the node's type, its config directory will be named with the following format:
+
    prifi-client-<client's sequence number>
    prifi-trustee-<trustee's sequence number>
    prifi-relay
 
    For example, for the setting with 3 clients and 2 trustees, five directories will be created:
+
    prifi-client-0
    prifi-client-1
    prifi-client-2
@@ -63,16 +69,17 @@ PriFi: Low-Latency Tracking-Resistant Mobile Computing
    prifi-relay
 
    For each client and trustee, the config directory will contain two files:
-   config.tml: A human-readable TOML-format file with the node's configuration information
-   A .sec file containing the node's secret key
+   (1) config.tml: A human-readable TOML-format file with the node's configuration information;
+   (2) a .sec file containing the node's secret key.
 
-   For the relay, the config folder will contain a the above two files as well as a file named
+   For the relay, the config directory will contain a the above two files as well as a file named
    "roster" which will contain a roster of all public keys of all clients and trustees.
 
 2.3. Running a node
 
    A node can be run using the following command:
-   >>> prifi -node-name=<name of the node>
+
+   >>> prifi -node=<name of the node>
 
    The name of the node is set automatically by the configuration generator and is euqal to the name
    of the node's configuration directory (see Initial Configuration section).
@@ -158,9 +165,9 @@ PriFi: Low-Latency Tracking-Resistant Mobile Computing
    TBD
 
 5. Coding style
-   
+
    Gofmt:
-      We use Gofmt which is the official formating style for Go. Gofmt automatically formats Go 
+      We use Gofmt which is the official formating style for Go. Gofmt automatically formats Go
       source code, and thus there's no need to spend time lining up the code or think how many 
       spaces are needed between math operators. Tis formatting style is recommended by 
       Effective Go: https://golang.org/doc/effective_go.html#formatting
@@ -168,22 +175,22 @@ PriFi: Low-Latency Tracking-Resistant Mobile Computing
       More details on how to use Gofmt: https://blog.golang.org/go-fmt-your-code
        
    Line width:
-       The preferred number of characters per line is 120. This makes coding in laptops easier. 
-       One or two characters beyond 120 is fine. Queries and regular expressions may go beyond 
-       this for obvious reasons. Gofmt uses tabs for indentation so feel free to change your 
-       editor's tab length if 120 characters is still large for your screen.
+      The preferred number of characters per line is 120. This makes coding in laptops easier.
+      One or two characters beyond 120 is fine. Queries and regular expressions may go beyond
+      this for obvious reasons. Gofmt uses tabs for indentation so feel free to change your
+      editor's tab length if 120 characters is still large for your screen.
         
    Comments:
-       Comments should start with a capital letter and there's one space after // and /*.
-       For example:
+      Comments should start with a capital letter and there's one space after // and /*.
+      For example:
 
-       // Prepare crypto parameters
-       rand := config.CryptoSuite.Cipher([]byte(nodeState.Name))
+      // Prepare crypto parameters
+      rand := config.CryptoSuite.Cipher([]byte(nodeState.Name))
 
-       Every exported (public) function should have at least one line of comment right before
-       the function signature describing what the function is supposed to do.
+      Every exported (public) function should have at least one line of comment right before
+      the function signature describing what the function is supposed to do.
 
-5. References
+6. References
    [CP92] http://link.springer.com/chapter/10.1007%2F3-540-48071-4_7
    [CS97] ftp://ftp.inf.ethz.ch/pub/crypto/publications/CamSta97b.pdf
    [Neff03] http://freehaven.net/anonbib/cache/shuffle:ccs01.pdf

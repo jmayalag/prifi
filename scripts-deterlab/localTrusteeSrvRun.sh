@@ -14,5 +14,6 @@ pkill -f ${program}
 
 
 echo "Starting the trustee server $1, $logParamsString,  log redirected to ${nohupoutfolder}${nohuptrusteesrvname}${id}${nohupext}..."
-nohup "${programpath}${program}" -trusteesrv $logParamsString 1>>${nohupoutfolder}${nohuptrusteesrvname}${id}${nohupext} 2>&1 &
+nohup "${programpath}${program}" -node=prifi-trustee-$1 $logParamsString
+1>>${nohupoutfolder}${nohuptrusteesrvname}${id}${nohupext} 2>&1 &
 echo "Done."
