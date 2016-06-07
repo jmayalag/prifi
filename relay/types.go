@@ -56,4 +56,6 @@ type RelayState struct {
 	DownstreamCellSize		int
 	WindowSize				int
 	ReportingLimit			int
+
+	AuthMethod int
 }

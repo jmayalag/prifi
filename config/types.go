@@ -22,6 +22,7 @@ type NodeInfo struct {
 type nodePubConfig struct {
 	NodeInfo             // My public info
 	NodesInfo []NodeInfo // Other nodes' public info
+	AuthMethod int        // Authentication method
 }
 
 // Node's configuration
