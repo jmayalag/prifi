@@ -33,7 +33,7 @@ PriFi: Low-Latency Tracking-Resistant Mobile Computing
 2. Running the system
 ---------------------
 
-2.1. Compiling PriFi
+### 2.1. Compiling PriFi
 
    Use the following command to compile the project:
 
@@ -42,33 +42,33 @@ PriFi: Low-Latency Tracking-Resistant Mobile Computing
    Run this in the project main directory. This will create an executable file named "prifi" that
    can run ant type of node (client, relay, or trustee).
 
-2.2. Initial configuration
+### 2.2. Initial configuration
 
    After compiling the program, run the following command to create configuration directories for
    each node:
 
-		prifi -config
+	prifi -config
 
    This will create configuration data for a default setting, which consists of one client, one
    trustee server and one relay. To generate configuration data for a specific setting, run:
 
-		prifi -config -nclients=3 -ntrustees=2
+	prifi -config -nclients=3 -ntrustees=2
 
    The configuraton generator will create one directory for each node in the local users directory.
    Depending on the node's type, its config directory will be named with the following format:
 
-		prifi-client-<client's sequence number>
-		prifi-trustee-<trustee's sequence number>
-		prifi-relay
+   prifi-client-<client's sequence number>
+   prifi-trustee-<trustee's sequence number>
+   prifi-relay
 
    For example, for the setting with 3 clients and 2 trustees, five directories will be created:
 
-		prifi-client-0
-		prifi-client-1
-		prifi-client-2
-		prifi-trustee-0
-		prifi-trustee-1
-		prifi-relay
+   prifi-client-0
+   prifi-client-1
+   prifi-client-2
+   prifi-trustee-0
+   prifi-trustee-1
+   prifi-relay
 
    For each client and trustee, the config directory will contain two files:
    (1) config.tml: A human-readable TOML-format file with the node's configuration information;
@@ -77,11 +77,11 @@ PriFi: Low-Latency Tracking-Resistant Mobile Computing
    For the relay, the config directory will contain a the above two files as well as a file named
    "roster" which will contain a roster of all public keys of all clients and trustees.
 
-2.3. Running a node
+### 2.3. Running a node
 
    A node can be run using the following command:
 
-		prifi -node=<name of the node>
+   prifi -node=<name of the node>
 
    The name of the node is set automatically by the configuration generator and is euqal to the name
    of the node's configuration directory (see Initial Configuration section).
@@ -113,7 +113,7 @@ PriFi: Low-Latency Tracking-Resistant Mobile Computing
    empty messages. Every server also sends a ciphertext to the relay. The relay then participates
    in a distributed protocol jointly with the servers to obtain M from the collected ciphertexts.
 
-3.1. Authentication
+### 3.1. Authentication
 
    When a node (client or trustee) comes online, he sends an authentication request to the relay.
    This request contains the client's unique ID and the client's preferred method of
@@ -125,7 +125,7 @@ PriFi: Low-Latency Tracking-Resistant Mobile Computing
    authentication methods, the node proves to the relay that he posseses the corresponding
    private key.
 
-3.1.1 Basic authentication
+### 3.1.1 Basic authentication
 
    This protocol is similar to SSH using the Schnorr's signature scheme [Schnorr91]:
 
@@ -137,7 +137,7 @@ PriFi: Low-Latency Tracking-Resistant Mobile Computing
 
    (3) The relay verifies the signature and responds with an accept/reject message.
 
-3.1.2. Anonymous authentication
+### 3.1.2. Anonymous authentication
 
    PriFi prevents intersection attacks such as "who is online?" using an anonymous authentication
    scheme called Deniable Anonymous Group Authentication (DAGA) [SPW+14], wherein members of the
@@ -160,7 +160,7 @@ PriFi: Low-Latency Tracking-Resistant Mobile Computing
    The trustee's proof is a non-interactive protocol based on Schnorr's proof of knowledge of
    discrete logarithms [Schnorr91] and proof of equality of discrete logarithms [CP92].
 
-3.1.3. Trust on first use
+### 3.1.3. Trust on first use
 
    TBD
 
