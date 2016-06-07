@@ -16,6 +16,7 @@ PriFi: Low-Latency Tracking-Resistant Mobile Computing
       6. References
 
 1. Introduction
+---------------
    
    PriFi is an anonymous communication protocol with provable traffic-analysis resistance and 
    small latency suitable for wireless networks. This provides a network access mechanism for 
@@ -30,12 +31,13 @@ PriFi: Low-Latency Tracking-Resistant Mobile Computing
    addition to running our protocol
 
 2. Running the system
+---------------------
 
 2.1. Compiling PriFi
 
    Use the following command to compile the project:
 
-   >>> go build -o prifi main.go
+		go build -o prifi main.go
 
    Run this in the project main directory. This will create an executable file named "prifi" that
    can run ant type of node (client, relay, or trustee).
@@ -45,28 +47,28 @@ PriFi: Low-Latency Tracking-Resistant Mobile Computing
    After compiling the program, run the following command to create configuration directories for
    each node:
 
-   >>> prifi -config
+		prifi -config
 
    This will create configuration data for a default setting, which consists of one client, one
    trustee server and one relay. To generate configuration data for a specific setting, run:
 
-   >>> prifi -config -nclients=3 -ntrustees=2
+		prifi -config -nclients=3 -ntrustees=2
 
    The configuraton generator will create one directory for each node in the local users directory.
    Depending on the node's type, its config directory will be named with the following format:
 
-   prifi-client-<client's sequence number>
-   prifi-trustee-<trustee's sequence number>
-   prifi-relay
+		prifi-client-<client's sequence number>
+		prifi-trustee-<trustee's sequence number>
+		prifi-relay
 
    For example, for the setting with 3 clients and 2 trustees, five directories will be created:
 
-   prifi-client-0
-   prifi-client-1
-   prifi-client-2
-   prifi-trustee-0
-   prifi-trustee-1
-   prifi-relay
+		prifi-client-0
+		prifi-client-1
+		prifi-client-2
+		prifi-trustee-0
+		prifi-trustee-1
+		prifi-relay
 
    For each client and trustee, the config directory will contain two files:
    (1) config.tml: A human-readable TOML-format file with the node's configuration information;
@@ -79,12 +81,13 @@ PriFi: Low-Latency Tracking-Resistant Mobile Computing
 
    A node can be run using the following command:
 
-   >>> prifi -node=<name of the node>
+		prifi -node=<name of the node>
 
    The name of the node is set automatically by the configuration generator and is euqal to the name
    of the node's configuration directory (see Initial Configuration section).
    
 3. Protocol description (brief)
+-------------------------------
 
    We define downstream communication as the data from the Internet to one of the clients, and
    upstream communication as the data from one of the clients towards the Internet. The
@@ -162,10 +165,12 @@ PriFi: Low-Latency Tracking-Resistant Mobile Computing
    TBD
 
 4. Code structure
+-----------------
 
    TBD
 
 5. Coding style
+---------------
 
    Gofmt:
       We use Gofmt which is the official formating style for Go. Gofmt automatically formats Go
@@ -192,10 +197,12 @@ PriFi: Low-Latency Tracking-Resistant Mobile Computing
       the function signature describing what the function is supposed to do.
 
 6. References
-   [CP92] http://link.springer.com/chapter/10.1007%2F3-540-48071-4_7
-   [CS97] ftp://ftp.inf.ethz.ch/pub/crypto/publications/CamSta97b.pdf
-   [Neff03] http://freehaven.net/anonbib/cache/shuffle:ccs01.pdf
-   [Schnorr91] http://link.springer.com/article/10.1007%2FBF00196725
-   [SPW+14] http://cpsc.yale.edu/sites/default/files/files/TR1486.pdf
+-------------
+
+		[CP92] http://link.springer.com/chapter/10.1007%2F3-540-48071-4_7
+		[CS97] ftp://ftp.inf.ethz.ch/pub/crypto/publications/CamSta97b.pdf
+		[Neff03] http://freehaven.net/anonbib/cache/shuffle:ccs01.pdf
+		[Schnorr91] http://link.springer.com/article/10.1007%2FBF00196725
+		[SPW+14] http://cpsc.yale.edu/sites/default/files/files/TR1486.pdf
 
    
