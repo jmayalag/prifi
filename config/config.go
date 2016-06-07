@@ -184,6 +184,7 @@ func GenerateConfig(nClients int, nTrustees int, authMethod int, suite abstract.
 			return err
 		}
 		nodesConfig[i] = nodeConfig
+		i++
 	}
 
 	// Create clients' config files
@@ -199,6 +200,7 @@ func GenerateConfig(nClients int, nTrustees int, authMethod int, suite abstract.
 			return err
 		}
 		nodesConfig[nTrustees + i] = nodeConfig
+		i++
 	}
 
 	// Create relay's config file

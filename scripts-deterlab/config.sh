@@ -14,10 +14,10 @@ loghost="192.168.253.1:10305"
 logsinkname="sink.log"
 
 nohupoutfolder="/tmp/"
-nohupclientname="client"
-nohuprelayname="relay"
+nohupclientname="prifi-client"
+nohuprelayname="prifi-relay"
 nohupsinkname="sink"
-nohuptrusteesrvname="trusteesrv"
+nohuptrusteesrvname="prifi-trustee"
 nohupext=".nohup"
 
 t1host="10.0.1.1:9000"

@@ -55,7 +55,7 @@ payloadLength int, useSocksProxy bool, latencyTest bool, useUDP bool) {
 	}
 
 	exitClient := false
-	authenticated := false;
+	authenticated := false
 
 	for !exitClient {
 
