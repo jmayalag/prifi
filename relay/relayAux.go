@@ -7,8 +7,8 @@ import (
 	"net"
 	prifinet "github.com/lbarman/prifi/net"
 	prifilog "github.com/lbarman/prifi/log"
-	"github.com/lbarman/prifi/node"
 	"strconv"
+	"github.com/lbarman/prifi/auth"
 )
 
 // Invoked by the relay to advertise trustees' and clients' long-term public keys to each other
@@ -113,7 +113,7 @@ func connectToTrustee(trusteeHostAddr string, relayState *RelayState) (prifinet.
 	}
 	
 	// Authenticate the trustee
-	newTrustee, err3 := node.RelayAuthentication(conn, relayState.PublicKeyRoster)
+	newTrustee, err3 := auth.ServerAuthentication(relayState.AuthMethod, conn, relayState.PublicKeyRoster)
 
 	if err3 != nil {
 		prifilog.Println(prifilog.RECOVERABLE_ERROR, "Trustee authentication failed. " + err3.Error())

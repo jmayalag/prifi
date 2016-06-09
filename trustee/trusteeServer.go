@@ -17,6 +17,7 @@ import (
 	prifilog "github.com/lbarman/prifi/log"
 	prifinet "github.com/lbarman/prifi/net"
 	"github.com/lbarman/prifi/node"
+	"github.com/lbarman/prifi/auth"
 )
 
 func StartTrustee(nodeConfig config.NodeConfig) {
@@ -91,7 +92,7 @@ func handleConnection(nodeConfig config.NodeConfig, conn net.Conn, closedConnect
 	trusteeState.ClientPublicKeys = make([]abstract.Point, nClients)
 
 	// Run the authentication protocol
-	if err = node.NodeAuthentication(conn, trusteeState.NodeState); err != nil {
+	if err = auth.ClientAuthentication(nodeConfig.AuthMethod, conn, trusteeState.Id, trusteeState.PrivateKey); err != nil {
 		prifilog.SimpleStringDump(prifilog.SEVERE_ERROR, "Trustee authentication failed. " + err.Error())
 	}
 	prifilog.SimpleStringDump(prifilog.INFORMATION, "Authenticated successfully.")

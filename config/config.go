@@ -166,7 +166,7 @@ func getPublicStringIdentifier(suite abstract.Suite, publicKey abstract.Point) s
 // For clients and servers, the folder will contain a TOML-formatted config file
 // and a binary secret key file. For the relay, the folder will also contain a binary file
 // that contains a dictionary of (pubId, public key)'s for all nodes.
-func GenerateConfig(nClients int, nTrustees int, suite abstract.Suite) error {
+func GenerateConfig(nClients int, nTrustees int, authMethod int, suite abstract.Suite) error {
 
 	nodesConfig := make([]NodeConfig, nClients + nTrustees)
 
@@ -178,6 +178,7 @@ func GenerateConfig(nClients int, nTrustees int, suite abstract.Suite) error {
 		nodeConfig.Id = id
 		nodeConfig.Name = "prifi-trustee-" + strconv.Itoa(i)
 		nodeConfig.Type = NODE_TYPE_TRUSTEE
+		nodeConfig.AuthMethod = authMethod
 		nodeConfig.GenKeyPair(suite, random.Stream)
 		if err := nodeConfig.Save(nodeConfig.Name); err != nil {
 			return err
@@ -193,6 +194,7 @@ func GenerateConfig(nClients int, nTrustees int, suite abstract.Suite) error {
 		nodeConfig.Id = id
 		nodeConfig.Name = "prifi-client-" + strconv.Itoa(i)
 		nodeConfig.Type = NODE_TYPE_CLIENT
+		nodeConfig.AuthMethod = authMethod
 		nodeConfig.GenKeyPair(suite, random.Stream)
 		if err := nodeConfig.Save(nodeConfig.Name); err != nil {
 			return err
@@ -207,6 +209,7 @@ func GenerateConfig(nClients int, nTrustees int, suite abstract.Suite) error {
 	relayConfig.Id = 0		// Relay's id is always 0
 	relayConfig.Name = "prifi-relay"
 	relayConfig.Type = NODE_TYPE_RELAY
+	relayConfig.AuthMethod = authMethod
 	relayConfig.NodesInfo = make([]NodeInfo, len(nodesConfig))
 
 	for i := 0; i < len(nodesConfig); i++ {

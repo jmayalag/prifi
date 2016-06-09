@@ -36,6 +36,8 @@ func main() {
 	// Parameters config
 	nClients := flag.Int("nclients", 1, "The number of clients.")
 	nTrustees := flag.Int("ntrustees", 1, "The number of trustees.")
+	authMethod := flag.Int("authMethod", 1, "Authentication method (0=Basic; 1=DAGA; 2=TOFU).")
+
 	upstreamCellSize := flag.Int("upcellsize", 30720, "Sets the size of one upstream cell, in bytes.")
 	downstreamCellSize := flag.Int("downcellsize", 30720, "Sets the size of one downstream cell, in bytes.")
 	latencyTest := flag.Bool("latencytest", true, "Makes the client run a latency test. Disables the SOCKS proxy.")
@@ -112,7 +114,7 @@ func main() {
 
 	switch {
 	case *isConfig:
-		if err := config.GenerateConfig(*nClients, *nTrustees, config.CryptoSuite); err != nil {
+		if err := config.GenerateConfig(*nClients, *nTrustees, *authMethod, config.CryptoSuite); err != nil {
 			fmt.Println("Error: Configuration generation failed. " + err.Error())
 			os.Exit(1)
 		}

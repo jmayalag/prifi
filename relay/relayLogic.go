@@ -41,7 +41,7 @@ func StartRelay(nodeConfig config.NodeConfig, upstreamCellSize int, downstreamCe
 
 	// Start the client parser
 	newClientWithIdAndPublicKeyChan := make(chan prifinet.NodeRepresentation) //channel with parsed clients
-	go welcomeNewClients(newClientConnectionsChan, newClientWithIdAndPublicKeyChan, useUDP)
+	go welcomeNewClients(newClientConnectionsChan, newClientWithIdAndPublicKeyChan, useUDP, nodeConfig.AuthMethod)
 
 	// Prepare the UDP broadcast
 	if relayState.UseUDP {

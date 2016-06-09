@@ -17,9 +17,11 @@ import (
 	prifinet "github.com/lbarman/prifi/net"
 	"github.com/lbarman/prifi/node"
 	"os"
+	"github.com/lbarman/prifi/auth"
 )
 
-func StartClient(nodeConfig config.NodeConfig, relayHostAddr string, expectedNumberOfClients int, nTrustees int, payloadLength int, useSocksProxy bool, latencyTest bool, useUDP bool) {
+func StartClient(nodeConfig config.NodeConfig, relayHostAddr string, expectedNumberOfClients int, nTrustees int,
+payloadLength int, useSocksProxy bool, latencyTest bool, useUDP bool) {
 
 	prifilog.SimpleStringDump(prifilog.NOTIFICATION, "Client " + strconv.Itoa(nodeConfig.Id) + " started...")
 
@@ -78,7 +80,8 @@ func StartClient(nodeConfig config.NodeConfig, relayHostAddr string, expectedNum
 
 		if !authenticated {
 			// Authenticate the client via the relay
-			if err := node.NodeAuthentication(relayTCPConn, clientState.NodeState); err != nil {
+			err := auth.ClientAuthentication(nodeConfig.AuthMethod, relayTCPConn, clientState.Id, clientState.PrivateKey);
+			if err != nil {
 				// TODO: Client authentication failed. Retry a few times.
 				prifilog.SimpleStringDump(prifilog.SEVERE_ERROR, "Authentication failed.")
 				os.Exit(1)

@@ -6,11 +6,6 @@ import (
 	"github.com/lbarman/prifi/dcnet"
 )
 
-const (
-	AUTH_METHOD_PUBLIC_KEY = iota     // Authenticate using the (long-term) public key
-	AUTH_METHOD_TOFU           // Trust-On-First-Use (TOFU) authentication
-)
-
 type NodeState struct {
 
 	Id                  int
