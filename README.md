@@ -4,9 +4,13 @@
 
 1. [Introduction](#Introduction) 
 2. [Running the System](#Running-the-System)
-	2.1. [Compiling PriFi](#Compiling-PriFi) 
+    
+    2.1. [Compiling PriFi](#Compiling-PriFi) 
+    
 	2.2. [Initial Configuration](#Initial-Configuration) 
-	2.3. [Running a Node](#Running-a-Node) 
+	
+	2.3. [Running a Node](#Running-a-Node)
+	
 3. [Protocol Description](#Protocol-Description) 
 5. [Coding Style](#Code-Style) 
 6. [References](#References)
