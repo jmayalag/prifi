@@ -88,7 +88,7 @@ When a node (client or trustee) comes online, he sends an authentication request
 We assume the relay already knows the public keys of all nodes who want to join using the basic or the anonymous authentication method. We refer to these as long-term public key. Through these authentication methods, the node proves to the relay that he possesses the corresponding private key.
 
 <a id="Basic-Authentication"></a> 
-### 3.1.1 Basic Authentication
+### 3.1.1. Basic Authentication
 
  This protocol is similar to SSH using the Schnorr's signature scheme [Schnorr91]:
 
@@ -138,7 +138,10 @@ The client's proof is the interactive protocol of Camenisch and Stadler [CS97]. 
 ## 5. Coding Style
 
 #### Gofmt
- We use Gofmt which is the official formating style for Go. Gofmt automatically formats Go source code, and thus there's no need to spend time lining up the code or think how many spaces are needed between math operators. Tis formatting style is recommended by Effective Go: https://golang.org/doc/effective_go.html#formatting More details on how to use Gofmt: https://blog.golang.org/go-fmt-your-code **Line Width** The preferred number of characters per line is 120. This makes coding in laptops easier. One or two characters beyond 120 is fine. Queries and regular expressions may go beyond this for obvious reasons. Gofmt uses tabs for indentation so feel free to change your editor's tab length if 120 characters is still large for your screen. 
+We use Gofmt which is the official formating style for Go. Gofmt automatically formats Go source code, and thus there's no need to spend time lining up the code or think how many spaces are needed between math operators. Tis formatting style is recommended by [Effective Go](https://golang.org/doc/effective_go.html#formatting)  More details on how to use [Gofmt](https://blog.golang.org/go-fmt-your-code).
+
+#### Line Width 
+The preferred number of characters per line is 120. This makes coding in laptops easier. One or two characters beyond 120 is fine. Queries and regular expressions may go beyond this for obvious reasons. Gofmt uses tabs for indentation so feel free to change your editor's tab length if 120 characters is still large for your screen. 
 
 ####Comments 
 Comments should start with a capital letter and there's one space after // and /*. For example:
