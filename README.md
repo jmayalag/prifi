@@ -129,13 +129,13 @@ PriFi: Low-Latency Tracking-Resistant Mobile Computing
 
    This protocol is similar to SSH using the Schnorr's signature scheme [Schnorr91]:
 
-   (1) The relay sends a random message (challenge) to the node. The challenge is ElGamal-encrypted
+   1. The relay sends a random message (challenge) to the node. The challenge is ElGamal-encrypted
        using the node's long-term public key;
 
-   (2) The node decrypts the challenge, signs it with its private key using Schnorr's scheme, and
+   2. The node decrypts the challenge, signs it with its private key using Schnorr's scheme, and
        sends the signature to the relay;
 
-   (3) The relay verifies the signature and responds with an accept/reject message.
+   3. The relay verifies the signature and responds with an accept/reject message.
 
 ### 3.1.2. Anonymous authentication
 
@@ -144,17 +144,27 @@ PriFi: Low-Latency Tracking-Resistant Mobile Computing
    organization prove their membership without divulging their identity (i.e., their long-term
    public keys).
 
-   The following protocol is run between a client, the relay, and a group of trustees:
+   The following protocols are run between a client, the relay, and a group of trustees:
+   
+   #### Authentication setup:
+   1. The relay sends the number of clients with long-term public keys to all trustees;
+   2. The j-th trustee generates a per-round secret r_j and sends a commitment R_j = g^r_j to other
+       trustees;
+   3. For each client i, the trustee generates a per-round random generator h_i collectively with
+  other trustees;
 
-   (1) The relay sends the public key of one of the trustees to the client;
-
-   (2) The client sends to the trustee an initial linkage tag, T0, and proves in zero-knowledge
-       that he has correctly computed T0, and that he knows one of the long-term private (via
-       "OR" proof).
-
-   (3) The trustee verifies the proof and computes T1 by removing s1 from T0 and adding r1
-       to T0. He then sends T1 to the next trustee along with a proof that he has correctly
-       computed T1 and knows r1.
+   #### Client authentication:
+   1. A client sends an authentication request to the relay;
+   2. The relay sends the IP/port address of the first trustees to the client;
+   3. The client connects to that trustee and requests an authentication context;
+   4. The trustee sends (H,p,g) to the client;
+   5. The client computes an initial linkage tag T_0 and proves in zero-knowledge to the trustee that
+       he has correctly computed T_0, and that he knows one of the long-term private (via "OR" proof);
+   6. The trustee verifies the proof and computes T_1 by removing s_1 from T_0 and adding r_1 to T0;
+   7. The trustee sends T_1 to the next trustee along with a proof that he has correctly computed T_1
+       and knows r_1;
+   8. Once the last trustee computes the final linkage tag T_f, he sends it to the first trustee;
+   9. The first trustee sends T_f to the client.
 
    The client's proof is the interactive protocol of Camenisch and Stadler [CS97].
    The trustee's proof is a non-interactive protocol based on Schnorr's proof of knowledge of
