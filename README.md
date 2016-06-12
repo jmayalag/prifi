@@ -3,6 +3,7 @@
 ### Table of Contents
 
 1. [Introduction](#Introduction) 
+2. [Running the System](#Running-the-System)
 	2.1. [Compiling PriFi](#Compiling-PriFi) 
 	2.2. [Initial Configuration](#Initial-Configuration) 
 	2.3. [Running a Node](#Running-a-Node) 
@@ -138,7 +139,7 @@ The client's proof is the interactive protocol of Camenisch and Stadler [CS97]. 
 ## 5. Coding Style
 
 #### Gofmt
-We use Gofmt which is the official formating style for Go. Gofmt automatically formats Go source code, and thus there's no need to spend time lining up the code or think how many spaces are needed between math operators. Tis formatting style is recommended by [Effective Go](https://golang.org/doc/effective_go.html#formatting)  More details on how to use [Gofmt](https://blog.golang.org/go-fmt-your-code).
+ We use Gofmt which is the official formating style for Go. Gofmt automatically formats Go source code, and thus there's no need to spend time lining up the code or think how many spaces are needed between math operators. Tis formatting style is recommended by [Effective Go](https://golang.org/doc/effective_go.html#formatting)  More details on how to use [Gofmt](https://blog.golang.org/go-fmt-your-code).
 
 #### Line Width 
 The preferred number of characters per line is 120. This makes coding in laptops easier. One or two characters beyond 120 is fine. Queries and regular expressions may go beyond this for obvious reasons. Gofmt uses tabs for indentation so feel free to change your editor's tab length if 120 characters is still large for your screen. 
