@@ -151,7 +151,7 @@ func (p *PriFiProtocol) Send_TRU_REL_PK() error {
 		dbg.Error(e)
 		return errors.New(e)
 	} else {
-		dbg.Lvl3("Relay : sent TRU_REL_TELL_PK ")
+		dbg.Lvl3("Relay : sent TRU_REL_TELL_PK ") //TODO: this should be "trustee"
 	}
 
 	return nil
@@ -166,6 +166,7 @@ func (p *PriFiProtocol) Send_TRU_REL_DC_CIPHER(rateChan chan int16) {
 	currentRate := TRUSTEE_RATE_HALF
 	roundId := int32(0)
 
+	//TODO: use of "stop" variable is not essential
 	for !stop {
 		select {
 		case newRate := <-rateChan:

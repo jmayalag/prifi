@@ -12,7 +12,9 @@ import (
  * Then, it runs the PriFi anonymous communication network among those entities.
  */
 
-//the mutable variable held by this entity
+
+//TODO: combine states into a single interface
+//the mutable variable held by this entity 
 type PriFiProtocol struct {
 	role          int16
 	messageSender MessageSender
