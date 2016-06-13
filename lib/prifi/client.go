@@ -130,7 +130,7 @@ func (p *PriFiProtocol) Received_ALL_CLI_PARAMETERS(msg ALL_ALL_PARAMETERS) erro
 	p.clientState = *NewClientState(msg.NextFreeClientId, msg.NTrustees, msg.NClients, msg.UpCellSize, msg.DoLatencyTests, msg.UseUDP, msg.ClientDataOutputEnabled)
 
 	//after receiving this message, we are done with the state CLIENT_STATE_BEFORE_INIT, and are ready for initializing
-	p.clientState.currentState = CLIENT_STATE_INITIALIZING
+	p.clientState.currentState = CLIENT_STATE_INITIALIZING //TODO: this is repetative of line 110
 
 	dbg.Lvlf5("%+v\n", p.clientState)
 	dbg.Lvl2("Client " + strconv.Itoa(p.clientState.Id) + " has been initialized by message. ")
@@ -166,6 +166,7 @@ func (p *PriFiProtocol) Received_REL_CLI_DOWNSTREAM_DATA(msg REL_CLI_DOWNSTREAM_
 		p.clientState.DataFromDCNet <- msg.Data //TODO : this should be encrypted, and we need to check if it's our data
 	}
 
+	//TODO: maybe make this into a method func (p *PrifiProtocol) isMySlot() bool {}
 	//write the next upstream slice. First, determine if we can embed payload this round
 	currentRound := p.clientState.roundCount % int32(p.clientState.nClients)
 	isMySlot := false
@@ -275,6 +276,7 @@ func (p *PriFiProtocol) Received_REL_CLI_TELL_TRUSTEES_PK(msg REL_CLI_TELL_TRUST
 		return errors.New(e)
 	}
 
+	//TODO: this is redundant, we already know the number of trustees
 	//first, collect the public keys from the trustees, and derive the secrets
 	p.clientState.nTrustees = len(msg.Pks)
 
@@ -323,7 +325,7 @@ func (p *PriFiProtocol) Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(msg REL_C
 		dbg.Error(e)
 		return errors.New(e)
 	} else {
-		dbg.Lvl3("Trustee " + strconv.Itoa(p.clientState.Id) + " : REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG")
+		dbg.Lvl3("Trustee " + strconv.Itoa(p.clientState.Id) + " : REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG") //TODO: this should be client
 	}
 
 	//verify the signature
