@@ -13,8 +13,8 @@ import (
 
 	"github.com/dedis/cothority/lib/dbg"
 	"github.com/dedis/cothority/lib/network"
-	prifi_lib "github.com/dedis/cothority/lib/prifi"
 	"github.com/dedis/cothority/lib/sda"
+	prifi_lib "github.com/lbarman/prifi_dev/prifi-lib"
 )
 
 //the "PriFi-Wrapper-Protocol start". It calls the PriFi library with the correct parameters

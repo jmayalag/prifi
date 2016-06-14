@@ -22,12 +22,12 @@ import (
 	"strconv"
 
 	"github.com/dedis/cothority/lib/dbg"
-	"github.com/dedis/cothority/lib/prifi/config"
-	"github.com/dedis/cothority/lib/prifi/crypto"
-	"github.com/dedis/cothority/lib/prifi/dcnet"
 	"github.com/dedis/crypto/abstract"
 	crypto_proof "github.com/dedis/crypto/proof"
 	"github.com/dedis/crypto/shuffle"
+	"github.com/lbarman/prifi_dev/prifi-lib/config"
+	"github.com/lbarman/prifi_dev/prifi-lib/crypto"
+	"github.com/lbarman/prifi_dev/prifi-lib/dcnet"
 )
 
 // possible state the trustees are in. This restrict the kind of messages they can receive at a given point

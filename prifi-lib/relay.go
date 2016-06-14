@@ -28,9 +28,9 @@ import (
 	"time"
 
 	"github.com/dedis/cothority/lib/dbg"
-	"github.com/dedis/cothority/lib/prifi/dcnet"
 	"github.com/dedis/crypto/abstract"
-	"github.com/lbarman/prifi/config"
+	"github.com/lbarman/prifi_dev/prifi-lib/config"
+	"github.com/lbarman/prifi_dev/prifi-lib/dcnet"
 )
 
 //Constants
