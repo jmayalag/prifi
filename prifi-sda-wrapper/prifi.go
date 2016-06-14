@@ -23,7 +23,7 @@ func (p *PriFiSDAWrapper) Start() error {
 	if !p.configSet {
 		dbg.Error("Trying to start PriFi Library, but config not set !")
 	}
-	panic("yes")
+
 	dbg.Lvl3("Starting PriFi-SDA-Wrapper Protocol")
 
 	//print the network host map

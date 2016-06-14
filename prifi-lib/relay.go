@@ -366,7 +366,6 @@ func (p *PriFiProtocol) finalizeUpstreamData() error {
 		}
 	}
 
-	panic("done")
 	if upstreamPlaintext == nil {
 		// empty upstream cell
 	}
