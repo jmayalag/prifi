@@ -106,6 +106,7 @@ type RelayState struct {
 	currentShuffleTranscript NeffShuffleState
 	currentState             int16
 	DataForClients           chan []byte //VPN / SOCKS should put data there !
+	PriorityDataForClients   chan []byte
 	DataFromDCNet            chan []byte //VPN / SOCKS should read data from there !
 	DataOutputEnabled        bool        //if FALSE, nothing will be written to DataFromDCNet
 	DownstreamCellSize       int
@@ -132,8 +133,9 @@ func NewRelayState(nTrustees int, nClients int, upstreamCellSize int, downstream
 	params.Name = "Relay"
 	params.CellCoder = config.Factory()
 	params.clients = make([]NodeRepresentation, 0)
-	params.DataForClients = make(chan []byte)
-	params.DataFromDCNet = make(chan []byte)
+	params.DataForClients = make(chan []byte, 10)
+	params.PriorityDataForClients = make(chan []byte, 10) //this is used for relay's control message (like latency-tests)
+	params.DataFromDCNet = make(chan []byte, 10)
 	params.DataOutputEnabled = dataOutputEnabled
 	params.DownstreamCellSize = downstreamCellSize
 	//params.MessageHistory =
@@ -278,7 +280,7 @@ func (p *PriFiProtocol) Received_CLI_REL_UPSTREAM_DATA(msg CLI_REL_UPSTREAM_DATA
 			p.finalizeUpstreamData()
 
 			//sleep so it does not go too fast for debug
-			time.Sleep(1000 * time.Millisecond)
+			//time.Sleep(1000 * time.Millisecond)
 
 			//send the data down (to finalize this round)
 			p.sendDownstreamData()
@@ -321,7 +323,7 @@ func (p *PriFiProtocol) Received_TRU_REL_DC_CIPHER(msg TRU_REL_DC_CIPHER) error 
 			p.finalizeUpstreamData()
 
 			//sleep so it does not go too fast for debug
-			time.Sleep(1000 * time.Millisecond)
+			//time.Sleep(1000 * time.Millisecond)
 
 			//send the data down (to finalize this round)
 			p.sendDownstreamData()
@@ -358,11 +360,7 @@ func (p *PriFiProtocol) finalizeUpstreamData() error {
 		if pattern == 43690 { //1010101010101010
 			dbg.Lvl3("Relay : noticed a latency-test message, sending answer...")
 			//then, we simply have to send it down
-			dbg.Print(p.relayState.DataForClients)
-			dbg.Print(upstreamPlaintext)
-			p.relayState.DataForClients <- upstreamPlaintext
-
-			dbg.Print("Relay : done adding")
+			p.relayState.PriorityDataForClients <- upstreamPlaintext
 		}
 	}
 
@@ -395,14 +393,26 @@ func (p *PriFiProtocol) sendDownstreamData() error {
 	var downstreamCellContent []byte
 
 	select {
-
-	//either select data from the data we have to send, if any
-	case downstreamCellContent = <-p.relayState.DataForClients:
-		dbg.Lvl3("Relay : We have some real data for the clients. ")
+	case downstreamCellContent = <-p.relayState.PriorityDataForClients:
+		dbg.Lvl3("Relay : We have some priority data for the clients")
+		//TODO : maybe we can pack more than one message here ?
 
 	default:
-		downstreamCellContent = make([]byte, 1)
-		dbg.Lvl3("Relay : Sending 1bit down. ")
+
+	}
+
+	//only if we don't have priority data for clients
+	if downstreamCellContent == nil {
+		select {
+
+		//either select data from the data we have to send, if any
+		case downstreamCellContent = <-p.relayState.DataForClients:
+			dbg.Lvl3("Relay : We have some real data for the clients. ")
+
+		default:
+			downstreamCellContent = make([]byte, 1)
+			dbg.Lvl3("Relay : Sending 1bit down. ")
+		}
 	}
 
 	//if we want to use dummy data down, pad to the correct size
