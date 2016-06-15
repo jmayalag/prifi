@@ -65,6 +65,7 @@ func init() {
 	network.RegisterMessageType(prifi_lib.REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE{})
 	network.RegisterMessageType(prifi_lib.REL_TRU_TELL_TRANSCRIPT{})
 	network.RegisterMessageType(prifi_lib.TRU_REL_DC_CIPHER{})
+	network.RegisterMessageType(prifi_lib.REL_TRU_TELL_RATE_CHANGE{})
 	network.RegisterMessageType(prifi_lib.TRU_REL_SHUFFLE_SIG{})
 	network.RegisterMessageType(prifi_lib.TRU_REL_TELL_NEW_BASE_AND_EPH_PKS{})
 	network.RegisterMessageType(prifi_lib.TRU_REL_TELL_PK{})
@@ -203,6 +204,10 @@ func NewPriFiSDAWrapperProtocol(n *sda.TreeNodeInstance) (sda.ProtocolInstance, 
 		return nil, errors.New("couldn't register handler: " + err.Error())
 	}
 	err = prifiSDAWrapperHandlers.RegisterHandler(prifiSDAWrapperHandlers.Received_REL_TRU_TELL_TRANSCRIPT)
+	if err != nil {
+		return nil, errors.New("couldn't register handler: " + err.Error())
+	}
+	err = prifiSDAWrapperHandlers.RegisterHandler(prifiSDAWrapperHandlers.Received_REL_TRU_TELL_RATE_CHANGE)
 	if err != nil {
 		return nil, errors.New("couldn't register handler: " + err.Error())
 	}

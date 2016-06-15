@@ -168,11 +168,13 @@ func (p *PriFiProtocol) Send_TRU_REL_DC_CIPHER(rateChan chan int16) {
 	for !stop {
 		select {
 		case newRate := <-rateChan:
-			currentRate = newRate
-			dbg.Lvl2("Trustee " + strconv.Itoa(p.trusteeState.Id) + " : rate changed from " + strconv.Itoa(int(currentRate)) + " to " + strconv.Itoa(int(newRate)))
+			if currentRate != newRate {
+				currentRate = newRate
+				dbg.Lvl2("Trustee " + strconv.Itoa(p.trusteeState.Id) + " : rate changed from " + strconv.Itoa(int(currentRate)) + " to " + strconv.Itoa(int(newRate)))
 
-			if newRate == TRUSTEE_KILL_SEND_PROCESS {
-				stop = true
+				if newRate == TRUSTEE_KILL_SEND_PROCESS {
+					stop = true
+				}
 			}
 
 		default:
@@ -181,7 +183,7 @@ func (p *PriFiProtocol) Send_TRU_REL_DC_CIPHER(rateChan chan int16) {
 				time.Sleep(TRUSTEE_BASE_SLEEP_TIME)
 
 			} else if currentRate == TRUSTEE_RATE_STOPPED {
-				time.Sleep(TRUSTEE_SLEEP_TIME)
+				time.Sleep(TRUSTEE_BASE_SLEEP_TIME)
 
 			} else {
 				dbg.Lvl2("Trustee " + strconv.Itoa(p.trusteeState.Id) + " : In unrecognized sending state")
