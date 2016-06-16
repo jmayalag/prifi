@@ -76,9 +76,9 @@ func init() {
 //This is the PriFi-SDA-Wrapper protocol struct. It contains the SDA-tree, and a chanel that stops the simulation when it receives a "true"
 type PriFiSDAWrapper struct {
 	*sda.TreeNodeInstance
-	configSet   bool
-	config      prifi_lib.ALL_ALL_PARAMETERS
-	DoneChannel chan bool
+	configSet     bool
+	config        prifi_lib.ALL_ALL_PARAMETERS
+	ResultChannel chan interface{}
 
 	//this is the actual "PriFi" (DC-net) protocol/library, defined in cothority/lib/prifi/prifi.go
 	prifiProtocol *prifi_lib.PriFiProtocol
@@ -127,11 +127,12 @@ func NewPriFiSDAWrapperProtocol(n *sda.TreeNodeInstance) (sda.ProtocolInstance, 
 	sendDataOutOfDCNet := false
 
 	var prifiProtocol *prifi_lib.PriFiProtocol
+	experimentResultChan := make(chan interface{}, 1)
 
 	//first of all, instantiate our prifi library with the correct role, given our position in the tree
 	if n.Index() == 0 {
 		dbg.Print(n.Name(), " starting as a PriFi relay")
-		relayState := prifi_lib.NewRelayState(nTrustees, nClients, upCellSize, downCellSize, relayWindowSize, relayUseDummyDataDown, relayReportingLimit, useUDP, sendDataOutOfDCNet)
+		relayState := prifi_lib.NewRelayState(nTrustees, nClients, upCellSize, downCellSize, relayWindowSize, relayUseDummyDataDown, relayReportingLimit, experimentResultChan, useUDP, sendDataOutOfDCNet)
 		prifiProtocol = prifi_lib.NewPriFiRelayWithState(messageSender, relayState)
 	} else if n.Index() > 0 && n.Index() <= nTrustees {
 		trusteeId := n.Index() - 1
@@ -148,7 +149,7 @@ func NewPriFiSDAWrapperProtocol(n *sda.TreeNodeInstance) (sda.ProtocolInstance, 
 	//instantiate our PriFi wrapper protocol
 	prifiSDAWrapperHandlers := &PriFiSDAWrapper{
 		TreeNodeInstance: n,
-		DoneChannel:      make(chan bool),
+		ResultChannel:    experimentResultChan,
 		prifiProtocol:    prifiProtocol,
 	}
 

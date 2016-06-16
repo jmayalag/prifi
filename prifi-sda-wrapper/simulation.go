@@ -88,8 +88,8 @@ func (e *Simulation) Run(config *sda.SimulationConfig) error {
 	}
 
 	dbg.Lvl2("NClients is:", tomlConfig.NClients, ", NTrustees is:", tomlConfig.NTrustees, ", rounds:", e.Rounds)
-	for round := 0; round < e.Rounds; round++ {
-		dbg.Lvl1("Starting round", round)
+	for roundId := 0; roundId < e.Rounds; roundId++ {
+		dbg.Lvl1("Starting round", roundId)
 		round := monitor.NewTimeMeasure("round")
 		p, err := config.Overlay.CreateProtocol(config.Tree, "PriFi-SDA-Wrapper")
 		p.(*PriFiSDAWrapper).SetConfig(*prifiConfig)
@@ -99,8 +99,11 @@ func (e *Simulation) Run(config *sda.SimulationConfig) error {
 		dbg.Print("Protocol created")
 		go p.Start()
 
-		_ = <-p.(*PriFiSDAWrapper).DoneChannel
+		result := <-p.(*PriFiSDAWrapper).ResultChannel
+		dbg.Lvl1("Simulation finished for round", roundId, "result is", result)
 		round.Record()
+
+		panic("All right, here we should cleanly shut down SDA. Don't know how to do it yet !")
 	}
 	return nil
 }

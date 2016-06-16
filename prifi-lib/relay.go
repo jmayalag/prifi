@@ -122,18 +122,20 @@ type RelayState struct {
 	nTrusteesPkCollected     int
 	privateKey               abstract.Secret
 	PublicKey                abstract.Point
-	ReportingLimit           int
+	ExperimentRoundLimit     int
 	trustees                 []NodeRepresentation
 	UpstreamCellSize         int
 	UseDummyDataDown         bool
 	UseUDP                   bool
 	WindowSize               int
+	ExperimentResultChannel  chan interface{}
+	ExperimentResultData     interface{}
 }
 
 /**
  * Used to initialize the state of this relay. Must be called before anything else.
  */
-func NewRelayState(nTrustees int, nClients int, upstreamCellSize int, downstreamCellSize int, windowSize int, useDummyDataDown bool, reportingLimit int, useUDP bool, dataOutputEnabled bool) *RelayState {
+func NewRelayState(nTrustees int, nClients int, upstreamCellSize int, downstreamCellSize int, windowSize int, useDummyDataDown bool, experimentRoundLimit int, experimentResultChan chan interface{}, useUDP bool, dataOutputEnabled bool) *RelayState {
 	params := new(RelayState)
 	params.Name = "Relay"
 	params.CellCoder = config.Factory()
@@ -145,14 +147,15 @@ func NewRelayState(nTrustees int, nClients int, upstreamCellSize int, downstream
 	params.DownstreamCellSize = downstreamCellSize
 	//params.MessageHistory =
 	params.nClients = nClients
+	params.ExperimentResultChannel = experimentResultChan
 	params.nTrustees = nTrustees
 	params.nTrusteesPkCollected = 0
-	params.ReportingLimit = reportingLimit
+	params.ExperimentRoundLimit = experimentRoundLimit
+	params.trusteeCipherTracker = make([]int, nTrustees)
 	params.trustees = make([]NodeRepresentation, nTrustees)
 	params.UpstreamCellSize = upstreamCellSize
 	params.UseDummyDataDown = useDummyDataDown
 	params.UseUDP = useUDP
-	params.trusteeCipherTracker = make([]int, nTrustees)
 	params.WindowSize = windowSize
 
 	//prepare the crypto parameters
@@ -184,7 +187,8 @@ func (p *PriFiProtocol) Received_ALL_REL_PARAMETERS(msg ALL_ALL_PARAMETERS) erro
 		dbg.Lvl3("Relay : received ALL_ALL_PARAMETERS")
 	}
 
-	p.relayState = *NewRelayState(msg.NTrustees, msg.NClients, msg.UpCellSize, msg.DownCellSize, msg.RelayWindowSize, msg.RelayUseDummyDataDown, msg.RelayReportingLimit, msg.UseUDP, msg.RelayDataOutputEnabled)
+	oldExperimentResultChan := p.relayState.ExperimentResultChannel
+	p.relayState = *NewRelayState(msg.NTrustees, msg.NClients, msg.UpCellSize, msg.DownCellSize, msg.RelayWindowSize, msg.RelayUseDummyDataDown, msg.RelayReportingLimit, oldExperimentResultChan, msg.UseUDP, msg.RelayDataOutputEnabled)
 
 	dbg.Lvlf5("%+v\n", p.relayState)
 	dbg.Lvl1("Relay has been initialized by message. ")
@@ -472,6 +476,21 @@ func (p *PriFiProtocol) sendDownstreamData() error {
 	nextRound := p.relayState.currentDCNetRound.currentRound + 1
 	p.relayState.currentDCNetRound = DCNetRound{nextRound, 0, 0}
 	p.relayState.CellCoder.DecodeStart(p.relayState.UpstreamCellSize, p.relayState.MessageHistory) //this empties the buffer, making them ready for a new round
+
+	//we just finished a round. Test if we are doing an experiment, and if we need to stop at some point.
+	if nextRound == int32(p.relayState.ExperimentRoundLimit) {
+		dbg.Lvl1("Relay : Experiment round limit (", nextRound, ") reached")
+
+		//this can be set anywhere, anytime before
+		p.relayState.ExperimentResultData = &struct {
+			Data1 string
+			Data2 []int
+		}{
+			"This is an experiment",
+			[]int{0, -1, 1023},
+		}
+		p.relayState.ExperimentResultChannel <- p.relayState.ExperimentResultData
+	}
 
 	//if we have buffered messages for next round, use them now, so whenever we receive a client message, the trustee's message are counted correctly
 	if _, ok := p.relayState.bufferedTrusteeCiphers[nextRound]; ok {
