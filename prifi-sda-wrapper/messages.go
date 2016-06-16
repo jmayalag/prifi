@@ -7,6 +7,11 @@ import (
 
 //wrappers
 
+type Struct_ALL_ALL_SHUTDOWN struct {
+	*sda.TreeNode
+	prifi_lib.ALL_ALL_SHUTDOWN
+}
+
 type Struct_ALL_ALL_PARAMETERS struct {
 	*sda.TreeNode
 	prifi_lib.ALL_ALL_PARAMETERS

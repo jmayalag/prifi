@@ -36,6 +36,7 @@ const (
 	TRUSTEE_STATE_INITIALIZING
 	TRUSTEE_STATE_SHUFFLE_DONE
 	TRUSTEE_STATE_READY
+	TRUSTEE_STATE_SHUTDOWN
 )
 
 // possible sending mode (rates, to be precise) for the trustees
@@ -108,6 +109,20 @@ func NewTrusteeState(trusteeId int, nClients int, nTrustees int, payloadLength i
 }
 
 /**
+ * When we receive this message, we should clean resources
+ */
+func (p *PriFiProtocol) Received_ALL_TRU_SHUTDOWN(msg ALL_ALL_SHUTDOWN) error {
+	dbg.Lvl1("Trustee " + strconv.Itoa(p.trusteeState.Id) + " : Received a SHUTDOWN message. ")
+
+	//stop the sending process
+	p.trusteeState.sendingRate <- TRUSTEE_KILL_SEND_PROCESS
+
+	p.trusteeState.currentState = TRUSTEE_STATE_SHUTDOWN
+
+	return nil
+}
+
+/**
  * This is the "INIT" message that shares all the public parameters.
  */
 func (p *PriFiProtocol) Received_ALL_TRU_PARAMETERS(msg ALL_ALL_PARAMETERS) error {
@@ -164,17 +179,16 @@ func (p *PriFiProtocol) Send_TRU_REL_DC_CIPHER(rateChan chan int16) {
 	currentRate := TRUSTEE_RATE_ACTIVE
 	roundId := int32(0)
 
-	//TODO: use of "stop" variable is not essential
 	for !stop {
 		select {
 		case newRate := <-rateChan:
 			if currentRate != newRate {
 				currentRate = newRate
 				dbg.Lvl2("Trustee " + strconv.Itoa(p.trusteeState.Id) + " : rate changed from " + strconv.Itoa(int(currentRate)) + " to " + strconv.Itoa(int(newRate)))
+			}
 
-				if newRate == TRUSTEE_KILL_SEND_PROCESS {
-					stop = true
-				}
+			if newRate == TRUSTEE_KILL_SEND_PROCESS {
+				stop = true
 			}
 
 		default:

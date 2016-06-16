@@ -1,6 +1,8 @@
 package prifi
 
 import (
+	"time"
+
 	"github.com/BurntSushi/toml"
 	"github.com/dedis/cothority/lib/dbg"
 	"github.com/dedis/cothority/lib/monitor"
@@ -103,7 +105,9 @@ func (e *Simulation) Run(config *sda.SimulationConfig) error {
 		dbg.Lvl1("Simulation finished for round", roundId, "result is", result)
 		round.Record()
 
-		panic("All right, here we should cleanly shut down SDA. Don't know how to do it yet !")
+		dbg.Lvl2("Waiting 10 seconds ...")
+		time.Sleep(10 * time.Second)
+
 	}
 	return nil
 }

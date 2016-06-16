@@ -12,6 +12,7 @@ import (
  * Below : Message-Switch that calls the correct function when one of this message arrives.
  */
 
+//ALL_ALL_SHUTDOWN
 //ALL_ALL_PARAMETERS
 //CLI_REL_TELL_PK_AND_EPH_PK
 //CLI_REL_UPSTREAM_DATA
@@ -29,6 +30,9 @@ import (
 //not used yet :
 //REL_CLI_DOWNSTREAM_DATA
 //CLI_REL_DOWNSTREAM_NACK
+
+type ALL_ALL_SHUTDOWN struct {
+}
 
 type ALL_ALL_PARAMETERS struct {
 	ClientDataOutputEnabled bool
@@ -138,6 +142,17 @@ func (prifi *PriFiProtocol) ReceivedMessage(msg interface{}) error {
 			err = prifi.Received_ALL_TRU_PARAMETERS(typedMsg)
 		default:
 			panic("Received parameters, but we have no role yet !")
+		}
+	case ALL_ALL_SHUTDOWN:
+		switch prifi.role {
+		case PRIFI_ROLE_RELAY:
+			err = prifi.Received_ALL_REL_SHUTDOWN(typedMsg)
+		case PRIFI_ROLE_CLIENT:
+			err = prifi.Received_ALL_CLI_SHUTDOWN(typedMsg)
+		case PRIFI_ROLE_TRUSTEE:
+			err = prifi.Received_ALL_TRU_SHUTDOWN(typedMsg)
+		default:
+			panic("Received SHUTDOWN, but we have no role yet !")
 		}
 	case CLI_REL_TELL_PK_AND_EPH_PK:
 		err = prifi.Received_CLI_REL_TELL_PK_AND_EPH_PK(typedMsg)

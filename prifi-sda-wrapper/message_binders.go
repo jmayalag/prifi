@@ -1,5 +1,8 @@
 package prifi
 
+func (p *PriFiSDAWrapper) Received_ALL_ALL_SHUTDOWN(msg Struct_ALL_ALL_SHUTDOWN) error {
+	return p.prifiProtocol.ReceivedMessage(msg.ALL_ALL_SHUTDOWN)
+}
 func (p *PriFiSDAWrapper) Received_ALL_ALL_PARAMETERS(msg Struct_ALL_ALL_PARAMETERS) error {
 	return p.prifiProtocol.ReceivedMessage(msg.ALL_ALL_PARAMETERS)
 }

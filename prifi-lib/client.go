@@ -41,6 +41,7 @@ const (
 	CLIENT_STATE_INITIALIZING
 	CLIENT_STATE_EPH_KEYS_SENT
 	CLIENT_STATE_READY
+	CLIENT_STATE_SHUTDOWN
 )
 
 //the mutable variable held by the client
@@ -110,6 +111,17 @@ func NewClientState(clientId int, nTrustees int, nClients int, payloadLength int
 	params.currentState = CLIENT_STATE_INITIALIZING
 
 	return params
+}
+
+/**
+ * When we receive this message, we should clean resources
+ */
+func (p *PriFiProtocol) Received_ALL_CLI_SHUTDOWN(msg ALL_ALL_SHUTDOWN) error {
+	dbg.Lvl1("Client " + strconv.Itoa(p.clientState.Id) + " : Received a SHUTDOWN message. ")
+
+	p.clientState.currentState = CLIENT_STATE_SHUTDOWN
+
+	return nil
 }
 
 /**

@@ -53,6 +53,7 @@ const (
 	RELAY_STATE_COLLECTING_SHUFFLES
 	RELAY_STATE_COLLECTING_SHUFFLE_SIGNATURES
 	RELAY_STATE_COMMUNICATING
+	RELAY_STATE_SHUTDOWN
 )
 
 //this regroups the information about one client/trustee
@@ -170,6 +171,44 @@ func NewRelayState(nTrustees int, nClients int, upstreamCellSize int, downstream
 	params.currentState = RELAY_STATE_COLLECTING_TRUSTEES_PKS
 
 	return params
+}
+
+/**
+ * When we receive this message, we should 1) warn others and 2) clean resources
+ */
+func (p *PriFiProtocol) Received_ALL_REL_SHUTDOWN(msg ALL_ALL_SHUTDOWN) error {
+	dbg.Lvl1("Relay : Received a SHUTDOWN message. ")
+
+	p.relayState.currentState = RELAY_STATE_SHUTDOWN
+	msg2 := &ALL_ALL_SHUTDOWN{}
+
+	//Send this shutdown to all trustees
+	for j := 0; j < p.relayState.nTrustees; j++ {
+		err := p.messageSender.SendToTrustee(j, msg2)
+		if err != nil {
+			e := "Could not send ALL_TRU_SHUTDOWN to Trustee " + strconv.Itoa(j) + ", error is " + err.Error()
+			dbg.Error(e)
+			return errors.New(e)
+		} else {
+			dbg.Lvl3("Relay : sent ALL_TRU_PARAMETERS to Trustee " + strconv.Itoa(j) + ".")
+		}
+	}
+
+	//Send this shutdown to all clients
+	for j := 0; j < p.relayState.nClients; j++ {
+		err := p.messageSender.SendToClient(j, msg2)
+		if err != nil {
+			e := "Could not send ALL_TRU_SHUTDOWN to Client " + strconv.Itoa(j) + ", error is " + err.Error()
+			dbg.Error(e)
+			return errors.New(e)
+		} else {
+			dbg.Lvl3("Relay : sent ALL_TRU_PARAMETERS to Client " + strconv.Itoa(j) + ".")
+		}
+	}
+
+	//TODO : stop all go-routines we created
+
+	return nil
 }
 
 /**
@@ -490,6 +529,10 @@ func (p *PriFiProtocol) sendDownstreamData() error {
 			[]int{0, -1, 1023},
 		}
 		p.relayState.ExperimentResultChannel <- p.relayState.ExperimentResultData
+
+		//shut down everybody
+		msg := ALL_ALL_SHUTDOWN{}
+		p.Received_ALL_REL_SHUTDOWN(msg)
 	}
 
 	//if we have buffered messages for next round, use them now, so whenever we receive a client message, the trustee's message are counted correctly
