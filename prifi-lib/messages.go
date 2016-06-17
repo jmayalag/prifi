@@ -69,6 +69,10 @@ type REL_CLI_DOWNSTREAM_DATA struct {
 	FlagResync bool
 }
 
+type REL_CLI_DOWNSTREAM_DATA_UDP struct {
+	REL_CLI_DOWNSTREAM_DATA
+}
+
 type REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG struct {
 	Base         abstract.Point
 	EphPks       []abstract.Point
@@ -160,6 +164,8 @@ func (prifi *PriFiProtocol) ReceivedMessage(msg interface{}) error {
 		err = prifi.Received_CLI_REL_UPSTREAM_DATA(typedMsg)
 	case REL_CLI_DOWNSTREAM_DATA:
 		err = prifi.Received_REL_CLI_DOWNSTREAM_DATA(typedMsg)
+	case REL_CLI_DOWNSTREAM_DATA_UDP:
+		err = prifi.Received_REL_CLI_UDP_DOWNSTREAM_DATA(typedMsg.REL_CLI_DOWNSTREAM_DATA)
 	case REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG:
 		err = prifi.Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(typedMsg)
 	case REL_CLI_TELL_TRUSTEES_PK:

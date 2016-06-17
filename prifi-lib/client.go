@@ -69,6 +69,8 @@ type ClientState struct {
 	UsablePayloadLength int
 	UseSocksProxy       bool
 	UseUDP              bool
+	NextExpectedRound   int32
+	BufferedRoundData   map[int32]REL_CLI_DOWNSTREAM_DATA
 }
 
 /**
@@ -94,6 +96,8 @@ func NewClientState(clientId int, nTrustees int, nClients int, payloadLength int
 	params.UsablePayloadLength = params.CellCoder.ClientCellSize(payloadLength)
 	params.UseSocksProxy = false //deprecated
 	params.UseUDP = useUDP
+	params.NextExpectedRound = int32(0)
+	params.BufferedRoundData = make(map[int32]REL_CLI_DOWNSTREAM_DATA)
 
 	//prepare the crypto parameters
 	rand := config.CryptoSuite.Cipher([]byte(params.Name))
@@ -169,6 +173,59 @@ func (p *PriFiProtocol) Received_REL_CLI_DOWNSTREAM_DATA(msg REL_CLI_DOWNSTREAM_
 		dbg.Lvl3("Client " + strconv.Itoa(p.clientState.Id) + " : Received a REL_CLI_DOWNSTREAM_DATA")
 	}
 
+	//check if it is in-order
+	if msg.RoundId == p.clientState.NextExpectedRound {
+		//process downstream data
+
+		return p.ProcessDownStreamData(msg)
+	} else if msg.RoundId < p.clientState.NextExpectedRound {
+		dbg.Lvl3("Client " + strconv.Itoa(p.clientState.Id) + " : Received a REL_CLI_DOWNSTREAM_DATA for round " + strconv.Itoa(int(msg.RoundId)) + " but we are in round " + strconv.Itoa(int(p.clientState.NextExpectedRound)) + ", discarding.")
+	} else if msg.RoundId < p.clientState.NextExpectedRound {
+		dbg.Lvl3("Client " + strconv.Itoa(p.clientState.Id) + " : Received a REL_CLI_DOWNSTREAM_DATA for round " + strconv.Itoa(int(msg.RoundId)) + " but we are in round " + strconv.Itoa(int(p.clientState.NextExpectedRound)) + ", buffering.")
+
+		p.clientState.BufferedRoundData[msg.RoundId] = msg
+	}
+
+	return nil
+}
+
+/**
+ * This is part of PriFi's main loop. This is what happens in one round, for this client.
+ * We receive some downstream data. It should be encrypted, and we should test if this data is for us or not; is so, push it into the SOCKS/VPN chanel.
+ * For now, we do nothing with the downstream data.
+ * Once we received some data from the relay, we need to reply with a DC-net cell (that will get combined with other client's cell to produce some plaintext).
+ * If we're lucky (if this is our slot), we are allowed to embed some message (which will be the output produced by the relay). Either we send something from the
+ * SOCKS/VPN data, or if we're running latency tests, we send a "ping" message to compute the latency. If we have nothing to say, we send 0's.
+ */
+func (p *PriFiProtocol) Received_REL_CLI_UDP_DOWNSTREAM_DATA(msg REL_CLI_DOWNSTREAM_DATA) error {
+
+	//this can only happens in the state TRUSTEE_STATE_SHUFFLE_DONE
+	if p.clientState.currentState != CLIENT_STATE_READY {
+		e := "Client " + strconv.Itoa(p.clientState.Id) + " : Received a Received_REL_CLI_UDP_DOWNSTREAM_DATA, but not in state CLIENT_STATE_READY, in state " + strconv.Itoa(int(p.clientState.currentState))
+		dbg.Error(e)
+		return errors.New(e)
+	} else {
+		dbg.Lvl3("Client " + strconv.Itoa(p.clientState.Id) + " : Received a Received_REL_CLI_UDP_DOWNSTREAM_DATA")
+	}
+
+	//check if it is in-order
+	if msg.RoundId == p.clientState.NextExpectedRound {
+		//process downstream data
+
+		return p.ProcessDownStreamData(msg)
+	} else if msg.RoundId < p.clientState.NextExpectedRound {
+		dbg.Lvl3("Client " + strconv.Itoa(p.clientState.Id) + " : Received a REL_CLI_UDP_DOWNSTREAM_DATA for round " + strconv.Itoa(int(msg.RoundId)) + " but we are in round " + strconv.Itoa(int(p.clientState.NextExpectedRound)) + ", discarding.")
+	} else if msg.RoundId < p.clientState.NextExpectedRound {
+		dbg.Lvl3("Client " + strconv.Itoa(p.clientState.Id) + " : Received a REL_CLI_UDP_DOWNSTREAM_DATA for round " + strconv.Itoa(int(msg.RoundId)) + " but we are in round " + strconv.Itoa(int(p.clientState.NextExpectedRound)) + ", buffering.")
+
+		p.clientState.BufferedRoundData[msg.RoundId] = msg
+	}
+
+	return nil
+}
+
+func (p *PriFiProtocol) ProcessDownStreamData(msg REL_CLI_DOWNSTREAM_DATA) error {
+
 	/*
 	 * HANDLE THE DOWNSTREAM DATA
 	 */
@@ -176,14 +233,6 @@ func (p *PriFiProtocol) Received_REL_CLI_DOWNSTREAM_DATA(msg REL_CLI_DOWNSTREAM_
 	//pass the data to the VPN/SOCKS5 proxy, if enabled
 	if p.clientState.DataOutputEnabled {
 		p.clientState.DataFromDCNet <- msg.Data //TODO : this should be encrypted, and we need to check if it's our data
-	}
-
-	//TODO: maybe make this into a method func (p *PrifiProtocol) isMySlot() bool {}
-	//write the next upstream slice. First, determine if we can embed payload this round
-	currentRound := p.clientState.roundCount % int32(p.clientState.nClients)
-	isMySlot := false
-	if currentRound == int32(p.clientState.MySlot) {
-		isMySlot = true
 	}
 	//test if it is the answer from our ping (for latency test)
 	if p.clientState.LatencyTest && len(msg.Data) > 2 {
@@ -211,10 +260,24 @@ func (p *PriFiProtocol) Received_REL_CLI_DOWNSTREAM_DATA(msg REL_CLI_DOWNSTREAM_
 
 	//one round just passed
 	p.clientState.roundCount++
+	p.clientState.NextExpectedRound++
 
+	//send upstream data for next round
+	return p.SendUpstreamData()
+}
+
+func (p *PriFiProtocol) SendUpstreamData() error {
 	/*
 	 * PRODUCE THE UPSTREAM DATA
 	 */
+
+	//TODO: maybe make this into a method func (p *PrifiProtocol) isMySlot() bool {}
+	//write the next upstream slice. First, determine if we can embed payload this round
+	currentRound := p.clientState.roundCount % int32(p.clientState.nClients)
+	isMySlot := false
+	if currentRound == int32(p.clientState.MySlot) {
+		isMySlot = true
+	}
 
 	var upstreamCellContent []byte
 
@@ -258,6 +321,14 @@ func (p *PriFiProtocol) Received_REL_CLI_DOWNSTREAM_DATA(msg REL_CLI_DOWNSTREAM_
 		return errors.New(e)
 	} else {
 		dbg.Lvl3("Client " + strconv.Itoa(p.clientState.Id) + " : sent CLI_REL_UPSTREAM_DATA for round " + strconv.Itoa(int(p.clientState.roundCount)))
+	}
+
+	//clean old buffered messages
+	delete(p.clientState.BufferedRoundData, int32(p.clientState.roundCount-1))
+
+	//now we will be expecting next message. Except if we already received and buffered it !
+	if msg, hasAMessage := p.clientState.BufferedRoundData[int32(p.clientState.roundCount)]; hasAMessage {
+		p.Received_REL_CLI_DOWNSTREAM_DATA(msg)
 	}
 
 	return nil
@@ -391,6 +462,8 @@ func (p *PriFiProtocol) Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(msg REL_C
 	//prepare for commmunication
 	p.clientState.MySlot = mySlot
 	p.clientState.roundCount = 0
+	p.clientState.NextExpectedRound = int32(0)
+	p.clientState.BufferedRoundData = make(map[int32]REL_CLI_DOWNSTREAM_DATA)
 
 	//change state
 	p.clientState.currentState = CLIENT_STATE_READY
