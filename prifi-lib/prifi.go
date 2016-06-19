@@ -1,6 +1,8 @@
 package prifi
 
 import (
+	"strconv"
+
 	"github.com/dedis/cothority/lib/dbg"
 )
 
@@ -52,6 +54,14 @@ type MessageSender interface {
 	 * This should deliver the message "msg" to every client, possibly using broadcast
 	 */
 	BroadcastToAllClients(msg interface{}) error
+
+	/**
+	 * Clients should call this method in order to start receiving the Broadcast messages
+	 * call the function : start the handler, does not actually listen for broadcast messages
+	 * send 1 : start receiving the broadcasts
+	 * send 0 : stop receiving the broadcasts
+	 */
+	ClientSubscribeToBroadcast(clientName string, protocolInstance *PriFiProtocol, startStopChan chan bool) error
 }
 
 /*
@@ -104,6 +114,9 @@ func NewPriFiClientWithState(msgSender MessageSender, state *ClientState) *PriFi
 		clientState:   *state,
 	}
 	dbg.Lvl1("Client has been initialized by function call. ")
+
+	dbg.Lvl2("Client " + strconv.Itoa(prifi.clientState.Id) + " : starting the broadcast-listener goroutine")
+	go prifi.messageSender.ClientSubscribeToBroadcast(prifi.clientState.Name, &prifi, prifi.clientState.StartStopReceiveBroadcast)
 	return &prifi
 }
 

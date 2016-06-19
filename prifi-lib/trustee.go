@@ -164,7 +164,7 @@ func (p *PriFiProtocol) Send_TRU_REL_PK() error {
 		dbg.Error(e)
 		return errors.New(e)
 	} else {
-		dbg.Lvl3("Relay : sent TRU_REL_TELL_PK ") //TODO: this should be "trustee"
+		dbg.Lvl3("Trustee " + strconv.Itoa(p.trusteeState.Id) + " : sent TRU_REL_TELL_PK ") //TODO: this should be "trustee"
 	}
 
 	return nil
