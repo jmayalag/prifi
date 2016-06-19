@@ -1,11 +1,15 @@
 package prifi
 
 import (
+	"crypto/rand"
 	"errors"
+	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/dedis/cothority/lib/dbg"
 	"github.com/dedis/cothority/lib/sda"
+	prifi_lib "github.com/lbarman/prifi_dev/prifi-lib"
 )
 
 /**
@@ -52,7 +56,49 @@ func (ms MessageSender) SendToRelay(msg interface{}) error {
 	return ms.tree.SendTo(ms.relay, msg)
 }
 
+var udpChan UDPChannel = newLocalhostUDPChannel()
+
 func (ms MessageSender) BroadcastToAllClients(msg interface{}) error {
-	panic("Not implemented")
+
+	c := 10
+	b := make([]byte, c)
+	_, err := rand.Read(b)
+	if err != nil {
+		fmt.Println("error:", err)
+		return nil
+	}
+
+	udpChan.Broadcast(b)
+	return nil
+}
+
+func (ms MessageSender) ClientSubscribeToBroadcast(clientName string, protocolInstance *prifi_lib.PriFiProtocol, startStopChan chan bool) error {
+
+	listening := false
+	lastSeenMessage := -1
+
+	for {
+		select {
+		case val := <-startStopChan:
+			if val {
+				listening = true //either we listen or we stop
+				dbg.Lvl3("Client ", clientName, " switched on broadcast-listening.")
+			} else {
+				dbg.Lvl3("Client ", clientName, " killed broadcast-listening.")
+				return nil
+			}
+		default:
+		}
+
+		if listening {
+			//listen, then call
+			msg, _ := udpChan.ListenAndBlock(lastSeenMessage)
+			dbg.Error("Client ", clientName, "Received an UDP message !")
+			protocolInstance.ReceivedMessage(msg)
+
+		}
+
+		time.Sleep(time.Second)
+	}
 	return nil
 }
