@@ -17,6 +17,8 @@ import (
 	prifi_lib "github.com/lbarman/prifi_dev/prifi-lib"
 )
 
+var udpChan UDPChannel = newLocalhostUDPChannel()
+
 //the "PriFi-Wrapper-Protocol start". It calls the PriFi library with the correct parameters
 func (p *PriFiSDAWrapper) Start() error {
 

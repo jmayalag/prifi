@@ -1,9 +1,7 @@
 package prifi
 
 import (
-	"crypto/rand"
 	"errors"
-	"fmt"
 	"strconv"
 	"time"
 
@@ -56,44 +54,54 @@ func (ms MessageSender) SendToRelay(msg interface{}) error {
 	return ms.tree.SendTo(ms.relay, msg)
 }
 
-var udpChan UDPChannel = newLocalhostUDPChannel()
-
 func (ms MessageSender) BroadcastToAllClients(msg interface{}) error {
 
-	c := 10
-	b := make([]byte, c)
-	_, err := rand.Read(b)
-	if err != nil {
-		fmt.Println("error:", err)
-		return nil
+	castedMsg, canCast := msg.(*prifi_lib.REL_CLI_DOWNSTREAM_DATA_UDP)
+	if !canCast {
+		dbg.Error("Message sender : could not cast msg to REL_CLI_DOWNSTREAM_DATA_UDP, and I don't know how to send other messages.")
 	}
+	udpChan.Broadcast(castedMsg)
 
-	udpChan.Broadcast(b)
 	return nil
 }
 
 func (ms MessageSender) ClientSubscribeToBroadcast(clientName string, protocolInstance *prifi_lib.PriFiProtocol, startStopChan chan bool) error {
 
+	dbg.Lvl3(clientName, " started UDP-listener helper.")
 	listening := false
-	lastSeenMessage := -1
+	lastSeenMessage := 0 //the first real message has ID 1; this means that we saw the empty struct.
 
 	for {
 		select {
 		case val := <-startStopChan:
 			if val {
 				listening = true //either we listen or we stop
-				dbg.Lvl3("Client ", clientName, " switched on broadcast-listening.")
+				dbg.Lvl3(clientName, " switched on broadcast-listening.")
 			} else {
-				dbg.Lvl3("Client ", clientName, " killed broadcast-listening.")
+				dbg.Lvl3(clientName, " killed broadcast-listening.")
 				return nil
 			}
 		default:
 		}
 
 		if listening {
-			//listen, then call
-			msg, _ := udpChan.ListenAndBlock(lastSeenMessage)
-			dbg.Error("Client ", clientName, "Received an UDP message !")
+			emptyMessage := prifi_lib.REL_CLI_DOWNSTREAM_DATA_UDP{}
+			//listen
+			filledMessage, err := udpChan.ListenAndBlock(&emptyMessage, lastSeenMessage)
+
+			if err != nil {
+				dbg.Error(clientName, " an error occured : ", err)
+			}
+
+			//decode
+			msg, err := filledMessage.FromBytes()
+			dbg.Lvl3(clientName, " Received an UDP Message !")
+
+			if err != nil {
+				dbg.Error(clientName, " an error occured : ", err)
+			}
+
+			//forward to PriFi
 			protocolInstance.ReceivedMessage(msg)
 
 		}

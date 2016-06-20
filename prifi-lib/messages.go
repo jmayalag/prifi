@@ -1,6 +1,10 @@
 package prifi
 
 import (
+	"encoding/binary"
+	"errors"
+	"strconv"
+
 	"github.com/dedis/cothority/lib/dbg"
 	"github.com/dedis/crypto/abstract"
 )
@@ -71,6 +75,69 @@ type REL_CLI_DOWNSTREAM_DATA struct {
 
 type REL_CLI_DOWNSTREAM_DATA_UDP struct {
 	REL_CLI_DOWNSTREAM_DATA
+	test        string
+	byteEncoded []byte
+}
+
+func (m REL_CLI_DOWNSTREAM_DATA_UDP) Print() {
+	dbg.Printf("%+v\n", m)
+}
+
+func (m *REL_CLI_DOWNSTREAM_DATA_UDP) SetBytes(data []byte) {
+	m.byteEncoded = make([]byte, len(data))
+	copy(m.byteEncoded, data)
+}
+
+func (m *REL_CLI_DOWNSTREAM_DATA_UDP) ToBytes() ([]byte, error) {
+
+	//convert the message to bytes
+	buf := make([]byte, 4+4+len(m.REL_CLI_DOWNSTREAM_DATA.Data)+4)
+	resyncInt := 0
+	if m.REL_CLI_DOWNSTREAM_DATA.FlagResync {
+		resyncInt = 1
+	}
+
+	binary.BigEndian.PutUint32(buf[0:4], uint32(len(buf)))
+	binary.BigEndian.PutUint32(buf[4:8], uint32(m.REL_CLI_DOWNSTREAM_DATA.RoundId))
+	binary.BigEndian.PutUint32(buf[len(buf)-4:], uint32(resyncInt)) //todo : to be coded on one byte
+	copy(buf[8:len(buf)-4], m.REL_CLI_DOWNSTREAM_DATA.Data)
+
+	return buf, nil
+
+}
+
+func (m *REL_CLI_DOWNSTREAM_DATA_UDP) FromBytes() (interface{}, error) {
+
+	buffer := m.byteEncoded
+
+	//the smallest message is 4 bytes, indicating a length of 0
+	if len(buffer) < 4 {
+		e := "Messages.go : FromBytes() : cannot decode, smaller than 4 bytes"
+		dbg.Error(e)
+		return REL_CLI_DOWNSTREAM_DATA_UDP{}, errors.New(e)
+	}
+
+	messageSize := int(binary.BigEndian.Uint32(buffer[0:4]))
+
+	if len(buffer) != messageSize {
+		e := "Messages.go : FromBytes() : cannot decode, advertised length is " + strconv.Itoa(messageSize) + ", actual length is " + strconv.Itoa(len(buffer))
+		dbg.Error(e)
+		return REL_CLI_DOWNSTREAM_DATA_UDP{}, errors.New(e)
+	}
+
+	roundId := int32(binary.BigEndian.Uint32(buffer[4:8]))
+	flagResyncInt := int(binary.BigEndian.Uint32(buffer[len(buffer)-4:]))
+	data := buffer[8 : len(buffer)-4]
+
+	flagResync := false
+	if flagResyncInt == 1 {
+		flagResync = true
+	}
+
+	innerMessage := REL_CLI_DOWNSTREAM_DATA{roundId, data, flagResync} //This wrapping feels wierd
+	resultMessage := REL_CLI_DOWNSTREAM_DATA_UDP{innerMessage, "", make([]byte, 0)}
+
+	return resultMessage, nil
 }
 
 type REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG struct {

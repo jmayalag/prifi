@@ -491,12 +491,12 @@ func (p *PriFiProtocol) sendDownstreamData() error {
 	//TODO : if something went wrong before, this flag should be used to warn the clients that the config has changed
 	flagResync := false
 	dbg.Lvl3("Relay is gonna broadcast messages for round " + strconv.Itoa(int(p.relayState.currentDCNetRound.currentRound)) + ".")
+	toSend := &REL_CLI_DOWNSTREAM_DATA{p.relayState.currentDCNetRound.currentRound, downstreamCellContent, flagResync}
 
 	if !p.relayState.UseUDP {
 		//broadcast to all clients
 		for i := 0; i < p.relayState.nClients; i++ {
 			//send to the i-th client
-			toSend := &REL_CLI_DOWNSTREAM_DATA{p.relayState.currentDCNetRound.currentRound, downstreamCellContent, flagResync} //TODO: move it outside the loop
 			err := p.messageSender.SendToClient(i, toSend)
 			if err != nil {
 				e := "Could not send REL_CLI_DOWNSTREAM_DATA to " + strconv.Itoa(i+1) + "-th client for round " + strconv.Itoa(int(p.relayState.currentDCNetRound.currentRound)) + ", error is " + err.Error()
@@ -507,7 +507,8 @@ func (p *PriFiProtocol) sendDownstreamData() error {
 			}
 		}
 	} else {
-		panic("UDP not supported yet")
+		toSend2 := &REL_CLI_DOWNSTREAM_DATA_UDP{*toSend, "", make([]byte, 0)} //TODO : this wrapping feels wierd
+		p.messageSender.BroadcastToAllClients(toSend2)
 	}
 	dbg.Lvl3("Relay is done broadcasting messages for round " + strconv.Itoa(int(p.relayState.currentDCNetRound.currentRound)) + ".")
 

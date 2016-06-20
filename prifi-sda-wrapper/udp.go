@@ -13,22 +13,34 @@ import (
 const UDPPORT int = 10101
 const MAXUDPSIZEINBYTES int = 65507
 
-type UDPChannel interface {
-	Broadcast(msg []byte) error
+type MarshallableMessage interface {
+	Print()
 
-	ListenAndBlock(lastSeenMessage int) ([]byte, error)
+	SetBytes(data []byte)
+
+	ToBytes() ([]byte, error)
+
+	FromBytes() (interface{}, error)
+}
+
+type UDPChannel interface {
+	Broadcast(msg MarshallableMessage) error
+
+	//we take an empty MarshallableMessage as input, because the method does know how to parse the message
+	ListenAndBlock(msg MarshallableMessage, lastSeenMessage int) (MarshallableMessage, error)
 }
 
 func newLocalhostUDPChannel() UDPChannel {
 	return &LocalhostChannel{}
 }
+
 func newRealUDPChannel() UDPChannel {
 	return &RealUDPChannel{}
 }
 
 type LocalhostChannel struct {
 	sync.RWMutex
-	lastMessageId int
+	lastMessageId int //the first real message has ID 1, as the struct puts in a 0 when initialized
 	lastMessage   []byte
 }
 
@@ -37,7 +49,7 @@ type RealUDPChannel struct {
 	localConn *net.UDPConn
 }
 
-func (lc *LocalhostChannel) Broadcast(msg []byte) error {
+func (lc *LocalhostChannel) Broadcast(msg MarshallableMessage) error {
 
 	dbg.Lvl3("Broadcast - aquiring lock")
 	lc.Lock()
@@ -45,22 +57,26 @@ func (lc *LocalhostChannel) Broadcast(msg []byte) error {
 
 	if lc.lastMessage == nil {
 
-		dbg.Lvl3("Broadcast - setting msg # to 0")
-		lc.lastMessageId = 0
+		dbg.Lvl3("Broadcast - setting msg # to 1")
+		lc.lastMessageId = 1
 		lc.lastMessage = make([]byte, 0)
 	}
 
+	data, err := msg.ToBytes()
+	if err != nil {
+		dbg.Error("Broadcast: could not marshal message, error is", err.Error())
+	}
+
 	//append message to the buffer bool
-	lc.lastMessage = msg
+	lc.lastMessage = data
 	lc.lastMessageId++
 	dbg.Lvl3("Broadcast - added message ", lc.lastMessageId, ".")
 
 	return nil
 }
 
-func (lc *LocalhostChannel) ListenAndBlock(lastSeenMessage int) ([]byte, error) {
+func (lc *LocalhostChannel) ListenAndBlock(emptyMessage MarshallableMessage, lastSeenMessage int) (MarshallableMessage, error) {
 
-	dbg.Lvl3("ListenAndBlock - aquiring lock")
 	//we wait until there is a new message
 	lc.RLock()
 	defer lc.RUnlock()
@@ -70,19 +86,21 @@ func (lc *LocalhostChannel) ListenAndBlock(lastSeenMessage int) ([]byte, error) 
 		//unlock before wait !
 		lc.RUnlock()
 
-		dbg.Lvl3("ListenAndBlock - last message is ", (lc.lastMessageId + 1), ", waiting.")
-		time.Sleep(10 * time.Millisecond)
+		dbg.Lvl5("ListenAndBlock - last message is ", (lc.lastMessageId + 1), ", waiting.")
+		time.Sleep(5 * time.Millisecond)
 		lc.RLock()
 	}
 
-	dbg.Lvl3("ListenAndBlock - returning message ", (lastSeenMessage + 1), ".")
+	dbg.Lvl3("ListenAndBlock - returning message n°" + strconv.Itoa(lastSeenMessage+1) + ".")
 	//there's one
 	lastMsg := lc.lastMessage
 
-	return lastMsg, nil
+	emptyMessage.SetBytes(lastMsg)
+
+	return emptyMessage, nil
 }
 
-func (c *RealUDPChannel) Broadcast(msg []byte) error {
+func (c *RealUDPChannel) Broadcast(msg MarshallableMessage) error {
 
 	//if we're not ready with the connnection yet
 	if c.relayConn == nil {
@@ -104,7 +122,12 @@ func (c *RealUDPChannel) Broadcast(msg []byte) error {
 		//TODO : connection is never closed
 	}
 
-	_, err := c.relayConn.Write(msg)
+	data, err := msg.ToBytes()
+	if err != nil {
+		dbg.Error("Broadcast: could not marshal message, error is", err.Error())
+	}
+
+	_, err = c.relayConn.Write(data)
 	if err != nil {
 		dbg.Error("Broadcast: could not write message, error is", err.Error())
 	} else {
@@ -114,7 +137,7 @@ func (c *RealUDPChannel) Broadcast(msg []byte) error {
 	return nil
 }
 
-func (c *RealUDPChannel) ListenAndBlock(lastSeenMessage int) ([]byte, error) {
+func (c *RealUDPChannel) ListenAndBlock(emptyMessage MarshallableMessage, lastSeenMessage int) (MarshallableMessage, error) {
 
 	//if we're not ready with the connnection yet
 
@@ -144,5 +167,7 @@ func (c *RealUDPChannel) ListenAndBlock(lastSeenMessage int) ([]byte, error) {
 		dbg.Error("ListenAndBlock: Received a message of", n, "bytes, from addr", addr)
 	}
 
-	return buf, nil
+	emptyMessage.SetBytes(buf)
+
+	return emptyMessage, nil
 }

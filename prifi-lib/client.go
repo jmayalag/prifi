@@ -496,6 +496,17 @@ func (p *PriFiProtocol) Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(msg REL_C
 	p.clientState.RoundNo = int32(0)
 	p.clientState.BufferedRoundData = make(map[int32]REL_CLI_DOWNSTREAM_DATA)
 
+	//if by chance we had a broadcast-listener goroutine, kill it
+	if p.clientState.UseUDP {
+		if p.clientState.StartStopReceiveBroadcast == nil {
+			e := "Client " + strconv.Itoa(p.clientState.Id) + " wish to start listening with UDP, but doesn't have the appropriate helper."
+			dbg.Error(e)
+			return errors.New(e)
+		}
+		p.clientState.StartStopReceiveBroadcast <- true
+		dbg.Lvl3("Client " + strconv.Itoa(p.clientState.Id) + " indicated the udp-helper to start listening.")
+	}
+
 	//change state
 	p.clientState.currentState = CLIENT_STATE_READY
 	dbg.Lvl3("Client " + strconv.Itoa(p.clientState.Id) + " is ready to communicate.")
