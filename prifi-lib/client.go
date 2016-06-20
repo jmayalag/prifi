@@ -7,10 +7,16 @@ package prifi
  * Needs to be instantiated via the PriFiProtocol in prifi.go
  * Then, this file simple handle the answer to the different message kind :
  *
+ * - ALL_ALL_SHUTDOWN - kill this client
  * - ALL_ALL_PARAMETERS (specialized into ALL_CLI_PARAMETERS) - used to initialize the client over the network / overwrite its configuration
  * - REL_CLI_TELL_TRUSTEES_PK - the trustee's identities. We react by sending our identity + ephemeral identity
  * - REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG - the shuffle from the trustees. We do some check, if they pass, we can communicate. We send the first round to the relay.
  * - REL_CLI_DOWNSTREAM_DATA - the data from the relay, for one round. We react by finishing the round (sending our data to the relay)
+ *
+ * local functions :
+ *
+ * ProcessDownStreamData() <- is called by Received_REL_CLI_DOWNSTREAM_DATA; it handles the raw data received
+ * SendUpstreamData() <- it is called at the end of ProcessDownStreamData(). Hence, after getting some data down, we send some data up.
  *
  * TODO : traffic need to be encrypted
  * TODO : we need to test / sort out the downstream traffic data that is not for us
@@ -265,6 +271,11 @@ func (p *PriFiProtocol) Received_REL_CLI_UDP_DOWNSTREAM_DATA(msg REL_CLI_DOWNSTR
 	return nil
 }
 
+/**
+ * This function handle the downstream data. After determining if the data is for us (this is not done yet), we test if it's a
+ * latency-test message, test if the resync flag is on (which triggers a re-setup).
+ * When this function ends, it calls SendUpstreamData() which continues the communication loop.
+ */
 func (p *PriFiProtocol) ProcessDownStreamData(msg REL_CLI_DOWNSTREAM_DATA) error {
 
 	/*
@@ -306,6 +317,11 @@ func (p *PriFiProtocol) ProcessDownStreamData(msg REL_CLI_DOWNSTREAM_DATA) error
 	return p.SendUpstreamData()
 }
 
+/**
+ * This function determines if it's our round, emebed data (maybe latency-test message) in the payload if we can, creates the
+ * DC-net cipher, and send it to the relay.
+ *
+ */
 func (p *PriFiProtocol) SendUpstreamData() error {
 	/*
 	 * PRODUCE THE UPSTREAM DATA
