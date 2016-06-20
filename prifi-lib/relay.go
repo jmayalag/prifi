@@ -528,7 +528,7 @@ func (p *PriFiProtocol) sendDownstreamData() error {
 			}
 		}
 	} else {
-		toSend2 := &REL_CLI_DOWNSTREAM_DATA_UDP{*toSend, "", make([]byte, 0)} //TODO : this wrapping feels wierd
+		toSend2 := &REL_CLI_DOWNSTREAM_DATA_UDP{*toSend, make([]byte, 0)} //TODO : this wrapping feels wierd
 		p.messageSender.BroadcastToAllClients(toSend2)
 	}
 	dbg.Lvl3("Relay is done broadcasting messages for round " + strconv.Itoa(int(p.relayState.currentDCNetRound.currentRound)) + ".")
