@@ -17,7 +17,8 @@ import (
 	prifi_lib "github.com/lbarman/prifi_dev/prifi-lib"
 )
 
-var udpChan UDPChannel = newLocalhostUDPChannel()
+//the UDP channel we provide to PriFi. check udp.go for more details.
+var udpChan UDPChannel = newLocalhostUDPChannel() //use newRealUDPChannel() for real UDP
 
 //the "PriFi-Wrapper-Protocol start". It calls the PriFi library with the correct parameters
 func (p *PriFiSDAWrapper) Start() error {

@@ -56,10 +56,10 @@ type MessageSender interface {
 	BroadcastToAllClients(msg interface{}) error
 
 	/**
-	 * Clients should call this method in order to start receiving the Broadcast messages
+	 * Clients should call this method in order to start receiving the Broadcast messages.
 	 * call the function : start the handler, does not actually listen for broadcast messages
-	 * send 1 : start receiving the broadcasts
-	 * send 0 : stop receiving the broadcasts
+	 * send true : start receiving the broadcasts
+	 * send false : stop receiving the broadcasts
 	 */
 	ClientSubscribeToBroadcast(clientName string, protocolInstance *PriFiProtocol, startStopChan chan bool) error
 }

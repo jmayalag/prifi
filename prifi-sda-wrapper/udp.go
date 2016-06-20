@@ -1,5 +1,12 @@
 package prifi
 
+/*
+ * This class represent communication through UDP, and implements Broadcast, and ListenAndBlock (wait until there is one message).
+ * When emulating in localhost with thread, we cannot use UDP broadcast (network interfaces usually ignore their self-sent messages),
+ * hence this UDPChannel has two implementations : the classical UDP, and a cheating, localhost, fake-UDP broadcast done through go
+ * channels.
+ */
+
 import (
 	"fmt"
 	"net"
@@ -13,6 +20,11 @@ import (
 const UDPPORT int = 10101
 const MAXUDPSIZEINBYTES int = 65507
 
+/**
+ * Since we can only send []byte over UDP, each interface{} we want to send needs to implement MarshallableMessage.
+ * It has methods Print(), used for debug, ToBytes(), that converts it to a raw byte array, SetByte(), which simply store a byte array in the
+ * structure (but does not decode it), and FromBytes(), which decodes the interface{} from the inner buffer set by SetBytes()
+ */
 type MarshallableMessage interface {
 	Print()
 
@@ -23,6 +35,9 @@ type MarshallableMessage interface {
 	FromBytes() (interface{}, error)
 }
 
+/**
+ * This class is only a UDP channel. Since we have two implementation, this is the interface.
+ */
 type UDPChannel interface {
 	Broadcast(msg MarshallableMessage) error
 
@@ -30,24 +45,37 @@ type UDPChannel interface {
 	ListenAndBlock(msg MarshallableMessage, lastSeenMessage int) (MarshallableMessage, error)
 }
 
+/**
+ * The localhost, non-udp, cheating udp channel that uses go-channels to transmit information.
+ * It has perfect orderding, and no loss.
+ */
 func newLocalhostUDPChannel() UDPChannel {
 	return &LocalhostChannel{}
 }
 
+/**
+ * The real UDP thing. IT DOES NOT WORK IN LOCAL, as network interfaces usually ignore self-sent broadcasted messages.
+ */
 func newRealUDPChannel() UDPChannel {
 	return &RealUDPChannel{}
 }
 
+// the fake UDP channel
 type LocalhostChannel struct {
 	sync.RWMutex
 	lastMessageId int //the first real message has ID 1, as the struct puts in a 0 when initialized
 	lastMessage   []byte
 }
 
+//  the real UDP thing
 type RealUDPChannel struct {
 	relayConn *net.UDPConn
 	localConn *net.UDPConn
 }
+
+/*
+ * Below is the fake UDP channel (LocalhostChannel)
+ */
 
 func (lc *LocalhostChannel) Broadcast(msg MarshallableMessage) error {
 
@@ -98,6 +126,10 @@ func (lc *LocalhostChannel) ListenAndBlock(emptyMessage MarshallableMessage, las
 
 	return emptyMessage, nil
 }
+
+/*
+ * Below is the real UDP thing (RealUDPChannel)
+ */
 
 func (c *RealUDPChannel) Broadcast(msg MarshallableMessage) error {
 
