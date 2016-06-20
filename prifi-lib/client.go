@@ -187,6 +187,13 @@ func (p *PriFiProtocol) Received_REL_CLI_DOWNSTREAM_DATA(msg REL_CLI_DOWNSTREAM_
 	p.clientState.Lock()
 	defer p.clientState.Unlock()
 
+	/*
+		if msg.RoundId == 3 && p.clientState.Id == 1 {
+			dbg.Error("Client " + strconv.Itoa(p.clientState.Id) + " : simulating loss, dropping TCP message for round 3.")
+			return nil
+		}
+	*/
+
 	//this can only happens in the state TRUSTEE_STATE_SHUFFLE_DONE
 	if p.clientState.currentState != CLIENT_STATE_READY {
 		e := "Client " + strconv.Itoa(p.clientState.Id) + " : Received a REL_CLI_DOWNSTREAM_DATA, but not in state CLIENT_STATE_READY, in state " + strconv.Itoa(int(p.clientState.currentState))
@@ -226,10 +233,12 @@ func (p *PriFiProtocol) Received_REL_CLI_UDP_DOWNSTREAM_DATA(msg REL_CLI_DOWNSTR
 	p.clientState.Lock()
 	defer p.clientState.Unlock()
 
-	if msg.RoundId == 3 && p.clientState.Id == 1 {
-		dbg.Error("Client " + strconv.Itoa(p.clientState.Id) + " : simulating loss, dropping UDP message for round 3.")
-		return nil
-	}
+	/*
+		if msg.RoundId == 3 && p.clientState.Id == 1 {
+			dbg.Error("Client " + strconv.Itoa(p.clientState.Id) + " : simulating loss, dropping UDP message for round 3.")
+			return nil
+		}
+	*/
 
 	//this can only happens in the state TRUSTEE_STATE_SHUFFLE_DONE
 	if p.clientState.currentState != CLIENT_STATE_READY {

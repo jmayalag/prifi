@@ -82,6 +82,7 @@ type DCNetRound struct {
 	clientCipherCount  int
 	clientCipherAck    map[int]bool
 	trusteeCipherAck   map[int]bool
+	dataAlreadySent    REL_CLI_DOWNSTREAM_DATA
 }
 
 //test if we received all DC-net ciphers (1 per client, 1 per trustee)
@@ -96,38 +97,6 @@ func (dcnet *DCNetRound) hasAllCiphers(p *PriFiProtocol) bool {
 type BufferedCipher struct {
 	RoundId int32
 	Data    map[int][]byte
-}
-
-func (p *PriFiProtocol) waitAndCheckIfClientsSentData(roundId int32) {
-
-	time.Sleep(10 * time.Second)
-
-	if p.relayState.currentDCNetRound.currentRound != roundId {
-		//everything went well, it's great !
-		return
-	}
-
-	if p.relayState.currentDCNetRound.currentRound == roundId {
-		dbg.Error("waitAndCheckIfClientsSentData : We seem to be stuck in round", roundId)
-
-		//check for the trustees
-		for j := 0; j < p.relayState.nTrustees; j++ {
-			trusteeId := p.relayState.trustees[j].Id
-			if !p.relayState.currentDCNetRound.trusteeCipherAck[trusteeId] {
-				e := "Relay : Trustee " + strconv.Itoa(trusteeId) + " didn't sent us is cipher for round " + strconv.Itoa(int(roundId)) + ". This is unacceptable !"
-				dbg.Error(e)
-			}
-		}
-
-		//check for the clients
-		for i := 0; i < p.relayState.nClients; i++ {
-			clientId := p.relayState.clients[i].Id
-			if !p.relayState.currentDCNetRound.clientCipherAck[clientId] {
-				e := "Relay : Client " + strconv.Itoa(clientId) + " didn't sent us is cipher for round " + strconv.Itoa(int(roundId)) + ". This is unacceptable !"
-				dbg.Error(e)
-			}
-		}
-	}
 }
 
 //the mutable variable held by the client
@@ -552,11 +521,11 @@ func (p *PriFiProtocol) sendDownstreamData() error {
 
 	//prepare for the next round
 	nextRound := p.relayState.currentDCNetRound.currentRound + 1
-	p.relayState.currentDCNetRound = DCNetRound{nextRound, 0, 0, make(map[int]bool), make(map[int]bool)}
+	p.relayState.currentDCNetRound = DCNetRound{nextRound, 0, 0, make(map[int]bool), make(map[int]bool), *toSend}
 	p.relayState.CellCoder.DecodeStart(p.relayState.UpstreamCellSize, p.relayState.MessageHistory) //this empties the buffer, making them ready for a new round
 
 	//we just sent the data down, initiating a round. Let's prevent being blocked by a dead client
-	go p.waitAndCheckIfClientsSentData(p.relayState.currentDCNetRound.currentRound)
+	go p.checkIfRoundHasEndedAfterTimeOut_Phase1(p.relayState.currentDCNetRound.currentRound)
 
 	// Test if we are doing an experiment, and if we need to stop at some point.
 	if nextRound == int32(p.relayState.ExperimentRoundLimit) {
@@ -806,7 +775,7 @@ func (p *PriFiProtocol) Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS(msg TRU_REL_T
 		}
 
 		//prepare to collect the ciphers
-		p.relayState.currentDCNetRound = DCNetRound{0, 0, 0, make(map[int]bool), make(map[int]bool)}
+		p.relayState.currentDCNetRound = DCNetRound{0, 0, 0, make(map[int]bool), make(map[int]bool), REL_CLI_DOWNSTREAM_DATA{}}
 		p.relayState.CellCoder.DecodeStart(p.relayState.UpstreamCellSize, p.relayState.MessageHistory)
 
 		//changing state
@@ -876,4 +845,114 @@ func (p *PriFiProtocol) Received_TRU_REL_SHUFFLE_SIG(msg TRU_REL_SHUFFLE_SIG) er
 	}
 
 	return nil
+}
+
+/**
+ * This first timeout happens after a short delay. Clients will not be considered disconnected yet,
+ * but if we use UDP, it can mean that a client missed a broadcast, and we re-sent the message.
+ * If the round was *not* done, we do another timeout (Phase 2), and then, clients/trustees will be considered
+ * online if they didn't answer by that time.
+ */
+func (p *PriFiProtocol) checkIfRoundHasEndedAfterTimeOut_Phase1(roundId int32) {
+
+	time.Sleep(5 * time.Second)
+
+	if p.relayState.currentDCNetRound.currentRound != roundId {
+		//everything went well, it's great !
+		return
+	}
+
+	if p.relayState.currentState == RELAY_STATE_SHUTDOWN {
+		//nothing to ensure in that case
+		return
+	}
+
+	allGood := true
+
+	if p.relayState.currentDCNetRound.currentRound == roundId {
+		dbg.Error("waitAndCheckIfClientsSentData : We seem to be stuck in round", roundId, ". Phase 1 timeout.")
+
+		//check for the trustees
+		for j := 0; j < p.relayState.nTrustees; j++ {
+			trusteeId := p.relayState.trustees[j].Id
+
+			//if we miss some message...
+			if !p.relayState.currentDCNetRound.trusteeCipherAck[trusteeId] {
+				allGood = false
+			}
+		}
+
+		//check for the clients
+		for i := 0; i < p.relayState.nClients; i++ {
+			clientId := p.relayState.clients[i].Id
+
+			//if we miss some message...
+			if !p.relayState.currentDCNetRound.clientCipherAck[clientId] {
+				allGood = false
+
+				//If we're using UDP, client might have missed the broadcast, re-sending
+				if p.relayState.UseUDP {
+					dbg.Error("Relay : Client " + strconv.Itoa(clientId) + " didn't sent us is cipher for round " + strconv.Itoa(int(roundId)) + ". Phase 1 timeout. Re-sending...")
+					err := p.messageSender.SendToClient(i, &p.relayState.currentDCNetRound.dataAlreadySent)
+					if err != nil {
+						e := "Could not send REL_CLI_DOWNSTREAM_DATA to " + strconv.Itoa(i+1) + "-th client for round " + strconv.Itoa(int(p.relayState.currentDCNetRound.currentRound)) + ", error is " + err.Error()
+						dbg.Error(e)
+					} else {
+						dbg.Lvl3("Relay : sent REL_CLI_DOWNSTREAM_DATA to " + strconv.Itoa(i+1) + "-th client for round " + strconv.Itoa(int(p.relayState.currentDCNetRound.currentRound)))
+					}
+				}
+			}
+		}
+	}
+
+	if !allGood {
+		//if we're not done (we miss data), wait another timeout, after which clients/trustees will be considered offline
+		go p.checkIfRoundHasEndedAfterTimeOut_Phase2(roundId)
+	}
+
+	//this shouldn't happen frequently (it means that the timeout 1 was fired, but the round finished almost at the same time)
+}
+
+/**
+ * This second timeout happens after a longer delay. Clients and trustees will be considered offline if they haven't send data yet
+ */
+func (p *PriFiProtocol) checkIfRoundHasEndedAfterTimeOut_Phase2(roundId int32) {
+
+	time.Sleep(5 * time.Second)
+
+	if p.relayState.currentDCNetRound.currentRound != roundId {
+		//everything went well, it's great !
+		return
+	}
+
+	if p.relayState.currentState == RELAY_STATE_SHUTDOWN {
+		//nothing to ensure in that case
+		return
+	}
+
+	if p.relayState.currentDCNetRound.currentRound == roundId {
+		dbg.Error("waitAndCheckIfClientsSentData : We seem to be stuck in round", roundId, ". Phase 2 timeout.")
+
+		//check for the trustees
+		for j := 0; j < p.relayState.nTrustees; j++ {
+			trusteeId := p.relayState.trustees[j].Id
+			if !p.relayState.currentDCNetRound.trusteeCipherAck[trusteeId] {
+				e := "Relay : Trustee " + strconv.Itoa(trusteeId) + " didn't sent us is cipher for round " + strconv.Itoa(int(roundId)) + ". Phase 2 timeout. This is unacceptable !"
+				dbg.Error(e)
+
+				//nothing we can do here, re-setup
+			}
+		}
+
+		//check for the clients
+		for i := 0; i < p.relayState.nClients; i++ {
+			clientId := p.relayState.clients[i].Id
+			if !p.relayState.currentDCNetRound.clientCipherAck[clientId] {
+				e := "Relay : Client " + strconv.Itoa(clientId) + " didn't sent us is cipher for round " + strconv.Itoa(int(roundId)) + ". Phase 2 timeout. This is unacceptable !"
+				dbg.Error(e)
+
+				//TODO : Client should be considered disconnected, triggering re-setup.
+			}
+		}
+	}
 }
