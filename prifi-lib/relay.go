@@ -7,13 +7,27 @@ package prifi
  * Needs to be instantiated via the PriFiProtocol in prifi.go
  * Then, this file simple handle the answer to the different message kind :
  *
+ * - ALL_ALL_SHUTDOWN - kill this relay
  * - ALL_ALL_PARAMETERS (specialized into ALL_REL_PARAMETERS) - used to initialize the relay over the network / overwrite its configuration
  * - TRU_REL_TELL_PK - when a trustee connects, he tells us his public key
- * - CLI_REL_TELL_PK_AND_EPH_PK - when they receive the list of the trustees, each clients tells his identity. when we have all client's IDs, we send them to the trustees to shuffle (Schedule protocol)
+ * - CLI_REL_TELL_PK_AND_EPH_PK - when they receive the list of the trustees, each clients tells his identity. when we have all client's IDs,
+ * 								  we send them to the trustees to shuffle (Schedule protocol)
  * - TRU_REL_TELL_NEW_BASE_AND_EPH_PKS - when we receive the result of one shuffle, we forward it to the next trustee
- * - TRU_REL_SHUFFLE_SIG - when the shuffle has been done by all trustee, we send the transcript, and they answer with a signature, which we broadcast to the clients
+ * - TRU_REL_SHUFFLE_SIG - when the shuffle has been done by all trustee, we send the transcript, and they answer with a signature, which we
+ * 						   broadcast to the clients
  * - CLI_REL_UPSTREAM_DATA - data for the DC-net
+ * - REL_CLI_UDP_DOWNSTREAM_DATA - is NEVER received here, but casted to CLI_REL_UPSTREAM_DATA by messages.go
  * - TRU_REL_DC_CIPHER - data for the DC-net
+ *
+ * local functions :
+ *
+ * ConnectToTrustees() - simple helper
+ * finalizeUpstreamData() - called after some Receive_CLI_REL_UPSTREAM_DATA, when we have all ciphers.
+ * sendDownstreamData() - called after a finalizeUpstreamData(), to continue the communication
+ * checkIfRoundHasEndedAfterTimeOut_Phase1() - called by sendDownstreamData(), which starts a new round. After some short time, if the round hasn't changed, and we used UDP,
+ *											   retransmit messages to client over TCP
+ * checkIfRoundHasEndedAfterTimeOut_Phase2() - called by checkIfRoundHasEndedAfterTimeOut_Phase1(). After some long time, entities that didn't send us data should be
+ *											   considered disconnected
  *
  * TODO : We should timeout if some client did not send anything after a while
  * TODO : given the number of already-buffered Ciphers (per trustee), we need to tell him to slow down
@@ -298,8 +312,6 @@ func (p *PriFiProtocol) Received_CLI_REL_UPSTREAM_DATA(msg CLI_REL_UPSTREAM_DATA
 		dbg.Lvl3("Relay : received CLI_REL_UPSTREAM_DATA from client " + strconv.Itoa(msg.ClientId) + " for round " + strconv.Itoa(int(msg.RoundId)))
 	}
 
-	//TODO : add a timeout somewhere here
-
 	//if this is not the message destinated for this round, discard it ! (we are in lock-step)
 	if p.relayState.currentDCNetRound.currentRound != msg.RoundId {
 		e := "Relay : Client sent DC-net cipher for round , " + strconv.Itoa(int(msg.RoundId)) + " but current round is " + strconv.Itoa(int(p.relayState.currentDCNetRound.currentRound))
@@ -460,6 +472,8 @@ func (p *PriFiProtocol) finalizeUpstreamData() error {
  * This is simply called when the Relay has processed the upstream cell from all clients, and is ready to finalize the round by sending the data down.
  * If it's a latency-test message, we send it back to the clients.
  * If we use SOCKS/VPN, give them the data.
+ * Since after this function, we'll start receiving data for the next round, if we have buffered data for this next round, tell the state that we
+ * have the data already (and we're not waiting on it). Clean the old data.
  */
 func (p *PriFiProtocol) sendDownstreamData() error {
 
