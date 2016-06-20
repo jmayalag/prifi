@@ -51,7 +51,6 @@ type RealUDPChannel struct {
 
 func (lc *LocalhostChannel) Broadcast(msg MarshallableMessage) error {
 
-	dbg.Lvl3("Broadcast - aquiring lock")
 	lc.Lock()
 	defer lc.Unlock()
 

@@ -142,7 +142,7 @@ func NewPriFiSDAWrapperProtocol(n *sda.TreeNodeInstance) (sda.ProtocolInstance, 
 		trusteeState := prifi_lib.NewTrusteeState(trusteeId, nTrustees, nClients, upCellSize)
 		prifiProtocol = prifi_lib.NewPriFiTrusteeWithState(messageSender, trusteeState)
 	} else {
-		clientId := (n.Index() - nTrustees)
+		clientId := (n.Index() - nTrustees - 1)
 		dbg.Print(n.Name(), " starting as a PriFi client", clientId)
 		clientState := prifi_lib.NewClientState(clientId, nTrustees, nClients, upCellSize, doLatencyTests, useUDP, sendDataOutOfDCNet)
 		prifiProtocol = prifi_lib.NewPriFiClientWithState(messageSender, clientState)

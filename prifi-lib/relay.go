@@ -80,6 +80,8 @@ type DCNetRound struct {
 	currentRound       int32
 	trusteeCipherCount int
 	clientCipherCount  int
+	clientCipherAck    map[int]bool
+	trusteeCipherAck   map[int]bool
 }
 
 //test if we received all DC-net ciphers (1 per client, 1 per trustee)
@@ -94,6 +96,38 @@ func (dcnet *DCNetRound) hasAllCiphers(p *PriFiProtocol) bool {
 type BufferedCipher struct {
 	RoundId int32
 	Data    map[int][]byte
+}
+
+func (p *PriFiProtocol) waitAndCheckIfClientsSentData(roundId int32) {
+
+	time.Sleep(10 * time.Second)
+
+	if p.relayState.currentDCNetRound.currentRound != roundId {
+		//everything went well, it's great !
+		return
+	}
+
+	if p.relayState.currentDCNetRound.currentRound == roundId {
+		dbg.Error("waitAndCheckIfClientsSentData : We seem to be stuck in round", roundId)
+
+		//check for the trustees
+		for j := 0; j < p.relayState.nTrustees; j++ {
+			trusteeId := p.relayState.trustees[j].Id
+			if !p.relayState.currentDCNetRound.trusteeCipherAck[trusteeId] {
+				e := "Relay : Trustee " + strconv.Itoa(trusteeId) + " didn't sent us is cipher for round " + strconv.Itoa(int(roundId)) + ". This is unacceptable !"
+				dbg.Error(e)
+			}
+		}
+
+		//check for the clients
+		for i := 0; i < p.relayState.nClients; i++ {
+			clientId := p.relayState.clients[i].Id
+			if !p.relayState.currentDCNetRound.clientCipherAck[clientId] {
+				e := "Relay : Client " + strconv.Itoa(clientId) + " didn't sent us is cipher for round " + strconv.Itoa(int(roundId)) + ". This is unacceptable !"
+				dbg.Error(e)
+			}
+		}
+	}
 }
 
 //the mutable variable held by the client
@@ -292,7 +326,7 @@ func (p *PriFiProtocol) Received_CLI_REL_UPSTREAM_DATA(msg CLI_REL_UPSTREAM_DATA
 		dbg.Error(e)
 		//return errors.New(e)
 	} else {
-		dbg.Lvl3("Relay : received CLI_REL_UPSTREAM_DATA")
+		dbg.Lvl3("Relay : received CLI_REL_UPSTREAM_DATA from client " + strconv.Itoa(msg.ClientId) + " for round " + strconv.Itoa(int(msg.RoundId)))
 	}
 
 	//TODO : add a timeout somewhere here
@@ -320,6 +354,7 @@ func (p *PriFiProtocol) Received_CLI_REL_UPSTREAM_DATA(msg CLI_REL_UPSTREAM_DATA
 
 		p.relayState.CellCoder.DecodeClient(msg.Data)
 		p.relayState.currentDCNetRound.clientCipherCount++
+		p.relayState.currentDCNetRound.clientCipherAck[msg.ClientId] = true
 
 		dbg.Lvl3("Relay collecting cells for round", p.relayState.currentDCNetRound.currentRound, ", ", p.relayState.currentDCNetRound.clientCipherCount, "/", p.relayState.nClients, ", ", p.relayState.currentDCNetRound.trusteeCipherCount, "/", p.relayState.nTrustees)
 
@@ -365,6 +400,7 @@ func (p *PriFiProtocol) Received_TRU_REL_DC_CIPHER(msg TRU_REL_DC_CIPHER) error 
 
 		p.relayState.CellCoder.DecodeTrustee(msg.Data)
 		p.relayState.currentDCNetRound.trusteeCipherCount++
+		p.relayState.currentDCNetRound.trusteeCipherAck[msg.TrusteeId] = true
 
 		if p.relayState.currentDCNetRound.hasAllCiphers(p) {
 
@@ -516,10 +552,13 @@ func (p *PriFiProtocol) sendDownstreamData() error {
 
 	//prepare for the next round
 	nextRound := p.relayState.currentDCNetRound.currentRound + 1
-	p.relayState.currentDCNetRound = DCNetRound{nextRound, 0, 0}
+	p.relayState.currentDCNetRound = DCNetRound{nextRound, 0, 0, make(map[int]bool), make(map[int]bool)}
 	p.relayState.CellCoder.DecodeStart(p.relayState.UpstreamCellSize, p.relayState.MessageHistory) //this empties the buffer, making them ready for a new round
 
-	//we just finished a round. Test if we are doing an experiment, and if we need to stop at some point.
+	//we just sent the data down, initiating a round. Let's prevent being blocked by a dead client
+	go p.waitAndCheckIfClientsSentData(p.relayState.currentDCNetRound.currentRound)
+
+	// Test if we are doing an experiment, and if we need to stop at some point.
 	if nextRound == int32(p.relayState.ExperimentRoundLimit) {
 		dbg.Lvl1("Relay : Experiment round limit (", nextRound, ") reached")
 
@@ -767,7 +806,7 @@ func (p *PriFiProtocol) Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS(msg TRU_REL_T
 		}
 
 		//prepare to collect the ciphers
-		p.relayState.currentDCNetRound = DCNetRound{0, 0, 0}
+		p.relayState.currentDCNetRound = DCNetRound{0, 0, 0, make(map[int]bool), make(map[int]bool)}
 		p.relayState.CellCoder.DecodeStart(p.relayState.UpstreamCellSize, p.relayState.MessageHistory)
 
 		//changing state
