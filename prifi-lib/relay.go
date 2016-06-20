@@ -446,6 +446,8 @@ func (p *PriFiProtocol) finalizeUpstreamData() error {
 
 	dbg.Lvl3("Relay : Outputted upstream cell (finalized round " + strconv.Itoa(int(p.relayState.currentDCNetRound.currentRound)) + "), sending downstream data.")
 
+	dbg.Lvl2("Relay finished round " + strconv.Itoa(int(p.relayState.currentDCNetRound.currentRound)) + ".")
+
 	return nil
 }
 
@@ -576,7 +578,6 @@ func (p *PriFiProtocol) sendDownstreamData() error {
 		delete(p.relayState.bufferedClientCiphers, nextRound)
 	}
 
-	dbg.Lvl2("Relay has finished round" + strconv.Itoa(int(nextRound-1)) + ".")
 	return nil
 }
 

@@ -57,8 +57,8 @@ func (lc *LocalhostChannel) Broadcast(msg MarshallableMessage) error {
 
 	if lc.lastMessage == nil {
 
-		dbg.Lvl3("Broadcast - setting msg # to 1")
-		lc.lastMessageId = 1
+		dbg.Lvl3("Broadcast - setting msg # to 0")
+		lc.lastMessageId = 0
 		lc.lastMessage = make([]byte, 0)
 	}
 
@@ -70,7 +70,7 @@ func (lc *LocalhostChannel) Broadcast(msg MarshallableMessage) error {
 	//append message to the buffer bool
 	lc.lastMessage = data
 	lc.lastMessageId++
-	dbg.Lvl3("Broadcast - added message ", lc.lastMessageId, ".")
+	dbg.Lvl3("Broadcast - added message, new message has Id ", lc.lastMessageId, ".")
 
 	return nil
 }

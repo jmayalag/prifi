@@ -88,6 +88,7 @@ func (ms MessageSender) ClientSubscribeToBroadcast(clientName string, protocolIn
 			emptyMessage := prifi_lib.REL_CLI_DOWNSTREAM_DATA_UDP{}
 			//listen
 			filledMessage, err := udpChan.ListenAndBlock(&emptyMessage, lastSeenMessage)
+			lastSeenMessage++
 
 			if err != nil {
 				dbg.Error(clientName, " an error occured : ", err)
@@ -95,7 +96,7 @@ func (ms MessageSender) ClientSubscribeToBroadcast(clientName string, protocolIn
 
 			//decode
 			msg, err := filledMessage.FromBytes()
-			dbg.Lvl3(clientName, " Received an UDP Message !")
+			dbg.Lvl3(clientName, " Received an UDP message n°"+strconv.Itoa(lastSeenMessage))
 
 			if err != nil {
 				dbg.Error(clientName, " an error occured : ", err)
