@@ -546,10 +546,10 @@ func (p *PriFiProtocol) sendDownstreamData() error {
 			//Here is the control to regulate the trustees ciphers incase they should continue sending
 			p.relayState.trusteeCipherTracker[trusteeId]--
 			currentCapacity := MAX_ALLOWED_TRUSTEE_CIPHERS_BUFFERED - p.relayState.trusteeCipherTracker[trusteeId] //Calculate the current capacity
-			thresholdFactor := RESUME_SENDING_CAPACITY_RATIO * (MAX_ALLOWED_TRUSTEE_CIPHERS_BUFFERED - TRUSTEE_WINDOW_LOWER_LIMIT)
-			threshHold := TRUSTEE_WINDOW_LOWER_LIMIT + int(thresholdFactor)
 
-			if currentCapacity == threshHold { //if the previous capacity was at the lower limit allowed
+			threshHold := (TRUSTEE_WINDOW_LOWER_LIMIT + 1) + RESUME_SENDING_CAPACITY_RATIO * (MAX_ALLOWED_TRUSTEE_CIPHERS_BUFFERED - (TRUSTEE_WINDOW_LOWER_LIMIT + 1))
+
+			if currentCapacity == int(threshHold) { //if the previous capacity was at the lower limit allowed
 				toSend := &REL_TRU_TELL_RATE_CHANGE{currentCapacity}
 				err := p.messageSender.SendToTrustee(trusteeId, toSend) //send the trustee informing them of the current capacity that has free'd up
 				if err != nil {
