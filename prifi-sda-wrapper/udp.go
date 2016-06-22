@@ -9,6 +9,7 @@ package prifi
 
 import (
 	"fmt"
+	"math/rand"
 	"net"
 	"strconv"
 	"sync"
@@ -19,6 +20,7 @@ import (
 
 const UDPPORT int = 10101
 const MAXUDPSIZEINBYTES int = 65507
+const FAKE_LOCAL_UDP_SIMULATED_LOSS_PERCENTAGE = 50 //let's make our local, dummy UDP channel lossy, for added realism
 
 /**
  * Since we can only send []byte over UDP, each interface{} we want to send needs to implement MarshallableMessage.
@@ -108,7 +110,20 @@ func (lc *LocalhostChannel) ListenAndBlock(emptyMessage MarshallableMessage, las
 	lc.RLock()
 	defer lc.RUnlock()
 
+	//our channel is lossy. we decide "in advance" if we will miss next message
+	r := rand.Intn(100)
+	willIgnoreNextMessage := false
+	if r < FAKE_LOCAL_UDP_SIMULATED_LOSS_PERCENTAGE {
+		willIgnoreNextMessage = true
+	}
+
+	if willIgnoreNextMessage {
+		dbg.Lvl3("ListenAndBlock : Lossy UDP (loss", FAKE_LOCAL_UDP_SIMULATED_LOSS_PERCENTAGE, "%), we will ignore message coming after", lastSeenMessage, "and wait for message after", (lastSeenMessage + 1))
+		lastSeenMessage += 1
+	}
+
 	dbg.Lvl3("ListenAndBlock - waiting on message ", (lastSeenMessage + 1), ".")
+
 	for lc.lastMessageId == lastSeenMessage {
 		//unlock before wait !
 		lc.RUnlock()
