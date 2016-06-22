@@ -370,7 +370,7 @@ func (p *PriFiProtocol) Received_TRU_REL_DC_CIPHER(msg TRU_REL_DC_CIPHER) error 
 		dbg.Error(e)
 		//return errors.New(e)
 	} else {
-		dbg.Lvl3("Relay : received TRU_REL_DC_CIPHER")
+		dbg.Lvl3("Relay : received TRU_REL_DC_CIPHER for round " + strconv.Itoa(int(msg.RoundId)) + " from trustee " + strconv.Itoa(msg.TrusteeId))
 	}
 
 	//TODO @ Mohamad : add rate-control somewhere here
