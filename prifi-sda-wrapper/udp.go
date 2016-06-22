@@ -20,7 +20,7 @@ import (
 
 const UDPPORT int = 10101
 const MAXUDPSIZEINBYTES int = 65507
-const FAKE_LOCAL_UDP_SIMULATED_LOSS_PERCENTAGE = 50 //let's make our local, dummy UDP channel lossy, for added realism
+const FAKE_LOCAL_UDP_SIMULATED_LOSS_PERCENTAGE = 0 //let's make our local, dummy UDP channel lossy, for added realism
 
 /**
  * Since we can only send []byte over UDP, each interface{} we want to send needs to implement MarshallableMessage.

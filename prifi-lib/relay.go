@@ -97,6 +97,7 @@ type DCNetRound struct {
 	clientCipherAck    map[int]bool
 	trusteeCipherAck   map[int]bool
 	dataAlreadySent    REL_CLI_DOWNSTREAM_DATA
+	startTime          time.Time
 }
 
 //test if we received all DC-net ciphers (1 per client, 1 per trustee)
@@ -463,8 +464,6 @@ func (p *PriFiProtocol) finalizeUpstreamData() error {
 
 	dbg.Lvl3("Relay : Outputted upstream cell (finalized round " + strconv.Itoa(int(p.relayState.currentDCNetRound.currentRound)) + "), sending downstream data.")
 
-	dbg.Lvl2("Relay finished round " + strconv.Itoa(int(p.relayState.currentDCNetRound.currentRound)) + ".")
-
 	return nil
 }
 
@@ -533,9 +532,12 @@ func (p *PriFiProtocol) sendDownstreamData() error {
 	}
 	dbg.Lvl3("Relay is done broadcasting messages for round " + strconv.Itoa(int(p.relayState.currentDCNetRound.currentRound)) + ".")
 
+	timeSpent := time.Since(p.relayState.currentDCNetRound.startTime)
+	dbg.Lvl2("Relay finished round "+strconv.Itoa(int(p.relayState.currentDCNetRound.currentRound))+" (after", timeSpent, ").")
+
 	//prepare for the next round
 	nextRound := p.relayState.currentDCNetRound.currentRound + 1
-	p.relayState.currentDCNetRound = DCNetRound{nextRound, 0, 0, make(map[int]bool), make(map[int]bool), *toSend}
+	p.relayState.currentDCNetRound = DCNetRound{nextRound, 0, 0, make(map[int]bool), make(map[int]bool), *toSend, time.Now()}
 	p.relayState.CellCoder.DecodeStart(p.relayState.UpstreamCellSize, p.relayState.MessageHistory) //this empties the buffer, making them ready for a new round
 
 	//we just sent the data down, initiating a round. Let's prevent being blocked by a dead client
@@ -789,7 +791,7 @@ func (p *PriFiProtocol) Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS(msg TRU_REL_T
 		}
 
 		//prepare to collect the ciphers
-		p.relayState.currentDCNetRound = DCNetRound{0, 0, 0, make(map[int]bool), make(map[int]bool), REL_CLI_DOWNSTREAM_DATA{}}
+		p.relayState.currentDCNetRound = DCNetRound{0, 0, 0, make(map[int]bool), make(map[int]bool), REL_CLI_DOWNSTREAM_DATA{}, time.Now()}
 		p.relayState.CellCoder.DecodeStart(p.relayState.UpstreamCellSize, p.relayState.MessageHistory)
 
 		//changing state
