@@ -1,6 +1,10 @@
 package prifi
 
 import (
+	"encoding/binary"
+	"errors"
+	"strconv"
+
 	"github.com/dedis/cothority/lib/dbg"
 	"github.com/dedis/crypto/abstract"
 )
@@ -69,10 +73,6 @@ type REL_CLI_DOWNSTREAM_DATA struct {
 	FlagResync bool
 }
 
-type REL_CLI_DOWNSTREAM_DATA_UDP struct {
-	REL_CLI_DOWNSTREAM_DATA
-}
-
 type REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG struct {
 	Base         abstract.Point
 	EphPks       []abstract.Point
@@ -121,6 +121,80 @@ type TRU_REL_TELL_PK struct {
 	Pk        abstract.Point
 }
 
+/*
+ * The following message is a bit special. It's a REL_CLI_DOWNSTREAM_DATA, simply named with _UDP prefix to be able to distinguish them from type,
+ * and theoretically that should be it. But since it doesn't go through SDA (which does support UDP yet), we have to manually convert it to bytes.
+ * To that purpose, this message implements MarshallableMessage, defined in prifi-sda-wrapper/udp.go.
+ * Hence, it has methods Print(), used for debug, ToBytes(), that converts it to a raw byte array, SetByte(), which simply store a byte array in the
+ * structure (but does not decode it), and FromBytes(), which decodes the REL_CLI_DOWNSTREAM_DATA from the inner buffer set by SetBytes()
+ */
+
+type REL_CLI_DOWNSTREAM_DATA_UDP struct {
+	REL_CLI_DOWNSTREAM_DATA
+	byteEncoded []byte
+}
+
+func (m REL_CLI_DOWNSTREAM_DATA_UDP) Print() {
+	dbg.Printf("%+v\n", m)
+}
+
+func (m *REL_CLI_DOWNSTREAM_DATA_UDP) SetBytes(data []byte) {
+	m.byteEncoded = make([]byte, len(data))
+	copy(m.byteEncoded, data)
+}
+
+func (m *REL_CLI_DOWNSTREAM_DATA_UDP) ToBytes() ([]byte, error) {
+
+	//convert the message to bytes
+	buf := make([]byte, 4+4+len(m.REL_CLI_DOWNSTREAM_DATA.Data)+4)
+	resyncInt := 0
+	if m.REL_CLI_DOWNSTREAM_DATA.FlagResync {
+		resyncInt = 1
+	}
+
+	binary.BigEndian.PutUint32(buf[0:4], uint32(len(buf)))
+	binary.BigEndian.PutUint32(buf[4:8], uint32(m.REL_CLI_DOWNSTREAM_DATA.RoundId))
+	binary.BigEndian.PutUint32(buf[len(buf)-4:], uint32(resyncInt)) //todo : to be coded on one byte
+	copy(buf[8:len(buf)-4], m.REL_CLI_DOWNSTREAM_DATA.Data)
+
+	return buf, nil
+
+}
+
+func (m *REL_CLI_DOWNSTREAM_DATA_UDP) FromBytes() (interface{}, error) {
+
+	buffer := m.byteEncoded
+
+	//the smallest message is 4 bytes, indicating a length of 0
+	if len(buffer) < 4 {
+		e := "Messages.go : FromBytes() : cannot decode, smaller than 4 bytes"
+		dbg.Error(e)
+		return REL_CLI_DOWNSTREAM_DATA_UDP{}, errors.New(e)
+	}
+
+	messageSize := int(binary.BigEndian.Uint32(buffer[0:4]))
+
+	if len(buffer) != messageSize {
+		e := "Messages.go : FromBytes() : cannot decode, advertised length is " + strconv.Itoa(messageSize) + ", actual length is " + strconv.Itoa(len(buffer))
+		dbg.Error(e)
+		return REL_CLI_DOWNSTREAM_DATA_UDP{}, errors.New(e)
+	}
+
+	roundId := int32(binary.BigEndian.Uint32(buffer[4:8]))
+	flagResyncInt := int(binary.BigEndian.Uint32(buffer[len(buffer)-4:]))
+	data := buffer[8 : len(buffer)-4]
+
+	flagResync := false
+	if flagResyncInt == 1 {
+		flagResync = true
+	}
+
+	innerMessage := REL_CLI_DOWNSTREAM_DATA{roundId, data, flagResync} //This wrapping feels wierd
+	resultMessage := REL_CLI_DOWNSTREAM_DATA_UDP{innerMessage, make([]byte, 0)}
+
+	return resultMessage, nil
+}
+
 /**
  * This function must be called, on the correct host, with messages that are for him.
  * ie. if on this machine, prifi is the instance of a Relay protocol, any call to SendToRelay(m) on any machine
@@ -164,6 +238,10 @@ func (prifi *PriFiProtocol) ReceivedMessage(msg interface{}) error {
 		err = prifi.Received_CLI_REL_UPSTREAM_DATA(typedMsg)
 	case REL_CLI_DOWNSTREAM_DATA:
 		err = prifi.Received_REL_CLI_DOWNSTREAM_DATA(typedMsg)
+	/*
+	 * this message is a bit special. At this point, we don't care anymore that's it's UDP, and cast it back to REL_CLI_DOWNSTREAM_DATA.
+	 * the relay only handles REL_CLI_DOWNSTREAM_DATA
+	 */
 	case REL_CLI_DOWNSTREAM_DATA_UDP:
 		err = prifi.Received_REL_CLI_UDP_DOWNSTREAM_DATA(typedMsg.REL_CLI_DOWNSTREAM_DATA)
 	case REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG:

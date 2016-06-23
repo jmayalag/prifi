@@ -7,20 +7,28 @@ package prifi
  * Needs to be instantiated via the PriFiProtocol in prifi.go
  * Then, this file simple handle the answer to the different message kind :
  *
+ * - ALL_ALL_SHUTDOWN - kill this client
  * - ALL_ALL_PARAMETERS (specialized into ALL_CLI_PARAMETERS) - used to initialize the client over the network / overwrite its configuration
  * - REL_CLI_TELL_TRUSTEES_PK - the trustee's identities. We react by sending our identity + ephemeral identity
  * - REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG - the shuffle from the trustees. We do some check, if they pass, we can communicate. We send the first round to the relay.
  * - REL_CLI_DOWNSTREAM_DATA - the data from the relay, for one round. We react by finishing the round (sending our data to the relay)
  *
+ * local functions :
+ *
+ * ProcessDownStreamData() <- is called by Received_REL_CLI_DOWNSTREAM_DATA; it handles the raw data received
+ * SendUpstreamData() <- it is called at the end of ProcessDownStreamData(). Hence, after getting some data down, we send some data up.
+ *
  * TODO : traffic need to be encrypted
  * TODO : we need to test / sort out the downstream traffic data that is not for us
  * TODO : integrate a VPN / SOCKS somewhere, for now this client has nothing to say ! (except latency-test messages)
+ * TODO : More fine-grained locking
  */
 
 import (
 	"encoding/binary"
 	"errors"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/dedis/cothority/lib/dbg"
@@ -46,31 +54,34 @@ const (
 
 //the mutable variable held by the client
 type ClientState struct {
-	CellCoder           dcnet.CellCoder
-	currentState        int16
-	DataForDCNet        chan []byte //VPN / SOCKS should put data there !
-	DataFromDCNet       chan []byte //VPN / SOCKS should read data from there !
-	DataOutputEnabled   bool        //if FALSE, nothing will be written to DataFromDCNet
-	ephemeralPrivateKey abstract.Secret
-	EphemeralPublicKey  abstract.Point
-	Id                  int
-	LatencyTest         bool
-	MessageHistory      abstract.Cipher
-	MySlot              int
-	Name                string
-	nClients            int
-	nTrustees           int
-	PayloadLength       int
-	privateKey          abstract.Secret
-	PublicKey           abstract.Point
-	roundCount          int32 //modulo number of clients, used only to test if "isMySlot"
-	sharedSecrets       []abstract.Point
-	TrusteePublicKey    []abstract.Point
-	UsablePayloadLength int
-	UseSocksProxy       bool
-	UseUDP              bool
-	NextExpectedRound   int32
-	BufferedRoundData   map[int32]REL_CLI_DOWNSTREAM_DATA
+	sync.RWMutex
+	CellCoder                 dcnet.CellCoder
+	currentState              int16
+	DataForDCNet              chan []byte //VPN / SOCKS should put data there !
+	DataFromDCNet             chan []byte //VPN / SOCKS should read data from there !
+	DataOutputEnabled         bool        //if FALSE, nothing will be written to DataFromDCNet
+	ephemeralPrivateKey       abstract.Secret
+	EphemeralPublicKey        abstract.Point
+	Id                        int
+	LatencyTest               bool
+	MySlot                    int
+	Name                      string
+	nClients                  int
+	nTrustees                 int
+	PayloadLength             int
+	privateKey                abstract.Secret
+	PublicKey                 abstract.Point
+	sharedSecrets             []abstract.Point
+	TrusteePublicKey          []abstract.Point
+	UsablePayloadLength       int
+	UseSocksProxy             bool
+	UseUDP                    bool
+	MessageHistory            abstract.Cipher
+	StartStopReceiveBroadcast chan bool
+
+	//concurrent stuff
+	RoundNo           int32
+	BufferedRoundData map[int32]REL_CLI_DOWNSTREAM_DATA
 }
 
 /**
@@ -92,12 +103,12 @@ func NewClientState(clientId int, nTrustees int, nClients int, payloadLength int
 	params.nClients = nClients
 	params.nTrustees = nTrustees
 	params.PayloadLength = payloadLength
-	params.roundCount = 0
 	params.UsablePayloadLength = params.CellCoder.ClientCellSize(payloadLength)
 	params.UseSocksProxy = false //deprecated
 	params.UseUDP = useUDP
-	params.NextExpectedRound = int32(0)
+	params.RoundNo = int32(0)
 	params.BufferedRoundData = make(map[int32]REL_CLI_DOWNSTREAM_DATA)
+	params.StartStopReceiveBroadcast = make(chan bool)
 
 	//prepare the crypto parameters
 	rand := config.CryptoSuite.Cipher([]byte(params.Name))
@@ -123,6 +134,9 @@ func NewClientState(clientId int, nTrustees int, nClients int, payloadLength int
 func (p *PriFiProtocol) Received_ALL_CLI_SHUTDOWN(msg ALL_ALL_SHUTDOWN) error {
 	dbg.Lvl1("Client " + strconv.Itoa(p.clientState.Id) + " : Received a SHUTDOWN message. ")
 
+	p.clientState.Lock()
+	defer p.clientState.Unlock()
+
 	p.clientState.currentState = CLIENT_STATE_SHUTDOWN
 
 	return nil
@@ -132,6 +146,9 @@ func (p *PriFiProtocol) Received_ALL_CLI_SHUTDOWN(msg ALL_ALL_SHUTDOWN) error {
  * This is the "INIT" message that shares all the public parameters.
  */
 func (p *PriFiProtocol) Received_ALL_CLI_PARAMETERS(msg ALL_ALL_PARAMETERS) error {
+
+	p.clientState.Lock()
+	defer p.clientState.Unlock()
 
 	//this can only happens in the state RELAY_STATE_BEFORE_INIT
 	if p.clientState.currentState != CLIENT_STATE_BEFORE_INIT && !msg.ForceParams {
@@ -143,7 +160,16 @@ func (p *PriFiProtocol) Received_ALL_CLI_PARAMETERS(msg ALL_ALL_PARAMETERS) erro
 		dbg.Lvl3("Client : received ALL_ALL_PARAMETERS")
 	}
 
+	//if by chance we had a broadcast-listener goroutine, kill it
+	if p.clientState.StartStopReceiveBroadcast != nil {
+		p.clientState.StartStopReceiveBroadcast <- false
+	}
+
 	p.clientState = *NewClientState(msg.NextFreeClientId, msg.NTrustees, msg.NClients, msg.UpCellSize, msg.DoLatencyTests, msg.UseUDP, msg.ClientDataOutputEnabled)
+
+	//start the broadcast-listener goroutine
+	dbg.Lvl2("Client " + strconv.Itoa(p.clientState.Id) + " : starting the broadcast-listener goroutine")
+	go p.messageSender.ClientSubscribeToBroadcast(p.clientState.Name, p, p.clientState.StartStopReceiveBroadcast)
 
 	//after receiving this message, we are done with the state CLIENT_STATE_BEFORE_INIT, and are ready for initializing
 	p.clientState.currentState = CLIENT_STATE_INITIALIZING //TODO: this is repetative of line 110
@@ -164,24 +190,35 @@ func (p *PriFiProtocol) Received_ALL_CLI_PARAMETERS(msg ALL_ALL_PARAMETERS) erro
  */
 func (p *PriFiProtocol) Received_REL_CLI_DOWNSTREAM_DATA(msg REL_CLI_DOWNSTREAM_DATA) error {
 
+	p.clientState.Lock()
+	defer p.clientState.Unlock()
+
+	/*
+		if msg.RoundId == 3 && p.clientState.Id == 1 {
+			dbg.Error("Client " + strconv.Itoa(p.clientState.Id) + " : simulating loss, dropping TCP message for round 3.")
+			return nil
+		}
+	*/
+
 	//this can only happens in the state TRUSTEE_STATE_SHUFFLE_DONE
 	if p.clientState.currentState != CLIENT_STATE_READY {
 		e := "Client " + strconv.Itoa(p.clientState.Id) + " : Received a REL_CLI_DOWNSTREAM_DATA, but not in state CLIENT_STATE_READY, in state " + strconv.Itoa(int(p.clientState.currentState))
 		dbg.Error(e)
+		p.clientState.Unlock()
 		return errors.New(e)
 	} else {
-		dbg.Lvl3("Client " + strconv.Itoa(p.clientState.Id) + " : Received a REL_CLI_DOWNSTREAM_DATA")
+		dbg.Lvl3("Client " + strconv.Itoa(p.clientState.Id) + " : Received a REL_CLI_DOWNSTREAM_DATA for round " + strconv.Itoa(int(msg.RoundId)))
 	}
 
 	//check if it is in-order
-	if msg.RoundId == p.clientState.NextExpectedRound {
+	if msg.RoundId == p.clientState.RoundNo {
 		//process downstream data
 
 		return p.ProcessDownStreamData(msg)
-	} else if msg.RoundId < p.clientState.NextExpectedRound {
-		dbg.Lvl3("Client " + strconv.Itoa(p.clientState.Id) + " : Received a REL_CLI_DOWNSTREAM_DATA for round " + strconv.Itoa(int(msg.RoundId)) + " but we are in round " + strconv.Itoa(int(p.clientState.NextExpectedRound)) + ", discarding.")
-	} else if msg.RoundId < p.clientState.NextExpectedRound {
-		dbg.Lvl3("Client " + strconv.Itoa(p.clientState.Id) + " : Received a REL_CLI_DOWNSTREAM_DATA for round " + strconv.Itoa(int(msg.RoundId)) + " but we are in round " + strconv.Itoa(int(p.clientState.NextExpectedRound)) + ", buffering.")
+	} else if msg.RoundId < p.clientState.RoundNo {
+		dbg.Lvl3("Client " + strconv.Itoa(p.clientState.Id) + " : Received a REL_CLI_DOWNSTREAM_DATA for round " + strconv.Itoa(int(msg.RoundId)) + " but we are in round " + strconv.Itoa(int(p.clientState.RoundNo)) + ", discarding.")
+	} else if msg.RoundId < p.clientState.RoundNo {
+		dbg.Lvl3("Client " + strconv.Itoa(p.clientState.Id) + " : Received a REL_CLI_DOWNSTREAM_DATA for round " + strconv.Itoa(int(msg.RoundId)) + " but we are in round " + strconv.Itoa(int(p.clientState.RoundNo)) + ", buffering.")
 
 		p.clientState.BufferedRoundData[msg.RoundId] = msg
 	}
@@ -199,24 +236,34 @@ func (p *PriFiProtocol) Received_REL_CLI_DOWNSTREAM_DATA(msg REL_CLI_DOWNSTREAM_
  */
 func (p *PriFiProtocol) Received_REL_CLI_UDP_DOWNSTREAM_DATA(msg REL_CLI_DOWNSTREAM_DATA) error {
 
+	p.clientState.Lock()
+	defer p.clientState.Unlock()
+
+	/*
+		if msg.RoundId == 3 && p.clientState.Id == 1 {
+			dbg.Error("Client " + strconv.Itoa(p.clientState.Id) + " : simulating loss, dropping UDP message for round 3.")
+			return nil
+		}
+	*/
+
 	//this can only happens in the state TRUSTEE_STATE_SHUFFLE_DONE
 	if p.clientState.currentState != CLIENT_STATE_READY {
-		e := "Client " + strconv.Itoa(p.clientState.Id) + " : Received a Received_REL_CLI_UDP_DOWNSTREAM_DATA, but not in state CLIENT_STATE_READY, in state " + strconv.Itoa(int(p.clientState.currentState))
+		e := "Client " + strconv.Itoa(p.clientState.Id) + " : Received a REL_CLI_UDP_DOWNSTREAM_DATA, but not in state CLIENT_STATE_READY, in state " + strconv.Itoa(int(p.clientState.currentState))
 		dbg.Error(e)
 		return errors.New(e)
 	} else {
-		dbg.Lvl3("Client " + strconv.Itoa(p.clientState.Id) + " : Received a Received_REL_CLI_UDP_DOWNSTREAM_DATA")
+		dbg.Lvl3("Client " + strconv.Itoa(p.clientState.Id) + " : Received a REL_CLI_UDP_DOWNSTREAM_DATA for round " + strconv.Itoa(int(msg.RoundId)))
 	}
 
 	//check if it is in-order
-	if msg.RoundId == p.clientState.NextExpectedRound {
+	if msg.RoundId == p.clientState.RoundNo {
 		//process downstream data
 
 		return p.ProcessDownStreamData(msg)
-	} else if msg.RoundId < p.clientState.NextExpectedRound {
-		dbg.Lvl3("Client " + strconv.Itoa(p.clientState.Id) + " : Received a REL_CLI_UDP_DOWNSTREAM_DATA for round " + strconv.Itoa(int(msg.RoundId)) + " but we are in round " + strconv.Itoa(int(p.clientState.NextExpectedRound)) + ", discarding.")
-	} else if msg.RoundId < p.clientState.NextExpectedRound {
-		dbg.Lvl3("Client " + strconv.Itoa(p.clientState.Id) + " : Received a REL_CLI_UDP_DOWNSTREAM_DATA for round " + strconv.Itoa(int(msg.RoundId)) + " but we are in round " + strconv.Itoa(int(p.clientState.NextExpectedRound)) + ", buffering.")
+	} else if msg.RoundId < p.clientState.RoundNo {
+		dbg.Lvl3("Client " + strconv.Itoa(p.clientState.Id) + " : Received a REL_CLI_UDP_DOWNSTREAM_DATA for round " + strconv.Itoa(int(msg.RoundId)) + " but we are in round " + strconv.Itoa(int(p.clientState.RoundNo)) + ", discarding.")
+	} else if msg.RoundId < p.clientState.RoundNo {
+		dbg.Lvl3("Client " + strconv.Itoa(p.clientState.Id) + " : Received a REL_CLI_UDP_DOWNSTREAM_DATA for round " + strconv.Itoa(int(msg.RoundId)) + " but we are in round " + strconv.Itoa(int(p.clientState.RoundNo)) + ", buffering.")
 
 		p.clientState.BufferedRoundData[msg.RoundId] = msg
 	}
@@ -224,6 +271,11 @@ func (p *PriFiProtocol) Received_REL_CLI_UDP_DOWNSTREAM_DATA(msg REL_CLI_DOWNSTR
 	return nil
 }
 
+/**
+ * This function handle the downstream data. After determining if the data is for us (this is not done yet), we test if it's a
+ * latency-test message, test if the resync flag is on (which triggers a re-setup).
+ * When this function ends, it calls SendUpstreamData() which continues the communication loop.
+ */
 func (p *PriFiProtocol) ProcessDownStreamData(msg REL_CLI_DOWNSTREAM_DATA) error {
 
 	/*
@@ -259,13 +311,17 @@ func (p *PriFiProtocol) ProcessDownStreamData(msg REL_CLI_DOWNSTREAM_DATA) error
 	}
 
 	//one round just passed
-	p.clientState.roundCount++
-	p.clientState.NextExpectedRound++
+	p.clientState.RoundNo++
 
 	//send upstream data for next round
 	return p.SendUpstreamData()
 }
 
+/**
+ * This function determines if it's our round, emebed data (maybe latency-test message) in the payload if we can, creates the
+ * DC-net cipher, and send it to the relay.
+ *
+ */
 func (p *PriFiProtocol) SendUpstreamData() error {
 	/*
 	 * PRODUCE THE UPSTREAM DATA
@@ -273,7 +329,7 @@ func (p *PriFiProtocol) SendUpstreamData() error {
 
 	//TODO: maybe make this into a method func (p *PrifiProtocol) isMySlot() bool {}
 	//write the next upstream slice. First, determine if we can embed payload this round
-	currentRound := p.clientState.roundCount % int32(p.clientState.nClients)
+	currentRound := p.clientState.RoundNo % int32(p.clientState.nClients)
 	isMySlot := false
 	if currentRound == int32(p.clientState.MySlot) {
 		isMySlot = true
@@ -313,21 +369,21 @@ func (p *PriFiProtocol) SendUpstreamData() error {
 	upstreamCell := p.clientState.CellCoder.ClientEncode(upstreamCellContent, p.clientState.PayloadLength, p.clientState.MessageHistory)
 
 	//send the data to the relay
-	toSend := &CLI_REL_UPSTREAM_DATA{p.clientState.Id, p.clientState.roundCount, upstreamCell}
+	toSend := &CLI_REL_UPSTREAM_DATA{p.clientState.Id, p.clientState.RoundNo, upstreamCell}
 	err := p.messageSender.SendToRelay(toSend)
 	if err != nil {
-		e := "Could not send CLI_REL_UPSTREAM_DATA, for round " + strconv.Itoa(int(p.clientState.roundCount)) + ", error is " + err.Error()
+		e := "Could not send CLI_REL_UPSTREAM_DATA, for round " + strconv.Itoa(int(p.clientState.RoundNo)) + ", error is " + err.Error()
 		dbg.Error(e)
 		return errors.New(e)
 	} else {
-		dbg.Lvl3("Client " + strconv.Itoa(p.clientState.Id) + " : sent CLI_REL_UPSTREAM_DATA for round " + strconv.Itoa(int(p.clientState.roundCount)))
+		dbg.Lvl3("Client " + strconv.Itoa(p.clientState.Id) + " : sent CLI_REL_UPSTREAM_DATA for round " + strconv.Itoa(int(p.clientState.RoundNo)))
 	}
 
 	//clean old buffered messages
-	delete(p.clientState.BufferedRoundData, int32(p.clientState.roundCount-1))
+	delete(p.clientState.BufferedRoundData, int32(p.clientState.RoundNo-1))
 
 	//now we will be expecting next message. Except if we already received and buffered it !
-	if msg, hasAMessage := p.clientState.BufferedRoundData[int32(p.clientState.roundCount)]; hasAMessage {
+	if msg, hasAMessage := p.clientState.BufferedRoundData[int32(p.clientState.RoundNo)]; hasAMessage {
 		p.Received_REL_CLI_DOWNSTREAM_DATA(msg)
 	}
 
@@ -342,6 +398,9 @@ func (p *PriFiProtocol) SendUpstreamData() error {
  * Once we receive this message, we need to reply with our Public Key (Used to derive DC-net secrets), and our Ephemeral Public Key (used for the Shuffle protocol)
  */
 func (p *PriFiProtocol) Received_REL_CLI_TELL_TRUSTEES_PK(msg REL_CLI_TELL_TRUSTEES_PK) error {
+
+	p.clientState.Lock()
+	defer p.clientState.Unlock()
 
 	//this can only happens in the state CLIENT_STATE_INITIALIZING
 	if p.clientState.currentState != CLIENT_STATE_INITIALIZING {
@@ -402,6 +461,9 @@ func (p *PriFiProtocol) Received_REL_CLI_TELL_TRUSTEES_PK(msg REL_CLI_TELL_TRUST
  */
 func (p *PriFiProtocol) Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(msg REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG) error {
 
+	p.clientState.Lock()
+	defer p.clientState.Unlock()
+
 	//this can only happens in the state TRUSTEE_STATE_SHUFFLE_DONE
 	if p.clientState.currentState != CLIENT_STATE_EPH_KEYS_SENT {
 		e := "Client " + strconv.Itoa(p.clientState.Id) + " : Received a REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG, but not in state CLIENT_STATE_EPH_KEYS_SENT, in state " + strconv.Itoa(int(p.clientState.currentState))
@@ -461,9 +523,19 @@ func (p *PriFiProtocol) Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(msg REL_C
 
 	//prepare for commmunication
 	p.clientState.MySlot = mySlot
-	p.clientState.roundCount = 0
-	p.clientState.NextExpectedRound = int32(0)
+	p.clientState.RoundNo = int32(0)
 	p.clientState.BufferedRoundData = make(map[int32]REL_CLI_DOWNSTREAM_DATA)
+
+	//if by chance we had a broadcast-listener goroutine, kill it
+	if p.clientState.UseUDP {
+		if p.clientState.StartStopReceiveBroadcast == nil {
+			e := "Client " + strconv.Itoa(p.clientState.Id) + " wish to start listening with UDP, but doesn't have the appropriate helper."
+			dbg.Error(e)
+			return errors.New(e)
+		}
+		p.clientState.StartStopReceiveBroadcast <- true
+		dbg.Lvl3("Client " + strconv.Itoa(p.clientState.Id) + " indicated the udp-helper to start listening.")
+	}
 
 	//change state
 	p.clientState.currentState = CLIENT_STATE_READY
@@ -473,14 +545,14 @@ func (p *PriFiProtocol) Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(msg REL_C
 	upstreamCell := p.clientState.CellCoder.ClientEncode(make([]byte, 0), p.clientState.PayloadLength, p.clientState.MessageHistory)
 
 	//send the data to the relay
-	toSend := &CLI_REL_UPSTREAM_DATA{p.clientState.Id, p.clientState.roundCount, upstreamCell}
+	toSend := &CLI_REL_UPSTREAM_DATA{p.clientState.Id, p.clientState.RoundNo, upstreamCell}
 	err := p.messageSender.SendToRelay(toSend)
 	if err != nil {
-		e := "Could not send CLI_REL_UPSTREAM_DATA, for round " + strconv.Itoa(int(p.clientState.roundCount)) + ", error is " + err.Error()
+		e := "Could not send CLI_REL_UPSTREAM_DATA, for round " + strconv.Itoa(int(p.clientState.RoundNo)) + ", error is " + err.Error()
 		dbg.Error(e)
 		return errors.New(e)
 	} else {
-		dbg.Lvl3("Client " + strconv.Itoa(p.clientState.Id) + " : sent CLI_REL_UPSTREAM_DATA for round " + strconv.Itoa(int(p.clientState.roundCount)))
+		dbg.Lvl3("Client " + strconv.Itoa(p.clientState.Id) + " : sent CLI_REL_UPSTREAM_DATA for round " + strconv.Itoa(int(p.clientState.RoundNo)))
 	}
 
 	return nil

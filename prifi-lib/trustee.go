@@ -46,7 +46,7 @@ const (
 	TRUSTEE_RATE_STOPPED
 )
 
-const TRUSTEE_BASE_SLEEP_TIME = time.Second //this is the base unit for how much time the trustee sleeps between ciphers to the relay
+const TRUSTEE_BASE_SLEEP_TIME = 10 * time.Millisecond //this is the base unit for how much time the trustee sleeps between ciphers to the relay
 
 //the mutable variable held by the client
 type TrusteeState struct {
@@ -164,7 +164,7 @@ func (p *PriFiProtocol) Send_TRU_REL_PK() error {
 		dbg.Error(e)
 		return errors.New(e)
 	} else {
-		dbg.Lvl3("Relay : sent TRU_REL_TELL_PK ") //TODO: this should be "trustee"
+		dbg.Lvl3("Trustee " + strconv.Itoa(p.trusteeState.Id) + " : sent TRU_REL_TELL_PK ") //TODO: this should be "trustee"
 	}
 
 	return nil

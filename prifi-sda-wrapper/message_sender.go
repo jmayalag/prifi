@@ -3,9 +3,11 @@ package prifi
 import (
 	"errors"
 	"strconv"
+	"time"
 
 	"github.com/dedis/cothority/lib/dbg"
 	"github.com/dedis/cothority/lib/sda"
+	prifi_lib "github.com/lbarman/prifi_dev/prifi-lib"
 )
 
 /**
@@ -53,6 +55,59 @@ func (ms MessageSender) SendToRelay(msg interface{}) error {
 }
 
 func (ms MessageSender) BroadcastToAllClients(msg interface{}) error {
-	panic("Not implemented")
+
+	castedMsg, canCast := msg.(*prifi_lib.REL_CLI_DOWNSTREAM_DATA_UDP)
+	if !canCast {
+		dbg.Error("Message sender : could not cast msg to REL_CLI_DOWNSTREAM_DATA_UDP, and I don't know how to send other messages.")
+	}
+	udpChan.Broadcast(castedMsg)
+
+	return nil
+}
+
+func (ms MessageSender) ClientSubscribeToBroadcast(clientName string, protocolInstance *prifi_lib.PriFiProtocol, startStopChan chan bool) error {
+
+	dbg.Lvl3(clientName, " started UDP-listener helper.")
+	listening := false
+	lastSeenMessage := 0 //the first real message has ID 1; this means that we saw the empty struct.
+
+	for {
+		select {
+		case val := <-startStopChan:
+			if val {
+				listening = true //either we listen or we stop
+				dbg.Lvl3(clientName, " switched on broadcast-listening.")
+			} else {
+				dbg.Lvl3(clientName, " killed broadcast-listening.")
+				return nil
+			}
+		default:
+		}
+
+		if listening {
+			emptyMessage := prifi_lib.REL_CLI_DOWNSTREAM_DATA_UDP{}
+			//listen
+			filledMessage, err := udpChan.ListenAndBlock(&emptyMessage, lastSeenMessage)
+			lastSeenMessage++
+
+			if err != nil {
+				dbg.Error(clientName, " an error occured : ", err)
+			}
+
+			//decode
+			msg, err := filledMessage.FromBytes()
+			dbg.Lvl3(clientName, " Received an UDP message n°"+strconv.Itoa(lastSeenMessage))
+
+			if err != nil {
+				dbg.Error(clientName, " an error occured : ", err)
+			}
+
+			//forward to PriFi
+			protocolInstance.ReceivedMessage(msg)
+
+		}
+
+		time.Sleep(time.Second)
+	}
 	return nil
 }

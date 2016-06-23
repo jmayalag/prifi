@@ -1,5 +1,7 @@
 package prifi
 
+//TODO : BIG, BIG todo here. we should automate some tests !
+
 import (
 	"testing"
 
