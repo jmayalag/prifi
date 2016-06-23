@@ -248,30 +248,33 @@ func (p *PriFiProtocol) Received_ALL_REL_PARAMETERS(msg ALL_ALL_PARAMETERS) erro
 
 	p.relayState.locks.state.Lock() // Lock on state
 
-	p.relayState.locks.state.Unlock() // Unlock state
 	// This can only happens in the state RELAY_STATE_BEFORE_INIT
 	if p.relayState.currentState != RELAY_STATE_BEFORE_INIT && !msg.ForceParams {
 		dbg.Lvl1("Relay : Received a ALL_ALL_PARAMETERS, but not in state RELAY_STATE_BEFORE_INIT, ignoring. ")
+		p.relayState.locks.state.Unlock() // Unlock state
 		return nil
 	} else if p.relayState.currentState != RELAY_STATE_BEFORE_INIT && msg.ForceParams {
 		dbg.Lvl1("Relay : Received a ALL_ALL_PARAMETERS && ForceParams = true, processing. ")
 	} else {
 		dbg.Lvl3("Relay : received ALL_ALL_PARAMETERS")
 	}
+	p.relayState.locks.state.Unlock() // Unlock state
 
 	oldExperimentResultChan := p.relayState.ExperimentResultChannel
 	p.relayState = *NewRelayState(msg.NTrustees, msg.NClients, msg.UpCellSize, msg.DownCellSize, msg.RelayWindowSize, msg.RelayUseDummyDataDown, msg.RelayReportingLimit, oldExperimentResultChan, msg.UseUDP, msg.RelayDataOutputEnabled)
 
+
 	dbg.Lvlf5("%+v\n", p.relayState)
 	dbg.Lvl1("Relay has been initialized by message. ")
 
+	p.relayState.locks.state.Lock() // Lock on state
 	// Broadcast those parameters to the other nodes, then tell the trustees which ID they are.
 	if msg.StartNow {
 		p.relayState.currentState = RELAY_STATE_COLLECTING_TRUSTEES_PKS
 		p.ConnectToTrustees()
 	}
 	dbg.Lvl1("Relay setup done, and setup sent to the trustees.")
-
+	p.relayState.locks.state.Unlock() // Unlock state
 
 	return nil
 }
@@ -875,6 +878,7 @@ func (p *PriFiProtocol) Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS(msg TRU_REL_T
 	p.relayState.currentShuffleTranscript.ephPubKeys_s[j] = msg.NewEphPks
 	p.relayState.currentShuffleTranscript.proof_s[j] = msg.Proof
 
+
 	p.relayState.currentShuffleTranscript.nextFreeId_Proofs = j + 1
 
 	dbg.Lvl2("Relay : received TRU_REL_TELL_NEW_BASE_AND_EPH_PKS (" + strconv.Itoa(p.relayState.currentShuffleTranscript.nextFreeId_Proofs) + "/" + strconv.Itoa(p.relayState.nTrustees) + ")")
@@ -1008,7 +1012,7 @@ func (p *PriFiProtocol) Received_TRU_REL_SHUFFLE_SIG(msg TRU_REL_SHUFFLE_SIG) er
 		// broadcast to all clients
 		for i := 0; i < p.relayState.nClients; i++ {
 			// send to the i-th client
-			toSend := &REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG{G, ephPks, signatures}
+			toSend := &REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG{G, ephPks, signatures}		//TODO: remove from loop (it's loop independent)
 			err := p.messageSender.SendToClient(i, toSend)
 			if err != nil {
 				e := "Could not send REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG to " + strconv.Itoa(i+1) + "-th client, error is " + err.Error()
