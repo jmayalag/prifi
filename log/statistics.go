@@ -2,44 +2,44 @@ package log
 
 import (
 	"fmt"
-	"time"
 	"math"
+	"time"
 )
 
 const MAX_LATENCY_STORED = 100
 
 type Statistics struct {
-	begin			time.Time
-	nextReport		time.Time
-	nReports		int
-	maxNReports		int
-	period			time.Duration
+	begin       time.Time
+	nextReport  time.Time
+	nReports    int
+	maxNReports int
+	period      time.Duration
 
-	latencies				[]int64
+	latencies []int64
 
-	totalUpstreamCells		int64
-	totalUpstreamBytes 		int64
+	totalUpstreamCells int64
+	totalUpstreamBytes int64
 
-	totalDownstreamCells 	int64
-	totalDownstreamBytes 	int64
+	totalDownstreamCells int64
+	totalDownstreamBytes int64
 
-	instantUpstreamCells	int64
-	instantUpstreamBytes 	int64
-	instantDownstreamBytes	int64
+	instantUpstreamCells   int64
+	instantUpstreamBytes   int64
+	instantDownstreamBytes int64
 
-	totalDownstreamUDPCells 	int64
-	totalDownstreamUDPBytes 	int64
-	instantDownstreamUDPBytes 	int64
-	totalDownstreamUDPBytesTimesClients 	int64
-	instantDownstreamUDPBytesTimesClients 	int64
+	totalDownstreamUDPCells               int64
+	totalDownstreamUDPBytes               int64
+	instantDownstreamUDPBytes             int64
+	totalDownstreamUDPBytesTimesClients   int64
+	instantDownstreamUDPBytesTimesClients int64
 
-	totalDownstreamRetransmitCells 	int64
-	totalDownstreamRetransmitBytes 	int64
-	instantDownstreamRetransmitBytes 	int64
+	totalDownstreamRetransmitCells   int64
+	totalDownstreamRetransmitBytes   int64
+	instantDownstreamRetransmitBytes int64
 }
 
-func EmptyStatistics(reportingLimit int) *Statistics{
-	stats := Statistics{time.Now(), time.Now(), 0, reportingLimit, time.Duration(5)*time.Second, make([]int64, 0), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+func EmptyStatistics(reportingLimit int) *Statistics {
+	stats := Statistics{time.Now(), time.Now(), 0, reportingLimit, time.Duration(5) * time.Second, make([]int64, 0), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 	return &stats
 }
 
@@ -74,17 +74,17 @@ func (stats *Statistics) Dump() {
 }
 
 func round(f float64) float64 {
-    return math.Floor(f + .5)
+	return math.Floor(f + .5)
 }
 
 func round2(f float64, places int) float64 {
-    shift := math.Pow(10, float64(places))
-    return round(f * shift) / shift;    
+	shift := math.Pow(10, float64(places))
+	return round(f*shift) / shift
 }
 
 func mean(data []int64) float64 {
 	sum := int64(0)
-	for i:=0; i<len(data); i++ {
+	for i := 0; i < len(data); i++ {
 		sum += data[i]
 	}
 
@@ -94,7 +94,7 @@ func mean(data []int64) float64 {
 
 func mean2(data []float64) float64 {
 	sum := float64(0)
-	for i:=0; i<len(data); i++ {
+	for i := 0; i < len(data); i++ {
 		sum += data[i]
 	}
 
@@ -104,13 +104,13 @@ func mean2(data []float64) float64 {
 
 func confidence(data []int64) float64 {
 
-	if len(data) == 0{
+	if len(data) == 0 {
 		return 0
 	}
 	mean_val := mean(data)
 
 	deviations := make([]float64, 0)
-	for i:=0; i<len(data); i++ {
+	for i := 0; i < len(data); i++ {
 		diff := mean_val - float64(data[i])
 		deviations = append(deviations, diff*diff)
 	}
@@ -125,7 +125,7 @@ func confidence(data []int64) float64 {
 
 func (stats *Statistics) LatencyStatistics() (string, string, string) {
 
-	if len(stats.latencies) == 0{
+	if len(stats.latencies) == 0 {
 		return "-1", "-1", "-1"
 	}
 
@@ -177,7 +177,7 @@ func (stats *Statistics) ReportJson() {
 	now := time.Now()
 	if now.After(stats.nextReport) {
 		duration := now.Sub(stats.begin).Seconds()
-		instantUpSpeed := (float64(stats.instantUpstreamBytes)/stats.period.Seconds())
+		instantUpSpeed := (float64(stats.instantUpstreamBytes) / stats.period.Seconds())
 		latm, latv, latn := stats.LatencyStatistics()
 
 		Printf(EXPERIMENT_OUTPUT, "%v @ %fs; cell %f (%f) /sec, up %f (%f) B/s, down %f (%f) B/s, udp down %f (%f) B/s, retransmit down %v - %f (%f) B/s, lat %s += %s over %s",
@@ -201,13 +201,13 @@ func (stats *Statistics) ReportJson() {
 
 		//write JSON
 		data := struct {
-		    Experiment string
-		    CellSize int
-		    Speed float64
+			Experiment string
+			CellSize   int
+			Speed      float64
 		}{
-		    "upstream-speed-given-cellsize",
-		    42,//relayState.PayloadLength,
-		    instantUpSpeed,
+			"upstream-speed-given-cellsize",
+			42, //relayState.PayloadLength,
+			instantUpSpeed,
 		}
 		JsonDump(data)
 
@@ -220,7 +220,6 @@ func (stats *Statistics) Report() {
 	stats.ReportWithInfo("")
 }
 
-
 func (stats *Statistics) ReportWithInfo(info string) {
 	now := time.Now()
 	if now.After(stats.nextReport) {
@@ -228,22 +227,22 @@ func (stats *Statistics) ReportWithInfo(info string) {
 		latm, latv, latn := stats.LatencyStatistics()
 
 		instantRetransmitPercentage := float64(0)
-		if stats.instantDownstreamRetransmitBytes + stats.totalDownstreamUDPBytes != 0 {
-			instantRetransmitPercentage = float64(100 * stats.instantDownstreamRetransmitBytes)/float64(stats.instantDownstreamUDPBytesTimesClients)
+		if stats.instantDownstreamRetransmitBytes+stats.totalDownstreamUDPBytes != 0 {
+			instantRetransmitPercentage = float64(100*stats.instantDownstreamRetransmitBytes) / float64(stats.instantDownstreamUDPBytesTimesClients)
 		}
 
 		totalRetransmitPercentage := float64(0)
-		if stats.instantDownstreamRetransmitBytes + stats.totalDownstreamUDPBytes != 0 {
-			totalRetransmitPercentage = float64(100 * stats.totalDownstreamRetransmitBytes)/float64(stats.totalDownstreamUDPBytesTimesClients)
+		if stats.instantDownstreamRetransmitBytes+stats.totalDownstreamUDPBytes != 0 {
+			totalRetransmitPercentage = float64(100*stats.totalDownstreamRetransmitBytes) / float64(stats.totalDownstreamUDPBytesTimesClients)
 		}
 
 		Printf(EXPERIMENT_OUTPUT, "%v @ %fs; cell %f (%f) /sec, up %f (%f) B/s, down %f (%f) B/s, udp down %f (%f) B/s, retransmit %v (%v), lat %s += %s over %s "+info,
 			stats.nReports, duration,
-			float64(stats.totalUpstreamCells)/duration, 	 float64(stats.instantUpstreamCells)/stats.period.Seconds(),
-			float64(stats.totalUpstreamBytes)/duration,	 	 float64(stats.instantUpstreamBytes)/stats.period.Seconds(),
-			float64(stats.totalDownstreamBytes)/duration, 	 float64(stats.instantDownstreamBytes)/stats.period.Seconds(),
+			float64(stats.totalUpstreamCells)/duration, float64(stats.instantUpstreamCells)/stats.period.Seconds(),
+			float64(stats.totalUpstreamBytes)/duration, float64(stats.instantUpstreamBytes)/stats.period.Seconds(),
+			float64(stats.totalDownstreamBytes)/duration, float64(stats.instantDownstreamBytes)/stats.period.Seconds(),
 			float64(stats.totalDownstreamUDPBytes)/duration, float64(stats.instantDownstreamUDPBytes)/stats.period.Seconds(),
-			float64(totalRetransmitPercentage), 			 float64(instantRetransmitPercentage), 
+			float64(totalRetransmitPercentage), float64(instantRetransmitPercentage),
 			latm, latv, latn)
 
 		// Next report time

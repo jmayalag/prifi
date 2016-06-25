@@ -2,80 +2,94 @@ package relay
 
 import (
 	"errors"
+	"github.com/dedis/crypto/abstract"
+	"github.com/lbarman/prifi/auth"
+	"github.com/lbarman/prifi/auth/basic"
 	"github.com/lbarman/prifi/config"
 	prifilog "github.com/lbarman/prifi/log"
 	prifinet "github.com/lbarman/prifi/net"
 	"net"
 	"strconv"
 	"time"
-	"github.com/lbarman/prifi/auth"
 )
 
 func initRelayState(nodeConfig config.NodeConfig, relayPort string, nTrustees int, nClients int, upstreamCellSize int, downstreamCellSize int, windowSize int, useDummyDataDown bool, reportingLimit int, trusteesHosts []string, useUDP bool) *RelayState {
 
-	relayState := new(RelayState)
+	s := new(RelayState)
 
-	relayState.Name = nodeConfig.Name
-	relayState.RelayPort = relayPort
-	relayState.UpstreamCellSize = upstreamCellSize
-	relayState.DownstreamCellSize = downstreamCellSize
-	relayState.WindowSize = windowSize
-	relayState.ReportingLimit = reportingLimit
-	relayState.UseUDP = useUDP
-	relayState.UseDummyDataDown = useDummyDataDown
+	s.Name = nodeConfig.Name
+	s.RelayPort = relayPort
+	s.UpstreamCellSize = upstreamCellSize
+	s.DownstreamCellSize = downstreamCellSize
+	s.WindowSize = windowSize
+	s.ReportingLimit = reportingLimit
+	s.UseUDP = useUDP
+	s.UseDummyDataDown = useDummyDataDown
 
-	// Generate own parameters
-	relayState.privateKey = nodeConfig.PrivateKey
-	relayState.PublicKey = nodeConfig.PublicKey
+	s.privateKey = nodeConfig.PrivateKey
+	s.PublicKey = nodeConfig.PublicKey
 
-	relayState.nClients = nClients
-	relayState.nTrustees = nTrustees
-	relayState.trusteesHosts = trusteesHosts
-	relayState.PublicKeyRoster = nodeConfig.PublicKeyRoster
+	s.nClients = nClients
+	s.nTrustees = nTrustees
+	s.TrusteesHosts = trusteesHosts
 
-	relayState.CellCoder = config.Factory()
-	relayState.AuthMethod = nodeConfig.AuthMethod
-	return relayState
+	// Load client public keys
+	s.ClientPublicKeys = make(map[int]abstract.Point)
+	for _, nodeInfo := range nodeConfig.NodesInfo {
+		if nodeInfo.Type == "Client" {
+			s.ClientPublicKeys[nodeInfo.Id] = nodeConfig.PublicKeyRoster[nodeInfo.Id]
+		}
+	}
+
+	// Load trustee public keys
+	s.TrusteePublicKeys = make(map[int]abstract.Point)
+	for _, nodeInfo := range nodeConfig.NodesInfo {
+		if nodeInfo.Type == "Trustee" {
+			s.TrusteePublicKeys[nodeInfo.Id] = nodeConfig.PublicKeyRoster[nodeInfo.Id]
+		}
+	}
+
+	s.CellCoder = config.Factory()
+	return s
 }
 
 func (relayState *RelayState) deepClone() *RelayState {
-	newRelayState := new(RelayState)
+	s := new(RelayState)
 
-	newRelayState.Name = relayState.Name
-	newRelayState.RelayPort = relayState.RelayPort
-	newRelayState.PublicKey = relayState.PublicKey
-	newRelayState.privateKey = relayState.privateKey
-	newRelayState.nClients = relayState.nClients
-	newRelayState.nTrustees = relayState.nTrustees
-	newRelayState.trusteesHosts = make([]string, len(relayState.trusteesHosts))
-	newRelayState.clients = make([]prifinet.NodeRepresentation, len(relayState.clients))
-	newRelayState.trustees = make([]prifinet.NodeRepresentation, len(relayState.trustees))
-	newRelayState.CellCoder = config.Factory()
-	newRelayState.MessageHistory = relayState.MessageHistory
-	newRelayState.UpstreamCellSize = relayState.UpstreamCellSize
-	newRelayState.DownstreamCellSize = relayState.DownstreamCellSize
-	newRelayState.WindowSize = relayState.WindowSize
-	newRelayState.ReportingLimit = relayState.ReportingLimit
-	newRelayState.UseUDP = relayState.UseUDP
-	newRelayState.UseDummyDataDown = relayState.UseDummyDataDown
-	newRelayState.UDPBroadcastConn = relayState.UDPBroadcastConn
+	s.Name = relayState.Name
+	s.RelayPort = relayState.RelayPort
+	s.PublicKey = relayState.PublicKey
+	s.privateKey = relayState.privateKey
+	s.nClients = relayState.nClients
+	s.nTrustees = relayState.nTrustees
+	s.TrusteesHosts = make([]string, len(relayState.TrusteesHosts))
+	s.clients = make([]prifinet.NodeRepresentation, len(relayState.clients))
+	s.trustees = make([]prifinet.NodeRepresentation, len(relayState.trustees))
+	s.CellCoder = config.Factory()
+	s.MessageHistory = relayState.MessageHistory
+	s.UpstreamCellSize = relayState.UpstreamCellSize
+	s.DownstreamCellSize = relayState.DownstreamCellSize
+	s.WindowSize = relayState.WindowSize
+	s.ReportingLimit = relayState.ReportingLimit
+	s.UseUDP = relayState.UseUDP
+	s.UseDummyDataDown = relayState.UseDummyDataDown
+	s.UDPBroadcastConn = relayState.UDPBroadcastConn
 
-	copy(newRelayState.trusteesHosts, relayState.trusteesHosts)
+	copy(s.TrusteesHosts, relayState.TrusteesHosts)
 
 	for i := 0; i < len(relayState.clients); i++ {
-		newRelayState.clients[i].Id = relayState.clients[i].Id
-		newRelayState.clients[i].Conn = relayState.clients[i].Conn
-		newRelayState.clients[i].Connected = relayState.clients[i].Connected
-		newRelayState.clients[i].PublicKey = relayState.clients[i].PublicKey
+		s.clients[i].Id = relayState.clients[i].Id
+		s.clients[i].Conn = relayState.clients[i].Conn
+		s.clients[i].Connected = relayState.clients[i].Connected
+		s.clients[i].PublicKey = relayState.clients[i].PublicKey
 	}
 	for i := 0; i < len(relayState.trustees); i++ {
-		newRelayState.trustees[i].Id = relayState.trustees[i].Id
-		newRelayState.trustees[i].Conn = relayState.trustees[i].Conn
-		newRelayState.trustees[i].Connected = relayState.trustees[i].Connected
-		newRelayState.trustees[i].PublicKey = relayState.trustees[i].PublicKey
+		s.trustees[i].Id = relayState.trustees[i].Id
+		s.trustees[i].Conn = relayState.trustees[i].Conn
+		s.trustees[i].Connected = relayState.trustees[i].Connected
+		s.trustees[i].PublicKey = relayState.trustees[i].PublicKey
 	}
-
-	return newRelayState
+	return s
 }
 
 func (relayState *RelayState) addNewClient(newClient prifinet.NodeRepresentation) {
@@ -111,7 +125,7 @@ func (relayState *RelayState) connectToAllTrustees() {
 
 	// Connect to all the trustees
 	for i := 0; i < relayState.nTrustees; i++ {
-		go connectToTrusteeAsync(trusteeChan, i, relayState.trusteesHosts[i], relayState)
+		go connectToTrusteeAsync(trusteeChan, i, relayState.TrusteesHosts[i], relayState)
 	}
 
 	// Wait for all the trustees to be connected
@@ -151,7 +165,7 @@ func welcomeNewClients(newConnectionsChan chan net.Conn, newClientChan chan prif
 		case newConnection := <-newConnectionsChan:
 			go func() {
 				// Authenticate the client
-				newClient, err := auth.ServerAuthentication(authMethod, newConnection, relayState.PublicKeyRoster)
+				newClient, err := authenticateClient(newConnection, relayState.ClientPublicKeys)
 
 				if err == nil {
 					prifilog.Println(prifilog.INFORMATION, "Client "+strconv.Itoa(newClient.Id)+" authenticated successfully.")
@@ -219,4 +233,27 @@ func (relayState *RelayState) excludeDisconnectedClients() {
 	}
 
 	relayState.clients = newClients
+}
+
+func authenticateClient(clientConn net.Conn, publicKeyRoster map[int]abstract.Point) (prifinet.NodeRepresentation, error) {
+
+	// Receive the client's preferred method of authentication
+	var newClient prifinet.NodeRepresentation
+	reqMsg, err := prifinet.ReadMessage(clientConn)
+	if err != nil {
+		return newClient, errors.New("Relay disconnected. " + err.Error())
+	}
+
+	authMethod := int(reqMsg[0])
+	switch authMethod {
+	case auth.AUTH_METHOD_BASIC:
+		newClient, err = basicAuth.RelayAuthentication(clientConn, publicKeyRoster)
+
+	case auth.AUTH_METHOD_DAGA:
+		newClient, err = relayState.dagaProtocol.AuthenticateClient(clientConn)
+	}
+	if err != nil {
+		return prifinet.NodeRepresentation{}, errors.New("Client authentication failed. " + err.Error())
+	}
+	return newClient, nil
 }

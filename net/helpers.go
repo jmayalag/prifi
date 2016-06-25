@@ -3,14 +3,14 @@ package net
 import (
 	"encoding/binary"
 	"encoding/hex"
-	"fmt"
-	"strconv"
-	"time"
-	"io"
 	"errors"
-	"net"
+	"fmt"
 	"github.com/dedis/crypto/abstract"
 	"github.com/lbarman/prifi/config"
+	"io"
+	"net"
+	"strconv"
+	"time"
 )
 
 func WriteMessage(conn net.Conn, message []byte) error {
@@ -26,7 +26,7 @@ func WriteMessage(conn net.Conn, message []byte) error {
 	n, err := conn.Write(buffer)
 
 	if n < length+6 {
-		return errors.New("Couldn't write the full"+strconv.Itoa(length+6)+" bytes, only wrote "+strconv.Itoa(n))
+		return errors.New("Couldn't write the full" + strconv.Itoa(length+6) + " bytes, only wrote " + strconv.Itoa(n))
 	}
 
 	if err != nil {
@@ -44,12 +44,12 @@ func ReadMessage(conn net.Conn) ([]byte, error) {
 	//read header
 	n, err := io.ReadFull(conn, header)
 
-	if err != nil{
+	if err != nil {
 		return emptyMessage, err
 	}
 
 	if n != 6 {
-		return emptyMessage, errors.New("Couldn't read the full 6 header bytes, only read "+strconv.Itoa(n))
+		return emptyMessage, errors.New("Couldn't read the full 6 header bytes, only read " + strconv.Itoa(n))
 	}
 
 	//parse header
@@ -57,20 +57,20 @@ func ReadMessage(conn net.Conn) ([]byte, error) {
 	bodySize := int(binary.BigEndian.Uint32(header[2:6]))
 
 	if version != config.LLD_PROTOCOL_VERSION {
-		
-		return emptyMessage, errors.New("Read a message with protocol "+strconv.Itoa(version)+" bytes, but our version is "+strconv.Itoa(config.LLD_PROTOCOL_VERSION)+".")
+
+		return emptyMessage, errors.New("Read a message with protocol " + strconv.Itoa(version) + " bytes, but our version is " + strconv.Itoa(config.LLD_PROTOCOL_VERSION) + ".")
 	}
 
 	//read body
 	body := make([]byte, bodySize)
 	n2, err2 := io.ReadFull(conn, body)
 
-	if err2 != nil{
+	if err2 != nil {
 		return emptyMessage, err2
 	}
 
 	if n2 != bodySize {
-		return emptyMessage, errors.New("Couldn't read the full" + strconv.Itoa(bodySize) +" body bytes, only read "+strconv.Itoa(n2))
+		return emptyMessage, errors.New("Couldn't read the full" + strconv.Itoa(bodySize) + " body bytes, only read " + strconv.Itoa(n2))
 	}
 
 	return body, nil
@@ -85,7 +85,7 @@ func ReadDatagram(conn net.Conn, expectedSize int) ([]byte, error) {
 	//read header
 	n, err := conn.Read(buffer)
 
-	if err != nil{
+	if err != nil {
 		return emptyMessage, err
 	}
 
@@ -94,7 +94,7 @@ func ReadDatagram(conn net.Conn, expectedSize int) ([]byte, error) {
 	bodySize := int(binary.BigEndian.Uint32(buffer[2:6]))
 
 	if version != config.LLD_PROTOCOL_VERSION {
-		return emptyMessage, errors.New("Read a datagram with protocol "+strconv.Itoa(version)+" bytes, but our version is "+strconv.Itoa(config.LLD_PROTOCOL_VERSION)+".")
+		return emptyMessage, errors.New("Read a datagram with protocol " + strconv.Itoa(version) + " bytes, but our version is " + strconv.Itoa(config.LLD_PROTOCOL_VERSION) + ".")
 	}
 
 	//read body
@@ -102,7 +102,7 @@ func ReadDatagram(conn net.Conn, expectedSize int) ([]byte, error) {
 	copy(body, buffer[6:])
 
 	if n < bodySize+6 {
-		return body, errors.New("Read a truncated datagram of "+strconv.Itoa(n-6)+" bytes, expected "+strconv.Itoa(bodySize)+".")
+		return body, errors.New("Read a truncated datagram of " + strconv.Itoa(n-6) + " bytes, expected " + strconv.Itoa(bodySize) + ".")
 	}
 
 	return body, nil
@@ -110,80 +110,77 @@ func ReadDatagram(conn net.Conn, expectedSize int) ([]byte, error) {
 
 // return data, error
 func ReadMessageWithTimeOut(nodeId int, conn net.Conn, timeout time.Duration, chanForTimeoutNode chan int, chanForDisconnectedNode chan int) ([]byte, bool) {
-	
+
 	//read with timeout
 	timeoutChan := make(chan bool, 1)
-	errorChan   := make(chan bool, 1)
-	dataChan    := make(chan []byte)
-	
+	errorChan := make(chan bool, 1)
+	dataChan := make(chan []byte)
+
 	go func() {
-	    time.Sleep(timeout)
-	    timeoutChan <- true
+		time.Sleep(timeout)
+		timeoutChan <- true
 	}()
-	
+
 	go func() {
 		dataHolder, err := ReadMessage(conn)
 
 		if err != nil {
 			errorChan <- true
 		} else {
-	    	dataChan <- dataHolder
+			dataChan <- dataHolder
 		}
 	}()
 
 	var data []byte
 	errorDuringRead := false
-	select
-	{
-		case data = <- dataChan:
+	select {
+	case data = <-dataChan:
 
-		case <-timeoutChan:
-			errorDuringRead = true
-			chanForTimeoutNode <- nodeId
+	case <-timeoutChan:
+		errorDuringRead = true
+		chanForTimeoutNode <- nodeId
 
-		case <-errorChan:
-			errorDuringRead = true
-			chanForDisconnectedNode <- nodeId
+	case <-errorChan:
+		errorDuringRead = true
+		chanForDisconnectedNode <- nodeId
 	}
 
 	return data, errorDuringRead
 }
 
-
 // return data, error
 func ReadDatagramWithTimeOut(conn net.Conn, expectedSize int, timeout time.Duration) ([]byte, error) {
-	
+
 	//read with timeout
 	timeoutChan := make(chan bool, 1)
-	errorChan   := make(chan error, 1)
-	dataChan    := make(chan []byte)
-	
+	errorChan := make(chan error, 1)
+	dataChan := make(chan []byte)
+
 	go func() {
-	    time.Sleep(timeout)
-	    timeoutChan <- true
+		time.Sleep(timeout)
+		timeoutChan <- true
 	}()
-	
+
 	go func() {
 		dataHolder, err := ReadDatagram(conn, expectedSize)
 
 		if err != nil {
 			errorChan <- err
 		} else {
-	    	dataChan <- dataHolder
+			dataChan <- dataHolder
 		}
 	}()
 
 	var data []byte
 	var err error
-	select
-	{
-		case err2 := <-errorChan:
-			err = err2
+	select {
+	case err2 := <-errorChan:
+		err = err2
 
-		case data = <- dataChan:
+	case data = <-dataChan:
 
-		case <-timeoutChan:
-			err = errors.New("ReadDatagramWithTimeOut - timeout")
+	case <-timeoutChan:
+		err = errors.New("ReadDatagramWithTimeOut - timeout")
 	}
 
 	return data, err
@@ -195,26 +192,26 @@ func ParseTranscript(conn net.Conn, nClients int, nTrustees int) ([]abstract.Poi
 		fmt.Println("couldn't read transcript from relay " + err.Error())
 		return nil, nil, nil, err
 	}
-	
-	G_s             := make([]abstract.Point, nTrustees)
+
+	G_s := make([]abstract.Point, nTrustees)
 	ephPublicKeys_s := make([][]abstract.Point, nTrustees)
-	proof_s         := make([][]byte, nTrustees)
+	proof_s := make([][]byte, nTrustees)
 
 	//read the G_s
 	currentByte := 0
 	i := 0
 	for {
 		if currentByte+4 > len(buffer) {
-			break; //we reached the end of the array
+			break //we reached the end of the array
 		}
 
-		length := int(binary.BigEndian.Uint32(buffer[currentByte:currentByte+4]))
+		length := int(binary.BigEndian.Uint32(buffer[currentByte : currentByte+4]))
 
 		if length == 0 {
-			break; //we reached the end of the array
+			break //we reached the end of the array
 		}
 
-		G_S_i_Bytes := buffer[currentByte+4:currentByte+4+length]
+		G_S_i_Bytes := buffer[currentByte+4 : currentByte+4+length]
 
 		fmt.Println("G_S_", i)
 		fmt.Println(hex.Dump(G_S_i_Bytes))
@@ -222,7 +219,7 @@ func ParseTranscript(conn net.Conn, nClients int, nTrustees int) ([]abstract.Poi
 		base := config.CryptoSuite.Point()
 		err2 := base.UnmarshalBinary(G_S_i_Bytes)
 		if err2 != nil {
-			fmt.Println(">>>>can't unmarshal base n°"+strconv.Itoa(i)+" ! " + err2.Error())
+			fmt.Println(">>>>can't unmarshal base n°" + strconv.Itoa(i) + " ! " + err2.Error())
 			return nil, nil, nil, err
 		}
 
@@ -241,16 +238,16 @@ func ParseTranscript(conn net.Conn, nClients int, nTrustees int) ([]abstract.Poi
 	i = 0
 	for {
 		if currentByte+4 > len(buffer) {
-			break; //we reached the end of the array
+			break //we reached the end of the array
 		}
 
-		length := int(binary.BigEndian.Uint32(buffer[currentByte:currentByte+4]))
+		length := int(binary.BigEndian.Uint32(buffer[currentByte : currentByte+4]))
 
 		if length == 0 {
-			break; //we reached the end of the array
+			break //we reached the end of the array
 		}
 
-		ephPublicKeysBytes := buffer[currentByte+4:currentByte+4+length]
+		ephPublicKeysBytes := buffer[currentByte+4 : currentByte+4+length]
 
 		ephPublicKeys := make([]abstract.Point, 0)
 
@@ -261,30 +258,30 @@ func ParseTranscript(conn net.Conn, nClients int, nTrustees int) ([]abstract.Poi
 		j := 0
 		for {
 			if currentByte2+4 > len(ephPublicKeysBytes) {
-				break; //we reached the end of the array
+				break //we reached the end of the array
 			}
 
-			length := int(binary.BigEndian.Uint32(ephPublicKeysBytes[currentByte2:currentByte2+4]))
+			length := int(binary.BigEndian.Uint32(ephPublicKeysBytes[currentByte2 : currentByte2+4]))
 
 			if length == 0 {
-				break; //we reached the end of the array
+				break //we reached the end of the array
 			}
 
-			ephPublicKeyIJBytes := ephPublicKeysBytes[currentByte2+4:currentByte2+4+length]
+			ephPublicKeyIJBytes := ephPublicKeysBytes[currentByte2+4 : currentByte2+4+length]
 			ephPublicKey := config.CryptoSuite.Point()
 			err2 := ephPublicKey.UnmarshalBinary(ephPublicKeyIJBytes)
 			if err2 != nil {
-				fmt.Println(">>>>can't unmarshal public key n°"+strconv.Itoa(i)+","+strconv.Itoa(j)+" ! " + err2.Error())
+				fmt.Println(">>>>can't unmarshal public key n°" + strconv.Itoa(i) + "," + strconv.Itoa(j) + " ! " + err2.Error())
 				return nil, nil, nil, err
 			}
-			
+
 			ephPublicKeys = append(ephPublicKeys, ephPublicKey)
 			fmt.Println("Read EphemeralPublicKey[", i, "][", j, "]")
 
 			currentByte2 += 4 + length
 			j += 1
 
-			if j == nClients{
+			if j == nClients {
 				break
 			}
 		}
@@ -304,16 +301,16 @@ func ParseTranscript(conn net.Conn, nClients int, nTrustees int) ([]abstract.Poi
 	i = 0
 	for {
 		if currentByte+4 > len(buffer) {
-			break; //we reached the end of the array
+			break //we reached the end of the array
 		}
 
-		length := int(binary.BigEndian.Uint32(buffer[currentByte:currentByte+4]))
+		length := int(binary.BigEndian.Uint32(buffer[currentByte : currentByte+4]))
 
 		if length == 0 {
-			break; //we reached the end of the array
+			break //we reached the end of the array
 		}
 
-		proofBytes := buffer[currentByte+4:currentByte+4+length]
+		proofBytes := buffer[currentByte+4 : currentByte+4+length]
 		fmt.Println("Read Proof[", i, "]")
 
 		proof_s[i] = proofBytes
@@ -343,7 +340,7 @@ func ParsePublicKeyFromConn(conn net.Conn) (abstract.Point, error) {
 	msgType := int(binary.BigEndian.Uint16(buffer[0:2]))
 
 	if msgType != MESSAGE_TYPE_PUBLICKEYS {
-		s := "ParsePublicKeyFromConn : Read error, type supposed to be "+strconv.Itoa(MESSAGE_TYPE_PUBLICKEYS)+" but is " + strconv.Itoa(msgType)
+		s := "ParsePublicKeyFromConn : Read error, type supposed to be " + strconv.Itoa(MESSAGE_TYPE_PUBLICKEYS) + " but is " + strconv.Itoa(msgType)
 		fmt.Println(s)
 		return nil, errors.New(s)
 	}
@@ -368,10 +365,10 @@ func ParseBaseAndPublicKeysFromConn(conn net.Conn) (abstract.Point, []abstract.P
 	}
 
 	baseSize := int(binary.BigEndian.Uint32(buffer[0:4]))
-	keysSize := int(binary.BigEndian.Uint32(buffer[4+baseSize:8+baseSize]))
+	keysSize := int(binary.BigEndian.Uint32(buffer[4+baseSize : 8+baseSize]))
 
-	baseBytes := buffer[4:4+baseSize] 
-	keysBytes := buffer[8+baseSize:8+baseSize+keysSize]
+	baseBytes := buffer[4 : 4+baseSize]
+	keysBytes := buffer[8+baseSize : 8+baseSize+keysSize]
 
 	base := config.CryptoSuite.Point()
 	err2 := base.UnmarshalBinary(baseBytes)
@@ -394,21 +391,20 @@ func IntToBA(x int) []byte {
 	return buf
 }
 
-
 func ParseBasePublicKeysAndProofFromConn(conn net.Conn) (abstract.Point, []abstract.Point, []byte, error) {
 	buffer, err := ReadMessage(conn)
 	if err != nil {
 		fmt.Println("ParseBaseAndPublicKeysFromConn, couldn't read. " + err.Error())
 		return nil, nil, nil, err
 	}
-		
-	baseSize := int(binary.BigEndian.Uint32(buffer[0:4]))
-	keysSize := int(binary.BigEndian.Uint32(buffer[4+baseSize:8+baseSize]))
-	proofSize := int(binary.BigEndian.Uint32(buffer[8+baseSize+keysSize:12+baseSize+keysSize]))
 
-	baseBytes := buffer[4:4+baseSize] 
-	keysBytes := buffer[8+baseSize:8+baseSize+keysSize] 
-	proof := buffer[12+baseSize+keysSize:12+baseSize+keysSize+proofSize] 
+	baseSize := int(binary.BigEndian.Uint32(buffer[0:4]))
+	keysSize := int(binary.BigEndian.Uint32(buffer[4+baseSize : 8+baseSize]))
+	proofSize := int(binary.BigEndian.Uint32(buffer[8+baseSize+keysSize : 12+baseSize+keysSize]))
+
+	baseBytes := buffer[4 : 4+baseSize]
+	keysBytes := buffer[8+baseSize : 8+baseSize+keysSize]
+	proof := buffer[12+baseSize+keysSize : 12+baseSize+keysSize+proofSize]
 
 	base := config.CryptoSuite.Point()
 	err2 := base.UnmarshalBinary(baseBytes)
@@ -424,23 +420,22 @@ func ParseBasePublicKeysAndProofFromConn(conn net.Conn) (abstract.Point, []abstr
 	return base, publicKeys, proof, nil
 }
 
-
 func ParseBasePublicKeysAndTrusteeSignaturesFromConn(conn net.Conn) (abstract.Point, []abstract.Point, [][]byte, error) {
 	buffer, err := ReadMessage(conn)
 	if err != nil {
 		fmt.Println("ParseBasePublicKeysAndTrusteeProofFromConn, couldn't read. " + err.Error())
 		return nil, nil, nil, err
 	}
-		
+
 	baseSize := int(binary.BigEndian.Uint32(buffer[0:4]))
-	keysSize := int(binary.BigEndian.Uint32(buffer[4+baseSize:8+baseSize]))
-	signaturesSize := int(binary.BigEndian.Uint32(buffer[8+baseSize+keysSize:12+baseSize+keysSize]))
+	keysSize := int(binary.BigEndian.Uint32(buffer[4+baseSize : 8+baseSize]))
+	signaturesSize := int(binary.BigEndian.Uint32(buffer[8+baseSize+keysSize : 12+baseSize+keysSize]))
 
 	fmt.Println("Signature size", signaturesSize)
 
-	baseBytes := buffer[4:4+baseSize] 
-	keysBytes := buffer[8+baseSize:8+baseSize+keysSize] 
-	signaturesBytes := buffer[12+baseSize+keysSize:12+baseSize+keysSize+signaturesSize] 
+	baseBytes := buffer[4 : 4+baseSize]
+	keysBytes := buffer[8+baseSize : 8+baseSize+keysSize]
+	signaturesBytes := buffer[12+baseSize+keysSize : 12+baseSize+keysSize+signaturesSize]
 
 	base := config.CryptoSuite.Point()
 	err2 := base.UnmarshalBinary(baseBytes)
@@ -461,16 +456,16 @@ func ParseBasePublicKeysAndTrusteeSignaturesFromConn(conn net.Conn) (abstract.Po
 	i := 0
 	for {
 		if currentByte+4 > len(signaturesBytes) {
-			break; //we reached the end of the array
+			break //we reached the end of the array
 		}
 
-		length := int(binary.BigEndian.Uint32(signaturesBytes[currentByte:currentByte+4]))
+		length := int(binary.BigEndian.Uint32(signaturesBytes[currentByte : currentByte+4]))
 
 		if length == 0 {
-			break; //we reached the end of the array
+			break //we reached the end of the array
 		}
 
-		thisSig := signaturesBytes[currentByte+4:currentByte+4+length]
+		thisSig := signaturesBytes[currentByte+4 : currentByte+4+length]
 
 		fmt.Println("thisSig_", i)
 		fmt.Println(hex.Dump(thisSig))
@@ -524,7 +519,7 @@ func WriteBasePublicKeysAndProofToConn(conn net.Conn, base abstract.Point, keys 
 	}
 
 	//compose the message
-	totalMessageLength := 12+len(baseBytes)+len(keysBytes)+len(proof)
+	totalMessageLength := 12 + len(baseBytes) + len(keysBytes) + len(proof)
 	message := make([]byte, totalMessageLength)
 
 	binary.BigEndian.PutUint32(message[0:4], uint32(len(baseBytes)))
@@ -551,7 +546,7 @@ func MarshalNodeRepresentations(nodes []NodeRepresentation) ([]byte, error) {
 	binary.BigEndian.PutUint16(msgType, uint16(MESSAGE_TYPE_PUBLICKEYS))
 	byteArray = append(byteArray, msgType...)
 
-	for i:=0; i<len(nodes); i++ {
+	for i := 0; i < len(nodes); i++ {
 		publicKeysBytes, err := nodes[i].PublicKey.MarshalBinary()
 		publicKeyLength := make([]byte, 4)
 		binary.BigEndian.PutUint32(publicKeyLength, uint32(len(publicKeysBytes)))
@@ -559,8 +554,8 @@ func MarshalNodeRepresentations(nodes []NodeRepresentation) ([]byte, error) {
 		byteArray = append(byteArray, publicKeyLength...)
 		byteArray = append(byteArray, publicKeysBytes...)
 
-		if err != nil{
-			fmt.Println("can't marshal client public key n°"+strconv.Itoa(i))
+		if err != nil {
+			fmt.Println("can't marshal client public key n°" + strconv.Itoa(i))
 			return nil, errors.New("Can't unmarshall")
 		}
 	}
@@ -570,11 +565,11 @@ func MarshalNodeRepresentations(nodes []NodeRepresentation) ([]byte, error) {
 
 func NUnicastMessageToNodes(nodes []NodeRepresentation, message []byte) {
 
-	for i:=0; i<len(nodes); i++ {
-		if  nodes[i].Connected {
+	for i := 0; i < len(nodes); i++ {
+		if nodes[i].Connected {
 			err := WriteMessage(nodes[i].Conn, message)
 
-			if  err != nil {
+			if err != nil {
 				fmt.Println("Could not n*unicast to conn", i, "gonna set it to disconnected.")
 				nodes[i].Connected = false
 			}
@@ -583,7 +578,7 @@ func NUnicastMessageToNodes(nodes []NodeRepresentation, message []byte) {
 }
 
 func NUnicastMessage(conns []net.Conn, message []byte) error {
-	for i:=0; i<len(conns); i++ {
+	for i := 0; i < len(conns); i++ {
 		err := WriteMessage(conns[i], message)
 
 		fmt.Println("[", conns[i].LocalAddr(), " - ", conns[i].RemoteAddr(), "]")
@@ -616,7 +611,7 @@ func MarshalPublicKeyArrayToByteArray(publicKeys []abstract.Point) ([]byte, erro
 	binary.BigEndian.PutUint16(msgType, uint16(MESSAGE_TYPE_PUBLICKEYS))
 	byteArray = append(byteArray, msgType...)
 
-	for i:=0; i<len(publicKeys); i++ {
+	for i := 0; i < len(publicKeys); i++ {
 		publicKeysBytes, err := publicKeys[i].MarshalBinary()
 		publicKeyLength := make([]byte, 4)
 		binary.BigEndian.PutUint32(publicKeyLength, uint32(len(publicKeysBytes)))
@@ -625,8 +620,8 @@ func MarshalPublicKeyArrayToByteArray(publicKeys []abstract.Point) ([]byte, erro
 		byteArray = append(byteArray, publicKeysBytes...)
 
 		//fmt.Println(hex.Dump(publicKeysBytes))
-		if err != nil{
-			fmt.Println("can't marshal client public key n°"+strconv.Itoa(i))
+		if err != nil {
+			fmt.Println("can't marshal client public key n°" + strconv.Itoa(i))
 			return nil, err
 		}
 	}
@@ -649,7 +644,6 @@ func UnMarshalPublicKeyArrayFromConnection(conn net.Conn, cryptoSuite abstract.S
 	return pks, nil
 }
 
-
 func UnMarshalPublicKeyArrayFromByteArray(buffer []byte, cryptoSuite abstract.Suite) ([]abstract.Point, error) {
 
 	//will hold the public keys
@@ -667,21 +661,21 @@ func UnMarshalPublicKeyArrayFromByteArray(buffer []byte, cryptoSuite abstract.Su
 	currentPkId := 0
 	for {
 		if currentByte+4 > len(buffer) {
-			break; //we reached the end of the array
+			break //we reached the end of the array
 		}
 
-		keyLength := int(binary.BigEndian.Uint32(buffer[currentByte:currentByte+4]))
+		keyLength := int(binary.BigEndian.Uint32(buffer[currentByte : currentByte+4]))
 
 		if keyLength == 0 {
-			break; //we reached the end of the array
+			break //we reached the end of the array
 		}
 
-		keyBytes := buffer[currentByte+4:currentByte+4+keyLength]
+		keyBytes := buffer[currentByte+4 : currentByte+4+keyLength]
 
 		publicKey := cryptoSuite.Point()
 		err2 := publicKey.UnmarshalBinary(keyBytes)
 		if err2 != nil {
-			fmt.Println(">>>>can't unmarshal key n°"+strconv.Itoa(currentPkId)+" ! " + err2.Error())
+			fmt.Println(">>>>can't unmarshal key n°" + strconv.Itoa(currentPkId) + " ! " + err2.Error())
 			return nil, err2
 		}
 
@@ -695,8 +689,8 @@ func UnMarshalPublicKeyArrayFromByteArray(buffer []byte, cryptoSuite abstract.Su
 }
 
 // Marshals a sequence of byte arrays
-// Each input array must have less than 65536 bytes (65KB)
-func MarshalArrays(arrs ...[]byte) []byte {
+// Each input array MUST have less than 65K bytes
+func MarshalByteArrays(arrs ...[]byte) []byte {
 	size := 0
 	for _, arr := range arrs {
 		size += len(arr) + 2
@@ -705,22 +699,25 @@ func MarshalArrays(arrs ...[]byte) []byte {
 	i := 0
 	res := make([]byte, size)
 	for _, arr := range arrs {
-		len := len(arr)
-		binary.BigEndian.PutUint16(res[i:i + 2], uint16(len))
-		copy(res[i + 2 : i + len + 2], arr)
-		i += len + 2
+		arrlen := len(arr)
+		if arrlen > 65535 {
+			panic("Cannot marshal arrays with more than 65K bytes!")
+		}
+		binary.BigEndian.PutUint16(res[i:i+2], uint16(arrlen))
+		copy(res[i+2:i+arrlen+2], arr)
+		i += arrlen + 2
 	}
 	return res
 }
 
 // Unmarshals a sequence of byte arrays
-func UnmarshalArrays(input []byte) [][]byte {
+func UnmarshalByteArrays(input []byte) [][]byte {
 	var arrs [][]byte
 
 	for i := 0; i < len(input); {
-		len := int(binary.BigEndian.Uint16(input[i : i + 2]))
+		len := int(binary.BigEndian.Uint16(input[i : i+2]))
 		arr := make([]byte, len)
-		copy(arr, input[i + 2 : i + 2 + len])
+		copy(arr, input[i+2:i+2+len])
 		arrs = append(arrs, arr)
 		i += len + 2
 	}

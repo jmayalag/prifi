@@ -4,13 +4,9 @@
 
 1. [Introduction](#Introduction) 
 2. [Running the System](#Running-the-System)
-    
-    2.1. [Compiling PriFi](#Compiling-PriFi) 
-    
+	2.1. [Compiling PriFi](#Compiling-PriFi) 
 	2.2. [Initial Configuration](#Initial-Configuration) 
-	
-	2.3. [Running a Node](#Running-a-Node)
-	
+	2.3. [Running a Node](#Running-a-Node) 
 3. [Protocol Description](#Protocol-Description) 
 5. [Coding Style](#Code-Style) 
 6. [References](#References)
@@ -18,7 +14,7 @@
 <a id="Introduction"></a> 
 ## 1. Introduction 
 
-PriFi is an anonymous communication protocol with provable traffic-analysis resistance and small latency suitable for wireless networks. This provides a network access mechanism for protecting members of an organization who access the Internet while on-site (via privacy-preserving WiFi networking) and while off-site (via privacy-preserving virtual private networking or VPN). The small latency cost is acheved by leveraging the client-relay-server topology common in WiFi networks. Main entities of PriFi are: relay, trustee server (or Trustees), and clients. These collaborate to implement a Dining Cryptographer's network (DC-Net) that can anonymize the client upstream traffic. The relay is a WiFi router that can process normal TCP/IP traffic in addition to running our protocol
+PriFi is an anonymous communication protocol with provable traffic-analysis resistance and small latency suitable for wireless networks. This provides a network access mechanism for protecting members of an organization who access the Internet while on-site (via privacy-preserving WiFi networking) and while off-site (via privacy-preserving virtual private networking or VPN). The small latency cost is achieved by leveraging the client-relay-server topology common in WiFi networks. Main entities of PriFi are: relay, trustee server (or Trustees), and clients. These collaborate to implement a Dining Cryptographer's network (DC-Net) that can anonymize the client upstream traffic. The relay is a WiFi router that can process normal TCP/IP traffic in addition to running our protocol
 
 <a id="Running-the-System"></a> 
 ## 2. Running the System
@@ -41,7 +37,7 @@ After compiling the program, run the following command to create configuration d
 
 This will create configuration data for a default setting, which consists of one client, one trustee server and one relay. To generate configuration data for a specific setting, run:
 
- prifi -config -nclients=3 -ntrustees=2
+	prifi -config -nclients=3 -ntrustees=2
 
 The configuraton generator will create one directory for each node in the local users directory. Depending on the node's type, its config directory will be named with the following format:
 
@@ -108,24 +104,25 @@ We assume the relay already knows the public keys of all nodes who want to join 
 
 PriFi prevents intersection attacks such as "who is online?" using an anonymous authentication scheme called Deniable Anonymous Group Authentication (DAGA) [SPW+14], wherein members of the organization prove their membership without divulging their identity (i.e., their long-term public keys).
 
-The following protocols are run between a client, the relay, and a group of trustees: 
+Let m be the number of trustees. The following protocols are run between a client, the relay, and a group of trustees: 
 
 #### Authentication setup
 
-1. The relay sends the number of clients with long-term public keys to all trustees; 
-2. The j-th trustee generates a per-round secret r_j and sends a commitment R_j = g^r_j to other trustees; 
-3. For each client i, the trustee generates a per-round random generator h_i collectively with other trustees;
+1. The relay sends the list of all long-term public keys to all trustees; 
+2. The j-th trustee generates a secret r_j and sends a commitment R_j = g^r_j to other trustees;
+3. For each client i, the trustee generates a per-round generator h_i = H(i, R), where R is the sequence of commitments of all trustees and H is a hash function;
 
 #### Client authentication 
 
-1. A client sends an authentication request to the relay; 
-2. The relay sends the IP/port address of the first trustees to the client; 
-3. The client connects to that trustee and requests an authentication context; 
-4. The trustee sends (H,p,g) to the client; 
-5. The client computes an initial linkage tag T_0 and proves in zero-knowledge to the trustee that he has correctly computed T_0, and that he knows one of the long-term private (via "OR" proof); 
-6. The trustee sends T_1 to the next trustee along with a proof that he has correctly computed T_1 and knows r_1; 
-7. Once the last trustee computes the final linkage tag T_f, he sends it to the first trustee; 
-8. The first trustee sends T_f to the client.
+1. The client sends an authentication request to the relay; 
+2. The relay sends the IP/port address of one of the trustees along with all trustee public keys to the client;
+3. The client connects to the trustee and requests an authentication context;
+4. The trustee sends all trustee commitments (R) to the client;
+5. The client computes his per-round generator h_i=H(i,R), shared secrets s_1,...,s_m, and his initial linkage tag T_0.
+6. The client sends T_0 to the trustee and proves in zero-knowledge to the trustee that he has correctly computed T_0, and that he knows one of the long-term private keys (via "OR" proof); 
+7. The trustee computes T_1 and sends it to the next trustee along with a proof that he has correctly computed T_1 and knows r_1; 
+8. Once the last trustee computes the final linkage tag T_f, he sends it to the first trustee; 
+9. The first trustee sends T_f to the client.
 
 The client's proof is the interactive protocol of Camenisch and Stadler [CS97]. The trustee's proof is a non-interactive protocol based on Schnorr's proof of knowledge of discrete logarithms [Schnorr91] and proof of equality of discrete logarithms [CP92].
 
@@ -141,6 +138,8 @@ The client's proof is the interactive protocol of Camenisch and Stadler [CS97]. 
 
 <a id="Coding-Style"></a>
 ## 5. Coding Style
+
+All checked-in code must compile without any error.
 
 #### Gofmt
  We use Gofmt which is the official formating style for Go. Gofmt automatically formats Go source code, and thus there's no need to spend time lining up the code or think how many spaces are needed between math operators. Tis formatting style is recommended by [Effective Go](https://golang.org/doc/effective_go.html#formatting)  More details on how to use [Gofmt](https://blog.golang.org/go-fmt-your-code).

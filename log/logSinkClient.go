@@ -1,20 +1,20 @@
 package log
 
 import (
-	"fmt"
-	"net"
 	"encoding/binary"
 	"errors"
-	"time"
-	"sync"
+	"fmt"
+	"net"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 )
 
 type SinkClient struct {
-	conn 			net.Conn
-	copyToStdOut 	bool
-	logLevel		int
+	conn         net.Conn
+	copyToStdOut bool
+	logLevel     int
 	sync.Mutex
 }
 
@@ -42,13 +42,13 @@ func (sc *SinkClient) WriteMessage(severity int, message string) error {
 	}
 
 	when := time.Now().Format(time.StampMilli)
-	s    := when + "<"+SeverityToString(severity)+"> "+message
+	s := when + "<" + SeverityToString(severity) + "> " + message
 
-	if sc.copyToStdOut && !strings.HasPrefix(message, "{")  {
+	if sc.copyToStdOut && !strings.HasPrefix(message, "{") {
 		fmt.Println(s)
 	}
 
-	go sc.writeData([]byte(s));
+	go sc.writeData([]byte(s))
 
 	return nil
 }
@@ -72,7 +72,7 @@ func (sc *SinkClient) writeData(message []byte) error {
 	n, err := sc.conn.Write(buffer)
 
 	if n < length+4 {
-		return errors.New("SinkServer : Couldn't write the full"+strconv.Itoa(length+4)+" bytes, only wrote "+strconv.Itoa(n))
+		return errors.New("SinkServer : Couldn't write the full" + strconv.Itoa(length+4) + " bytes, only wrote " + strconv.Itoa(n))
 	}
 
 	if err != nil {

@@ -1,15 +1,15 @@
 package log
 
 import (
-	"fmt"
-	"time"
-	"net"
-	"io"
-	"errors"
-	"strconv"
 	"encoding/binary"
-	"strings"
+	"errors"
+	"fmt"
 	"github.com/fatih/color"
+	"io"
+	"net"
+	"strconv"
+	"strings"
+	"time"
 )
 
 type EntityAndMessage struct {
@@ -28,100 +28,100 @@ func StartSinkServer(listeningPort string, logFile string) {
 
 	for {
 		select {
-			case d := <- dataChan :
-				entity := d.entity
-				msg    := d.message
-				s := "["+entity+"] "+msg
-				fileLogger.writeMessage(s)
+		case d := <-dataChan:
+			entity := d.entity
+			msg := d.message
+			s := "[" + entity + "] " + msg
+			fileLogger.writeMessage(s)
 
-				if !strings.HasPrefix(msg, "{") {
-					switch(entity) {
-						case "relay":
-							color.Set(color.FgGreen)
-							fmt.Println(s)
-							color.Unset()
-							break
-						case "trusteeServer":
-							color.Set(color.FgYellow)
-							fmt.Println(s)
-							color.Unset()
-							break
-						case "trustee0":
-							color.Set(color.FgRed)
-							fmt.Println(s)
-							color.Unset()
-							break
-						case "trustee1":
-							color.Set(color.FgYellow)
-							fmt.Println(s)
-							color.Unset()
-							break
-						case "trustee2":
-							color.Set(color.FgBlue)
-							fmt.Println(s)
-							color.Unset()
-							break
-						case "trustee3":
-							color.Set(color.FgMagenta)
-							fmt.Println(s)
-							color.Unset()
-							break
-						case "trustee4":
-							color.Set(color.FgCyan)
-							fmt.Println(s)
-							color.Unset()
-							break
-						case "trustee5":
-							color.Set(color.FgGreen)
-							fmt.Println(s)
-							color.Unset()
-							break
-						case "client0":
-							color.Set(color.FgCyan)
-							fmt.Println(s)
-							color.Unset()
-							break
-						case "client1":
-							color.Set(color.FgMagenta)
-							fmt.Println(s)
-							color.Unset()
-							break
-						case "client2":
-							color.Set(color.FgBlue)
-							fmt.Println(s)
-							color.Unset()
-							break
-						case "client3":
-							color.Set(color.FgYellow)
-							fmt.Println(s)
-							color.Unset()
-							break
-						case "client4":
-							color.Set(color.FgRed)
-							fmt.Println(s)
-							color.Unset()
-							break
-						case "client5":
-							color.Set(color.FgGreen)
-							fmt.Println(s)
-							color.Unset()
-							break
-						default:
-							color.Set(color.FgWhite)
-							fmt.Println(s)
-							color.Unset()
-							break					
-					}
+			if !strings.HasPrefix(msg, "{") {
+				switch entity {
+				case "relay":
+					color.Set(color.FgGreen)
+					fmt.Println(s)
+					color.Unset()
+					break
+				case "trusteeServer":
+					color.Set(color.FgYellow)
+					fmt.Println(s)
+					color.Unset()
+					break
+				case "trustee0":
+					color.Set(color.FgRed)
+					fmt.Println(s)
+					color.Unset()
+					break
+				case "trustee1":
+					color.Set(color.FgYellow)
+					fmt.Println(s)
+					color.Unset()
+					break
+				case "trustee2":
+					color.Set(color.FgBlue)
+					fmt.Println(s)
+					color.Unset()
+					break
+				case "trustee3":
+					color.Set(color.FgMagenta)
+					fmt.Println(s)
+					color.Unset()
+					break
+				case "trustee4":
+					color.Set(color.FgCyan)
+					fmt.Println(s)
+					color.Unset()
+					break
+				case "trustee5":
+					color.Set(color.FgGreen)
+					fmt.Println(s)
+					color.Unset()
+					break
+				case "client0":
+					color.Set(color.FgCyan)
+					fmt.Println(s)
+					color.Unset()
+					break
+				case "client1":
+					color.Set(color.FgMagenta)
+					fmt.Println(s)
+					color.Unset()
+					break
+				case "client2":
+					color.Set(color.FgBlue)
+					fmt.Println(s)
+					color.Unset()
+					break
+				case "client3":
+					color.Set(color.FgYellow)
+					fmt.Println(s)
+					color.Unset()
+					break
+				case "client4":
+					color.Set(color.FgRed)
+					fmt.Println(s)
+					color.Unset()
+					break
+				case "client5":
+					color.Set(color.FgGreen)
+					fmt.Println(s)
+					color.Unset()
+					break
+				default:
+					color.Set(color.FgWhite)
+					fmt.Println(s)
+					color.Unset()
+					break
 				}
+			}
 
-			default:
-				time.Sleep(100*time.Millisecond)
+		default:
+			time.Sleep(100 * time.Millisecond)
 		}
 	}
 }
 
 func serverListener(listeningPort string, dataChan chan EntityAndMessage) {
-	
+
 	fmt.Println("SinkServer : listening on " + listeningPort)
 	listeningSocket, err := net.Listen("tcp", listeningPort)
 	if err != nil {
@@ -177,12 +177,12 @@ func readMessage(conn net.Conn) ([]byte, error) {
 	//read header
 	n, err := io.ReadFull(conn, header)
 
-	if err != nil{
+	if err != nil {
 		return emptyMessage, err
 	}
 
 	if n != 4 {
-		return emptyMessage, errors.New("SinkServer Couldn't read the full 4 header bytes, only read "+strconv.Itoa(n))
+		return emptyMessage, errors.New("SinkServer Couldn't read the full 4 header bytes, only read " + strconv.Itoa(n))
 	}
 
 	bodySize := int(binary.BigEndian.Uint32(header[0:4]))
@@ -191,12 +191,12 @@ func readMessage(conn net.Conn) ([]byte, error) {
 	body := make([]byte, bodySize)
 	n2, err2 := io.ReadFull(conn, body)
 
-	if err2 != nil{
+	if err2 != nil {
 		return emptyMessage, err2
 	}
 
 	if n2 != bodySize {
-		return emptyMessage, errors.New("SinkServer Couldn't read the full" + strconv.Itoa(bodySize) +" body bytes, only read "+strconv.Itoa(n2))
+		return emptyMessage, errors.New("SinkServer Couldn't read the full" + strconv.Itoa(bodySize) + " body bytes, only read " + strconv.Itoa(n2))
 	}
 
 	return body, nil

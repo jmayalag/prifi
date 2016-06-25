@@ -1,12 +1,12 @@
 package net
 
 import (
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
 	"log"
 	"net"
-	"encoding/binary"
 )
 
 // Authentication methods
@@ -43,7 +43,6 @@ const (
 	repCommandNotSupported
 	repAddressTypeNotSupported
 )
-
 
 func min(x, y int) int {
 	if x < y {
@@ -84,7 +83,6 @@ func (cr *chanreader) Read(p []byte) (n int, err error) {
 func newChanReader(c <-chan []byte) *chanreader {
 	return &chanreader{[]byte{}, c, false}
 }
-
 
 // Read an IPv4 or IPv6 address from an io.Reader and return it as a string
 func readIP(r io.Reader, len int) (string, error) {
@@ -229,8 +227,6 @@ func socks5Reply(cno int, err error, addr net.Addr) DataWithConnectionId {
 	//log.Printf("SOCKS5 reply:\n" + hex.Dump(buf))
 	return DataWithConnectionId{cno, buf}
 }
-
-
 
 // Main loop of our relay-side SOCKS proxy.
 func RelaySocksProxy(connId int, upstream <-chan []byte, downstream chan<- DataWithConnectionId) {

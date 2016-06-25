@@ -1,11 +1,11 @@
 package client
 
 import (
-	"fmt"
 	"encoding/hex"
+	"fmt"
 	"github.com/dedis/crypto/abstract"
-	"time"
 	"github.com/lbarman/prifi/node"
+	"time"
 )
 
 const MaxUint uint32 = uint32(4294967295)
@@ -30,12 +30,11 @@ type ClientState struct {
 	LatencyTest         bool
 	UseUDP              bool
 
-	TrusteePublicKey    []abstract.Point
+	TrusteePublicKey []abstract.Point
 }
 
 func (clientState *ClientState) printSecrets() {
 	//print all secrets
-
 
 	k1, _ := clientState.NodeState.PublicKey.MarshalBinary()
 	k2, _ := clientState.NodeState.PrivateKey.MarshalBinary()

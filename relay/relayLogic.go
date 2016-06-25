@@ -8,9 +8,10 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/lbarman/prifi/auth/daga"
+	"github.com/lbarman/prifi/config"
 	prifilog "github.com/lbarman/prifi/log"
 	prifinet "github.com/lbarman/prifi/net"
-	"github.com/lbarman/prifi/config"
 )
 
 var udp_packet_segment_number uint32 = 0 //todo : this should be random to provide better security (maybe? TCP does so)
@@ -61,8 +62,17 @@ func StartRelay(nodeConfig config.NodeConfig, upstreamCellSize int, downstreamCe
 
 	// Start the actual protocol
 	relayState.connectToAllTrustees()
+
+	// Initialize DAGA protocol
+	relayState.dagaProtocol = daga.RelayProtocol{
+		TrusteeHosts:      relayState.TrusteesHosts,
+		Trustees:          relayState.trustees,
+		ClientPublicKeys:  relayState.ClientPublicKeys,
+		TrusteePublicKeys: relayState.TrusteePublicKeys,
+	}
+
 	relayState.waitForDefaultNumberOfClients(newClientWithIdAndPublicKeyChan)
-	relayState.advertisePublicKeys()		// TODO: DAGA -- This function should advertise ephemeral keys not long-term ones.
+	relayState.advertisePublicKeys() // TODO: DAGA -- This function should advertise ephemeral keys not long-term ones.
 	err := relayState.organizeRoundScheduling()
 
 	var isProtocolRunning = false

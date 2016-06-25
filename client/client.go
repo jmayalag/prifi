@@ -11,19 +11,21 @@ import (
 	"time"
 
 	"github.com/dedis/crypto/abstract"
+	"github.com/lbarman/prifi/auth"
+	"github.com/lbarman/prifi/auth/basic"
+	"github.com/lbarman/prifi/auth/daga"
 	"github.com/lbarman/prifi/config"
 	"github.com/lbarman/prifi/crypto"
 	prifilog "github.com/lbarman/prifi/log"
 	prifinet "github.com/lbarman/prifi/net"
 	"github.com/lbarman/prifi/node"
 	"os"
-	"github.com/lbarman/prifi/auth"
 )
 
 func StartClient(nodeConfig config.NodeConfig, relayHostAddr string, expectedNumberOfClients int, nTrustees int,
-payloadLength int, useSocksProxy bool, latencyTest bool, useUDP bool) {
+	payloadLength int, useSocksProxy bool, latencyTest bool, useUDP bool) {
 
-	prifilog.SimpleStringDump(prifilog.NOTIFICATION, "Client " + strconv.Itoa(nodeConfig.Id) + " started...")
+	prifilog.SimpleStringDump(prifilog.NOTIFICATION, "Client "+strconv.Itoa(nodeConfig.Id)+" started...")
 
 	clientState := new(ClientState)
 	clientState.NodeState = node.InitNodeState(nodeConfig, expectedNumberOfClients, nTrustees, payloadLength)
@@ -48,7 +50,7 @@ payloadLength int, useSocksProxy bool, latencyTest bool, useUDP bool) {
 	dataForSocksProxy := make(chan prifinet.DataWithMessageTypeAndConnId, 0) // This hold the data from the relay to one of the SOCKS connection
 
 	if clientState.UseSocksProxy {
-		port := ":" + strconv.Itoa(1080 + nodeConfig.Id)
+		port := ":" + strconv.Itoa(1080+nodeConfig.Id)
 		prifilog.SimpleStringDump(prifilog.INFORMATION, "Client "+strconv.Itoa(nodeConfig.Id)+"; Starting SOCKS proxy on port "+port)
 		go startSocksProxyServerListener(port, socksProxyNewConnections)
 		go startSocksProxyServerHandler(socksProxyNewConnections, dataForRelayBuffer, dataForSocksProxy, clientState)
@@ -79,14 +81,25 @@ payloadLength int, useSocksProxy bool, latencyTest bool, useUDP bool) {
 		}
 
 		if !authenticated {
-			// Authenticate the client via the relay
-			err := auth.ClientAuthentication(nodeConfig.AuthMethod, relayTCPConn, clientState.Id, clientState.PrivateKey);
-			if err != nil {
-				// TODO: Client authentication failed. Retry a few times.
-				prifilog.SimpleStringDump(prifilog.SEVERE_ERROR, "Authentication failed.")
-				os.Exit(1)
+			// Authenticate the client
+			switch nodeConfig.AuthMethod {
+
+			case auth.AUTH_METHOD_BASIC:
+				err := basicAuth.ClientAuthentication(relayTCPConn, clientState.Id, clientState.PrivateKey)
+				if err != nil {
+					prifilog.SimpleStringDump(prifilog.SEVERE_ERROR, "Authentication failed.")
+					os.Exit(1)
+				}
+				authenticated = true
+
+			case auth.AUTH_METHOD_DAGA:
+				err := daga.ClientAuthentication(relayTCPConn, clientState.Id, clientState.PrivateKey)
+				if err != nil {
+					prifilog.SimpleStringDump(prifilog.SEVERE_ERROR, "Authentication failed.")
+					os.Exit(1)
+				}
+				authenticated = true
 			}
-			authenticated = true
 		}
 
 		prifilog.SimpleStringDump(prifilog.INFORMATION, "Client "+strconv.Itoa(nodeConfig.Id)+"; Waiting for relay params + public keys...")
@@ -136,7 +149,7 @@ payloadLength int, useSocksProxy bool, latencyTest bool, useUDP bool) {
 		}
 
 		//clientState.printSecrets()
-		prifilog.SimpleStringDump(prifilog.NOTIFICATION, "Client "+strconv.Itoa(nodeConfig.Id)+"; Everything ready, assigned to round " +
+		prifilog.SimpleStringDump(prifilog.NOTIFICATION, "Client "+strconv.Itoa(nodeConfig.Id)+"; Everything ready, assigned to round "+
 			strconv.Itoa(myRound)+" out of "+strconv.Itoa(clientState.NodeState.NumClients))
 
 		//define downstream stream (relay -> client)

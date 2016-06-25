@@ -2,11 +2,11 @@ package relay
 
 import (
 	"encoding/binary"
-	"github.com/lbarman/prifi/config"
 	"github.com/dedis/crypto/abstract"
-	"time"
-	prifinet "github.com/lbarman/prifi/net"
+	"github.com/lbarman/prifi/config"
 	prifilog "github.com/lbarman/prifi/log"
+	prifinet "github.com/lbarman/prifi/net"
+	"time"
 )
 
 func (relayState *RelayState) organizeRoundScheduling() error {
@@ -54,9 +54,9 @@ func (relayState *RelayState) organizeRoundScheduling() error {
 	prifilog.Println(prifilog.INFORMATION, "Relay: collected all ephemeral public keys")
 
 	// prepare transcript
-	G_s             := make([]abstract.Point, relayState.nTrustees)
+	G_s := make([]abstract.Point, relayState.nTrustees)
 	ephPublicKeys_s := make([][]abstract.Point, relayState.nTrustees)
-	proof_s         := make([][]byte, relayState.nTrustees)
+	proof_s := make([][]byte, relayState.nTrustees)
 
 	//ask each trustee in turn to do the oblivious shuffle
 	G := config.CryptoSuite.Point().Base()
@@ -74,12 +74,12 @@ func (relayState *RelayState) organizeRoundScheduling() error {
 		prifilog.Println(prifilog.INFORMATION, "Trustee", j, "is done shuffling")
 
 		//collect transcript
-		G_s[j]             = base2
+		G_s[j] = base2
 		ephPublicKeys_s[j] = ephPublicKeys2
-		proof_s[j]         = proof
+		proof_s[j] = proof
 
 		//next trustee get this trustee's output
-		G            = base2
+		G = base2
 		ephPublicKeys = ephPublicKeys2
 	}
 
@@ -87,15 +87,15 @@ func (relayState *RelayState) organizeRoundScheduling() error {
 
 	//pack transcript
 	transcriptBytes := make([]byte, 0)
-	for i:=0; i<len(G_s); i++ {
+	for i := 0; i < len(G_s); i++ {
 		G_s_i_bytes, _ := G_s[i].MarshalBinary()
 		transcriptBytes = append(transcriptBytes, prifinet.IntToBA(len(G_s_i_bytes))...)
 		transcriptBytes = append(transcriptBytes, G_s_i_bytes...)
 	}
-	for i:=0; i<len(ephPublicKeys_s); i++ {
+	for i := 0; i < len(ephPublicKeys_s); i++ {
 
 		pkArray := make([]byte, 0)
-		for k:=0; k<len(ephPublicKeys_s[i]); k++{
+		for k := 0; k < len(ephPublicKeys_s[i]); k++ {
 			pkBytes, _ := ephPublicKeys_s[i][k].MarshalBinary()
 			pkArray = append(pkArray, prifinet.IntToBA(len(pkBytes))...)
 			pkArray = append(pkArray, pkBytes...)
@@ -105,7 +105,7 @@ func (relayState *RelayState) organizeRoundScheduling() error {
 		transcriptBytes = append(transcriptBytes, pkArray...)
 	}
 
-	for i:=0; i<len(proof_s); i++ {
+	for i := 0; i < len(proof_s); i++ {
 		transcriptBytes = append(transcriptBytes, prifinet.IntToBA(len(proof_s[i]))...)
 		transcriptBytes = append(transcriptBytes, proof_s[i]...)
 	}
@@ -116,17 +116,17 @@ func (relayState *RelayState) organizeRoundScheduling() error {
 	//wait for the signature for each trustee
 	signatures := make([][]byte, relayState.nTrustees)
 	for j := 0; j < relayState.nTrustees; j++ {
- 
- 		buffer, err := prifinet.ReadMessage(relayState.trustees[j].Conn)
+
+		buffer, err := prifinet.ReadMessage(relayState.trustees[j].Conn)
 		if err != nil {
-			prifilog.Println(prifilog.RECOVERABLE_ERROR, "Relay, couldn't read signature from trustee " + err.Error())
+			prifilog.Println(prifilog.RECOVERABLE_ERROR, "Relay, couldn't read signature from trustee "+err.Error())
 			return err
 		}
 
 		sigSize := int(binary.BigEndian.Uint32(buffer[0:4]))
 		sig := make([]byte, sigSize)
 		copy(sig[:], buffer[4:4+sigSize])
-		
+
 		signatures[j] = sig
 
 		prifilog.Println(prifilog.INFORMATION, "Collected signature from trustee", j)

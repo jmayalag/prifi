@@ -1,21 +1,21 @@
 package log
 
 import (
-	"os"
-	"time"
 	"fmt"
+	"os"
 	"strings"
+	"time"
 )
 
 type FileClient struct {
-	logFile 		string
-	copyToStdOut 	bool
-	logLevel		int
+	logFile      string
+	copyToStdOut bool
+	logLevel     int
 }
 
 func StartFileClient(logLevel int, path string, copyToStdout bool) *FileClient {
 	fc := FileClient{path, copyToStdout, logLevel}
-	when :=time.Now().Format(time.StampMilli)
+	when := time.Now().Format(time.StampMilli)
 	fc.writeMessage("[" + when + "] Log started.")
 	return &fc
 }
@@ -26,7 +26,7 @@ func (fc *FileClient) WriteMessage(severity int, message string) error {
 		return nil
 	}
 
-	s := "<"+SeverityToString(severity)+"> "+message
+	s := "<" + SeverityToString(severity) + "> " + message
 
 	if fc.copyToStdOut && !strings.HasPrefix(message, "{") {
 		fmt.Println(s)
@@ -38,13 +38,13 @@ func (fc *FileClient) WriteMessage(severity int, message string) error {
 func (fc *FileClient) writeMessage(message string) error {
 	f, err := os.OpenFile(fc.logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
 	if err != nil {
-	    panic(err)
+		panic(err)
 	}
 
 	defer f.Close()
 
 	if _, err = f.WriteString(message); err != nil {
-	    panic(err)
+		panic(err)
 	}
 
 	return nil

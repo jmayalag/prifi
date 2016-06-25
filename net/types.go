@@ -1,33 +1,32 @@
 package net
 
 import (
-	"net"
 	"github.com/dedis/crypto/abstract"
+	"net"
 )
 
 type NodeRepresentation struct {
-	Id				int
-	Conn 			net.Conn 		//classical TCP connection
-	Connected 		bool
-	PublicKey		abstract.Point
+	Id        int
+	Conn      net.Conn //classical TCP connection
+	Connected bool
+	PublicKey abstract.Point
 }
 
 type DataWithConnectionId struct {
-	ConnectionId 	int    // connection number
-	Data 			[]byte // data buffer
+	ConnectionId int    // connection number
+	Data         []byte // data buffer
 }
 
 type DataWithMessageType struct {
-	MessageType 	int    
-	Data 			[]byte
+	MessageType int
+	Data        []byte
 }
 
 type DataWithMessageTypeAndConnId struct {
-	MessageType 	int    
-	ConnectionId 	int    // connection number (SOCKS id)
-	Data 			[]byte
+	MessageType  int
+	ConnectionId int // connection number (SOCKS id)
+	Data         []byte
 }
-
 
 const SOCKS_CONNECTION_ID_EMPTY = 0
 const IPV4_BROADCAST_ADDR = "255.255.255.255"

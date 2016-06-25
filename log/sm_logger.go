@@ -1,8 +1,8 @@
 package log
 
 import (
-	"time"
 	"sync"
+	"time"
 )
 
 const (
@@ -11,29 +11,29 @@ const (
 )
 
 type StateMachineStateChange struct {
-	Name			string
-	Action			int16
-	Time			time.Time
+	Name   string
+	Action int16
+	Time   time.Time
 }
 
 type StateMachineLogger struct {
 	sync.Mutex
-	entity 			string
-	currentState	string
-	timeEnterState	time.Time
-	measures		[]StateMachineStateChange
+	entity         string
+	currentState   string
+	timeEnterState time.Time
+	measures       []StateMachineStateChange
 }
 
 //output is meaningful only when EXITING a state
 func (sml *StateMachineLogger) addStateChange(newState string, action int16) time.Duration {
 	//NOT thread safe, but private
-	currentTime        := time.Now()
-	newMeasure         := StateMachineStateChange{newState, action, currentTime}
-	sml.measures       = append(sml.measures, newMeasure)
+	currentTime := time.Now()
+	newMeasure := StateMachineStateChange{newState, action, currentTime}
+	sml.measures = append(sml.measures, newMeasure)
 
 	timeSpentInPrevState := time.Since(sml.timeEnterState)
-	sml.timeEnterState   = currentTime
-	sml.currentState     = newState
+	sml.timeEnterState = currentTime
+	sml.currentState = newState
 
 	return timeSpentInPrevState
 }
@@ -45,20 +45,20 @@ func NewStateMachineLogger(entity string) *StateMachineLogger {
 	return &sml
 }
 
-func (sml *StateMachineLogger) Init (entity string) {
+func (sml *StateMachineLogger) Init(entity string) {
 	sml.Lock()
 
-	initialState       := "statemachinelogger-init"
-	sml.entity         = entity
+	initialState := "statemachinelogger-init"
+	sml.entity = entity
 	sml.timeEnterState = time.Now()
-	sml.measures       = make([]StateMachineStateChange, 0)
+	sml.measures = make([]StateMachineStateChange, 0)
 
 	sml.addStateChange(initialState, ACTION_ENTER_STATE)
 
 	sml.Unlock()
 }
 
-func (sml *StateMachineLogger) StateChange(newState string){
+func (sml *StateMachineLogger) StateChange(newState string) {
 	sml.Lock()
 
 	//exit
