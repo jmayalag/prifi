@@ -11,10 +11,10 @@ type NodeState struct {
 	Name string
 
 	PublicKey  abstract.Point
-	PrivateKey abstract.Secret
+	PrivateKey abstract.Scalar
 
 	EphemeralPublicKey  abstract.Point
-	EphemeralPrivateKey abstract.Secret
+	EphemeralPrivateKey abstract.Scalar
 
 	NumClients  int
 	NumTrustees int
@@ -33,7 +33,7 @@ func (nodeState *NodeState) GenerateEphemeralKeys() {
 	base := config.CryptoSuite.Point().Base()
 
 	// Generate ephemeral keys
-	Epriv := config.CryptoSuite.Secret().Pick(rand)
+	Epriv := config.CryptoSuite.Scalar().Pick(rand)
 	Epub := config.CryptoSuite.Point().Mul(base, Epriv)
 
 	nodeState.EphemeralPublicKey = Epub

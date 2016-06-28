@@ -19,9 +19,10 @@ type Protocol interface {
 /////////////////
 
 const (
-	TRUSTEE_SETUP      = iota // Relay requesting DAGA setup (fresh authentication context)
-	CLIENT_JOINING            // Client requests authentication from the relay
-	CLIENT_CONTEXT_REQ        // Client requesting authentication context from the first trustee
+	TRUSTEE_SETUP          = iota // Relay requesting DAGA setup (fresh authentication context)
+	TRUSTEE_FINISHED_SETUP        // Trustee finished DAGA setup
+	CLIENT_JOINING                // Client requests authentication from the relay
+	CLIENT_CONTEXT_REQ            // Client requesting authentication context from the first trustee
 )
 
 type RelayProtocol struct {

@@ -13,7 +13,7 @@ import (
 )
 
 // Called by a client who wants to be authenticated
-func ClientAuthentication(relayConn net.Conn, nodeId int, privateKey abstract.Secret) error {
+func ClientAuthentication(relayConn net.Conn, nodeId int, privateKey abstract.Scalar) error {
 
 	// Send an auth request to the relay
 	idMsg := make([]byte, 5)

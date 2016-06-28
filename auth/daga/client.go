@@ -11,7 +11,7 @@ import (
 )
 
 // Client participates in authentication process
-func ClientAuthentication(relayConn net.Conn, clientId int, privateKey abstract.Secret) error {
+func ClientAuthentication(relayConn net.Conn, clientId int, privateKey abstract.Scalar) error {
 
 	// Receive a welcome message from the relay
 	welcomeMsg, err := prifinet.ReadMessage(relayConn)
@@ -62,11 +62,11 @@ func ClientAuthentication(relayConn net.Conn, clientId int, privateKey abstract.
 	// Generate an ephemeral key pair (z, Z)
 	rand := config.CryptoSuite.Cipher(nil)
 	base := config.CryptoSuite.Point().Base()
-	z := config.CryptoSuite.Secret().Pick(rand) // Ephemeral private key
+	z := config.CryptoSuite.Scalar().Pick(rand) // Ephemeral private key
 	//Z := config.CryptoSuite.Point().Mul(base, z) // Ephemeral public key
 
 	// Compute the initial linkage tag and client's commitments (one commitment for each trustee)
-	sProduct := config.CryptoSuite.Secret().One()
+	sProduct := config.CryptoSuite.Scalar().One()
 	S := make(map[int]abstract.Point, len(serverPublicKeys)) // Client's commitments
 
 	for j, _ := range serverPublicKeys {
@@ -74,7 +74,7 @@ func ClientAuthentication(relayConn net.Conn, clientId int, privateKey abstract.
 		exp := config.CryptoSuite.Point().Mul(serverPublicKeys[j], z)
 		s := hashPoint(config.CryptoSuite, exp)               // s_j = H(Y_j^z_i), Y_j is trustee j public key
 		S[j] = config.CryptoSuite.Point().Mul(base, sProduct) // Client commitment: S_j = g^{s_1 * ... * s_j}
-		sProduct = config.CryptoSuite.Secret().Mul(sProduct, s)
+		sProduct = config.CryptoSuite.Scalar().Mul(sProduct, s)
 	}
 	initialTag := config.CryptoSuite.Point().Mul(h, sProduct) // T_0 = h_i^{s_1 * ... * s_m}
 

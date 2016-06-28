@@ -13,10 +13,10 @@ type ownedCoder struct {
 	keylen, maclen int
 
 	// Verifiable DC-nets secrets shared with each peer.
-	vkeys []abstract.Secret
+	vkeys []abstract.Scalar
 
 	// The sum of all our verifiable DC-nets secrets.
-	vkey abstract.Secret
+	vkey abstract.Scalar
 
 	// Pseudorandom DC-nets ciphers shared with each peer.
 	// On clients, there is one DC-nets cipher per trustee.
@@ -119,11 +119,11 @@ func (c *ownedCoder) ClientSetup(suite abstract.Suite,
 	// a pseudorandom public-key encryption secret, and
 	// a pseudorandom DC-nets cipher shared with each peer.
 	npeers := len(sharedsecrets)
-	c.vkeys = make([]abstract.Secret, npeers)
-	c.vkey = suite.Secret()
+	c.vkeys = make([]abstract.Scalar, npeers)
+	c.vkey = suite.Scalar()
 	c.dcciphers = make([]abstract.Cipher, npeers)
 	for i := range sharedsecrets {
-		c.vkeys[i] = suite.Secret().Pick(sharedsecrets[i])
+		c.vkeys[i] = suite.Scalar().Pick(sharedsecrets[i])
 		c.vkey.Add(c.vkey, c.vkeys[i])
 		key := make([]byte, keysize)
 		sharedsecrets[i].Partial(key, key, nil)
@@ -255,10 +255,10 @@ func (c *ownedCoder) RelaySetup(suite abstract.Suite, trusteeinfo [][]byte) {
 
 	// Decode the trustees' composite verifiable DC-net secrets
 	ntrustees := len(trusteeinfo)
-	c.vkeys = make([]abstract.Secret, ntrustees)
-	c.vkey = suite.Secret()
+	c.vkeys = make([]abstract.Scalar, ntrustees)
+	c.vkey = suite.Scalar()
 	for i := range c.vkeys {
-		c.vkeys[i] = c.suite.Secret()
+		c.vkeys[i] = c.suite.Scalar()
 		c.vkeys[i].UnmarshalBinary(trusteeinfo[i])
 		c.vkey.Add(c.vkey, c.vkeys[i])
 	}

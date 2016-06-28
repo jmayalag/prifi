@@ -21,10 +21,10 @@ func writeMessage(conn net.Conn, msg []byte) error {
 }
 
 // Hashes a point by converting it from the point (base) group to a secret (exponent) group
-func hashPoint(suite abstract.Suite, p abstract.Point) abstract.Secret {
+func hashPoint(suite abstract.Suite, p abstract.Point) abstract.Scalar {
 	pb, _ := p.MarshalBinary()
 	c := suite.Cipher(pb)
-	return suite.Secret().Pick(c)
+	return suite.Scalar().Pick(c)
 }
 
 // Computes a client's per-round generator (h_i)

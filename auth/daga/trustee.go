@@ -37,7 +37,7 @@ func (p *TrusteeProtocol) trusteeSetup(msg []byte) error {
 	commits := make(map[int]abstract.Point, len(p.trustees)) // Trustees' commitments
 	rand := config.CryptoSuite.Cipher(nil)
 	g := config.CryptoSuite.Point().Base()
-	r := config.CryptoSuite.Secret().Pick(rand) // Random secret
+	r := config.CryptoSuite.Scalar().Pick(rand) // Random secret
 	commits[p.trusteeId] = config.CryptoSuite.Point().Mul(g, r)
 
 	// Broadcast the commitment to other trustees

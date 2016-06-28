@@ -22,7 +22,7 @@ func (p *RelayProtocol) HandleMessage(msg []byte, senderConn net.Conn) error {
 // Relay requests trustees to run DAGA setup collectively
 func (p *RelayProtocol) relaySetup() error {
 
-	// Send the public key roster to all trustees
+	// Send the client public key roster to all trustees
 	// TODO: Send the roster once to the trustees when they join. Send them new public keys when clients join.
 	rosterBytes, err := config.MarshalPointsMap(p.ClientPublicKeys)
 	if err != nil {
@@ -35,22 +35,20 @@ func (p *RelayProtocol) relaySetup() error {
 
 	for _, trustee := range p.Trustees {
 		if err := writeMessage(trustee.Conn, msg); err != nil {
-			return errors.New("Cannot write to trustee " + strconv.Itoa(trustee.Id) + "." + err.Error())
+			return errors.New("Cannot write to trustee " + strconv.Itoa(trustee.Id) + ". " + err.Error())
 		}
 	}
 
-	//// Receive and collect trustee commitments
-	//relayState.trusteeCommits = make(map[int]abstract.Point, len(trustees))
-	//for i := 0; i < len(trustees); i++ {
-	//	commitMsg, err := prifinet.ReadMessage(trustees[i].Conn)
-	//	if err != nil {
-	//		return errors.New("Trustee disconnected. " + err.Error())
-	//	}
-	//	trusteeCommit := config.CryptoSuite.Point()
-	//	relayState.trusteeCommits[trustees[i].Id] = trusteeCommit.UnmarshalBinary(commitMsg)
-	//}
-
-	// Wait until all trustees finish generating the authentication context
+	// Wait until a message is received from all trustees showing the end of the setup phase
+	for _, trustee := range p.Trustees {
+		trusteeMsg, err := prifinet.ReadMessage(trustee.Conn)
+		if err != nil {
+			return errors.New("Trustee " + strconv.Itoa(trustee.Id) + " disconnected. " + err.Error())
+		}
+		if int(trusteeMsg[0]) != TRUSTEE_FINISHED_SETUP {
+			return errors.New("Unexpected message received from trustee " + strconv.Itoa(trustee.Id) + ".")
+		}
+	}
 	//trusteesFinished := 0
 	//for trusteesFinished < len(trustees) {
 	//	select {

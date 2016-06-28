@@ -151,7 +151,7 @@ func (c *NodeConfig) Save(appName string) error {
 func (c *NodeConfig) GenKeyPair(suite abstract.Suite, random cipher.Stream) {
 
 	c.Suite = suite.String()
-	c.PrivateKey = suite.Secret().Pick(random)
+	c.PrivateKey = suite.Scalar().Pick(random)
 	c.PublicKey = suite.Point().Mul(nil, c.PrivateKey)
 	c.PubId = getPublicStringIdentifier(suite, c.PublicKey)
 }

@@ -31,7 +31,7 @@ type NodeConfig struct {
 	nodePubConfig // Node's information
 
 	PublicKey  abstract.Point
-	PrivateKey abstract.Secret
+	PrivateKey abstract.Scalar
 
 	PublicKeyRoster map[int]abstract.Point // Other nodes' public keys
 }

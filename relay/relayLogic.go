@@ -63,13 +63,14 @@ func StartRelay(nodeConfig config.NodeConfig, upstreamCellSize int, downstreamCe
 	// Start the actual protocol
 	relayState.connectToAllTrustees()
 
-	// Initialize DAGA protocol
+	// Initialize the DAGA protocol
 	relayState.dagaProtocol = daga.RelayProtocol{
 		TrusteeHosts:      relayState.TrusteesHosts,
 		Trustees:          relayState.trustees,
 		ClientPublicKeys:  relayState.ClientPublicKeys,
 		TrusteePublicKeys: relayState.TrusteePublicKeys,
 	}
+	relayState.dagaProtocol.Start()
 
 	relayState.waitForDefaultNumberOfClients(newClientWithIdAndPublicKeyChan)
 	relayState.advertisePublicKeys() // TODO: DAGA -- This function should advertise ephemeral keys not long-term ones.

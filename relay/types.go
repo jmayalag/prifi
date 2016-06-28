@@ -35,7 +35,7 @@ type RelayState struct {
 	RelayPort string
 
 	PublicKey  abstract.Point
-	privateKey abstract.Secret
+	privateKey abstract.Scalar
 
 	nClients          int
 	nTrustees         int
