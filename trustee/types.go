@@ -7,7 +7,7 @@ import (
 	"net"
 )
 
-const TRUSTEE_SERVER_LISTENING_PORT = ":9000"
+// const TRUSTEE_SERVER_LISTENING_PORT = ":9000"
 
 type TrusteeState struct {
 	node.NodeState

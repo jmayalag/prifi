@@ -20,13 +20,13 @@ import (
 	"github.com/lbarman/prifi/node"
 )
 
-func StartTrustee(nodeConfig config.NodeConfig) {
+func StartTrustee(nodeConfig config.NodeConfig, listeningPort string) {
 
 	prifilog.SimpleStringDump(prifilog.NOTIFICATION, "Trustee server started")
 
 	// async listen for incoming connections
 	newConnections := make(chan net.Conn)
-	go startListening(TRUSTEE_SERVER_LISTENING_PORT, newConnections)
+	go startListening(listeningPort, newConnections)
 
 	activeConnections := make([]net.Conn, 0)
 

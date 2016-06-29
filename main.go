@@ -37,6 +37,7 @@ func main() {
 	nClients := flag.Int("nclients", 1, "The number of clients.")
 	nTrustees := flag.Int("ntrustees", 1, "The number of trustees.")
 	authMethod := flag.Int("authMethod", 1, "Authentication method (0=Basic; 1=DAGA; 2=TOFU).")
+	listenPort := flag.Int("listenPort", 9000, "Listening port of the node.")
 
 	upstreamCellSize := flag.Int("upcellsize", 30720, "Sets the size of one upstream cell, in bytes.")
 	downstreamCellSize := flag.Int("downcellsize", 30720, "Sets the size of one downstream cell, in bytes.")
@@ -53,17 +54,16 @@ func main() {
 	logPath := flag.String("logpath", "", "The path to the folder of the log files, by default empty, i.e. current directory")
 
 	// Relay parameters
-	relayPort := flag.Int("relayport", 9876, "Sets listening port of the relay, waiting for clients.")
-	relayHostAddr := flag.String("relayhostaddr", "localhost:9876", "The address of the relay, for the client to contact.")
+	relayHostAddr := flag.String("relayhostaddr", "localhost:9000", "The address of the relay, for the client to contact.")
 	relayReceiveLimit := flag.Int("reportlimit", -1, "Sets the limit of cells to receive before stopping the relay")
 	relayDummyDown := flag.Bool("relaydummydown", false, "The relays sends dummy data down, instead of empty cells.")
 
 	// Trustees host
-	trustee1Host := flag.String("t1host", "localhost:9000", "The Ip address of the 1st trustee, or localhost")
-	trustee2Host := flag.String("t2host", "localhost", "The Ip address of the 2nd trustee, or localhost")
-	trustee3Host := flag.String("t3host", "localhost", "The Ip address of the 3rd trustee, or localhost")
-	trustee4Host := flag.String("t4host", "localhost", "The Ip address of the 4th trustee, or localhost")
-	trustee5Host := flag.String("t5host", "localhost", "The Ip address of the 5th trustee, or localhost")
+	trustee1Host := flag.String("t1host", "localhost:9001", "The Ip address of the 1st trustee, or localhost")
+	trustee2Host := flag.String("t2host", "localhost:9002", "The Ip address of the 2nd trustee, or localhost")
+	trustee3Host := flag.String("t3host", "localhost:9003", "The Ip address of the 3rd trustee, or localhost")
+	trustee4Host := flag.String("t4host", "localhost:9004", "The Ip address of the 4th trustee, or localhost")
+	trustee5Host := flag.String("t5host", "localhost:9005", "The Ip address of the 5th trustee, or localhost")
 
 	flag.Parse()
 	trusteesIp := []string{*trustee1Host, *trustee2Host, *trustee3Host, *trustee4Host, *trustee5Host}
@@ -72,7 +72,7 @@ func main() {
 	if !*isConfig && !*isLogSink { //LB: if LOG SINK, there's no node configuration
 
 		if *nodeName == "" {
-			println("Error: Must specify -config or -nodeName=[name of the node]")
+			println("Error: Must specify -config or -node=[name of the node]")
 			os.Exit(1)
 		}
 
@@ -110,7 +110,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	relayPortAddr := ":" + strconv.Itoa(*relayPort) // NOT "localhost:xxxx", or it will not listen on any interfaces
+	relayPortAddr := ":" + strconv.Itoa(*listenPort) // NOT "localhost:xxxx", or it will not listen on any interfaces
 
 	switch {
 	case *isConfig:
@@ -122,7 +122,7 @@ func main() {
 		fmt.Println("Configurations generated successfully at", confDir)
 
 	case nodeConfig.Type == config.NODE_TYPE_TRUSTEE:
-		trustee.StartTrustee(nodeConfig)
+		trustee.StartTrustee(nodeConfig, ":"+strconv.Itoa(*listenPort))
 
 	case nodeConfig.Type == config.NODE_TYPE_RELAY:
 		relay.StartRelay(nodeConfig, *upstreamCellSize, *downstreamCellSize, *windowSize, *relayDummyDown,
