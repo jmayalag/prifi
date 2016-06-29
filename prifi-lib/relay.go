@@ -391,7 +391,7 @@ func (p *PriFiProtocol) Received_CLI_REL_UPSTREAM_DATA(msg CLI_REL_UPSTREAM_DATA
 		p.relayState.locks.coder.Lock() // Lock on CellCoder
 		p.relayState.locks.round.Lock() // Lock on DCRound
 
-	p.relayState.CellCoder.DecodeClient(msg.Data)
+		p.relayState.CellCoder.DecodeClient(msg.Data)
 		p.relayState.currentDCNetRound.clientCipherCount++
 		p.relayState.currentDCNetRound.clientCipherAck[msg.ClientId] = true
 
@@ -1067,24 +1067,38 @@ func (p *PriFiProtocol) checkIfRoundHasEndedAfterTimeOut_Phase1(roundId int32) {
 
 	time.Sleep(5 * time.Second)
 
+	p.relayState.locks.round.Lock() // Lock on round
+	
 	if p.relayState.currentDCNetRound.currentRound != roundId {
 		//everything went well, it's great !
+		p.relayState.locks.round.Unlock() // Unlock round
 		return
 	}
+	p.relayState.locks.round.Unlock() // Unlock round
 
+
+	p.relayState.locks.state.Lock() // Lock on state
+	
 	if p.relayState.currentState == RELAY_STATE_SHUTDOWN {
 		//nothing to ensure in that case
+		p.relayState.locks.state.Unlock() // Unlock state
 		return
 	}
-
+	
+	p.relayState.locks.state.Unlock() // Unlock state
+	
 	allGood := true
 
+	p.relayState.locks.round.Lock() // Lock on round
 	if p.relayState.currentDCNetRound.currentRound == roundId {
 		dbg.Error("waitAndCheckIfClientsSentData : We seem to be stuck in round", roundId, ". Phase 1 timeout.")
 
 		//check for the trustees
 		for j := 0; j < p.relayState.nTrustees; j++ {
+
+			p.relayState.locks.trustees.Lock() // Lock on trustees
 			trusteeId := p.relayState.trustees[j].Id
+			p.relayState.locks.trustees.Unlock() // Unlock trustees
 
 			//if we miss some message...
 			if !p.relayState.currentDCNetRound.trusteeCipherAck[trusteeId] {
@@ -1092,10 +1106,16 @@ func (p *PriFiProtocol) checkIfRoundHasEndedAfterTimeOut_Phase1(roundId int32) {
 			}
 		}
 
+
 		//check for the clients
 		for i := 0; i < p.relayState.nClients; i++ {
+			p.relayState.locks.round.Unlock() // Unlock round
+			
+			p.relayState.locks.clients.Lock() // Lock on clients
 			clientId := p.relayState.clients[i].Id
+			p.relayState.locks.clients.Unlock() // Unlock clients
 
+			p.relayState.locks.round.Lock() // Lock on round
 			//if we miss some message...
 			if !p.relayState.currentDCNetRound.clientCipherAck[clientId] {
 				allGood = false
@@ -1114,6 +1134,7 @@ func (p *PriFiProtocol) checkIfRoundHasEndedAfterTimeOut_Phase1(roundId int32) {
 			}
 		}
 	}
+	p.relayState.locks.round.Unlock() // Unlock round
 
 	if !allGood {
 		//if we're not done (we miss data), wait another timeout, after which clients/trustees will be considered offline
@@ -1129,23 +1150,36 @@ func (p *PriFiProtocol) checkIfRoundHasEndedAfterTimeOut_Phase1(roundId int32) {
 func (p *PriFiProtocol) checkIfRoundHasEndedAfterTimeOut_Phase2(roundId int32) {
 
 	time.Sleep(5 * time.Second)
-
+	
+	p.relayState.locks.round.Lock() // Lock on round
 	if p.relayState.currentDCNetRound.currentRound != roundId {
 		//everything went well, it's great !
+		p.relayState.locks.round.Unlock() // Unlock round
 		return
 	}
+	p.relayState.locks.round.Unlock() // Unlock round
 
+
+	p.relayState.locks.state.Lock() // Lock on state
 	if p.relayState.currentState == RELAY_STATE_SHUTDOWN {
 		//nothing to ensure in that case
+		p.relayState.locks.state.Unlock() // Unlock state
 		return
 	}
+	p.relayState.locks.state.Unlock() // Unlock state
 
+
+	p.relayState.locks.round.Lock() // Lock on round
 	if p.relayState.currentDCNetRound.currentRound == roundId {
 		dbg.Error("waitAndCheckIfClientsSentData : We seem to be stuck in round", roundId, ". Phase 2 timeout.")
 
 		//check for the trustees
 		for j := 0; j < p.relayState.nTrustees; j++ {
+			
+			p.relayState.locks.trustees.Lock() // Lock on trustees
 			trusteeId := p.relayState.trustees[j].Id
+			p.relayState.locks.trustees.Unlock() // Unlock trustees
+
 			if !p.relayState.currentDCNetRound.trusteeCipherAck[trusteeId] {
 				e := "Relay : Trustee " + strconv.Itoa(trusteeId) + " didn't sent us is cipher for round " + strconv.Itoa(int(roundId)) + ". Phase 2 timeout. This is unacceptable !"
 				dbg.Error(e)
@@ -1156,7 +1190,13 @@ func (p *PriFiProtocol) checkIfRoundHasEndedAfterTimeOut_Phase2(roundId int32) {
 
 		//check for the clients
 		for i := 0; i < p.relayState.nClients; i++ {
+			p.relayState.locks.round.Unlock() // Unlock round
+			
+			p.relayState.locks.clients.Lock() // Lock on clients
 			clientId := p.relayState.clients[i].Id
+			p.relayState.locks.clients.Unlock() // Unlock clients
+
+			p.relayState.locks.round.Lock() // Lock on round
 			if !p.relayState.currentDCNetRound.clientCipherAck[clientId] {
 				e := "Relay : Client " + strconv.Itoa(clientId) + " didn't sent us is cipher for round " + strconv.Itoa(int(roundId)) + ". Phase 2 timeout. This is unacceptable !"
 				dbg.Error(e)
@@ -1165,4 +1205,5 @@ func (p *PriFiProtocol) checkIfRoundHasEndedAfterTimeOut_Phase2(roundId int32) {
 			}
 		}
 	}
+	p.relayState.locks.round.Unlock() // Unlock round
 }
