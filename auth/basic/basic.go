@@ -5,7 +5,6 @@ import (
 	"errors"
 	"github.com/dedis/crypto/abstract"
 	"github.com/dedis/crypto/random"
-	"github.com/lbarman/prifi/auth"
 	"github.com/lbarman/prifi/config"
 	"github.com/lbarman/prifi/crypto"
 	prifinet "github.com/lbarman/prifi/net"
@@ -16,9 +15,8 @@ import (
 func ClientAuthentication(relayConn net.Conn, nodeId int, privateKey abstract.Scalar) error {
 
 	// Send an auth request to the relay
-	idMsg := make([]byte, 5)
-	idMsg[0] = auth.AUTH_METHOD_BASIC
-	binary.BigEndian.PutUint32(idMsg[1:5], uint32(nodeId))
+	idMsg := make([]byte, 4)
+	binary.BigEndian.PutUint32(idMsg, uint32(nodeId))
 
 	if err := prifinet.WriteMessage(relayConn, idMsg); err != nil {
 		return errors.New("Cannot write to the relay. " + err.Error())
@@ -66,9 +64,6 @@ func RelayAuthentication(clientConn net.Conn, publicKeyRoster map[int]abstract.P
 	idMsg, err := prifinet.ReadMessage(clientConn)
 	if err != nil {
 		return prifinet.NodeRepresentation{}, errors.New("Node disconnected")
-	}
-	if len(idMsg) != 5 {
-		return prifinet.NodeRepresentation{}, errors.New("Unexpected message from client. Expecting client ID.")
 	}
 	nodeId := int(binary.BigEndian.Uint32(idMsg))
 
