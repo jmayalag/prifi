@@ -83,8 +83,6 @@ func handleClient(conn net.Conn) {
       return
     }
 
-    fmt.Println("Connection ID:", connID  )
-    fmt.Println("Length:", messageLength )
 
 
     myChan := allChannels[connID]
@@ -132,7 +130,6 @@ func hanndleChannel(conn net.Conn, clientPacket chan []byte, connID uint32) {
       return
     }
 
-    fmt.Println( "Socks Version is:", int( socksVersion[0] ) )
 
     //Read SOCKS Number of Methods
     socksNumOfMethods := []byte{0}
@@ -143,7 +140,6 @@ func hanndleChannel(conn net.Conn, clientPacket chan []byte, connID uint32) {
       return
     }
 
-    fmt.Println("Socks Num of Methods is:", int(socksNumOfMethods[0] ) )
 
     //Read SOCKS Methods
     numOfMethods := int( socksNumOfMethods[0] )
@@ -154,7 +150,6 @@ func hanndleChannel(conn net.Conn, clientPacket chan []byte, connID uint32) {
 
       return
     }
-
 
 
     // Find a supported method (currently only NoAuth)
@@ -172,13 +167,13 @@ func hanndleChannel(conn net.Conn, clientPacket chan []byte, connID uint32) {
       return
     }
 
-    fmt.Println("Constructing Response")
+
 
     //Construct Response Message
     methodSelectionResponse := []byte{ socksVersion[0] , byte(methNoAuth) }
-    replyToClient(conn, connID, methodSelectionResponse)
+    sendMessage(conn, connID, methodSelectionResponse)
 
-    fmt.Println("Sent Response")
+
 
 
     /*   Client Web Request Handling    */
@@ -190,11 +185,6 @@ func hanndleChannel(conn net.Conn, clientPacket chan []byte, connID uint32) {
       fmt.Println("Request Header Error")
       return
     }
-
-    fmt.Println("Version Type:", int( requestHeader[0] ) )
-    fmt.Println("CMD Type:", int( requestHeader[1] ) )
-    fmt.Println("Reserved Type:", int( requestHeader[2] ) )
-    fmt.Println("Address Type:", int( requestHeader[3] ) )
 
     destinationIP, err :=  readSocksAddr(connReader, int(requestHeader[3]))
     if err != nil {
@@ -217,7 +207,7 @@ func hanndleChannel(conn net.Conn, clientPacket chan []byte, connID uint32) {
     destinationAddress := (&net.TCPAddr{IP: destinationIP, Port: int(destinationPort)}).String()
     //destinationAddress := fmt.Sprintf("%s:%d", destinationIP, destinationPort)
 
-    fmt.Println("Web server @",destinationAddress)
+    fmt.Println("Conntect to Web Server @",destinationAddress)
 
     // Process the command
     switch int(requestHeader[1]) {
@@ -229,12 +219,12 @@ func hanndleChannel(conn net.Conn, clientPacket chan []byte, connID uint32) {
         }
 
         // Send success reply downstream
-        sucessMessage := createSocksReply(repSucceeded, conn.LocalAddr())
-        replyToClient(conn, connID, sucessMessage)
+        sucessMessage := createSocksReply(0, conn.LocalAddr())
+        sendMessage(conn, connID, sucessMessage)
 
         // Commence forwarding raw data on the connection
-        go socksRelayDown(webConn, conn, connID)
-        go socksRelayUp(webConn, connReader, connID)
+        go proxyClientPackets(webConn, conn, connID)
+        go proxyWebServerPackets(webConn, connReader, connID)
 
       default:
         fmt.Println("Cannot Process Command")
@@ -245,13 +235,13 @@ func hanndleChannel(conn net.Conn, clientPacket chan []byte, connID uint32) {
 
 
 
-func socksRelayDown(webConn net.Conn, conn net.Conn, connID uint32) {
+func proxyClientPackets(webConn net.Conn, conn net.Conn, connID uint32) {
   for {
     buf := make([]byte, 100000)
     n, _ := webConn.Read(buf)
     buf = buf[:n]
     // Forward the data (or close indication if n==0) downstream
-    replyToClient(conn, connID, buf)
+    sendMessage(conn, connID, buf)
 
     // Connection error or EOF?
     if n == 0 {
@@ -262,12 +252,12 @@ func socksRelayDown(webConn net.Conn, conn net.Conn, connID uint32) {
 }
 
 
-func socksRelayUp(webConn net.Conn, connReader io.Reader, connID uint32) {
+func proxyWebServerPackets(webConn net.Conn, connReader io.Reader, connID uint32) {
 
   for {
     // Get the next upstream data buffer
     buf := make([]byte, 100000)
-    messageLength, err := io.ReadFull(connReader,buf)
+    messageLength, err := connReader.Read(buf)
     if err != nil {
       //handle error
       fmt.Println("Header Error")
@@ -291,15 +281,7 @@ func socksRelayUp(webConn net.Conn, connReader io.Reader, connID uint32) {
 
 
 
-func replyToClient(conn net.Conn, connID uint32, message []byte) {
-  byteID := make([]byte,4)
-  binary.BigEndian.PutUint32(byteID, connID)
 
-  conn.Write(byteID)
-  conn.Write([]byte( string(message) + "\n"))
-
-  fmt.Println("Replied to Client with ID:", connID)
-}
 
 // Read an IPv4 or IPv6 address from an io.Reader and return it as a string
 func readIP(r io.Reader, len int) (net.IP, error) {
@@ -401,36 +383,6 @@ func createSocksReply(replyCode int, addr net.Addr) []byte {
  }
 
 
-
-func sendMessage(IP string, message []byte) {
-
-  conn, _ := net.Dial("tcp", IP)
-  conn.Write(message)
-
-  m, _ := bufio.NewReader(conn).ReadBytes('\n')
-
-  fmt.Println(string(m))
-
-  conn.Close()
-
-}
-
-func readHeader(connReader io.Reader) (uint32, uint16, error) {
-  
-  controlHeader := make([]byte, 6)
-
-  _, err := io.ReadFull(connReader,controlHeader)  
-  if err != nil {
-    return 0, 0, err
-  }
-
-  connID := binary.BigEndian.Uint32(controlHeader[0:4])
-  messageLength := binary.BigEndian.Uint16(controlHeader[4:6])
-
-  return connID, messageLength, nil
-
-}
-
 type chanreader struct {
   b   []byte
   c   <-chan []byte
@@ -466,4 +418,37 @@ func min(x, y int) int {
     return x
   }
   return y
+}
+
+
+
+
+
+
+
+func sendMessage(conn net.Conn, connID uint32, message []byte) {
+  control := make([]byte, 6)
+  // Encode the connection number and actual data length
+  binary.BigEndian.PutUint32(control[0:4], connID)
+  binary.BigEndian.PutUint16(control[4:6], uint16(len(message)))
+
+  conn.Write(control)
+  conn.Write(message)
+}
+
+
+func readHeader(connReader io.Reader) (uint32, uint16, error) {
+  
+  controlHeader := make([]byte, 6)
+
+  _, err := io.ReadFull(connReader,controlHeader)  
+  if err != nil {
+    return 0, 0, err
+  }
+
+  connID := binary.BigEndian.Uint32(controlHeader[0:4])
+  messageLength := binary.BigEndian.Uint16(controlHeader[4:6])
+
+  return connID, messageLength, nil
+
 }

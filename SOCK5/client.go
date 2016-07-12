@@ -49,53 +49,19 @@ func connectToServer(IP string, toServer chan dataWrap, fromServer chan dataWrap
 	go func() {
 		for {
 			data := <-toServer
-
-    		myBytes := data.toBytes()
-    		offset := 6
-
-    		fmt.Println("Connection",binary.BigEndian.Uint32(myBytes[0:4]),": Sending Message of length",data.N,"to Server")
-
-			if(data.N>3) {
-				fmt.Println("version", myBytes[offset+0])
-				fmt.Println("command", myBytes[offset+1])
-				fmt.Println("reserved", myBytes[offset+2])
-				fmt.Println("adderess type", myBytes[offset+3])
-				if int(myBytes[offset+3]) == 4 {
-					fmt.Println("IP adderess", net.IP(myBytes[offset+4:offset+20]).String())
-					fmt.Println("Port", binary.BigEndian.Uint16(myBytes[offset+20:offset+22]))
-				} else {
-					fmt.Println("IP adderess", net.IP(myBytes[offset+4:offset+8]).String())
-					fmt.Println("Port", binary.BigEndian.Uint16(myBytes[offset+8:offset+10]))
-				}
-
-				conn.Write(data.toBytes())
-			} else {
-				fmt.Println("version", myBytes[offset+0])
-				
-			}
-
-
 	   		conn.Write(data.toBytes())
 
 		}
 	}()
 
 	for {
-		newIDBytes := make([]byte, 4)
-    	_, errID := io.ReadFull(connReader,newIDBytes)
-   
-		fmt.Println("Received ConnID from server")	
-		message, errMessage := connReader.ReadBytes('\n')
+		connID, messageLength, err :=  readHeader(connReader)
 
-		fmt.Println("Received the data from server")	
-		newID := binary.BigEndian.Uint32( newIDBytes )
-		
-		fmt.Println("Received reply from server for connection",newID)		
+		message := make([]byte, messageLength)
+    	_, errMessage := io.ReadFull(connReader,message)
 
-
-		if errID == nil && errMessage == nil {
-			fromServer <- NewDataWrap( newID , uint16(len(message)), message)
-   			fmt.Println("Message from server: "+ string(message))		
+		if err == nil && errMessage == nil {
+			fromServer <- NewDataWrap( connID , messageLength, message)
 		}
 	}
 
@@ -138,7 +104,6 @@ func startSocksProxyServerHandler(newConnections chan net.Conn, toServer chan da
 
 		// Plaintext downstream data (relay->client->Socks proxy)
 		case myData := <-fromServer:
-			fmt.Println("We have a reply message to send to the broswer!")	
 			socksConnId := myData.ID
 			data := myData.Data
 			dataLength := len(data)
@@ -146,7 +111,6 @@ func startSocksProxyServerHandler(newConnections chan net.Conn, toServer chan da
 			//Handle the connections, forwards the downstream slice to the SOCKS proxy
 			//if there is no socks proxy, nothing to do (useless case indeed, only for debug)
 			if dataLength > 0 && socksProxyActiveConnections[socksConnId] != nil {
-				fmt.Println("Sending Reply to Browser")	
 				socksProxyActiveConnections[socksConnId].Write(data)
 			} else {
 				socksProxyActiveConnections[socksConnId].Close()
@@ -177,4 +141,21 @@ func readDataFromSocksProxy(socksConnId uint32, payloadLength int, conn net.Conn
 		toServer <- NewDataWrap(socksConnId,uint16(n),buffer)
 
 	}
+}
+
+
+func readHeader(connReader io.Reader) (uint32, uint16, error) {
+  
+  controlHeader := make([]byte, 6)
+
+  _, err := io.ReadFull(connReader,controlHeader)  
+  if err != nil {
+    return 0, 0, err
+  }
+
+  connID := binary.BigEndian.Uint32(controlHeader[0:4])
+  messageLength := binary.BigEndian.Uint16(controlHeader[4:6])
+
+  return connID, messageLength, nil
+
 }
