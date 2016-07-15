@@ -1,4 +1,4 @@
-package main
+package prifi_socks
 
 import (
   "net"
@@ -46,25 +46,7 @@ const (
 )
 
 
-func main() {
-
-  fmt.Println("Launching server...")
-
-  // listen on all interfaces
-  ln, _ := net.Listen("tcp", ":8081")
-
-  for {
-    // accept connection on port
-    conn, _ := ln.Accept()
-
-   fmt.Println("Accepted Client Connection")   
-
-    go handleClient(conn)
-  }
- 
-}
-
-func handleClient(conn net.Conn) {
+func HandleClient(conn net.Conn) {
     
     allChannels := make( map[uint32]chan []byte )
 
@@ -76,14 +58,17 @@ func handleClient(conn net.Conn) {
 
     for {
 
-    connID, messageLength, err :=  readHeader(connReader)
+    connID, messageLength, packetLength, err :=  readHeader(connReader)
     if err != nil {
       //handle error
       fmt.Println("Header Error")
       return
     }
 
-
+    if connID == 0 { //We don't care about these packets
+      _ , _ = io.ReadFull(connReader,make([]byte, packetLength))
+      continue
+    }
 
     myChan := allChannels[connID]
 
@@ -98,7 +83,7 @@ func handleClient(conn net.Conn) {
 
     } 
 
-    clientPacket := make([]byte, messageLength)
+    clientPacket := make([]byte, packetLength-8)
     _ , err = io.ReadFull(connReader,clientPacket)
     if err != nil {
       //handle error
@@ -106,7 +91,7 @@ func handleClient(conn net.Conn) {
       return
     }
 
-    myChan <- clientPacket
+    myChan <- clientPacket[:messageLength]
 }
     
 }
@@ -171,7 +156,7 @@ func hanndleChannel(conn net.Conn, clientPacket chan []byte, connID uint32) {
 
     //Construct Response Message
     methodSelectionResponse := []byte{ socksVersion[0] , byte(methNoAuth) }
-    sendMessage(conn, connID, methodSelectionResponse)
+    sendMessage(conn, NewDataWrap(connID,uint16(len(methodSelectionResponse)),uint16(len(methodSelectionResponse)),methodSelectionResponse))
 
 
 
@@ -207,7 +192,7 @@ func hanndleChannel(conn net.Conn, clientPacket chan []byte, connID uint32) {
     destinationAddress := (&net.TCPAddr{IP: destinationIP, Port: int(destinationPort)}).String()
     //destinationAddress := fmt.Sprintf("%s:%d", destinationIP, destinationPort)
 
-    fmt.Println("Conntect to Web Server @",destinationAddress)
+    fmt.Println("Connecting to Web Server @",destinationAddress)
 
     // Process the command
     switch int(requestHeader[1]) {
@@ -220,7 +205,7 @@ func hanndleChannel(conn net.Conn, clientPacket chan []byte, connID uint32) {
 
         // Send success reply downstream
         sucessMessage := createSocksReply(0, conn.LocalAddr())
-        sendMessage(conn, connID, sucessMessage)
+        sendMessage(conn, NewDataWrap(connID,uint16(len(sucessMessage)),uint16(len(sucessMessage)),sucessMessage))
 
         // Commence forwarding raw data on the connection
         go proxyClientPackets(webConn, conn, connID)
@@ -241,10 +226,11 @@ func proxyClientPackets(webConn net.Conn, conn net.Conn, connID uint32) {
     n, _ := webConn.Read(buf)
     buf = buf[:n]
     // Forward the data (or close indication if n==0) downstream
-    sendMessage(conn, connID, buf)
+    sendMessage(conn, NewDataWrap(connID,uint16(n),uint16(n),buf))
 
     // Connection error or EOF?
     if n == 0 {
+      fmt.Println("Disconnected from Web Server")
       webConn.Close()
       return
     }
@@ -348,9 +334,6 @@ func createSocksReply(replyCode int, addr net.Addr) []byte {
 
     i, _ := strconv.Atoi("6789")
 
-    fmt.Println("Success Address",tcpaddr.IP)
-    fmt.Println("Success Port",i)
-
     port := [2]byte{}
     binary.BigEndian.PutUint16(port[:], uint16(i))//tcpaddr.Port))
 
@@ -383,72 +366,9 @@ func createSocksReply(replyCode int, addr net.Addr) []byte {
  }
 
 
-type chanreader struct {
-  b   []byte
-  c   <-chan []byte
-  eof bool
-}
-
-func (cr *chanreader) Read(p []byte) (n int, err error) {
-  if cr.eof {
-    return 0, io.EOF
-  }
-  blen := len(cr.b)
-  if blen == 0 {
-    cr.b = <-cr.c // read next block from channel
-    blen = len(cr.b)
-    if blen == 0 { // channel sender signaled EOF
-      cr.eof = true
-      return 0, io.EOF
-    }
-  }
-
-  act := min(blen, len(p))
-  copy(p, cr.b[:act])
-  cr.b = cr.b[act:]
-  return act, nil
-}
-
-func newChanReader(c <-chan []byte) *chanreader {
-  return &chanreader{[]byte{}, c, false}
-}
-
-func min(x, y int) int {
-  if x < y {
-    return x
-  }
-  return y
-}
 
 
 
 
 
 
-
-func sendMessage(conn net.Conn, connID uint32, message []byte) {
-  control := make([]byte, 6)
-  // Encode the connection number and actual data length
-  binary.BigEndian.PutUint32(control[0:4], connID)
-  binary.BigEndian.PutUint16(control[4:6], uint16(len(message)))
-
-  conn.Write(control)
-  conn.Write(message)
-}
-
-
-func readHeader(connReader io.Reader) (uint32, uint16, error) {
-  
-  controlHeader := make([]byte, 6)
-
-  _, err := io.ReadFull(connReader,controlHeader)  
-  if err != nil {
-    return 0, 0, err
-  }
-
-  connID := binary.BigEndian.Uint32(controlHeader[0:4])
-  messageLength := binary.BigEndian.Uint16(controlHeader[4:6])
-
-  return connID, messageLength, nil
-
-}

@@ -49,6 +49,8 @@ import (
 	"github.com/dedis/crypto/abstract"
 	"github.com/lbarman/prifi_dev/prifi-lib/config"
 	"github.com/lbarman/prifi_dev/prifi-lib/dcnet"
+
+	socks "github.com/lbarman/prifi_dev/SOCK5/prifi-socks"
 )
 
 // Constants
@@ -213,6 +215,9 @@ func NewRelayState(nTrustees int, nClients int, upstreamCellSize int, downstream
 
 	// Sets the new state
 	params.currentState = RELAY_STATE_COLLECTING_TRUSTEES_PKS
+
+
+	go socks.ConnectToServer("127.0.0.1:8081",params.DataFromDCNet, params.PriorityDataForClients)
 
 	return params
 }
@@ -529,6 +534,8 @@ func (p *PriFiProtocol) finalizeUpstreamData() error {
 	p.relayState.locks.coder.Lock() // Lock on CellCoder
 	upstreamPlaintext := p.relayState.CellCoder.DecodeCell()
 	p.relayState.locks.coder.Unlock() // Unlock CellCoder
+
+	dbg.Lvl1("Packet Received by Relay of size",len(upstreamPlaintext))
 
 	// check if we have a latency test message
 	if len(upstreamPlaintext) >= 2 {
