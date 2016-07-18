@@ -38,7 +38,7 @@ import (
 	"github.com/lbarman/prifi_dev/prifi-lib/crypto"
 	"github.com/lbarman/prifi_dev/prifi-lib/dcnet"
 
-	socks "github.com/lbarman/prifi_dev/SOCK5/prifi-socks"
+	socks "github.com/lbarman/prifi_dev/prifi-socks"
 
 )
 

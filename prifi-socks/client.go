@@ -4,7 +4,6 @@ import (
 	"net"
 	"fmt"
 	"bufio"
-	"io"
 )
 
 
@@ -28,13 +27,10 @@ func ConnectToServer(IP string, toServer chan []byte, fromServer chan []byte) {
 	}()
 
 	for {
-		connID, messageLength, payloadLength, err :=  readHeader(connReader)
+		connID, messageLength, payloadLength, message, err :=  readFull(connReader)
 
-		message := make([]byte, payloadLength)
-    	_, errMessage := io.ReadFull(connReader,message)
-
-		if err == nil && errMessage == nil {
-			newData := NewDataWrap( connID , messageLength, payloadLength, message[:messageLength])
+		if err == nil {
+			newData := NewDataWrap( connID , messageLength, payloadLength, message)
 			fromServer <- newData.ToBytes()
 		}
 	}
@@ -81,8 +77,10 @@ func StartSocksProxyServerHandler(newConnections chan net.Conn, payloadLength in
 
 			myData := extractData(bufferData)
 			socksConnId := myData.ID
-			data := myData.Data
-			dataLength := len(data)
+			dataLength := myData.MessageLength
+			data := myData.Data[:dataLength]
+
+			fmt.Println("Connection",socksConnId)
 
 			//Handle the connections, forwards the downstream slice to the SOCKS proxy
 			//if there is no socks proxy, nothing to do (useless case indeed, only for debug)
@@ -103,9 +101,11 @@ func StartSocksProxyServerHandler(newConnections chan net.Conn, payloadLength in
 
 func readDataFromSocksProxy(socksConnId uint32, payloadLength int, conn net.Conn, toServer chan []byte, closed chan<- uint32) {
 	for {
+			fmt.Println("Read Before")
 		// Read up to a cell worth of data to send upstream
 		buffer := make([]byte, payloadLength)
 		n, _ := conn.Read(buffer)
+			fmt.Println("Read After")
 
 		// Connection error or EOF?
 		if n == 0 {

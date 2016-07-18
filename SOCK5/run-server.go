@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net"
 
-	socks "github.com/lbarman/prifi_dev/SOCK5/prifi-socks"
+	socks "github.com/lbarman/prifi_dev/prifi-socks"
 )
 
 func main() {

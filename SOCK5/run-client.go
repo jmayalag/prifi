@@ -3,7 +3,7 @@ package main
 import (
 	"net"
 
-	socks "github.com/lbarman/prifi_dev/SOCK5/prifi-socks"
+	socks "github.com/lbarman/prifi_dev/prifi-socks"
 )
 
 func main() {
@@ -12,7 +12,7 @@ func main() {
 	socksConnections := make(chan net.Conn, 1)
 
   	go socks.StartSocksProxyServerListener(":6789",socksConnections)
-  	go socks.StartSocksProxyServerHandler(socksConnections, toServer, fromServer)
+  	go socks.StartSocksProxyServerHandler(socksConnections, 1000, toServer, fromServer)
 
   	socks.ConnectToServer("127.0.0.1:8081",toServer, fromServer)
 }

@@ -58,15 +58,15 @@ func HandleClient(conn net.Conn) {
 
     for {
 
-    connID, messageLength, packetLength, err :=  readHeader(connReader)
+    connID, _, _, clientPacket, err :=  readFull(connReader)
     if err != nil {
       //handle error
-      fmt.Println("Header Error")
+      fmt.Println("Data Read Error")
       return
     }
 
+
     if connID == 0 { //We don't care about these packets
-      _ , _ = io.ReadFull(connReader,make([]byte, packetLength))
       continue
     }
 
@@ -83,15 +83,7 @@ func HandleClient(conn net.Conn) {
 
     } 
 
-    clientPacket := make([]byte, packetLength-8)
-    _ , err = io.ReadFull(connReader,clientPacket)
-    if err != nil {
-      //handle error
-      fmt.Println("Data Read Error")
-      return
-    }
-
-    myChan <- clientPacket[:messageLength]
+    myChan <- clientPacket
 }
     
 }
@@ -156,7 +148,7 @@ func hanndleChannel(conn net.Conn, clientPacket chan []byte, connID uint32) {
 
     //Construct Response Message
     methodSelectionResponse := []byte{ socksVersion[0] , byte(methNoAuth) }
-    sendMessage(conn, NewDataWrap(connID,uint16(len(methodSelectionResponse)),uint16(len(methodSelectionResponse)),methodSelectionResponse))
+    sendMessage(conn, NewDataWrap(connID,uint16(len(methodSelectionResponse)),uint16(len(methodSelectionResponse))+dataWrapHeaderSize,methodSelectionResponse))
 
 
 
@@ -205,7 +197,7 @@ func hanndleChannel(conn net.Conn, clientPacket chan []byte, connID uint32) {
 
         // Send success reply downstream
         sucessMessage := createSocksReply(0, conn.LocalAddr())
-        sendMessage(conn, NewDataWrap(connID,uint16(len(sucessMessage)),uint16(len(sucessMessage)),sucessMessage))
+        sendMessage(conn, NewDataWrap(connID,uint16(len(sucessMessage)),uint16(len(sucessMessage))+dataWrapHeaderSize,sucessMessage))
 
         // Commence forwarding raw data on the connection
         go proxyClientPackets(webConn, conn, connID)
@@ -226,7 +218,7 @@ func proxyClientPackets(webConn net.Conn, conn net.Conn, connID uint32) {
     n, _ := webConn.Read(buf)
     buf = buf[:n]
     // Forward the data (or close indication if n==0) downstream
-    sendMessage(conn, NewDataWrap(connID,uint16(n),uint16(n),buf))
+    sendMessage(conn, NewDataWrap(connID,uint16(n),uint16(n)+dataWrapHeaderSize,buf))
 
     // Connection error or EOF?
     if n == 0 {
