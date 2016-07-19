@@ -7,18 +7,17 @@ import (
 )
 
 
-
-
-
-
-
-
+/** 
+  * Connects the client to the proxy server and proxies messages between the client and the server
+  */
 func ConnectToServer(IP string, toServer chan []byte, fromServer chan []byte) {
-	// connect to this socket
+	
+	// Connect to this socket
 	conn, _ := net.Dial("tcp", IP)
 	connReader := bufio.NewReader(conn)
 	fmt.Println("Connected To Server")
 
+	// Forward client messages to the server
 	go func() {
 		for {
 			data := <-toServer
@@ -26,18 +25,20 @@ func ConnectToServer(IP string, toServer chan []byte, fromServer chan []byte) {
 		}
 	}()
 
+	// Forward server messages to the client
 	for {
-		connID, messageLength, payloadLength, message, err :=  readFull(connReader)
+		newData, err :=  readFull(connReader)
 
 		if err == nil {
-			newData := NewDataWrap( connID , messageLength, payloadLength, message)
 			fromServer <- newData.ToBytes()
 		}
 	}
 
 }
 
-
+/** 
+  * Listens and accepts connections at a certain port
+  */
 func StartSocksProxyServerListener(port string, newConnections chan<- net.Conn) {
 	lsock, err := net.Listen("tcp", port)
 
@@ -57,6 +58,9 @@ func StartSocksProxyServerListener(port string, newConnections chan<- net.Conn) 
 	}
 }
 
+/** 
+  * Handles SOCKS5 connections
+  */
 func StartSocksProxyServerHandler(newConnections chan net.Conn, payloadLength int, toServer chan []byte, fromServer chan []byte) {
 
 	socksProxyActiveConnections := make([]net.Conn, 1) // reserve socksProxyActiveConnections[0]
@@ -75,12 +79,10 @@ func StartSocksProxyServerHandler(newConnections chan net.Conn, payloadLength in
 		// Plaintext downstream data (relay->client->Socks proxy)
 		case bufferData := <-fromServer:
 
-			myData := extractData(bufferData)
+			myData := extractFull(bufferData)
 			socksConnId := myData.ID
 			dataLength := myData.MessageLength
 			data := myData.Data[:dataLength]
-
-			fmt.Println("Connection",socksConnId)
 
 			//Handle the connections, forwards the downstream slice to the SOCKS proxy
 			//if there is no socks proxy, nothing to do (useless case indeed, only for debug)
@@ -98,14 +100,14 @@ func StartSocksProxyServerHandler(newConnections chan net.Conn, payloadLength in
 	}
 }
 
-
+/** 
+  * Handles reading the data sent through the SOCKS5 connections and preparing them to be sent to the proxy server
+  */
 func readDataFromSocksProxy(socksConnId uint32, payloadLength int, conn net.Conn, toServer chan []byte, closed chan<- uint32) {
 	for {
-			fmt.Println("Read Before")
 		// Read up to a cell worth of data to send upstream
-		buffer := make([]byte, payloadLength)
+		buffer := make([]byte, payloadLength-int(dataWrapHeaderSize))
 		n, _ := conn.Read(buffer)
-			fmt.Println("Read After")
 
 		// Connection error or EOF?
 		if n == 0 {
@@ -116,7 +118,6 @@ func readDataFromSocksProxy(socksConnId uint32, payloadLength int, conn net.Conn
 		}
 
 		newData := NewDataWrap(socksConnId, uint16(n), uint16(payloadLength), buffer)
-
 		toServer <- newData.ToBytes()
 
 	}
