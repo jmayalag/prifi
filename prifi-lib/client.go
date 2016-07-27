@@ -100,8 +100,8 @@ func NewClientState(clientId int, nTrustees int, nClients int, payloadLength int
 	params.CellCoder = config.Factory()
 	params.DataForDCNet = make(chan []byte)
 	params.DataFromDCNet = make(chan []byte)
-	params.DataOutputEnabled = dataOutputEnabled
-	params.LatencyTest = latencyTest
+	params.DataOutputEnabled = true //dataOutputEnabled
+	params.LatencyTest = false //latencyTest
 	//params.MessageHistory =
 	params.MySlot = -1
 	params.nClients = nClients
@@ -130,6 +130,7 @@ func NewClientState(clientId int, nTrustees int, nClients int, payloadLength int
 	params.currentState = CLIENT_STATE_INITIALIZING
 
 
+	dbg.Lvl1("Length of packets",payloadLength)
 	//SOCKS STUFF
 
 	if clientId == 1 {
@@ -362,9 +363,13 @@ func (p *PriFiProtocol) SendUpstreamData() error {
 		//either select data from the data we have to send, if any
 		case myData := <-p.clientState.DataForDCNet:
 				upstreamCellContent = myData
+
 		//or, if we have nothing to send, and we are doing Latency tests, embed a pre-crafted message that we will recognize later on
 		default:
-			/*if p.clientState.LatencyTest {
+			emptyData := socks.NewDataWrap(0, 0, uint16(p.clientState.PayloadLength), make([]byte, 0))
+			upstreamCellContent = emptyData.ToBytes()
+
+			if p.clientState.LatencyTest {
 
 				if p.clientState.PayloadLength < 12 {
 					panic("Trying to do a Latency test, but payload is smaller than 10 bytes.")
@@ -379,10 +384,7 @@ func (p *PriFiProtocol) SendUpstreamData() error {
 				binary.BigEndian.PutUint64(buffer[4:12], uint64(currTime))
 
 				upstreamCellContent = buffer
-			}*/
-
-			emptyData := socks.NewDataWrap(0, 0, uint16(p.clientState.PayloadLength), make([]byte, 0))
-			upstreamCellContent = emptyData.ToBytes()
+			}
 		}
 	}
 

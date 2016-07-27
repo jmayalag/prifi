@@ -62,7 +62,6 @@ func HandleClient(conn net.Conn) {
 
     // This loop reads packets continuously and sends them through a channel to the appropriate channel handler
     for {
-
       //Read a full datawrap packet
       newData, err :=  readFull(connReader)
       if err != nil {
@@ -77,6 +76,7 @@ func HandleClient(conn net.Conn) {
 
       //Datrawrap packets with ID=0 are discarded (this indicates a useless packet)
       if connID == 0 {
+        fmt.Println("Dummy Message Received")
         continue
       }
 
@@ -226,7 +226,7 @@ func hanndleChannel(conn net.Conn, clientPacket chan []byte, connID uint32) {
 
 func proxyClientPackets(webConn net.Conn, conn net.Conn, connID uint32) {
   for {
-    buf := make([]byte, 1000)
+    buf := make([]byte, 1000-8)
     n, _ := webConn.Read(buf)
     buf = buf[:n]
     // Forward the data (or close indication if n==0) downstream
@@ -250,7 +250,7 @@ func proxyWebServerPackets(webConn net.Conn, connReader io.Reader, connID uint32
 
   for {
     // Get the next upstream data buffer
-    buf := make([]byte, 1000)
+    buf := make([]byte, 1000-8)
     messageLength, err := connReader.Read(buf)
     if err != nil {
       //handle error

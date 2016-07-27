@@ -190,7 +190,7 @@ func NewRelayState(nTrustees int, nClients int, upstreamCellSize int, downstream
 	params.DataForClients = make(chan []byte, 10)
 	params.PriorityDataForClients = make(chan []byte, 10) // This is used for relay's control message (like latency-tests)
 	params.DataFromDCNet = make(chan []byte, 10)
-	params.DataOutputEnabled = dataOutputEnabled
+	params.DataOutputEnabled = true //dataOutputEnabled
 	params.DownstreamCellSize = downstreamCellSize
 	// params.MessageHistory =
 	params.nClients = nClients
@@ -215,7 +215,6 @@ func NewRelayState(nTrustees int, nClients int, upstreamCellSize int, downstream
 
 	// Sets the new state
 	params.currentState = RELAY_STATE_COLLECTING_TRUSTEES_PKS
-
 
 	go socks.ConnectToServer("127.0.0.1:8081",params.DataFromDCNet, params.PriorityDataForClients)
 
@@ -373,7 +372,6 @@ func (p *PriFiProtocol) Received_CLI_REL_UPSTREAM_DATA(msg CLI_REL_UPSTREAM_DATA
 		dbg.Error(e)
 
 		p.relayState.locks.clientBuffer.Lock() // Lock on client buffer
-
 		// else, we need to buffer this message somewhere
 		if _, ok := p.relayState.bufferedClientCiphers[msg.RoundId]; ok {
 			// the roundId already exists, simply add data
@@ -411,7 +409,7 @@ func (p *PriFiProtocol) Received_CLI_REL_UPSTREAM_DATA(msg CLI_REL_UPSTREAM_DATA
 			p.finalizeUpstreamData()
 
 			// sleep so it does not go too fast for debug
-			// time.Sleep(1000 * time.Millisecond)
+			//time.Sleep(200 * time.Millisecond)
 
 			// send the data down (to finalize this round)
 			p.sendDownstreamData()
@@ -469,7 +467,7 @@ func (p *PriFiProtocol) Received_TRU_REL_DC_CIPHER(msg TRU_REL_DC_CIPHER) error 
 			p.finalizeUpstreamData()
 
 			// sleep so it does not go too fast for debug
-			// time.Sleep(1000 * time.Millisecond)
+			//time.Sleep(1000 * time.Millisecond)
 
 			// send the data down (to finalize this round)
 			p.sendDownstreamData()
@@ -534,8 +532,6 @@ func (p *PriFiProtocol) finalizeUpstreamData() error {
 	p.relayState.locks.coder.Lock() // Lock on CellCoder
 	upstreamPlaintext := p.relayState.CellCoder.DecodeCell()
 	p.relayState.locks.coder.Unlock() // Unlock CellCoder
-
-	dbg.Lvl1("Packet Received by Relay of size",len(upstreamPlaintext))
 
 	// check if we have a latency test message
 	if len(upstreamPlaintext) >= 2 {
@@ -651,7 +647,7 @@ func (p *PriFiProtocol) sendDownstreamData() error {
 	p.relayState.CellCoder.DecodeStart(p.relayState.UpstreamCellSize, p.relayState.MessageHistory) //this empties the buffer, making them ready for a new round
 
 	//we just sent the data down, initiating a round. Let's prevent being blocked by a dead client
-	go p.checkIfRoundHasEndedAfterTimeOut_Phase1(p.relayState.currentDCNetRound.currentRound)
+	//go p.checkIfRoundHasEndedAfterTimeOut_Phase1(p.relayState.currentDCNetRound.currentRound)
 
 	p.relayState.locks.round.Unlock() // Unlock DCRound
 	p.relayState.locks.coder.Unlock() // Unlock CellCoder

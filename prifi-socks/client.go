@@ -21,7 +21,12 @@ func ConnectToServer(IP string, toServer chan []byte, fromServer chan []byte) {
 	go func() {
 		for {
 			data := <-toServer
-	   		conn.Write(data)
+	 
+			connID, _,_ := extractHeader(data)
+			if int(connID) != 0 {
+				conn.Write(trimBytes(data))
+			}
+
 		}
 	}()
 
@@ -79,14 +84,16 @@ func StartSocksProxyServerHandler(newConnections chan net.Conn, payloadLength in
 		// Plaintext downstream data (relay->client->Socks proxy)
 		case bufferData := <-fromServer:
 
-			myData := extractFull(bufferData)
+			myData := ExtractFull(bufferData)
 			socksConnId := myData.ID
 			dataLength := myData.MessageLength
 			data := myData.Data[:dataLength]
 
 			//Handle the connections, forwards the downstream slice to the SOCKS proxy
 			//if there is no socks proxy, nothing to do (useless case indeed, only for debug)
-			if dataLength > 0 && socksProxyActiveConnections[socksConnId] != nil {
+			if socksConnId == 0 {
+				continue
+			} else if dataLength > 0 && socksProxyActiveConnections[socksConnId] != nil {
 				socksProxyActiveConnections[socksConnId].Write(data)
 			} else if socksProxyActiveConnections[socksConnId] != nil {
 				socksProxyActiveConnections[socksConnId].Close()

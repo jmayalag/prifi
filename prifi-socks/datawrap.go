@@ -88,6 +88,16 @@ func cleanData(data []byte, messageLength uint16, packetLength uint16) ([]byte, 
 }
 
 
+func trimData(data dataWrap) dataWrap {
+  return NewDataWrap(data.ID, data.MessageLength, data.MessageLength+dataWrapHeaderSize,data.Data[:data.MessageLength])
+}
+
+func trimBytes(data []byte) []byte {
+  newData := trimData(ExtractFull(data))
+
+  return newData.ToBytes()
+}
+
 /** 
   * Reads the full datawarp packet: Header + Data
   */
@@ -160,13 +170,19 @@ func sendMessage(conn net.Conn, data dataWrap) {
   * Extracts the datawrap packet from an array of bytes
   */
 
-func extractFull(buffer []byte) dataWrap {
+func ExtractFull(buffer []byte) dataWrap {
   
+  if(len(buffer) < 8) {
+    return NewDataWrap(0,0,0,make([]byte,0))
+  }
   //Extract the content of the header
   connID, messageLength, packetLength := extractHeader(buffer)
 
   //Construct and return a new packet
-  return NewDataWrap(connID,messageLength,packetLength,buffer[dataWrapHeaderSize:dataWrapHeaderSize+messageLength])
+  if int(messageLength) <= len(buffer) - 8  {
+    return NewDataWrap(connID,messageLength,packetLength,buffer[dataWrapHeaderSize:dataWrapHeaderSize+messageLength])  
+  }
+  return NewDataWrap(connID,messageLength,packetLength,buffer[dataWrapHeaderSize:])
 
 }
 
