@@ -63,14 +63,16 @@ func StartRelay(nodeConfig config.NodeConfig, upstreamCellSize int, downstreamCe
 	// Start the actual protocol
 	relayState.connectToAllTrustees()
 
-	// Initialize the DAGA protocol
-	relayState.dagaProtocol = daga.RelayProtocol{
-		TrusteeHosts:      relayState.TrusteesHosts,
-		Trustees:          relayState.trustees,
-		ClientPublicKeys:  relayState.ClientPublicKeys,
-		TrusteePublicKeys: relayState.TrusteePublicKeys,
+	if relayState.nTrustees > 1 {
+		// Initialize the DAGA protocol
+		relayState.dagaProtocol = daga.RelayProtocol{
+			TrusteeHosts:      relayState.TrusteesHosts,
+			Trustees:          relayState.trustees,
+			ClientPublicKeys:  relayState.ClientPublicKeys,
+			TrusteePublicKeys: relayState.TrusteePublicKeys,
+		}
+		relayState.dagaProtocol.Start()
 	}
-	relayState.dagaProtocol.Start()
 
 	relayState.waitForDefaultNumberOfClients(newClientWithIdAndPublicKeyChan)
 	relayState.advertisePublicKeys() // TODO: DAGA -- This function should advertise ephemeral keys not long-term ones.
@@ -80,20 +82,20 @@ func StartRelay(nodeConfig config.NodeConfig, upstreamCellSize int, downstreamCe
 	if err != nil {
 		prifilog.Println(prifilog.RECOVERABLE_ERROR, "Relay Handler : round scheduling went wrong, restarting the configuration protocol")
 
-		//disconnect all clients
+		// Disconnect all clients
 		for i := 0; i < len(relayState.clients); i++ {
 			relayState.clients[i].Conn.Close()
 			relayState.clients[i].Connected = false
 		}
 		restartProtocol(relayState, make([]prifinet.NodeRepresentation, 0))
 	} else {
-		//copy for subthread, run subthread for processing the messages
+		// Copy for subthread, run subthread for processing the messages
 		relayStateCopy := relayState.deepClone()
 		go processMessageLoop(relayStateCopy)
 		isProtocolRunning = true
 	}
 
-	//control loop
+	// Control loop
 	var endOfProtocolState int
 	newClients := make([]prifinet.NodeRepresentation, 0)
 

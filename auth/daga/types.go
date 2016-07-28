@@ -26,6 +26,7 @@ const (
 )
 
 type RelayProtocol struct {
+	Initialized       bool
 	TrusteeHosts      []string
 	Trustees          []prifinet.NodeRepresentation
 	ClientPublicKeys  map[int]abstract.Point

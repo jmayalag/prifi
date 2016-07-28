@@ -155,7 +155,8 @@ func (relayState *RelayState) disconnectFromAllTrustees() {
 	prifilog.Println(prifilog.INFORMATION, "Trustees disonnecting done, ", len(relayState.trustees), "trustees disconnected")
 }
 
-func welcomeNewClients(newConnectionsChan chan net.Conn, newClientChan chan prifinet.NodeRepresentation, clientsUseUDP bool, authMethod int) {
+func welcomeNewClients(newConnectionsChan chan net.Conn, newClientChan chan prifinet.NodeRepresentation,
+	clientsUseUDP bool, authMethod int) {
 
 	newClientsToParse := make(chan prifinet.NodeRepresentation)
 
@@ -168,10 +169,11 @@ func welcomeNewClients(newConnectionsChan chan net.Conn, newClientChan chan prif
 				newClient, err := authenticateClient(newConnection, relayState.ClientPublicKeys)
 
 				if err == nil {
-					prifilog.Println(prifilog.INFORMATION, "Client "+strconv.Itoa(newClient.Id)+" authenticated successfully.")
+					prifilog.Println(prifilog.INFORMATION,
+						"Client "+strconv.Itoa(newClient.Id)+" authenticated successfully")
 					newClientsToParse <- newClient
 				} else {
-					prifilog.Println(prifilog.WARNING, "Client "+strconv.Itoa(newClient.Id)+" authentication failed.")
+					prifilog.Println(prifilog.WARNING, "Client "+strconv.Itoa(newClient.Id)+" authentication failed")
 				}
 			}()
 
@@ -250,6 +252,9 @@ func authenticateClient(clientConn net.Conn, publicKeyRoster map[int]abstract.Po
 		newClient, err = basicAuth.RelayAuthentication(clientConn, publicKeyRoster)
 
 	case auth.AUTH_METHOD_DAGA:
+		if !relayState.dagaProtocol.Initialized {
+			return prifinet.NodeRepresentation{}, errors.New("DAGA protocol is not initialized")
+		}
 		newClient, err = relayState.dagaProtocol.AuthenticateClient(clientConn)
 	}
 	if err != nil {

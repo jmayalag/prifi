@@ -51,7 +51,7 @@ func StartClient(nodeConfig config.NodeConfig, relayHostAddr string, expectedNum
 
 	if clientState.UseSocksProxy {
 		port := ":" + strconv.Itoa(1080+nodeConfig.Id)
-		prifilog.SimpleStringDump(prifilog.INFORMATION, "Client "+strconv.Itoa(nodeConfig.Id)+"; Starting SOCKS proxy on port "+port)
+		prifilog.SimpleStringDump(prifilog.INFORMATION, "Starting SOCKS proxy on port "+port)
 		go startSocksProxyServerListener(port, socksProxyNewConnections)
 		go startSocksProxyServerHandler(socksProxyNewConnections, dataForRelayBuffer, dataForSocksProxy, clientState)
 	}
@@ -62,12 +62,13 @@ func StartClient(nodeConfig config.NodeConfig, relayHostAddr string, expectedNum
 	for !exitClient {
 
 		if relayTCPConn == nil {
-			prifilog.SimpleStringDump(prifilog.RECOVERABLE_ERROR, "Client "+strconv.Itoa(nodeConfig.Id)+"; trying to configure, but relay not connected. connecting...")
+			prifilog.SimpleStringDump(prifilog.RECOVERABLE_ERROR,
+				"Trying to configure, but relay not connected. connecting...")
 			relayTCPConn, relayUDPConn, err = connectToRelay(relayHostAddr, clientState)
 
 			if err != nil {
 
-				prifilog.SimpleStringDump(prifilog.RECOVERABLE_ERROR, "Client "+strconv.Itoa(nodeConfig.Id)+"; Could not TCP connect to the relay, restarting")
+				prifilog.SimpleStringDump(prifilog.RECOVERABLE_ERROR, "Could not TCP connect to the relay, restarting")
 				relayTCPConn.Close()
 				relayTCPConn = nil
 
@@ -81,13 +82,21 @@ func StartClient(nodeConfig config.NodeConfig, relayHostAddr string, expectedNum
 		}
 
 		if !authenticated {
+			// Tell the relay my preferred method of authentication
+			methodMsg := make([]byte, 1)
+			methodMsg[0] = byte(nodeConfig.AuthMethod)
+			if err := prifinet.WriteMessage(relayTCPConn, methodMsg); err != nil {
+				prifilog.SimpleStringDump(prifilog.SEVERE_ERROR, "Cannot write to the relay. "+err.Error())
+				return
+			}
+
 			// Authenticate the client
 			switch nodeConfig.AuthMethod {
 
 			case auth.AUTH_METHOD_BASIC:
 				err := basicAuth.ClientAuthentication(relayTCPConn, clientState.Id, clientState.PrivateKey)
 				if err != nil {
-					prifilog.SimpleStringDump(prifilog.SEVERE_ERROR, "Authentication failed.")
+					prifilog.SimpleStringDump(prifilog.SEVERE_ERROR, "Authentication failed")
 					os.Exit(1)
 				}
 				authenticated = true
@@ -95,19 +104,22 @@ func StartClient(nodeConfig config.NodeConfig, relayHostAddr string, expectedNum
 			case auth.AUTH_METHOD_DAGA:
 				err := daga.ClientAuthentication(relayTCPConn, clientState.Id, clientState.PrivateKey)
 				if err != nil {
-					prifilog.SimpleStringDump(prifilog.SEVERE_ERROR, "Authentication failed.")
+					prifilog.SimpleStringDump(prifilog.SEVERE_ERROR, "Authentication failed")
 					os.Exit(1)
 				}
 				authenticated = true
 			}
+			prifilog.SimpleStringDump(prifilog.INFORMATION, "Authenticated successfully")
 		}
 
-		prifilog.SimpleStringDump(prifilog.INFORMATION, "Client "+strconv.Itoa(nodeConfig.Id)+"; Waiting for relay params + public keys...")
+		// Read trustee public keys from the relay
+		prifilog.SimpleStringDump(prifilog.INFORMATION, "Waiting for relay params + public keys...")
 		params, err := readPublicKeysFromRelay(relayTCPConn, clientState)
-		prifilog.SimpleStringDump(prifilog.INFORMATION, "Client "+strconv.Itoa(nodeConfig.Id)+"; Got the parameters from relay")
+		prifilog.SimpleStringDump(prifilog.INFORMATION, "Got the parameters from relay")
 
 		if err != nil {
-			prifilog.SimpleStringDump(prifilog.RECOVERABLE_ERROR, "Client "+strconv.Itoa(nodeConfig.Id)+"; Could not get the parameters from the relay, restarting")
+			prifilog.SimpleStringDump(prifilog.RECOVERABLE_ERROR,
+				"Could not get the parameters from the relay, restarting...")
 			relayTCPConn.Close()
 			relayTCPConn = nil
 
@@ -119,20 +131,22 @@ func StartClient(nodeConfig config.NodeConfig, relayHostAddr string, expectedNum
 		}
 		clientState.NodeState.NumClients = params.nClients
 
-		//Parse the trustee's public keys, generate the shared secrets
+		// Parse the trustee's public keys, generate the shared secrets
 		clientState.NodeState.NumTrustees = len(params.trusteesPublicKeys)
 		clientState.TrusteePublicKey = make([]abstract.Point, clientState.NodeState.NumTrustees)
 		clientState.NodeState.SharedSecrets = make([]abstract.Point, clientState.NodeState.NumTrustees)
 
 		for i := 0; i < len(params.trusteesPublicKeys); i++ {
 			clientState.TrusteePublicKey[i] = params.trusteesPublicKeys[i]
-			clientState.NodeState.SharedSecrets[i] = config.CryptoSuite.Point().Mul(params.trusteesPublicKeys[i], clientState.NodeState.PrivateKey)
+			clientState.NodeState.SharedSecrets[i] = config.CryptoSuite.Point().Mul(params.trusteesPublicKeys[i],
+				clientState.NodeState.PrivateKey)
 		}
 
-		//check that we got all keys
+		// Check that we got all keys
 		for i := 0; i < clientState.NodeState.NumTrustees; i++ {
 			if clientState.TrusteePublicKey[i] == nil {
-				prifilog.SimpleStringDump(prifilog.RECOVERABLE_ERROR, "Client "+strconv.Itoa(nodeConfig.Id)+"; Didn't get public key from trustee "+strconv.Itoa(i)+", restarting")
+				prifilog.SimpleStringDump(prifilog.RECOVERABLE_ERROR,
+					"Didn't get public key from trustee "+strconv.Itoa(i)+", restarting")
 				relayTCPConn.Close()
 				relayTCPConn = nil
 				continue //redo everything
@@ -149,10 +163,10 @@ func StartClient(nodeConfig config.NodeConfig, relayHostAddr string, expectedNum
 		}
 
 		//clientState.printSecrets()
-		prifilog.SimpleStringDump(prifilog.NOTIFICATION, "Client "+strconv.Itoa(nodeConfig.Id)+"; Everything ready, assigned to round "+
+		prifilog.SimpleStringDump(prifilog.NOTIFICATION, "Everything ready, assigned to round "+
 			strconv.Itoa(myRound)+" out of "+strconv.Itoa(clientState.NodeState.NumClients))
 
-		//define downstream stream (relay -> client)
+		// Define downstream stream (relay -> client)
 		stopReadRelay := make(chan bool, 1)
 		relayDisconnected := make(chan bool, 1)
 		go readDataFromRelay(relayTCPConn, relayUDPConn, dataFromRelay, stopReadRelay, relayDisconnected, clientState)
@@ -164,14 +178,14 @@ func StartClient(nodeConfig config.NodeConfig, relayHostAddr string, expectedNum
 
 			case d := <-relayDisconnected:
 				if d {
-					prifilog.SimpleStringDump(prifilog.WARNING, "Client "+strconv.Itoa(nodeConfig.Id)+"; Connection to relay lost, reconfigurating...")
+					prifilog.SimpleStringDump(prifilog.WARNING, "Connection to relay lost, reconfigurating...")
 					continueToNextRound = false
 				}
 
-			//downstream slice from relay (normal DC-net cycle)
+			// Downstream slice from relay (normal DC-net cycle)
 			case data := <-dataFromRelay:
 
-				//compute in which round we are (respective to the number of Clients)
+				// Compute in which round we are (respective to the number of clients)
 				currentRound := roundCount % clientState.NodeState.NumClients
 				isMySlot := false
 				if currentRound == myRound {
@@ -181,18 +195,18 @@ func StartClient(nodeConfig config.NodeConfig, relayHostAddr string, expectedNum
 				switch data.MessageType {
 
 				case prifinet.MESSAGE_TYPE_LAST_UPLOAD_FAILED:
-					//relay wants to re-setup (new key exchanges)
+					// Relay wants to re-setup (new key exchanges)
 					prifilog.SimpleStringDump(prifilog.RECOVERABLE_ERROR, "Client "+strconv.Itoa(nodeConfig.Id)+"; Relay warns that a client disconnected, gonna resync..")
 					continueToNextRound = false
 
 				case prifinet.MESSAGE_TYPE_DATA_AND_RESYNC:
-					//relay wants to re-setup (new key exchanges)
+					// Relay wants to re-setup (new key exchanges)
 					prifilog.SimpleStringDump(prifilog.RECOVERABLE_ERROR, "Client "+strconv.Itoa(nodeConfig.Id)+"; Relay wants to resync...")
 					continueToNextRound = false
 
 				case prifinet.MESSAGE_TYPE_DATA:
 
-					//test if it is the answer from a ping
+					// Test if it is the answer from a ping
 					if len(data.Data) > 2 {
 						pattern := int(binary.BigEndian.Uint16(data.Data[0:2]))
 
@@ -200,17 +214,13 @@ func StartClient(nodeConfig config.NodeConfig, relayHostAddr string, expectedNum
 							clientId := int(binary.BigEndian.Uint16(data.Data[2:4]))
 
 							if clientId == clientState.Id {
-
 								timestamp := int64(binary.BigEndian.Uint64(data.Data[4:12]))
 								diff := prifilog.MsTimeStamp() - timestamp
-
-								//prifilog.Println(prifilog.EXPERIMENT_OUTPUT, "Client "+strconv.Itoa(nodeConfig.Id) +"; Latency is ", fmt.Sprintf("%v", diff) + "ms")
-
 								stats.AddLatency(diff)
 							}
 						}
 					} else {
-						//data for SOCKS proxy, just hand it over to the dedicated thread
+						// Data for SOCKS proxy, just hand it over to the dedicated thread
 						if clientState.UseSocksProxy {
 							dataForSocksProxy <- data
 						}
@@ -218,18 +228,18 @@ func StartClient(nodeConfig config.NodeConfig, relayHostAddr string, expectedNum
 					stats.AddDownstreamCell(int64(len(data.Data)))
 				}
 
-				// TODO Should account the downstream cell in the history
+				// TODO: Should account the downstream cell in the history
 
 				// Produce and ship the next upstream slice
 				nBytes := writeNextUpstreamSlice(isMySlot, dataForRelayBuffer, relayTCPConn, clientState)
 				if nBytes == -1 {
-					//couldn't write anything, relay is disconnected
+					// Couldn't write anything, relay is disconnected
 					relayTCPConn = nil
 					continueToNextRound = false
 				}
 				stats.AddUpstreamCell(int64(nBytes))
 
-				//we report the speed, bytes exchanged, etc
+				// Report the speed, bytes exchanged, etc
 				stats.ReportWithInfo(fmt.Sprintf("cellsize=%v ", payloadLength))
 			}
 			roundCount++
@@ -335,7 +345,7 @@ func writeNextUpstreamSlice(isMySlot bool, dataForRelayBuffer chan []byte, relay
 		}
 	}
 
-	//produce the next upstream cell
+	// Produce the next upstream cell
 	upstreamSlice := clientState.NodeState.CellCoder.ClientEncode(nextUpstreamBytes,
 		clientState.NodeState.CellSize, clientState.NodeState.MessageHistory)
 

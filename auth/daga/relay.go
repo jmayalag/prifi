@@ -49,6 +49,7 @@ func (p *RelayProtocol) relaySetup() error {
 			return errors.New("Unexpected message received from trustee " + strconv.Itoa(trustee.Id) + ".")
 		}
 	}
+	p.Initialized = true
 	//trusteesFinished := 0
 	//for trusteesFinished < len(trustees) {
 	//	select {
