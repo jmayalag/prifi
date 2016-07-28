@@ -17,7 +17,7 @@ type TestNode struct {
 
 	// Asymmetric keypair for this node
 	pub abstract.Point
-	pri abstract.Secret
+	pri abstract.Scalar
 
 	npeers        int
 	peerkeys      []abstract.Point  // each peer's session public key
@@ -27,7 +27,7 @@ type TestNode struct {
 	// Public key is known by and common to all nodes.
 	// Private key is held only by owner client.
 	opub abstract.Point
-	opri abstract.Secret
+	opri abstract.Scalar
 
 	Coder CellCoder
 
@@ -75,7 +75,7 @@ func TestSetup(t *testing.T, suite abstract.Suite, factory CellFactory,
 		nodes[i].suite = suite
 
 		// Each client and trustee gets a session keypair
-		nodes[i].pri = suite.Secret().Pick(rand)
+		nodes[i].pri = suite.Scalar().Pick(rand)
 		nodes[i].pub = suite.Point().Mul(base, nodes[i].pri)
 		if t != nil {
 			t.Logf("node %d key %s\n", i, nodes[i].pri.String())
@@ -103,7 +103,7 @@ func TestSetup(t *testing.T, suite abstract.Suite, factory CellFactory,
 
 	// Pick an "owner" for the (one) transmission series we'll have.
 	// For now the owner will be the first client.
-	opri := suite.Secret().Pick(rand)
+	opri := suite.Scalar().Pick(rand)
 	opub := suite.Point().Mul(base, opri)
 	clients[0].opri = opri
 	for i := range nodes {

@@ -20,18 +20,18 @@ type NodeInfo struct {
 // Node's public configuration information
 // This type is marshaled into the node's .config file
 type nodePubConfig struct {
-	NodeInfo             // My public info
-	NodesInfo []NodeInfo // Other nodes' public info
+	NodeInfo              // My public info
+	NodesInfo  []NodeInfo // Other nodes' public info
 	AuthMethod int        // Authentication method
 }
 
 // Node's configuration
 // This type is marshaled into the node's config folder
 type NodeConfig struct {
-	nodePubConfig              // Node's information
+	nodePubConfig // Node's information
 
 	PublicKey  abstract.Point
-	PrivateKey abstract.Secret
+	PrivateKey abstract.Scalar
 
-	PublicKeyRoster map[int]abstract.Point    // Other nodes' public keys
+	PublicKeyRoster map[int]abstract.Point // Other nodes' public keys
 }

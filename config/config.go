@@ -1,20 +1,20 @@
 package config
 
 import (
-	"github.com/BurntSushi/toml"
-	"os"
-	"os/user"
-	"runtime"
-	"github.com/dedis/crypto/abstract"
-	"github.com/dedis/crypto/util"
-	"github.com/dedis/crypto/suites"
+	"encoding/binary"
 	"errors"
+	"github.com/BurntSushi/toml"
+	"github.com/dedis/crypto/abstract"
 	"github.com/dedis/crypto/base64"
 	"github.com/dedis/crypto/cipher"
 	"github.com/dedis/crypto/random"
-	"strconv"
-	"encoding/binary"
+	"github.com/dedis/crypto/suites"
+	"github.com/dedis/crypto/util"
 	"io/ioutil"
+	"os"
+	"os/user"
+	"runtime"
+	"strconv"
 )
 
 func ConfigDir(name string) (string, error) {
@@ -151,7 +151,7 @@ func (c *NodeConfig) Save(appName string) error {
 func (c *NodeConfig) GenKeyPair(suite abstract.Suite, random cipher.Stream) {
 
 	c.Suite = suite.String()
-	c.PrivateKey = suite.Secret().Pick(random)
+	c.PrivateKey = suite.Scalar().Pick(random)
 	c.PublicKey = suite.Point().Mul(nil, c.PrivateKey)
 	c.PubId = getPublicStringIdentifier(suite, c.PublicKey)
 }
@@ -168,11 +168,11 @@ func getPublicStringIdentifier(suite abstract.Suite, publicKey abstract.Point) s
 // that contains a dictionary of (pubId, public key)'s for all nodes.
 func GenerateConfig(nClients int, nTrustees int, authMethod int, suite abstract.Suite) error {
 
-	nodesConfig := make([]NodeConfig, nClients + nTrustees)
+	nodesConfig := make([]NodeConfig, nClients+nTrustees)
 
 	// Create trustees' config files
 	id := int(1)
-	for i := 0; id < nTrustees + 1; id++ {
+	for i := 0; id < nTrustees+1; id++ {
 
 		nodeConfig := NodeConfig{}
 		nodeConfig.Id = id
@@ -188,7 +188,7 @@ func GenerateConfig(nClients int, nTrustees int, authMethod int, suite abstract.
 	}
 
 	// Create clients' config files
-	for i := 0; id < nClients + nTrustees + 1; id++ {
+	for i := 0; id < nClients+nTrustees+1; id++ {
 
 		nodeConfig := NodeConfig{}
 		nodeConfig.Id = id
@@ -199,14 +199,14 @@ func GenerateConfig(nClients int, nTrustees int, authMethod int, suite abstract.
 		if err := nodeConfig.Save(nodeConfig.Name); err != nil {
 			return err
 		}
-		nodesConfig[nTrustees + i] = nodeConfig
+		nodesConfig[nTrustees+i] = nodeConfig
 		i++
 	}
 
 	// Create relay's config file
 	relayConfig := NodeConfig{}
 	relayConfig.GenKeyPair(suite, random.Stream)
-	relayConfig.Id = 0		// Relay's id is always 0
+	relayConfig.Id = 0 // Relay's id is always 0
 	relayConfig.Name = "prifi-relay"
 	relayConfig.Type = NODE_TYPE_RELAY
 	relayConfig.AuthMethod = authMethod
@@ -227,7 +227,7 @@ func GenerateConfig(nClients int, nTrustees int, authMethod int, suite abstract.
 	}
 
 	pubs := make(map[int]abstract.Point)
-	for _,nodeConfig := range nodesConfig {
+	for _, nodeConfig := range nodesConfig {
 		pubs[nodeConfig.Id] = nodeConfig.PublicKey
 	}
 
@@ -238,7 +238,7 @@ func GenerateConfig(nClients int, nTrustees int, authMethod int, suite abstract.
 	defer rosterFile.Close()
 
 	rosterBytes, _ := MarshalPublicKeyRoster(pubs)
-	if _,err := rosterFile.Write(rosterBytes); err != nil {
+	if _, err := rosterFile.Write(rosterBytes); err != nil {
 		return err
 	}
 	return nil
@@ -254,11 +254,11 @@ func MarshalPublicKeyRoster(rosterMap map[int]abstract.Point) ([]byte, error) {
 	arr = append(arr, numEntries...)
 
 	// Marshal each entry
-	for k,v := range rosterMap {
+	for k, v := range rosterMap {
 
 		keyBytes := make([]byte, 4)
 		binary.BigEndian.PutUint32(keyBytes, uint32(k))
-		arr = append(arr, keyBytes...)		// Key
+		arr = append(arr, keyBytes...) // Key
 
 		valBytes, err := v.MarshalBinary()
 		if err != nil {
@@ -267,8 +267,8 @@ func MarshalPublicKeyRoster(rosterMap map[int]abstract.Point) ([]byte, error) {
 		valBytesLength := make([]byte, 2)
 		binary.BigEndian.PutUint16(valBytesLength, uint16(len(valBytes)))
 
-		arr = append(arr, valBytesLength...)	// Value length
-		arr = append(arr, valBytes...)			// Value
+		arr = append(arr, valBytesLength...) // Value length
+		arr = append(arr, valBytes...)       // Value
 	}
 	return arr, nil
 }
@@ -276,15 +276,15 @@ func MarshalPublicKeyRoster(rosterMap map[int]abstract.Point) ([]byte, error) {
 func UnmarshalPublicKeyRoster(suite abstract.Suite, arr []byte) (map[int]abstract.Point, error) {
 
 	pubs := make(map[int]abstract.Point)
-	numEntries := int(binary.BigEndian.Uint32(arr[0 : 4]))
+	numEntries := int(binary.BigEndian.Uint32(arr[0:4]))
 
 	i := 4
 	for j := 0; j < numEntries; j++ {
 
-		key := int(binary.BigEndian.Uint32(arr[i : i + 4]))
+		key := int(binary.BigEndian.Uint32(arr[i : i+4]))
 
-		valBytesLen := int(binary.BigEndian.Uint16(arr[i + 4 : i + 6]))
-		valBytes := arr[i + 6 : i + 6 + valBytesLen]
+		valBytesLen := int(binary.BigEndian.Uint16(arr[i+4 : i+6]))
+		valBytes := arr[i+6 : i+6+valBytesLen]
 
 		publicKey := suite.Point()
 		if err := publicKey.UnmarshalBinary(valBytes); err != nil {

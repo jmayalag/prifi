@@ -12,7 +12,7 @@ import (
 )
 
 // Performs basic public-key authentication using Schnorr's signature
-func clientBasicAuthentication(serverConn net.Conn, nodeId int, privateKey abstract.Secret) error {
+func clientBasicAuthentication(serverConn net.Conn, nodeId int, privateKey abstract.Scalar) error {
 
 	// Send an auth request along with my ID to the relay
 	reqMsg := make([]byte, 5)

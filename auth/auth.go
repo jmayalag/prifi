@@ -7,7 +7,7 @@ import (
 	"net"
 )
 
-func ClientAuthentication(authMethod int, serverConn net.Conn, nodeId int, privateKey abstract.Secret) error {
+func ClientAuthentication(authMethod int, serverConn net.Conn, nodeId int, privateKey abstract.Scalar) error {
 
 	switch authMethod {
 	case AUTH_METHOD_BASIC:
