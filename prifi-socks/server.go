@@ -7,7 +7,7 @@ import (
   "io"
   "encoding/binary"
   "errors"
-  "strconv"
+  "time"
 )
 
 // Authentication methods
@@ -91,7 +91,7 @@ func HandleClient(conn net.Conn) {
         allChannels[connID] = newChan
 
         // Instantiate a channel handler
-        go hanndleChannel(conn, newChan, connID)
+        go hanndleChannelNew(conn, newChan, connID)
 
         myChan = newChan
 
@@ -220,6 +220,29 @@ func hanndleChannel(conn net.Conn, clientPacket chan []byte, connID uint32) {
 }
 
 
+func hanndleChannelNew(conn net.Conn, clientPacket chan []byte, connID uint32) {
+  
+  // Create a channel reader
+  connReader := newChanReader(clientPacket)
+
+  destinationAddressBytes := <- clientPacket
+  destinationAddress := string(destinationAddressBytes)
+         
+  //Connect to the web server
+  fmt.Println("Connecting to Web Server @",destinationAddress)
+  webConn, err := net.Dial("tcp", destinationAddress)
+  if err != nil {
+    fmt.Println("Failed to connect to web server")
+    return
+  }        
+
+  // Commence forwarding raw data on the connection
+  go proxyClientPackets(webConn, conn, connID)
+  go proxyWebServerPackets(webConn, connReader, connID)      
+
+}
+
+
 /** 
   * Forwards data incoming from the web server to the SOCKS5 client  
   */
@@ -238,6 +261,8 @@ func proxyClientPackets(webConn net.Conn, conn net.Conn, connID uint32) {
       webConn.Close()
       return
     }
+
+      time.Sleep(100 * time.Millisecond)
   }
 }
 
@@ -347,10 +372,10 @@ func createSocksReply(replyCode int, addr net.Addr) []byte {
     host4 := tcpaddr.IP.To4()
     host6 := tcpaddr.IP.To16()
 
-    i, _ := strconv.Atoi("6789") 
+    //i, _ := strconv.Atoi("6789") 
 
     port := [2]byte{} // Create byte buffer for the port
-    binary.BigEndian.PutUint16(port[:], uint16(i))//tcpaddr.Port)) 
+    binary.BigEndian.PutUint16(port[:], uint16(tcpaddr.Port))
 
     // Check address type
     if host4 != nil { //IPv4

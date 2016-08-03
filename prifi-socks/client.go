@@ -4,6 +4,8 @@ import (
 	"net"
 	"fmt"
 	"bufio"
+  	"encoding/binary"
+  	"errors"
 )
 
 
@@ -107,10 +109,107 @@ func StartSocksProxyServerHandler(newConnections chan net.Conn, payloadLength in
 	}
 }
 
+func setupSOCKS(conn net.Conn) ( [] byte, error) {
+
+	connReader := bufio.NewReader(conn)
+	// Read SOCKS Version
+	socksVersion, err := readMessage(connReader,1)
+	if err != nil {
+	  // handle error
+	  fmt.Println("Version Error")
+	  return nil, err
+	} else if int(socksVersion[0]) != 5 {
+	  // handle socks version
+	  fmt.Println("Version:", int( socksVersion[0] ) )
+	  return nil, errors.New("Incorrect Socks Version") 
+	}
+	  
+	// Read SOCKS Number of Methods
+	socksNumOfMethods, err := readMessage(connReader,1)
+	if err != nil {
+	  //handle error
+	   return nil, err
+	}
+	  
+	// Read SOCKS Methods
+	numOfMethods := uint16( socksNumOfMethods[0] )
+	socksMethods, err := readMessage(connReader,numOfMethods)
+	if err != nil {
+	  //handle error
+	   return nil, err
+	}
+	
+	// Find a supported method (currently only NoAuth)
+	foundMethod := false
+	for i := 0; i< len(socksMethods); i++ {
+	  if socksMethods[i] == methNoAuth {
+	    foundMethod = true
+	    break
+	  }
+	}
+	if !foundMethod {
+	  //handle not finding method
+	  return nil, errors.New("Appropriate Method Not Found")
+	}
+	  
+	//Construct Response Message
+	methodSelectionResponse := []byte{ socksVersion[0] , byte(methNoAuth) }
+	conn.Write(methodSelectionResponse)
+
+
+	/* SOCKS5 Web Server Request Phase */
+
+	// Read SOCKS Request Header (Version, Command, Address Type)
+	requestHeader, err := readMessage(connReader,4)
+	if err != nil {
+	  //handle error
+	  fmt.Println("Request Header Error")
+	  return nil, err
+	}
+	  
+	// Read Web Server IP
+	destinationIP, err :=  readSocksAddr(connReader, int(requestHeader[3]))
+	if err != nil {
+	  //handle error
+	  fmt.Println("IP Address Error")
+	  return nil, err
+	}
+	  
+	// Read Web Server Port
+	destinationPortBytes, err := readMessage(connReader,2)
+	if err != nil {
+	  //handle error
+	  fmt.Println("Destination Port Error")
+	  return nil, err
+	}
+	  
+	// Process Address and Port  
+	destinationPort := binary.BigEndian.Uint16(destinationPortBytes)
+	destinationAddress := []byte((&net.TCPAddr{IP: destinationIP, Port: int(destinationPort)}).String())
+	
+	sucessMessage := createSocksReply(0, conn.LocalAddr())
+ 	conn.Write(sucessMessage)
+
+	return destinationAddress, nil
+	  
+}
+
 /** 
   * Handles reading the data sent through the SOCKS5 connections and preparing them to be sent to the proxy server
   */
 func readDataFromSocksProxy(socksConnId uint32, payloadLength int, conn net.Conn, toServer chan []byte, closed chan<- uint32) {
+	
+	destinationAddress, err := setupSOCKS(conn)
+	if err != nil {
+    	fmt.Println("Connection", socksConnId, "Closed")
+		conn.Close()
+		closed <- socksConnId // signal that channel is closed
+		return
+  	}
+
+	newData := NewDataWrap(socksConnId, uint16(len(destinationAddress)), uint16(payloadLength), destinationAddress)
+	toServer <- newData.ToBytes()
+
 	for {
 		// Read up to a cell worth of data to send upstream
 		buffer := make([]byte, payloadLength-int(dataWrapHeaderSize))
@@ -124,9 +223,8 @@ func readDataFromSocksProxy(socksConnId uint32, payloadLength int, conn net.Conn
 			return
 		}
 
-		newData := NewDataWrap(socksConnId, uint16(n), uint16(payloadLength), buffer)
+		newData = NewDataWrap(socksConnId, uint16(n), uint16(payloadLength), buffer)
 		toServer <- newData.ToBytes()
-
 	}
 }
 

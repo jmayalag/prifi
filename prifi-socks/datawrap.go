@@ -89,7 +89,7 @@ func cleanData(data []byte, messageLength uint16, packetLength uint16) ([]byte, 
 
 
 func trimData(data dataWrap) dataWrap {
-  return NewDataWrap(data.ID, data.MessageLength, data.MessageLength+dataWrapHeaderSize,data.Data[:data.MessageLength])
+  return NewDataWrap(data.ID, data.MessageLength, data.MessageLength+dataWrapHeaderSize,data.Data)
 }
 
 func trimBytes(data []byte) []byte {
