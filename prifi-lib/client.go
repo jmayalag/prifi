@@ -130,9 +130,7 @@ func NewClientState(clientId int, nTrustees int, nClients int, payloadLength int
 	params.currentState = CLIENT_STATE_INITIALIZING
 
 
-	dbg.Lvl1("Length of packets",payloadLength)
 	//SOCKS STUFF
-
 	if clientId == 1 {
 		socksConnections := make(chan net.Conn, 1)
 		go socks.StartSocksProxyServerListener(":6789",socksConnections)

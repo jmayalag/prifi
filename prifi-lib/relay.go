@@ -637,9 +637,6 @@ func (p *PriFiProtocol) sendDownstreamData() error {
 	//we just sent the data down, initiating a round. Let's prevent being blocked by a dead client
 	go p.checkIfRoundHasEndedAfterTimeOut_Phase1(p.relayState.currentDCNetRound.currentRound)
 
-	dbg.Lvl1("Round",p.relayState.currentDCNetRound.currentRound)
-
-
 	// Test if we are doing an experiment, and if we need to stop at some point.
 	if nextRound == int32(p.relayState.ExperimentRoundLimit) {
 		dbg.Lvl1("Relay : Experiment round limit (", nextRound, ") reached")
@@ -669,7 +666,7 @@ func (p *PriFiProtocol) sendDownstreamData() error {
 	if _, ok := p.relayState.bufferedTrusteeCiphers[nextRound]; ok {
 
 		threshhold := (TRUSTEE_WINDOW_LOWER_LIMIT + 1) + RESUME_SENDING_CAPACITY_RATIO * (MAX_ALLOWED_TRUSTEE_CIPHERS_BUFFERED - (TRUSTEE_WINDOW_LOWER_LIMIT + 1))
-		
+
 		for trusteeId, data := range p.relayState.bufferedTrusteeCiphers[nextRound].Data {
 			// start decoding using this data
 			dbg.Lvl3("Relay : using pre-cached DC-net cipher from trustee " + strconv.Itoa(trusteeId) + " for round " + strconv.Itoa(int(nextRound)))
@@ -1088,7 +1085,6 @@ func (p *PriFiProtocol) checkIfRoundHasEndedAfterTimeOut_Phase1(roundId int32) {
 			//if we miss some message...
 			if !p.relayState.currentDCNetRound.trusteeCipherAck[trusteeId] {
 				allGood = false
-				dbg.Lvl1("Trustee Issue",trusteeId)
 			}
 		}
 
@@ -1103,12 +1099,9 @@ func (p *PriFiProtocol) checkIfRoundHasEndedAfterTimeOut_Phase1(roundId int32) {
 			//if we miss some message...
 			if !p.relayState.currentDCNetRound.clientCipherAck[clientId] {
 				allGood = false
-				dbg.Lvl1("Client Issue", clientId)
 
 				//If we're using UDP, client might have missed the broadcast, re-sending
 				if p.relayState.UseUDP {
-					dbg.Lvl1("Sending stuff")
-
 					dbg.Error("Relay : Client " + strconv.Itoa(clientId) + " didn't sent us is cipher for round " + strconv.Itoa(int(roundId)) + ". Phase 1 timeout. Re-sending...")
 					err := p.messageSender.SendToClient(i, &p.relayState.currentDCNetRound.dataAlreadySent)
 					if err != nil {
