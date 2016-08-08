@@ -184,13 +184,7 @@ func HandleClient(conn net.Conn) {
 func proxyPackets(fromConn net.Conn, toConn net.Conn) {
   for {
     buf := make([]byte, 4096)
-    messageLength, err := fromConn.Read(buf)
-    if err != nil {
-      fromConn.Close()
-      fromConn.Close()
-      toConn.Close()
-      return
-    }
+    messageLength, _ := fromConn.Read(buf)
 
     if messageLength == 0 { // connection close indicator
       fmt.Println("Connection Disconnected")
@@ -198,8 +192,8 @@ func proxyPackets(fromConn net.Conn, toConn net.Conn) {
       toConn.Close()
       return
     }
-    //println(hex.Dump(buf))
-    n, err := toConn.Write(buf[:messageLength])
+    
+    n, _ := toConn.Write(buf[:messageLength])
     if n != messageLength {
       fmt.Println("Write Error")
       return
