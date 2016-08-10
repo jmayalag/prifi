@@ -545,7 +545,16 @@ func (p *PriFiProtocol) finalizeUpstreamData() error {
 	}
 
 	if p.relayState.DataOutputEnabled {
-		p.relayState.DataFromDCNet <- upstreamPlaintext
+		packetType, _, _, _ := socks.ExtractHeader(upstreamPlaintext)
+
+		switch packetType {
+			case socks.SocksData:
+				p.relayState.DataFromDCNet <- upstreamPlaintext
+
+			default:
+				break
+		}
+
 	}
 
 	p.relayState.locks.round.Lock() // Lock on DCRound

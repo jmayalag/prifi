@@ -364,7 +364,7 @@ func (p *PriFiProtocol) SendUpstreamData() error {
 
 		//or, if we have nothing to send, and we are doing Latency tests, embed a pre-crafted message that we will recognize later on
 		default:
-			emptyData := socks.NewDataWrap(0, 0, uint16(p.clientState.PayloadLength), make([]byte, 0))
+			emptyData := socks.NewDataWrap(socks.DummyData, 0, 0, uint16(p.clientState.PayloadLength), make([]byte, 0))
 			upstreamCellContent = emptyData.ToBytes()
 
 			if p.clientState.LatencyTest {

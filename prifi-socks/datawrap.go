@@ -7,9 +7,13 @@ import (
   "encoding/binary"
 )
 
+const (
+  DummyData = iota
+  SocksData
+)
 
 const (
-  dataWrapHeaderSize = uint16(8)
+  DataWrapHeaderSize = uint16(10)
 )
 
 /** 
@@ -18,6 +22,7 @@ const (
 
 type dataWrap struct {
   // Header
+  Type              uint16
 	ID 					      uint32     // SOCKS5 Connection ID
 	MessageLength 	  uint16     // The length of useful data
 	PacketLength 	   	uint16     // The length of the packet including the header
@@ -35,12 +40,13 @@ func (d *dataWrap) ToBytes() []byte {
   // Make sure the data and messagelength are of appropriate length
   d.Data, d.MessageLength = cleanData(d.Data, d.MessageLength, d.PacketLength)
 
-	buffer := make([]byte, int(dataWrapHeaderSize))  // Temporary byte buffer to store the header
+	buffer := make([]byte, int(DataWrapHeaderSize))  // Temporary byte buffer to store the header
 	
   // Fill up the header buffer
-  binary.BigEndian.PutUint32(buffer[0:4], d.ID)
-	binary.BigEndian.PutUint16(buffer[4:6], d.MessageLength)
-	binary.BigEndian.PutUint16(buffer[6:8], d.PacketLength)
+  binary.BigEndian.PutUint16(buffer[0:2], d.Type)
+  binary.BigEndian.PutUint32(buffer[2:6], d.ID)
+	binary.BigEndian.PutUint16(buffer[6:8], d.MessageLength)
+	binary.BigEndian.PutUint16(buffer[8:10], d.PacketLength)
 
   return append(buffer,d.Data...)  // Append the data to the header
 }
@@ -52,11 +58,11 @@ func (d *dataWrap) ToBytes() []byte {
   * Creates a new datawrap packet
   */
 
-func NewDataWrap(ID uint32, MessageLength uint16, PacketLength uint16, Data []byte ) dataWrap {
+func NewDataWrap(Type uint16, ID uint32, MessageLength uint16, PacketLength uint16, Data []byte ) dataWrap {
     // Make sure the received data and messagelength are of appropriate length
     Data, MessageLength = cleanData(Data, MessageLength, PacketLength)
 
-    return dataWrap{ID, MessageLength, PacketLength, Data} //Create the new packet
+    return dataWrap{Type, ID, MessageLength, PacketLength, Data} //Create the new packet
 }
 
 
@@ -71,7 +77,7 @@ func NewDataWrap(ID uint32, MessageLength uint16, PacketLength uint16, Data []by
 func cleanData(data []byte, messageLength uint16, packetLength uint16) ([]byte, uint16) {
   
   // Get the maximum possible length of the data
-  maxMessageLength := packetLength - dataWrapHeaderSize
+  maxMessageLength := packetLength - DataWrapHeaderSize
   
   // Check if the message length exceeds the maximum possible length, and truncate the length
   if messageLength > maxMessageLength {
@@ -89,7 +95,7 @@ func cleanData(data []byte, messageLength uint16, packetLength uint16) ([]byte, 
 
 
 func trimData(data dataWrap) dataWrap {
-  return NewDataWrap(data.ID, data.MessageLength, data.MessageLength+dataWrapHeaderSize,data.Data)
+  return NewDataWrap(data.Type, data.ID, data.MessageLength, data.MessageLength+DataWrapHeaderSize,data.Data)
 }
 
 func trimBytes(data []byte) []byte {
@@ -105,18 +111,18 @@ func trimBytes(data []byte) []byte {
 func readFull(connReader io.Reader) (dataWrap, error) {
 
   // Read the header
-  connID, messageLength, packetLength, err :=  readHeader(connReader)
+  packetType, connID, messageLength, packetLength, err :=  readHeader(connReader)
   if err != nil {
-      return NewDataWrap( 0 , 0, 0, nil), err
+      return NewDataWrap( 0, 0 , 0, 0, nil), err
   }
 
   // Read the data
-  message, err := readMessage(connReader,packetLength - dataWrapHeaderSize)
+  message, err := readMessage(connReader,packetLength - DataWrapHeaderSize)
   if err != nil {
-      return NewDataWrap( 0 , 0, 0, nil), err
+      return NewDataWrap( 0, 0 , 0, 0, nil), err
   }
 
-  return NewDataWrap( connID , messageLength, packetLength, message), nil
+  return NewDataWrap(packetType, connID , messageLength, packetLength, message), nil
 }
 
 
@@ -124,20 +130,20 @@ func readFull(connReader io.Reader) (dataWrap, error) {
   * Reads only the Header of the datawarp packet
   */
 
-func readHeader(connReader io.Reader) (uint32, uint16, uint16, error) {
+func readHeader(connReader io.Reader) (uint16, uint32, uint16, uint16, error) {
   
-  controlHeader := make([]byte, dataWrapHeaderSize) // Byte buffer to store the header
+  controlHeader := make([]byte, DataWrapHeaderSize) // Byte buffer to store the header
 
   _, err := io.ReadFull(connReader,controlHeader)  // Read the header
   if err != nil {
-    return 0, 0, 0, err
+    return 0, 0, 0, 0, err
   }
 
   // Extract the content of the header
-  connID, messageLength, packetLength := extractHeader(controlHeader)
+  packetType, connID, messageLength, packetLength := ExtractHeader(controlHeader)
 
   // Return the content of the header
-  return connID, messageLength, packetLength, nil
+  return packetType, connID, messageLength, packetLength, nil
 
 }
 
@@ -172,17 +178,17 @@ func sendMessage(conn net.Conn, data dataWrap) {
 
 func ExtractFull(buffer []byte) dataWrap {
   
-  if(len(buffer) < 8) {
-    return NewDataWrap(0,0,0,make([]byte,0))
+  if len(buffer) < int(DataWrapHeaderSize) {
+    return NewDataWrap(0,0,0,0,make([]byte,0))
   }
   //Extract the content of the header
-  connID, messageLength, packetLength := extractHeader(buffer)
+  packetType, connID, messageLength, packetLength := ExtractHeader(buffer)
 
   //Construct and return a new packet
-  if int(messageLength) <= len(buffer) - 8  {
-    return NewDataWrap(connID,messageLength,packetLength,buffer[dataWrapHeaderSize:dataWrapHeaderSize+messageLength])  
+  if int(messageLength) <= len(buffer) - int(DataWrapHeaderSize)  {
+    return NewDataWrap(packetType,connID,messageLength,packetLength,buffer[DataWrapHeaderSize:DataWrapHeaderSize+messageLength])  
   }
-  return NewDataWrap(connID,messageLength,packetLength,buffer[dataWrapHeaderSize:])
+  return NewDataWrap(packetType,connID,messageLength,packetLength,buffer[DataWrapHeaderSize:])
 
 }
 
@@ -190,15 +196,16 @@ func ExtractFull(buffer []byte) dataWrap {
 /** 
   * Extracts the datawrap header from an array of bytes
   */
-func extractHeader(buffer []byte) (uint32, uint16, uint16) {
+func ExtractHeader(buffer []byte) (uint16, uint32, uint16, uint16) {
 
   //Extract the content of the header from the buffer
-  connID := binary.BigEndian.Uint32(buffer[0:4])
-  messageLength := binary.BigEndian.Uint16(buffer[4:6])
-  packetLength := binary.BigEndian.Uint16(buffer[6:8])
+  packetType := binary.BigEndian.Uint16(buffer[0:2])
+  connID := binary.BigEndian.Uint32(buffer[2:6])
+  messageLength := binary.BigEndian.Uint16(buffer[6:8])
+  packetLength := binary.BigEndian.Uint16(buffer[8:10])
 
   //Return the header components
-  return connID, messageLength, packetLength
+  return packetType,connID, messageLength, packetLength
 }
 
 

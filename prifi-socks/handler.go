@@ -56,11 +56,6 @@ func ConnectToServer(IP string, toServer chan []byte, fromServer chan []byte) {
 		connID := myPacket.ID 
     	clientPacket :=  myPacket.Data[:myPacket.MessageLength]
 
-      	//Datrawrap packets with ID=0 are discarded (this indicates a useless packet)
-      	if connID == 0 {
-        	continue
-      	}
-
       	// Get the channel associated with the connection ID
       	myConn := allConnections[connID]
 
@@ -83,22 +78,24 @@ func ConnectToServer(IP string, toServer chan []byte, fromServer chan []byte) {
 
 }
 
+/**
+	Handles the packets coming from the connection with SOCKS5 server
+*/
 
 func handleConnection(conn net.Conn, fromServer chan []byte, connID uint32) {
 	
 	// Forward server messages to the client
 	for {
 	    buf := make([]byte, 4096)
-	    messageLength, err := conn.Read(buf)
-	    if err != nil {
-	      fmt.Println("Read Error")
+	    messageLength, _ := conn.Read(buf)
+
+    	newPacket := NewDataWrap(SocksData,connID,uint16(messageLength),uint16(messageLength)+DataWrapHeaderSize,buf[:messageLength])
+		fromServer <- newPacket.ToBytes()
+
+		if messageLength == 0 { // connection close indicator
+	      conn.Close()
 	      return
 	    }
-
-    	newPacket := NewDataWrap(connID,uint16(messageLength),uint16(messageLength)+dataWrapHeaderSize,buf[:messageLength])  
-		if err == nil {
-			fromServer <- newPacket.ToBytes()
-		}
 	}
 
 }
@@ -180,6 +177,10 @@ func StartSocksProxyServerHandler(newConnections chan net.Conn, payloadLength in
 	}
 }
 
+/**
+	Replaces the IP & PORT data in the SOCKS5 connect server reply
+*/
+
 func replaceData(buf []byte, addr net.Addr) []byte {
 	buf = buf[:4]
 
@@ -231,8 +232,12 @@ func readDataFromSocksProxy(socksConnId uint32, payloadLength int, conn net.Conn
 
 	for {
 		// Read up to a cell worth of data to send upstream
-		buffer := make([]byte, payloadLength-int(dataWrapHeaderSize))
+		buffer := make([]byte, payloadLength-int(DataWrapHeaderSize))
 		n, _ := conn.Read(buffer)
+
+		newData := NewDataWrap(SocksData, socksConnId, uint16(n), uint16(payloadLength), buffer)
+		toServer <- newData.ToBytes()
+
 
 		// Connection error or EOF?
 		if n == 0 {
@@ -241,9 +246,6 @@ func readDataFromSocksProxy(socksConnId uint32, payloadLength int, conn net.Conn
 			closed <- socksConnId // signal that channel is closed
 			return
 		}
-
-		newData := NewDataWrap(socksConnId, uint16(n), uint16(payloadLength), buffer)
-		toServer <- newData.ToBytes()
 	}
 }
 
