@@ -216,6 +216,7 @@ func NewRelayState(nTrustees int, nClients int, upstreamCellSize int, downstream
 	// Sets the new state
 	params.currentState = RELAY_STATE_COLLECTING_TRUSTEES_PKS
 
+
 	go socks.ConnectToServer("127.0.0.1:8081",params.DataFromDCNet, params.PriorityDataForClients)
 
 	return params
@@ -548,7 +549,7 @@ func (p *PriFiProtocol) finalizeUpstreamData() error {
 		packetType, _, _, _ := socks.ExtractHeader(upstreamPlaintext)
 
 		switch packetType {
-			case socks.SocksData:
+			case socks.SocksData, socks.SocksConnect, socks.StallCommunication, socks.ResumeCommunication:
 				p.relayState.DataFromDCNet <- upstreamPlaintext
 
 			default:

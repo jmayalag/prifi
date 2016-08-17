@@ -9,7 +9,12 @@ import (
 
 const (
   DummyData = iota
+  SocksConnect
+  StallCommunication
+  ResumeCommunication
   SocksData
+  SocksClosed
+  SocksError
 )
 
 const (
