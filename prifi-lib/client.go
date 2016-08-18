@@ -30,7 +30,6 @@ import (
 	"strconv"
 	"sync"
 	"time"
-	"net"
 
 	"github.com/dedis/cothority/lib/dbg"
 	"github.com/dedis/crypto/abstract"
@@ -135,34 +134,17 @@ func NewClientState(clientId int, nTrustees int, nClients int, payloadLength int
 	if clientId == 1 {
 		dbg.Lvl1("Client 1 established")
 
-		go func() {
-		time.Sleep(30*time.Second)
-								stallConn := socks.NewDataWrap(socks.StallCommunication, 0, 0, uint16(params.PayloadLength), []byte{})
-								params.DataFromDCNet <- stallConn.ToBytes()
-								params.DataForDCNet <- stallConn.ToBytes()
-
-		time.Sleep(10*time.Second)
-								resumeConn := socks.NewDataWrap(socks.ResumeCommunication, 0, 0, uint16(params.PayloadLength), []byte{})
-								params.DataFromDCNet <- resumeConn.ToBytes()
-								params.DataForDCNet <- resumeConn.ToBytes()
-
-		time.Sleep(30*time.Second)
-								params.DataFromDCNet <- stallConn.ToBytes()
-								params.DataForDCNet <- stallConn.ToBytes()
-
-		time.Sleep(60*time.Second)
-								params.DataFromDCNet <- resumeConn.ToBytes()
-								params.DataForDCNet <- resumeConn.ToBytes()
-		}()
+		// For stalling the handler
+		go socks.StallTester(30*time.Second,10*time.Second,params.DataFromDCNet,params.PayloadLength)
+		go socks.StallTester(30*time.Second,10*time.Second,params.DataForDCNet,params.PayloadLength)
 
 		serverPort += "6789"
 	} else if clientId == 2 {
 		dbg.Lvl1("Client 2 established")
 		serverPort += "2345"
 	}
-	socksConnections := make(chan net.Conn, 1)
-	go socks.StartSocksProxyServerListener(serverPort,socksConnections)
-	go socks.StartSocksProxyServerHandler(socksConnections, params.PayloadLength, params.privateKey, params.DataForDCNet, params.DataFromDCNet)
+	
+	go socks.ListenToBrowser(serverPort, params.PayloadLength, params.privateKey, params.DataForDCNet, params.DataFromDCNet)
 
 
 	return params
