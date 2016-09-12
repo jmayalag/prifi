@@ -31,7 +31,7 @@ func NeffShuffle(x []abstract.Point, base abstract.Point, suite abstract.Suite) 
 
 	//1. pick a new base
 	rand := suite.Cipher([]byte("randomStuff"))
-	base2 := suite.Secret().Pick(rand)
+	base2 := suite.Scalar().Pick(rand)
 
 	//3. multiply by the new base
 	x3 := make([]abstract.Point, len(x2))

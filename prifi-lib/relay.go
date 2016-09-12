@@ -141,7 +141,7 @@ type lockPool struct {
 type RelayState struct {
 	// RelayPort				string
 	// PublicKey				abstract.Point
-	// privateKey			abstract.Secret
+	// privateKey			abstract.Scalar
 	// trusteesHosts			[]string
 
 	bufferedTrusteeCiphers   map[int32]BufferedCipher
@@ -162,7 +162,7 @@ type RelayState struct {
 	nClients                 int
 	nTrustees                int
 	nTrusteesPkCollected     int
-	privateKey               abstract.Secret
+	privateKey               abstract.Scalar
 	PublicKey                abstract.Point
 	ExperimentRoundLimit     int
 	trustees                 []NodeRepresentation
@@ -208,7 +208,7 @@ func NewRelayState(nTrustees int, nClients int, upstreamCellSize int, downstream
 	base := config.CryptoSuite.Point().Base()
 
 	// Generate own parameters
-	params.privateKey = config.CryptoSuite.Secret().Pick(rand)
+	params.privateKey = config.CryptoSuite.Scalar().Pick(rand)
 	params.PublicKey = config.CryptoSuite.Point().Mul(base, params.privateKey)
 
 	// Sets the new state
