@@ -50,7 +50,7 @@ import (
 	"github.com/lbarman/prifi_dev/prifi-lib/config"
 	"github.com/lbarman/prifi_dev/prifi-lib/dcnet"
 
-	socks "github.com/lbarman/prifi_dev/prifi-socks5"
+	socks "github.com/lbarman/prifi_dev/prifi-socks"
 )
 
 // Constants
@@ -1068,7 +1068,6 @@ func (p *PriFiProtocol) checkIfRoundHasEndedAfterTimeOut_Phase1(roundId int32) {
 		return
 	}
 
-
 	p.relayState.locks.state.Lock() // Lock on state
 	
 	if p.relayState.currentState == RELAY_STATE_SHUTDOWN {
@@ -1082,6 +1081,7 @@ func (p *PriFiProtocol) checkIfRoundHasEndedAfterTimeOut_Phase1(roundId int32) {
 	
 	allGood := true
 
+	p.relayState.locks.round.Lock() // Lock on round
 	if p.relayState.currentDCNetRound.currentRound == roundId {
 		dbg.Error("waitAndCheckIfClientsSentData : We seem to be stuck in round", roundId, ". Phase 1 timeout.")
 

@@ -1,4 +1,4 @@
-package prifi_socks
+package prifisocks
 
 import (
 	"net"
