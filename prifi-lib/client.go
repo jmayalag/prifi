@@ -36,6 +36,9 @@ import (
 	"github.com/lbarman/prifi_dev/prifi-lib/config"
 	"github.com/lbarman/prifi_dev/prifi-lib/crypto"
 	"github.com/lbarman/prifi_dev/prifi-lib/dcnet"
+
+	socks "github.com/lbarman/prifi_dev/prifi-socks"
+
 )
 
 const MaxUint uint32 = uint32(4294967295)
@@ -57,8 +60,8 @@ type ClientState struct {
 	sync.RWMutex
 	CellCoder                 dcnet.CellCoder
 	currentState              int16
-	DataForDCNet              chan []byte //VPN / SOCKS should put data there !
-	DataFromDCNet             chan []byte //VPN / SOCKS should read data from there !
+	DataForDCNet              chan []byte //Data to the relay : VPN / SOCKS should put data there !
+	DataFromDCNet             chan []byte //Data from the relay : VPN / SOCKS should read data from there !
 	DataOutputEnabled         bool        //if FALSE, nothing will be written to DataFromDCNet
 	ephemeralPrivateKey       abstract.Scalar
 	EphemeralPublicKey        abstract.Point
@@ -96,8 +99,8 @@ func NewClientState(clientId int, nTrustees int, nClients int, payloadLength int
 	params.CellCoder = config.Factory()
 	params.DataForDCNet = make(chan []byte)
 	params.DataFromDCNet = make(chan []byte)
-	params.DataOutputEnabled = dataOutputEnabled
-	params.LatencyTest = latencyTest
+	params.DataOutputEnabled = true //dataOutputEnabled
+	params.LatencyTest = false //latencyTest
 	//params.MessageHistory =
 	params.MySlot = -1
 	params.nClients = nClients
@@ -124,6 +127,25 @@ func NewClientState(clientId int, nTrustees int, nClients int, payloadLength int
 
 	//sets the new state
 	params.currentState = CLIENT_STATE_INITIALIZING
+
+
+	//SOCKS STUFF
+	serverPort := ":"
+	if clientId == 1 {
+		dbg.Lvl1("Client 1 established")
+
+		// For stalling the handler
+		go socks.StallTester(30*time.Second,10*time.Second,params.DataFromDCNet,params.PayloadLength)
+		go socks.StallTester(30*time.Second,10*time.Second,params.DataForDCNet,params.PayloadLength)
+
+		serverPort += "6789"
+	} else if clientId == 2 {
+		dbg.Lvl1("Client 2 established")
+		serverPort += "2345"
+	}
+	
+	go socks.ListenToBrowser(serverPort, params.PayloadLength, params.privateKey, params.DataForDCNet, params.DataFromDCNet)
+
 
 	return params
 }
@@ -283,7 +305,7 @@ func (p *PriFiProtocol) ProcessDownStreamData(msg REL_CLI_DOWNSTREAM_DATA) error
 	 */
 
 	//pass the data to the VPN/SOCKS5 proxy, if enabled
-	if p.clientState.DataOutputEnabled {
+	if p.clientState.DataOutputEnabled /*Temporarely*/&& p.clientState.Id == 1 {
 		p.clientState.DataFromDCNet <- msg.Data //TODO : this should be encrypted, and we need to check if it's our data
 	}
 	//test if it is the answer from our ping (for latency test)
@@ -342,10 +364,14 @@ func (p *PriFiProtocol) SendUpstreamData() error {
 		select {
 
 		//either select data from the data we have to send, if any
-		case upstreamCellContent = <-p.clientState.DataForDCNet:
+		case myData := <-p.clientState.DataForDCNet:
+				upstreamCellContent = myData
 
 		//or, if we have nothing to send, and we are doing Latency tests, embed a pre-crafted message that we will recognize later on
 		default:
+			emptyData := socks.NewDataWrap(socks.DummyData, 0, 0, uint16(p.clientState.PayloadLength), make([]byte, 0))
+			upstreamCellContent = emptyData.ToBytes()
+
 			if p.clientState.LatencyTest {
 
 				if p.clientState.PayloadLength < 12 {
@@ -583,3 +609,10 @@ func MsTimeStamp() int64 {
 	//http://stackoverflow.com/questions/24122821/go-golang-time-now-unixnano-convert-to-milliseconds
 	return time.Now().UnixNano() / int64(time.Millisecond)
 }
+
+
+
+
+
+
+
