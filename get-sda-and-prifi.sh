@@ -27,6 +27,10 @@ else
 	echo "Could not checkout branch PriFi, please do it manually"
 fi
 
+echo "Gonna download the dependancies..."
+cd "simul"
+go get
+
 prifidev="$GOPATH/src/lbarman/prifi_dev/"
 if [ -d "$prifidev" ]; then
 	echo "$prifidev seems correctly setup"
