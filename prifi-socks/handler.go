@@ -149,7 +149,7 @@ func ConnectToProxyServer(IP string, toServer chan []byte, fromServer chan []byt
   * Handles SOCKS5 connections with the browser
   */
 
-func ListenToBrowser(port string, payloadLength int, key abstract.Secret, toServer chan []byte, fromServer chan []byte) {
+func ListenToBrowser(port string, payloadLength int, key abstract.Scalar, toServer chan []byte, fromServer chan []byte) {
 
 	// Setup a thread to listen at the assigned port
 	socksConnections := make(chan net.Conn, 1)
@@ -450,7 +450,7 @@ func replaceData( buf []byte, addr net.Addr ) []byte {
 	Generates a unique SOCK connection ID from a private key
 */
 
-func generateUniqueID(key abstract.Secret, connections map[uint32] net.Conn) uint32 {
+func generateUniqueID(key abstract.Scalar, connections map[uint32] net.Conn) uint32 {
 
 	id := generateID(key)
 	for connections[id] != nil { // If local conflicts occur, keep trying untill we find a locally unique ID
@@ -464,7 +464,7 @@ func generateUniqueID(key abstract.Secret, connections map[uint32] net.Conn) uin
 	Generates an ID from a private key
 */
 
-func generateID(key abstract.Secret) uint32 {
+func generateID(key abstract.Scalar) uint32 {
 	var n uint32
     binary.Read(rand.Reader, binary.LittleEndian, &n)
 

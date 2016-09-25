@@ -63,7 +63,7 @@ type ClientState struct {
 	DataForDCNet              chan []byte //Data to the relay : VPN / SOCKS should put data there !
 	DataFromDCNet             chan []byte //Data from the relay : VPN / SOCKS should read data from there !
 	DataOutputEnabled         bool        //if FALSE, nothing will be written to DataFromDCNet
-	ephemeralPrivateKey       abstract.Secret
+	ephemeralPrivateKey       abstract.Scalar
 	EphemeralPublicKey        abstract.Point
 	Id                        int
 	LatencyTest               bool
@@ -72,7 +72,7 @@ type ClientState struct {
 	nClients                  int
 	nTrustees                 int
 	PayloadLength             int
-	privateKey                abstract.Secret
+	privateKey                abstract.Scalar
 	PublicKey                 abstract.Point
 	sharedSecrets             []abstract.Point
 	TrusteePublicKey          []abstract.Point
@@ -118,7 +118,7 @@ func NewClientState(clientId int, nTrustees int, nClients int, payloadLength int
 	base := config.CryptoSuite.Point().Base()
 
 	//generate own parameters
-	params.privateKey = config.CryptoSuite.Secret().Pick(rand)                 //NO, this should be kept by SDA
+	params.privateKey = config.CryptoSuite.Scalar().Pick(rand)                 //NO, this should be kept by SDA
 	params.PublicKey = config.CryptoSuite.Point().Mul(base, params.privateKey) //NO, this should be kept by SDA
 
 	//placeholders for pubkeys and secrets
@@ -594,7 +594,7 @@ func (clientState *ClientState) generateEphemeralKeys() {
 	base := config.CryptoSuite.Point().Base()
 
 	//generate ephemeral keys
-	Epriv := config.CryptoSuite.Secret().Pick(rand)
+	Epriv := config.CryptoSuite.Scalar().Pick(rand)
 	Epub := config.CryptoSuite.Point().Mul(base, Epriv)
 
 	clientState.EphemeralPublicKey = Epub

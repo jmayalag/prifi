@@ -61,7 +61,7 @@ type TrusteeState struct {
 	neffShuffleToVerify NeffShuffleResult
 	nTrustees           int
 	PayloadLength       int
-	privateKey          abstract.Secret
+	privateKey          abstract.Scalar
 	PublicKey           abstract.Point
 	sendingRate         chan int16
 	sharedSecrets       []abstract.Point
@@ -96,7 +96,7 @@ func NewTrusteeState(trusteeId int, nClients int, nTrustees int, payloadLength i
 	base := config.CryptoSuite.Point().Base()
 
 	//generate own parameters
-	params.privateKey = config.CryptoSuite.Secret().Pick(rand)
+	params.privateKey = config.CryptoSuite.Scalar().Pick(rand)
 	params.PublicKey = config.CryptoSuite.Point().Mul(base, params.privateKey)
 
 	//placeholders for pubkeys and secrets
