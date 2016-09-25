@@ -50,7 +50,7 @@ import (
 	"github.com/lbarman/prifi_dev/prifi-lib/config"
 	"github.com/lbarman/prifi_dev/prifi-lib/dcnet"
 
-	socks "github.com/lbarman/prifi_dev/prifi-socks"
+	socks "github.com/lbarman/prifi_dev/prifi-socks5"
 )
 
 // Constants
