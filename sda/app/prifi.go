@@ -16,7 +16,7 @@ import (
 	"github.com/dedis/cothority/app/lib/server"
 	"github.com/dedis/cothority/log"
 	"github.com/dedis/cothority/sda"
-	"github.com/dedis/cothority/services/prifi"
+	"github.com/lbarman/prifi_dev/sda/services"
 	"gopkg.in/urfave/cli.v1"
 )
 
