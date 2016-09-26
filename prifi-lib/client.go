@@ -38,7 +38,6 @@ import (
 	"github.com/lbarman/prifi_dev/prifi-lib/dcnet"
 
 	socks "github.com/lbarman/prifi_dev/prifi-socks"
-
 )
 
 const MaxUint uint32 = uint32(4294967295)
@@ -100,7 +99,7 @@ func NewClientState(clientId int, nTrustees int, nClients int, payloadLength int
 	params.DataForDCNet = make(chan []byte)
 	params.DataFromDCNet = make(chan []byte)
 	params.DataOutputEnabled = true //dataOutputEnabled
-	params.LatencyTest = false //latencyTest
+	params.LatencyTest = false      //latencyTest
 	//params.MessageHistory =
 	params.MySlot = -1
 	params.nClients = nClients
@@ -128,24 +127,22 @@ func NewClientState(clientId int, nTrustees int, nClients int, payloadLength int
 	//sets the new state
 	params.currentState = CLIENT_STATE_INITIALIZING
 
-
 	//SOCKS STUFF
 	serverPort := ":"
 	if clientId == 1 {
 		dbg.Lvl1("Client 1 established")
 
 		// For stalling the handler
-		go socks.StallTester(30*time.Second,10*time.Second,params.DataFromDCNet,params.PayloadLength)
-		go socks.StallTester(30*time.Second,10*time.Second,params.DataForDCNet,params.PayloadLength)
+		go socks.StallTester(30*time.Second, 10*time.Second, params.DataFromDCNet, params.PayloadLength)
+		go socks.StallTester(30*time.Second, 10*time.Second, params.DataForDCNet, params.PayloadLength)
 
 		serverPort += "6789"
 	} else if clientId == 2 {
 		dbg.Lvl1("Client 2 established")
 		serverPort += "2345"
 	}
-	
-	go socks.ListenToBrowser(serverPort, params.PayloadLength, params.privateKey, params.DataForDCNet, params.DataFromDCNet)
 
+	go socks.ListenToBrowser(serverPort, params.PayloadLength, params.privateKey, params.DataForDCNet, params.DataFromDCNet)
 
 	return params
 }
@@ -305,7 +302,7 @@ func (p *PriFiProtocol) ProcessDownStreamData(msg REL_CLI_DOWNSTREAM_DATA) error
 	 */
 
 	//pass the data to the VPN/SOCKS5 proxy, if enabled
-	if p.clientState.DataOutputEnabled /*Temporarely*/&& p.clientState.Id == 1 {
+	if p.clientState.DataOutputEnabled /*Temporarely*/ && p.clientState.Id == 1 {
 		p.clientState.DataFromDCNet <- msg.Data //TODO : this should be encrypted, and we need to check if it's our data
 	}
 	//test if it is the answer from our ping (for latency test)
@@ -365,7 +362,7 @@ func (p *PriFiProtocol) SendUpstreamData() error {
 
 		//either select data from the data we have to send, if any
 		case myData := <-p.clientState.DataForDCNet:
-				upstreamCellContent = myData
+			upstreamCellContent = myData
 
 		//or, if we have nothing to send, and we are doing Latency tests, embed a pre-crafted message that we will recognize later on
 		default:
@@ -528,7 +525,7 @@ func (p *PriFiProtocol) Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(msg REL_C
 	myPrivKey := p.clientState.ephemeralPrivateKey
 	ephPubInBaseG := config.CryptoSuite.Point().Mul(G, myPrivKey)
 	mySlot := -1
-	
+
 	for j := 0; j < len(ephPubKeys); j++ {
 		if ephPubKeys[j].Equal(ephPubInBaseG) {
 			mySlot = j
@@ -609,10 +606,3 @@ func MsTimeStamp() int64 {
 	//http://stackoverflow.com/questions/24122821/go-golang-time-now-unixnano-convert-to-milliseconds
 	return time.Now().UnixNano() / int64(time.Millisecond)
 }
-
-
-
-
-
-
-
