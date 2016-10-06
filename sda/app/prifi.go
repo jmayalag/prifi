@@ -1,5 +1,5 @@
 /*
-* Prifi-app starts the cothority in either trustee, relay or client mode.
+* Prifi-app starts a cothority node in either trustee, relay or client mode.
  */
 package main
 
@@ -22,15 +22,16 @@ import (
 
 // DefaultName is the name of the binary we produce and is used to create a directory
 // folder with this name
-const DefaultName = "cothorityd"
+const DefaultName = "prifi"
 
 // DefaultServerConfig is the default name of a server configuration file
 const DefaultServerConfig = "config.toml"
+const DefaultGroupConfig = "group.toml"
 
 func main() {
 	app := cli.NewApp()
-	app.Name = "Template"
-	app.Usage = "Used for building other apps."
+	app.Name = "prifi"
+	app.Usage = "Starts PriFi in either Trustee, Relay or Client mode."
 	app.Version = "0.1"
 	app.Commands = []cli.Command{
 		{
@@ -67,8 +68,13 @@ func main() {
 		},
 		cli.StringFlag{
 			Name:  "config, c",
-			Value: getDefaultConfigFile(),
+			Value: getDefaultFile(DefaultServerConfig),
 			Usage: "configuration-file",
+		},
+		cli.StringFlag{
+			Name:  "group, g",
+			Value: getDefaultFile(DefaultGroupConfig),
+			Usage: "Group file",
 		},
 		cli.BoolFlag{
 			Name:  "nowait",
@@ -90,6 +96,12 @@ func trustee(c *cli.Context) error {
 	log.ErrFatal(err)
 	prifi := host.GetService(prifi.ServiceName).(*prifi.Service)
 	// Do other setups
+	group := getGroup(c)
+	// Log the list of participating nodes
+	for i := 0; i < len(group.Roster.List); i++ {
+		log.Lvl1(group.Roster.List[i]/*.Addresses .ServerIdentityID*/)
+	}
+
 	log.ErrFatal(prifi.StartTrustee())
 
 	// Wait for the end of the world
@@ -160,7 +172,7 @@ func cothorityd(c *cli.Context) (*sda.Host, error) {
 	return host, nil
 }
 
-func getDefaultConfigFile() string {
+func getDefaultFile(fileName string) string {
 	u, err := user.Current()
 	// can't get the user dir, so fallback to current working dir
 	if err != nil {
@@ -168,22 +180,22 @@ func getDefaultConfigFile() string {
 		if curr, err := os.Getwd(); err != nil {
 			log.Fatalf("Impossible to get the current directory. %v", err)
 		} else {
-			return path.Join(curr, DefaultServerConfig)
+			return path.Join(curr, fileName)
 		}
 	}
 	// let's try to stick to usual OS folders
 	switch runtime.GOOS {
 	case "darwin":
-		return path.Join(u.HomeDir, "Library", DefaultName, DefaultServerConfig)
+		return path.Join(u.HomeDir, "Library", DefaultName, fileName)
 	default:
-		return path.Join(u.HomeDir, ".config", DefaultName, DefaultServerConfig)
+		return path.Join(u.HomeDir, ".config", DefaultName, fileName)
 		// TODO WIndows ? FreeBSD ?
 	}
 }
 
 // Reads the group-file and returns it
 func getGroup(c *cli.Context) *config.Group {
-	gfile := c.Args().Get(0)
+	gfile := c.GlobalString("group")
 	gr, err := os.Open(gfile)
 	log.ErrFatal(err)
 	defer gr.Close()
