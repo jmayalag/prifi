@@ -11,9 +11,9 @@ package prifi
 import (
 	"errors"
 
-	"github.com/dedis/cothority/lib/dbg"
-	"github.com/dedis/cothority/lib/network"
-	"github.com/dedis/cothority/lib/sda"
+	"github.com/dedis/cothority/log"
+	"github.com/dedis/cothority/network"
+	"github.com/dedis/cothority/sda"
 	prifi_lib "github.com/lbarman/prifi_dev/prifi-lib"
 )
 
@@ -24,20 +24,20 @@ var udpChan UDPChannel = newLocalhostUDPChannel() //use newRealUDPChannel() for 
 func (p *PriFiSDAWrapper) Start() error {
 
 	if !p.configSet {
-		dbg.Error("Trying to start PriFi Library, but config not set !")
+		log.Error("Trying to start PriFi Library, but config not set !")
 	}
 
-	dbg.Lvl3("Starting PriFi-SDA-Wrapper Protocol")
+	log.Lvl3("Starting PriFi-SDA-Wrapper Protocol")
 
 	//print the network host map
 	nTrustees := tomlConfig.NTrustees
 	nodes := p.TreeNodeInstance.List()
-	dbg.Lvl2("Relay      -> ", nodes[0].Name())
+	log.Lvl2("Relay      -> ", nodes[0].Name())
 	for i := 1; i < nTrustees+1; i++ {
-		dbg.Lvl2("Trustee", (i - 1), " -> ", nodes[i].Name())
+		log.Lvl2("Trustee", (i - 1), " -> ", nodes[i].Name())
 	}
 	for i := 1 + nTrustees; i < len(nodes); i++ {
-		dbg.Lvl2("Client ", (i - nTrustees - 1), " -> ", nodes[i].Name())
+		log.Lvl2("Client ", (i - nTrustees - 1), " -> ", nodes[i].Name())
 	}
 
 	//simulate the first message received (here the parameters). If StartNow = true, the relay will handle the situation from now on
@@ -90,7 +90,7 @@ type PriFiSDAWrapper struct {
 func (p *PriFiSDAWrapper) SetConfig(config prifi_lib.ALL_ALL_PARAMETERS) {
 	p.config = config
 	p.configSet = true
-	dbg.Lvl2("Setting PriFi config to be : ", config)
+	log.Lvl2("Setting PriFi config to be : ", config)
 }
 
 /**
@@ -134,17 +134,17 @@ func NewPriFiSDAWrapperProtocol(n *sda.TreeNodeInstance) (sda.ProtocolInstance, 
 
 	//first of all, instantiate our prifi library with the correct role, given our position in the tree
 	if n.Index() == 0 {
-		dbg.Print(n.Name(), " starting as a PriFi relay")
+		log.Print(n.Name(), " starting as a PriFi relay")
 		relayState := prifi_lib.NewRelayState(nTrustees, nClients, upCellSize, downCellSize, relayWindowSize, relayUseDummyDataDown, relayReportingLimit, experimentResultChan, useUDP, sendDataOutOfDCNet)
 		prifiProtocol = prifi_lib.NewPriFiRelayWithState(messageSender, relayState)
 	} else if n.Index() > 0 && n.Index() <= nTrustees {
 		trusteeId := n.Index() - 1
-		dbg.Print(n.Name(), " starting as PriFi trustee", trusteeId)
+		log.Print(n.Name(), " starting as PriFi trustee", trusteeId)
 		trusteeState := prifi_lib.NewTrusteeState(trusteeId, nTrustees, nClients, upCellSize)
 		prifiProtocol = prifi_lib.NewPriFiTrusteeWithState(messageSender, trusteeState)
 	} else {
 		clientId := (n.Index() - nTrustees - 1)
-		dbg.Print(n.Name(), " starting as a PriFi client", clientId)
+		log.Print(n.Name(), " starting as a PriFi client", clientId)
 		clientState := prifi_lib.NewClientState(clientId, nTrustees, nClients, upCellSize, doLatencyTests, useUDP, sendDataOutOfDCNet)
 		prifiProtocol = prifi_lib.NewPriFiClientWithState(messageSender, clientState)
 	}

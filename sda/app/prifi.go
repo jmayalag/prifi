@@ -94,7 +94,7 @@ func trustee(c *cli.Context) error {
 	log.Info("Starting trustee")
 	host, err := cothorityd(c)
 	log.ErrFatal(err)
-	prifi := host.GetService(prifi.ServiceName).(*prifi.Service)
+	service := host.GetService(prifi.ServiceName).(*prifi.Service)
 	// Do other setups
 	group := getGroup(c)
 	// Log the list of participating nodes
@@ -102,12 +102,9 @@ func trustee(c *cli.Context) error {
 		log.Lvl1(group.Roster.List[i]/*.Addresses .ServerIdentityID*/)
 	}
 
-	log.ErrFatal(prifi.StartTrustee())
+	log.ErrFatal(service.StartTrustee())
 
-	// Wait for the end of the world
-	if !c.GlobalBool("nowait") {
-		host.WaitForClose()
-	}
+	host.Start()
 	return nil
 }
 
@@ -116,18 +113,12 @@ func relay(c *cli.Context) error {
 	log.Info("Starting relay")
 	host, err := cothorityd(c)
 	log.ErrFatal(err)
-	prifi := host.GetService(prifi.ServiceName).(*prifi.Service)
+	service := host.GetService(prifi.ServiceName).(*prifi.Service)
 	// Do other setups
-	if c.NArg() == 0 {
-		log.Fatal("Please give a group-definition")
-	}
 	group := getGroup(c)
-	log.ErrFatal(prifi.StartRelay(group))
+	log.ErrFatal(service.StartRelay(group))
 
-	// Wait for the end of the world
-	if !c.GlobalBool("nowait") {
-		host.WaitForClose()
-	}
+	host.Start()
 	return nil
 }
 
@@ -136,14 +127,11 @@ func client(c *cli.Context) error {
 	log.Info("Starting client")
 	host, err := cothorityd(c)
 	log.ErrFatal(err)
-	prifi := host.GetService(prifi.ServiceName).(*prifi.Service)
+	service := host.GetService(prifi.ServiceName).(*prifi.Service)
 	// Do other setups
-	log.ErrFatal(prifi.StartClient())
+	log.ErrFatal(service.StartClient())
 
-	// Wait for the end of the world
-	if !c.GlobalBool("nowait") {
-		host.WaitForClose()
-	}
+	host.Start()
 	return nil
 }
 
@@ -155,7 +143,7 @@ func setupCothorityd(c *cli.Context) error {
 
 // Starts the cothorityd to enable communication with the prifi-service.
 // Returns the prifi-service.
-func cothorityd(c *cli.Context) (*sda.Host, error) {
+func cothorityd(c *cli.Context) (*sda.Conode, error) {
 	// first check the options
 	cfile := c.GlobalString("config")
 
@@ -167,8 +155,6 @@ func cothorityd(c *cli.Context) (*sda.Host, error) {
 	if err != nil {
 		return nil, err
 	}
-	host.ListenAndBind()
-	host.StartProcessMessages()
 	return host, nil
 }
 

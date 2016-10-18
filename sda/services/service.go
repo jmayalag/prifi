@@ -14,20 +14,22 @@ import (
 	"github.com/dedis/cothority/log"
 	"github.com/dedis/cothority/network"
 	"github.com/dedis/cothority/sda"
+	"github.com/lbarman/prifi_dev/sda/protocols"
 )
 
 // ServiceName is the name to refer to the Template service from another
 // package.
-const ServiceName = "Prifi"
+const ServiceName = "PrifiService"
 
 var serviceID sda.ServiceID
 
+// Register Service with SDA
 func init() {
 	sda.RegisterNewService(ServiceName, newService)
 	serviceID = sda.ServiceFactory.ServiceID(ServiceName)
 }
 
-// Service is our template-service
+// This struct contains the state of the service
 type Service struct {
 	// We need to embed the ServiceProcessor, so that incoming messages
 	// are correctly handled.
@@ -54,6 +56,31 @@ func (s *Service) StartTrustee() error {
 // protocols to enable the relay-mode.
 func (s *Service) StartRelay(group *config.Group) error {
 	log.Info("Service", s, "running in relay mode")
+
+	// Obtain the relay's ServerIdentity
+	var relayIdentity *network.ServerIdentity = nil
+	nodeList := group.Roster.List
+	for i := 0; i < len(nodeList); i++ {
+		if group.GetDescription(nodeList[i]) == "relay" {
+			relayIdentity = nodeList[i]
+			break
+		}
+	}
+
+	if (relayIdentity == nil) {
+		log.Fatal("Group file does not contian a relay")
+	}
+
+	// Start the PriFi protocol on a flat tree with the relay as root
+	tree := group.Roster.GenerateNaryTreeWithRoot(100, relayIdentity)
+	pi, err := s.CreateProtocolSDA(prifi.ProtocolName, tree)
+
+	if err != nil {
+		log.Fatal("Unable to start Prifi protocol:", err)
+	}
+
+	pi.Start()
+
 	// Set up the configuration
 	return nil
 }
@@ -74,7 +101,7 @@ func (s *Service) StartClient() error {
 // instantiation of the protocol, use CreateProtocolService, and you can
 // give some extra-configuration to your protocol in here.
 func (s *Service) NewProtocol(tn *sda.TreeNodeInstance, conf *sda.GenericConfig) (sda.ProtocolInstance, error) {
-	log.Lvl3("Not templated yet")
+	log.Info("NCalling service.NewProtocol")
 	return nil, nil
 }
 
@@ -115,6 +142,7 @@ func (s *Service) tryLoad() error {
 // configuration, if desired. As we don't know when the service will exit,
 // we need to save the configuration on our own from time to time.
 func newService(c *sda.Context, path string) sda.Service {
+	log.Info("Calling newService")
 	s := &Service{
 		ServiceProcessor: sda.NewServiceProcessor(c),
 		path:             path,

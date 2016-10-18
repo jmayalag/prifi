@@ -32,3 +32,4 @@ dissent/client
 dissent/client.exe
 *.exe
 .idea*
+prifi_dev.iml
