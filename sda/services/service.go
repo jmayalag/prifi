@@ -19,7 +19,7 @@ import (
 
 // ServiceName is the name to refer to the Template service from another
 // package.
-const ServiceName = "PrifiService"
+const ServiceName = "ExampleService"
 
 var serviceID sda.ServiceID
 
@@ -54,10 +54,12 @@ func (s *Service) StartTrustee() error {
 
 // StartRelay has to take a configuration and start the necessary
 // protocols to enable the relay-mode.
+// In this example it simply starts the demo protocol
 func (s *Service) StartRelay(group *config.Group) error {
 	log.Info("Service", s, "running in relay mode")
 
-	// Obtain the relay's ServerIdentity
+	// Obtain the relay's ServerIdentity from the group file
+	// (it is the server with "relay" as a description)
 	var relayIdentity *network.ServerIdentity = nil
 	nodeList := group.Roster.List
 	for i := 0; i < len(nodeList); i++ {
@@ -81,7 +83,6 @@ func (s *Service) StartRelay(group *config.Group) error {
 
 	pi.Start()
 
-	// Set up the configuration
 	return nil
 }
 

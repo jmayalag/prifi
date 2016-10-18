@@ -24,10 +24,11 @@ import (
 // folder with this name
 const DefaultName = "prifi"
 
-// DefaultServerConfig is the default name of a server configuration file
+// Default names of configuration files
 const DefaultServerConfig = "config.toml"
 const DefaultGroupConfig = "group.toml"
 
+// This app can launch the prifi service in either client, trustee or relay mode
 func main() {
 	app := cli.NewApp()
 	app.Name = "prifi"
@@ -96,12 +97,6 @@ func trustee(c *cli.Context) error {
 	log.ErrFatal(err)
 	service := host.GetService(prifi.ServiceName).(*prifi.Service)
 	// Do other setups
-	group := getGroup(c)
-	// Log the list of participating nodes
-	for i := 0; i < len(group.Roster.List); i++ {
-		log.Lvl1(group.Roster.List[i]/*.Addresses .ServerIdentityID*/)
-	}
-
 	log.ErrFatal(service.StartTrustee())
 
 	host.Start()
@@ -135,13 +130,13 @@ func client(c *cli.Context) error {
 	return nil
 }
 
-// Sets up a new cothorityd which is used for every type of prifi-mode.
+// Sets up a new cothority node configuration (used by all prifi modes)
 func setupCothorityd(c *cli.Context) error {
 	server.InteractiveConfig("cothorityd")
 	return nil
 }
 
-// Starts the cothorityd to enable communication with the prifi-service.
+// Starts the cothority node to enable communication with the prifi-service.
 // Returns the prifi-service.
 func cothorityd(c *cli.Context) (*sda.Conode, error) {
 	// first check the options
@@ -158,6 +153,7 @@ func cothorityd(c *cli.Context) (*sda.Conode, error) {
 	return host, nil
 }
 
+// Creates a path to the default config folder and appends fileName to it
 func getDefaultFile(fileName string) string {
 	u, err := user.Current()
 	// can't get the user dir, so fallback to current working dir
