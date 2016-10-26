@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
+	"strconv"
 
 	"github.com/dedis/cothority/app/lib/config"
 	"github.com/dedis/cothority/log"
@@ -34,6 +36,7 @@ type Service struct {
 	// We need to embed the ServiceProcessor, so that incoming messages
 	// are correctly handled.
 	*sda.ServiceProcessor
+	group config.Group
 	Storage *Storage
 	path    string
 }
@@ -73,7 +76,7 @@ func (s *Service) StartRelay(group *config.Group) error {
 
 	// Start the PriFi protocol on a flat tree with the relay as root
 	tree := group.Roster.GenerateNaryTreeWithRoot(100, relayIdentity)
-	pi, err := s.CreateProtocolSDA(prifi.ProtocolName, tree)
+	pi, err := s.CreateProtocolService(prifi.ProtocolName, tree)
 
 	if err != nil {
 		log.Fatal("Unable to start Prifi protocol:", err)
@@ -101,8 +104,18 @@ func (s *Service) StartClient() error {
 // instantiation of the protocol, use CreateProtocolService, and you can
 // give some extra-configuration to your protocol in here.
 func (s *Service) NewProtocol(tn *sda.TreeNodeInstance, conf *sda.GenericConfig) (sda.ProtocolInstance, error) {
-	log.Info("NCalling service.NewProtocol")
-	return nil, nil
+	log.Lvl5("Setting node configuration from service")
+
+	var pi prifi.PriFiSDAWrapper
+
+	pi, err := prifi.NewPriFiSDAWrapperProtocol(tn)
+	if err != nil {
+		return nil, err
+	}
+
+	pi.SetConfig(/* DA CONFIG !!*/)
+
+	return pi, nil
 }
 
 // saves the actual identity
@@ -151,4 +164,61 @@ func newService(c *sda.Context, path string) sda.Service {
 		log.Error(err)
 	}
 	return s
+}
+
+func mapIdentities(group *config.Group) map[network.ServerIdentity]prifi.PriFiIdentity {
+	m := make(map[network.ServerIdentity]prifi.PriFiIdentity)
+
+	// Read the description of the nodes in the config file to assign them PriFi roles.
+	nodeList := group.Roster.List
+	for i := 0; i < len(nodeList); i++ {
+		si := nodeList[i]
+		desc := strings.Split(group.GetDescription(si), " ")
+
+		if len(desc) == 1 && desc[0] == "relay" {
+			m[si] = prifi.PriFiIdentity{
+				Role: prifi.Relay,
+				Id: 0,
+			}
+		} else if len(desc) == 2 {
+			id, err := strconv.Atoi(desc[1]); if err {
+				log.Info("Invalid node description. Skipping.")
+			} else {
+				var role prifi.PriFiRole
+				if desc[0] == "client" {
+					role = prifi.Client
+				} else if  desc[0] == "trustee" {
+					role = prifi.Trustee
+				} else {
+					role = nil
+					log.Info("Invalid node description. Skipping.")
+				}
+				if role != nil {
+					m[si] = prifi.PriFiIdentity{
+						Role: role,
+						Id: id,
+					}
+				}
+			}
+		} else {
+			log.Info("Invalid node description. Skipping.")
+		}
+	}
+
+	// Check that there is exactly one relay and at least one trustee and client
+	t, c, r := 0, 0, 0
+
+	for _, v := range m {
+		switch v.Role {
+		case prifi.Relay: r++
+		case prifi.Client: c++
+		case prifi.Trustee: t++
+		}
+	}
+
+	if !(t > 0 && c > 0 && r == 1) {
+		log.ErrFatal("Config file does not contain exactly one relay and at least one trustee and client.")
+	}
+
+	return m
 }
