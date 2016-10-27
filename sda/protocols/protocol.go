@@ -1,9 +1,9 @@
 package prifi
 
 import (
-	"github.com/dedis/cothority/sda"
-	"github.com/dedis/cothority/network"
 	"github.com/dedis/cothority/log"
+	"github.com/dedis/cothority/network"
+	"github.com/dedis/cothority/sda"
 )
 
 const ProtocolName = "Protocool"
@@ -75,7 +75,7 @@ func newProtocolInstance(n *sda.TreeNodeInstance) (sda.ProtocolInstance, error) 
 	}
 
 	// Register message handler(s)
-	if err:= pi.RegisterHandler(pi.HandleMsg); err != nil {
+	if err := pi.RegisterHandler(pi.HandleMsg); err != nil {
 		log.Fatal("Could not register handler:", err)
 	}
 

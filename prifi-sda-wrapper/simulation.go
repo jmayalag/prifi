@@ -4,9 +4,9 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
-	"github.com/dedis/cothority/lib/dbg"
-	"github.com/dedis/cothority/lib/monitor"
-	"github.com/dedis/cothority/lib/sda"
+	"github.com/dedis/cothority/log"
+	"github.com/dedis/cothority/monitor"
+	"github.com/dedis/cothority/sda"
 
 	prifi_lib "github.com/lbarman/prifi_dev/prifi-lib"
 )
@@ -60,7 +60,7 @@ func NewSimulation(config string) (sda.Simulation, error) {
 func (e *Simulation) Setup(dir string, hosts []string) (
 	*sda.SimulationConfig, error) {
 	sc := &sda.SimulationConfig{}
-	e.CreateEntityList(sc, hosts, 2000)
+	e.CreateRoster(sc, hosts, 2000)
 	err := e.CreateTree(sc)
 	if err != nil {
 		return nil, err
@@ -89,23 +89,23 @@ func (e *Simulation) Run(config *sda.SimulationConfig) error {
 		ForceParams:             true,
 	}
 
-	dbg.Lvl2("NClients is:", tomlConfig.NClients, ", NTrustees is:", tomlConfig.NTrustees, ", rounds:", e.Rounds)
+	log.Lvl2("NClients is:", tomlConfig.NClients, ", NTrustees is:", tomlConfig.NTrustees, ", rounds:", e.Rounds)
 	for roundId := 0; roundId < e.Rounds; roundId++ {
-		dbg.Lvl1("Starting round", roundId)
+		log.Lvl1("Starting round", roundId)
 		round := monitor.NewTimeMeasure("round")
-		p, err := config.Overlay.CreateProtocol(config.Tree, "PriFi-SDA-Wrapper")
+		p, err := config.Overlay.CreateProtocolSDA("PriFi-SDA-Wrapper", config.Tree)
 		p.(*PriFiSDAWrapper).SetConfig(*prifiConfig)
 		if err != nil {
 			return err
 		}
-		dbg.Print("Protocol created")
+		log.Print("Protocol created")
 		go p.Start()
 
 		result := <-p.(*PriFiSDAWrapper).ResultChannel
-		dbg.Lvl1("Simulation finished for round", roundId, "result is", result)
+		log.Lvl1("Simulation finished for round", roundId, "result is", result)
 		round.Record()
 
-		dbg.Lvl2("Waiting 10 seconds ...")
+		log.Lvl2("Waiting 10 seconds ...")
 		time.Sleep(10 * time.Second)
 
 	}

@@ -9,9 +9,9 @@ import (
 )
 
 func TestPrifi(t *testing.T) {
-	dbg.TestOutput(testing.Verbose(), 4)
+	log.TestOutput(testing.Verbose(), 4)
 
-	dbg.Lvl1("Testing PriFi protocol...")
+	log.Lvl1("Testing PriFi protocol...")
 
 	nbrHosts := 2
 	local := sda.NewLocalTest()

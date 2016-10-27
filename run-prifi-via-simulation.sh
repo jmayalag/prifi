@@ -1,5 +1,5 @@
 #!/bin/bash
-lvl=3
+lvl=1
 if [ $# -eq 1 ]
   then
     lvl=$1

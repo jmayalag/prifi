@@ -3,7 +3,7 @@ package prifi
 import (
 	"strconv"
 
-	"github.com/dedis/cothority/lib/dbg"
+	"github.com/dedis/cothority/log"
 )
 
 /**
@@ -103,7 +103,7 @@ func NewPriFiRelayWithState(msgSender MessageSender, state *RelayState) *PriFiPr
 		relayState:    *state,
 	}
 
-	dbg.Lvl1("Relay has been initialized by function call. ")
+	log.Lvl1("Relay has been initialized by function call. ")
 	return &prifi
 }
 
@@ -113,9 +113,9 @@ func NewPriFiClientWithState(msgSender MessageSender, state *ClientState) *PriFi
 		messageSender: msgSender,
 		clientState:   *state,
 	}
-	dbg.Lvl1("Client has been initialized by function call. ")
+	log.Lvl1("Client has been initialized by function call. ")
 
-	dbg.Lvl2("Client " + strconv.Itoa(prifi.clientState.Id) + " : starting the broadcast-listener goroutine")
+	log.Lvl2("Client " + strconv.Itoa(prifi.clientState.Id) + " : starting the broadcast-listener goroutine")
 	go prifi.messageSender.ClientSubscribeToBroadcast(prifi.clientState.Name, &prifi, prifi.clientState.StartStopReceiveBroadcast)
 	return &prifi
 }
@@ -127,32 +127,32 @@ func NewPriFiTrusteeWithState(msgSender MessageSender, state *TrusteeState) *Pri
 		trusteeState:  *state,
 	}
 
-	dbg.Lvl1("Trustee has been initialized by function call. ")
+	log.Lvl1("Trustee has been initialized by function call. ")
 	return &prifi
 }
 
 //debug. Prints role
 func (prifi *PriFiProtocol) WhoAmI() {
 
-	dbg.Print("###################### WHO AM I ######################")
+	log.Print("###################### WHO AM I ######################")
 	if prifi.role == PRIFI_ROLE_RELAY {
-		dbg.Print("I' a relay, my name is ", prifi.relayState.Name)
-		dbg.Printf("%+v\n", prifi.relayState)
-		//dbg.Print("I'm not : ")
-		//dbg.Printf("%+v\n", prifi.clientState)
-		//dbg.Printf("%+v\n", prifi.trusteeState)
+		log.Print("I' a relay, my name is ", prifi.relayState.Name)
+		log.Printf("%+v\n", prifi.relayState)
+		//log.Print("I'm not : ")
+		//log.Printf("%+v\n", prifi.clientState)
+		//log.Printf("%+v\n", prifi.trusteeState)
 	} else if prifi.role == PRIFI_ROLE_CLIENT {
-		dbg.Print("I' a client, my name is ", prifi.clientState.Name)
-		dbg.Printf("%+v\n", prifi.clientState)
-		//dbg.Print("I'm not : ")
-		//dbg.Printf("%+v\n", prifi.relayState)
-		//dbg.Printf("%+v\n", prifi.trusteeState)
+		log.Print("I' a client, my name is ", prifi.clientState.Name)
+		log.Printf("%+v\n", prifi.clientState)
+		//log.Print("I'm not : ")
+		//log.Printf("%+v\n", prifi.relayState)
+		//log.Printf("%+v\n", prifi.trusteeState)
 	} else if prifi.role == PRIFI_ROLE_TRUSTEE {
-		dbg.Print("I' a trustee, my name is ", prifi.trusteeState.Name)
-		dbg.Printf("%+v\n", prifi.trusteeState)
-		//dbg.Print("I'm not : ")
-		//dbg.Printf("%+v\n", prifi.clientState)
-		//dbg.Printf("%+v\n", prifi.relayState)
+		log.Print("I' a trustee, my name is ", prifi.trusteeState.Name)
+		log.Printf("%+v\n", prifi.trusteeState)
+		//log.Print("I'm not : ")
+		//log.Printf("%+v\n", prifi.clientState)
+		//log.Printf("%+v\n", prifi.relayState)
 	}
-	dbg.Print("###################### -------- ######################")
+	log.Print("###################### -------- ######################")
 }

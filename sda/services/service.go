@@ -69,7 +69,7 @@ func (s *Service) StartRelay(group *config.Group) error {
 		}
 	}
 
-	if (relayIdentity == nil) {
+	if relayIdentity == nil {
 		log.Fatal("Group file does not contian a relay")
 	}
 

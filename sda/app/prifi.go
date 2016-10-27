@@ -4,20 +4,17 @@
 package main
 
 import (
-	"os"
-
-	"path"
-
 	"fmt"
-	"os/user"
-	"runtime"
-
 	"github.com/dedis/cothority/app/lib/config"
 	"github.com/dedis/cothority/app/lib/server"
 	"github.com/dedis/cothority/log"
 	"github.com/dedis/cothority/sda"
 	"github.com/lbarman/prifi_dev/sda/services"
 	"gopkg.in/urfave/cli.v1"
+	"os"
+	"os/user"
+	"path"
+	"runtime"
 )
 
 // DefaultName is the name of the binary we produce and is used to create a directory
@@ -87,7 +84,6 @@ func main() {
 		return nil
 	}
 	app.Run(os.Args)
-
 }
 
 // Start the cothority in trustee-mode using the already stored configuration.

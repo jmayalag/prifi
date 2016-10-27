@@ -59,21 +59,21 @@ func (p *PriFiSDAWrapper) Start() error {
 func init() {
 
 	//register the prifi_lib's message with the network lib here
-	network.RegisterMessageType(prifi_lib.ALL_ALL_PARAMETERS{})
-	network.RegisterMessageType(prifi_lib.CLI_REL_TELL_PK_AND_EPH_PK{})
-	network.RegisterMessageType(prifi_lib.CLI_REL_UPSTREAM_DATA{})
-	network.RegisterMessageType(prifi_lib.REL_CLI_DOWNSTREAM_DATA{})
-	network.RegisterMessageType(prifi_lib.REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG{})
-	network.RegisterMessageType(prifi_lib.REL_CLI_TELL_TRUSTEES_PK{})
-	network.RegisterMessageType(prifi_lib.REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE{})
-	network.RegisterMessageType(prifi_lib.REL_TRU_TELL_TRANSCRIPT{})
-	network.RegisterMessageType(prifi_lib.TRU_REL_DC_CIPHER{})
-	network.RegisterMessageType(prifi_lib.REL_TRU_TELL_RATE_CHANGE{})
-	network.RegisterMessageType(prifi_lib.TRU_REL_SHUFFLE_SIG{})
-	network.RegisterMessageType(prifi_lib.TRU_REL_TELL_NEW_BASE_AND_EPH_PKS{})
-	network.RegisterMessageType(prifi_lib.TRU_REL_TELL_PK{})
+	network.RegisterPacketType(prifi_lib.ALL_ALL_PARAMETERS{})
+	network.RegisterPacketType(prifi_lib.CLI_REL_TELL_PK_AND_EPH_PK{})
+	network.RegisterPacketType(prifi_lib.CLI_REL_UPSTREAM_DATA{})
+	network.RegisterPacketType(prifi_lib.REL_CLI_DOWNSTREAM_DATA{})
+	network.RegisterPacketType(prifi_lib.REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG{})
+	network.RegisterPacketType(prifi_lib.REL_CLI_TELL_TRUSTEES_PK{})
+	network.RegisterPacketType(prifi_lib.REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE{})
+	network.RegisterPacketType(prifi_lib.REL_TRU_TELL_TRANSCRIPT{})
+	network.RegisterPacketType(prifi_lib.TRU_REL_DC_CIPHER{})
+	network.RegisterPacketType(prifi_lib.REL_TRU_TELL_RATE_CHANGE{})
+	network.RegisterPacketType(prifi_lib.TRU_REL_SHUFFLE_SIG{})
+	network.RegisterPacketType(prifi_lib.TRU_REL_TELL_NEW_BASE_AND_EPH_PKS{})
+	network.RegisterPacketType(prifi_lib.TRU_REL_TELL_PK{})
 
-	sda.ProtocolRegisterName("PriFi-SDA-Wrapper", NewPriFiSDAWrapperProtocol)
+	sda.GlobalProtocolRegister("PriFi-SDA-Wrapper", NewPriFiSDAWrapperProtocol)
 }
 
 //This is the PriFi-SDA-Wrapper protocol struct. It contains the SDA-tree, and a chanel that stops the simulation when it receives a "true"
