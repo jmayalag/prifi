@@ -35,8 +35,8 @@ type PriFiIdentity struct {
 
 type PriFiSDAWrapperConfig struct {
 	prifi_lib.ALL_ALL_PARAMETERS
-	identities map[network.ServerIdentity]PriFiIdentity
-	role PriFiRole
+	Identities map[network.ServerIdentity]PriFiIdentity
+	Role PriFiRole
 }
 
 //This is the PriFi-SDA-Wrapper protocol struct. It contains the SDA-tree, and a chanel that stops the simulation when it receives a "true"
