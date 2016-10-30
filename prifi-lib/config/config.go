@@ -1,3 +1,6 @@
+/*
+Package config contains the cryptographic primitives that are used by the PriFi library.
+ */
 package config
 
 import (
@@ -7,18 +10,19 @@ import (
 	"github.com/dedis/crypto/ed25519"
 )
 
-//used to make sure everybody has the same version of the software. must be updated manually
+// LLD_PROTOCOL_VERSION is used to make sure everybody has the same version of the software.
+// It must be updated manually.
 const LLD_PROTOCOL_VERSION = 3
 
-//sets the crypto suite used
+// CryptoSuite contains the crypto suite to be used.
 var CryptoSuite = ed25519.NewAES128SHA256Ed25519(false) //nist.NewAES128SHA256P256()
 
-//sets the factory for the dcnet's cell encoder/decoder
+//Factory contains the factory for the DC-net's cell encoder/decoder.
 var Factory = dcnet.SimpleCoderFactory
 
 var configFile config.File
 
-// Dissent config file format
+// ConfigData is Dissent config file format
 type ConfigData struct {
 	Keys config.Keys // Info on configured key-pairs
 }

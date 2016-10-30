@@ -125,7 +125,7 @@ type TRU_REL_TELL_PK struct {
 /*
  * The following message is a bit special. It's a REL_CLI_DOWNSTREAM_DATA, simply named with _UDP prefix to be able to distinguish them from type,
  * and theoretically that should be it. But since it doesn't go through SDA (which does support UDP yet), we have to manually convert it to bytes.
- * To that purpose, this message implements MarshallableMessage, defined in prifi-sda-wrapper/udp.go.
+ * For that purpose, this message implements MarshallableMessage, defined in prifi-sda-wrapper/udp.go.
  * Hence, it has methods Print(), used for debug, ToBytes(), that converts it to a raw byte array, SetByte(), which simply store a byte array in the
  * structure (but does not decode it), and FromBytes(), which decodes the REL_CLI_DOWNSTREAM_DATA from the inner buffer set by SetBytes()
  */
@@ -135,15 +135,18 @@ type REL_CLI_DOWNSTREAM_DATA_UDP struct {
 	byteEncoded []byte
 }
 
+// Print prints the raw value of this message.
 func (m REL_CLI_DOWNSTREAM_DATA_UDP) Print() {
 	log.Printf("%+v\n", m)
 }
 
+// SetBytes sets the bytes contained in this message.
 func (m *REL_CLI_DOWNSTREAM_DATA_UDP) SetBytes(data []byte) {
 	m.byteEncoded = make([]byte, len(data))
 	copy(m.byteEncoded, data)
 }
 
+// ToBytes encodes a message into a slice of bytes.
 func (m *REL_CLI_DOWNSTREAM_DATA_UDP) ToBytes() ([]byte, error) {
 
 	//convert the message to bytes
@@ -162,6 +165,7 @@ func (m *REL_CLI_DOWNSTREAM_DATA_UDP) ToBytes() ([]byte, error) {
 
 }
 
+// FromBytes decodes the message contained in the message's byteEncoded field.
 func (m *REL_CLI_DOWNSTREAM_DATA_UDP) FromBytes() (interface{}, error) {
 
 	buffer := m.byteEncoded
@@ -197,9 +201,7 @@ func (m *REL_CLI_DOWNSTREAM_DATA_UDP) FromBytes() (interface{}, error) {
 }
 
 /**
- * This function must be called, on the correct host, with messages that are for him.
- * ie. if on this machine, prifi is the instance of a Relay protocol, any call to SendToRelay(m) on any machine
- * should eventually call ReceivedMessage(m) on this machine.
+ * ReceivedMessage must be called when a PriFi host receives a message.
  */
 func (prifi *PriFiProtocol) ReceivedMessage(msg interface{}) error {
 

@@ -1,3 +1,6 @@
+/*
+Package crypto contains the implementations of the cryptographic primitives used by the PriFi library.
+ */
 package crypto
 
 import (
@@ -25,10 +28,10 @@ func hashSchnorr(suite abstract.Suite, message []byte, p abstract.Point) abstrac
 	return suite.Scalar().Pick(c)
 }
 
-// This simplified implementation of Schnorr Signatures is based on
-// crypto/anon/sig.go
-// The ring structure is removed and
-// The anonimity set is reduced to one public key = no anonimity
+// SchnorrSign is a simplified implementation of Schnorr Signatures that
+// is based on crypto/anon/sig.go.
+// The ring structure is removed and the anonymity set is reduced to
+// one public key = no anonymity
 func SchnorrSign(suite abstract.Suite, random cipher.Stream, message []byte,
 	privateKey abstract.Scalar) []byte {
 
@@ -80,7 +83,8 @@ func SchnorrVerify(suite abstract.Suite, message []byte, publicKey abstract.Poin
 	return nil
 }
 
-// Example of using Schnorr
+// ExampleSchnorr's implementation is an example that demonstrates how
+// to use Schnorr signatures.
 func ExampleSchnorr() {
 	// Crypto setup
 	suite := nist.NewAES128SHA256P256()

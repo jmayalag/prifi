@@ -54,7 +54,7 @@ const (
 	CLIENT_STATE_SHUTDOWN
 )
 
-//the mutable variable held by the client
+// ClientState contains the mutable state of the client.
 type ClientState struct {
 	sync.RWMutex
 	CellCoder                 dcnet.CellCoder
@@ -600,7 +600,7 @@ func (clientState *ClientState) generateEphemeralKeys() {
 }
 
 /**
- * Auxiliary function that returns the current timestamp, in miliseconds
+ * MsTimeStamp returns the current timestamp, in milliseconds.
  */
 func MsTimeStamp() int64 {
 	//http://stackoverflow.com/questions/24122821/go-golang-time-now-unixnano-convert-to-milliseconds

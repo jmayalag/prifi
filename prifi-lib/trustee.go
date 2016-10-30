@@ -49,7 +49,7 @@ const (
 
 const TRUSTEE_BASE_SLEEP_TIME = 10 * time.Millisecond //this is the base unit for how much time the trustee sleeps between ciphers to the relay
 
-//the mutable variable held by the client
+// TrusteeState contains the mutable state of the trustee.
 type TrusteeState struct {
 	CellCoder           dcnet.CellCoder
 	ClientPublicKeys    []abstract.Point
@@ -68,7 +68,8 @@ type TrusteeState struct {
 	TrusteeId           int
 }
 
-//this hold the result of the NeffShuffle, since it needs to be verified when we receive REL_TRU_TELL_TRANSCRIPT
+// NeffShuffleResult holds the result of the NeffShuffle,
+// since it needs to be verified when we receive REL_TRU_TELL_TRANSCRIPT.
 type NeffShuffleResult struct {
 	base  abstract.Point
 	pks   []abstract.Point
@@ -76,7 +77,8 @@ type NeffShuffleResult struct {
 }
 
 /**
- * Used to initialize the state of this trustee. Must be called before anything else.
+ * NewTrusteeState initializes the state of this trustee.
+ * It must be called before anything else.
  */
 func NewTrusteeState(trusteeId int, nClients int, nTrustees int, payloadLength int) *TrusteeState {
 	params := new(TrusteeState)

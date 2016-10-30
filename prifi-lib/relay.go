@@ -75,7 +75,7 @@ const (
 	RELAY_STATE_SHUTDOWN
 )
 
-// This regroups the information about one client/trustee
+// NodeRepresentation regroups the information about one client or trustee.
 type NodeRepresentation struct {
 	Id                 int
 	Connected          bool
@@ -83,7 +83,7 @@ type NodeRepresentation struct {
 	EphemeralPublicKey abstract.Point
 }
 
-// This is where the Neff Shuffles are accumulated during the Schedule protocol
+// NeffShuffleState is where the Neff Shuffles are accumulated during the Schedule protocol
 type NeffShuffleState struct {
 	ClientPublicKeys  []abstract.Point
 	G_s               []abstract.Point
@@ -105,7 +105,7 @@ type DCNetRound struct {
 	startTime          time.Time
 }
 
-// Test if we received all DC-net ciphers (1 per client, 1 per trustee)
+// hasAllCiphers tests if we received all DC-net ciphers (1 per client, 1 per trustee)
 func (dcnet *DCNetRound) hasAllCiphers(p *PriFiProtocol) bool {
 	if p.relayState.nClients == dcnet.clientCipherCount && p.relayState.nTrustees == dcnet.trusteeCipherCount {
 		return true
@@ -113,7 +113,7 @@ func (dcnet *DCNetRound) hasAllCiphers(p *PriFiProtocol) bool {
 	return false
 }
 
-// Holds the ciphertexts received in advance from the trustees
+// BufferedCipher holds the ciphertexts received in advance from the trustees.
 type BufferedCipher struct {
 	RoundId int32
 	Data    map[int][]byte
@@ -138,7 +138,7 @@ type lockPool struct {
 	// add new lock here
 }
 
-// The mutable variable held by the client
+// RelayState contains the mutable state of the relay.
 type RelayState struct {
 	// RelayPort				string
 	// PublicKey				abstract.Point
@@ -177,7 +177,8 @@ type RelayState struct {
 }
 
 /**
- * Used to initialize the state of this relay. Must be called before anything else.
+ * NewRelayState initializes the state of this relay.
+ * It must be called before anything else.
  */
 func NewRelayState(nTrustees int, nClients int, upstreamCellSize int, downstreamCellSize int, windowSize int, useDummyDataDown bool, experimentRoundLimit int, experimentResultChan chan interface{}, useUDP bool, dataOutputEnabled bool) *RelayState {
 	params := new(RelayState)

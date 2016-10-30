@@ -1,5 +1,15 @@
-# Example code branch !
+# PriFi doc
 
-This branch contains a skeleton app for running PriFi as standalone.
-It runs an stupid example protocol instead of the PriFi protocol.
-Learn more about it in the `sda/` folder !
+In this branch I try to update the project's documentation. Below is
+a list of functions/types that I do not know how to document:
+
+```
+prifi_lib/crypto/schnorr.go:
+	SchnorrVerify
+
+prifi_lib/dcnet/test.go:
+	all
+
+prifi_lib/scheduler.deprecated/scheduler.go (not sure if needed):
+	all
+```
