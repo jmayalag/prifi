@@ -8,11 +8,12 @@ import (
 
 const ProtocolName = "Protocool"
 
-// Define message struct
+// MyMsg contains a single message string
 type MyMsg struct {
 	Text string
 }
 
+// MyMsgStruct is used by the SDA to transmit messages of type MyMsg.
 // The message handler functions must take a struct containing a
 // network registered message struct (here MyMsg) and a *sda.TreeNode
 // which will contain the TreeNode that sent the message.
@@ -21,7 +22,7 @@ type MyMsgStruct struct {
 	MyMsg
 }
 
-// This contains the protocol's state on one node and must implement
+// MyProtocol contains the protocol's state on one node and must implement
 // the sda.ProtocolInstance interface (most of it is implemented by
 // the contained TreeNodeInstance, we only have to implement Start())
 type MyProtocol struct {
@@ -35,7 +36,8 @@ func init() {
 	sda.GlobalProtocolRegister(ProtocolName, newProtocolInstance)
 }
 
-// This is called by the service when starting the protocol
+// Start is called by the service when starting the protocol.
+// It is part of the sda.Protocol interface.
 func (p *MyProtocol) Start() error {
 	log.Info("Starting PriFi protocol...")
 
@@ -59,15 +61,16 @@ func (p *MyProtocol) Start() error {
 	return nil
 }
 
-// This is automatically called by the SDA when a message of type MyMsg is received
-// See also MyMsgStruct comments
+// HandleMsg handles a message of type MyMsg received by the SDA.
+// It is automatically called by the SDA when a message of type MyMsg is received.
+// See also MyMsgStruct comments.
 func (p *MyProtocol) HandleMsg(msg MyMsgStruct) error {
 	text := msg.Text
 	log.Info("Received message:", text)
 	return nil
 }
 
-// Creates a new protocol instance (see MyProtocol comments)
+// newProtocolInstance creates a new protocol instance (see MyProtocol comments)
 func newProtocolInstance(n *sda.TreeNodeInstance) (sda.ProtocolInstance, error) {
 	// Initialize protocol state
 	pi := &MyProtocol{

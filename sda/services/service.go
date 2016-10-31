@@ -29,7 +29,7 @@ func init() {
 	serviceID = sda.ServiceFactory.ServiceID(ServiceName)
 }
 
-// This struct contains the state of the service
+// Service contains the state of the service
 type Service struct {
 	// We need to embed the ServiceProcessor, so that incoming messages
 	// are correctly handled.
@@ -38,7 +38,7 @@ type Service struct {
 	path    string
 }
 
-// This structure will be saved, on the contrary of the 'Service'-structure
+// Storage will be saved, on the contrary of the 'Service'-structure
 // which has per-service information stored
 type Storage struct {
 	TrusteeID string
@@ -106,7 +106,7 @@ func (s *Service) NewProtocol(tn *sda.TreeNodeInstance, conf *sda.GenericConfig)
 	return nil, nil
 }
 
-// saves the actual identity
+// save saves the actual identity
 func (s *Service) save() {
 	log.Lvl3("Saving service")
 	b, err := network.MarshalRegisteredType(s.Storage)
@@ -120,7 +120,7 @@ func (s *Service) save() {
 	}
 }
 
-// Tries to load the configuration and updates if a configuration
+// tryLoad tries to load the configuration and updates if a configuration
 // is found, else it returns an error.
 func (s *Service) tryLoad() error {
 	configFile := s.path + "/identity.bin"
@@ -139,7 +139,7 @@ func (s *Service) tryLoad() error {
 	return nil
 }
 
-// newTemplate receives the context and a path where it can write its
+// newService receives the context and a path where it can write its
 // configuration, if desired. As we don't know when the service will exit,
 // we need to save the configuration on our own from time to time.
 func newService(c *sda.Context, path string) sda.Service {
