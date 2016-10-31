@@ -75,7 +75,13 @@ func (s *Service) StartRelay(group *config.Group) error {
 
 	// Start the PriFi protocol on a flat tree with the relay as root
 	tree := group.Roster.GenerateNaryTreeWithRoot(100, relayIdentity)
+	// Create the protocol with SDA: the newProtocolInstance function
+	// defined in protocol.go will be called on each node.
 	pi, err := s.CreateProtocolSDA(prifi.ProtocolName, tree)
+	// Another way to create the protocol is to use CreateProtocolService:
+	// in this case the NewProtocol function defined in this file
+	// will be called on each node instead of newProtocolInstance.
+	//pi, err := s.CreateProtocolService(prifi.ProtocolName, tree)
 
 	if err != nil {
 		log.Fatal("Unable to start Prifi protocol:", err)
@@ -102,8 +108,18 @@ func (s *Service) StartClient() error {
 // instantiation of the protocol, use CreateProtocolService, and you can
 // give some extra-configuration to your protocol in here.
 func (s *Service) NewProtocol(tn *sda.TreeNodeInstance, conf *sda.GenericConfig) (sda.ProtocolInstance, error) {
-	log.Info("NCalling service.NewProtocol")
-	return nil, nil
+	log.Info("Calling service.NewProtocol")
+
+	pi := &prifi.MyProtocol{
+		TreeNodeInstance: tn,
+	}
+
+	// Register message handler(s)
+	if err:= pi.RegisterHandler(pi.HandleMsg); err != nil {
+		log.Fatal("Could not register handler:", err)
+	}
+
+	return pi, nil
 }
 
 // saves the actual identity
