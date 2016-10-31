@@ -1,5 +1,11 @@
 package prifi
 
+/*
+This file provides SDA handler functions who simply call
+the PriFi library's ReceivedMessage handler. It thus
+"translates" SDA messages to PriFi messages.
+ */
+
 func (p *PriFiSDAWrapper) Received_ALL_ALL_SHUTDOWN(msg Struct_ALL_ALL_SHUTDOWN) error {
 	return p.prifiProtocol.ReceivedMessage(msg.ALL_ALL_SHUTDOWN)
 }

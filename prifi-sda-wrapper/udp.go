@@ -1,7 +1,7 @@
 package prifi
 
 /*
- * This class represent communication through UDP, and implements Broadcast, and ListenAndBlock (wait until there is one message).
+ * This class represents communication through UDP, and implements Broadcast, and ListenAndBlock (wait until there is one message).
  * When emulating in localhost with thread, we cannot use UDP broadcast (network interfaces usually ignore their self-sent messages),
  * hence this UDPChannel has two implementations : the classical UDP, and a cheating, localhost, fake-UDP broadcast done through go
  * channels.
@@ -38,12 +38,13 @@ type MarshallableMessage interface {
 }
 
 /**
- * This class is only a UDP channel. Since we have two implementation, this is the interface.
+ * UDPChannel represents a UDP channel.
  */
 type UDPChannel interface {
+	// Broadcast sends a message to all nodes.
 	Broadcast(msg MarshallableMessage) error
 
-	//we take an empty MarshallableMessage as input, because the method does know how to parse the message
+	// ListenAndBlock takes an empty MarshallableMessage as input, because the method does know how to parse the message.
 	ListenAndBlock(msg MarshallableMessage, lastSeenMessage int) (MarshallableMessage, error)
 }
 
@@ -56,29 +57,26 @@ func newLocalhostUDPChannel() UDPChannel {
 }
 
 /**
- * The real UDP thing. IT DOES NOT WORK IN LOCAL, as network interfaces usually ignore self-sent broadcasted messages.
+ * The real UDP channel. IT DOES NOT WORK IN LOCAL, as network interfaces usually ignore self-sent broadcasted messages.
  */
 func newRealUDPChannel() UDPChannel {
 	return &RealUDPChannel{}
 }
 
-// the fake UDP channel
+// LocalhostChannel emulates a UDP channel by using go channels instead of the network.
 type LocalhostChannel struct {
 	sync.RWMutex
 	lastMessageId int //the first real message has ID 1, as the struct puts in a 0 when initialized
 	lastMessage   []byte
 }
 
-//  the real UDP thing
+// RealUDPChannel uses real UDP communication to implement the UDPChannel interface.
 type RealUDPChannel struct {
 	relayConn *net.UDPConn
 	localConn *net.UDPConn
 }
 
-/*
- * Below is the fake UDP channel (LocalhostChannel)
- */
-
+// Implements UDPChannel interface.
 func (lc *LocalhostChannel) Broadcast(msg MarshallableMessage) error {
 
 	lc.Lock()
@@ -104,6 +102,7 @@ func (lc *LocalhostChannel) Broadcast(msg MarshallableMessage) error {
 	return nil
 }
 
+// Implements UDPChannel interface.
 func (lc *LocalhostChannel) ListenAndBlock(emptyMessage MarshallableMessage, lastSeenMessage int) (MarshallableMessage, error) {
 
 	//we wait until there is a new message
@@ -142,10 +141,7 @@ func (lc *LocalhostChannel) ListenAndBlock(emptyMessage MarshallableMessage, las
 	return emptyMessage, nil
 }
 
-/*
- * Below is the real UDP thing (RealUDPChannel)
- */
-
+// Implements UDPChannel interface.
 func (c *RealUDPChannel) Broadcast(msg MarshallableMessage) error {
 
 	//if we're not ready with the connnection yet
@@ -183,6 +179,7 @@ func (c *RealUDPChannel) Broadcast(msg MarshallableMessage) error {
 	return nil
 }
 
+// Implements UDPChannel interface.
 func (c *RealUDPChannel) ListenAndBlock(emptyMessage MarshallableMessage, lastSeenMessage int) (MarshallableMessage, error) {
 
 	//if we're not ready with the connnection yet

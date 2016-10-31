@@ -1,5 +1,11 @@
 package prifi
 
+/*
+This file contains the implementation of the MessageSender
+interface from the PriFi library. It is used by the library
+to send messages between participants.
+ */
+
 import (
 	"errors"
 	"strconv"
@@ -11,8 +17,8 @@ import (
 )
 
 /**
- * This is the struct we need to give PriFi-Lib so it can send messages.
- * It need to implement the "MessageSender interface" defined in prifi_lib/prifi.go
+ * MessageSender is the struct we need to give PriFi-Lib so it can send messages.
+ * It need to implement the MessageSender interface defined in prifi_lib/prifi.go
  */
 type MessageSender struct {
 	tree     *sda.TreeNodeInstance

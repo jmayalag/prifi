@@ -5,7 +5,10 @@ import (
 	prifi_lib "github.com/lbarman/prifi_dev/prifi-lib"
 )
 
-//wrappers
+/*
+This file defines messages that can be handled by the SDA
+and containing the various messages used by the PriFi library.
+ */
 
 type Struct_ALL_ALL_SHUTDOWN struct {
 	*sda.TreeNode
