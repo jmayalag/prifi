@@ -117,7 +117,7 @@ pulled to the latest version and that you are in this directory.
 We can now run the simulation:
 
 ```
-./run-prifi.sh
+./run-prifi-via-simulation.sh
 ```
 
 It is possible to browse through PriFi using the SOCKS5 integration. To use
