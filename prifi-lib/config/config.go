@@ -30,6 +30,7 @@ type ConfigData struct {
 var configData ConfigData
 var keyPairs []config.KeyPair
 
+// ReadConfig reads a configuration form a config file.
 func ReadConfig() error {
 
 	// Load the configuration file

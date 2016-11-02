@@ -1,19 +1,19 @@
 package prifi
 
-/**
- * PriFi Trustee
- * ************
- * This regroups the behavior of the PriFi trustee.
- * Needs to be instantiated via the PriFiProtocol in prifi.go
- * Then, this file simple handle the answer to the different message kind :
- *
- * - ALL_ALL_PARAMETERS - (specialized into ALL_TRU_PARAMETERS) - used to initialize the relay over the network / overwrite its configuration
- * - REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE - the client's identities (and ephemeral ones), and a base. We react by Neff-Shuffling and sending the result
- * - REL_TRU_TELL_TRANSCRIPT - the Neff-Shuffle's results. We perform some checks, sign the last one, send it to the relay, and follow by continously sending ciphers.
- * - REL_TRU_TELL_RATE_CHANGE - Received when the relay requests a sending rate change, the message contains the necessary information needed to perform this change
- *
- * TODO : debug the actual shuffle (the current code is a placeholder that does not shuffle, but takes the same time)
- */
+/*
+PriFi Trustee
+************
+This regroups the behavior of the PriFi trustee.
+Needs to be instantiated via the PriFiProtocol in prifi.go
+Then, this file simple handle the answer to the different message kind :
+
+- ALL_ALL_PARAMETERS - (specialized into ALL_TRU_PARAMETERS) - used to initialize the relay over the network / overwrite its configuration
+- REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE - the client's identities (and ephemeral ones), and a base. We react by Neff-Shuffling and sending the result
+- REL_TRU_TELL_TRANSCRIPT - the Neff-Shuffle's results. We perform some checks, sign the last one, send it to the relay, and follow by continously sending ciphers.
+- REL_TRU_TELL_RATE_CHANGE - Received when the relay requests a sending rate change, the message contains the necessary information needed to perform this change
+
+TODO : debug the actual shuffle (the current code is a placeholder that does not shuffle, but takes the same time)
+*/
 
 import (
 	"errors"
@@ -31,7 +31,7 @@ import (
 	"github.com/lbarman/prifi_dev/prifi-lib/dcnet"
 )
 
-// possible state the trustees are in. This restrict the kind of messages they can receive at a given point
+// Possible states the trustees are in. This restrict the kind of messages they can receive at a given point in time.
 const (
 	TRUSTEE_STATE_BEFORE_INIT int16 = iota
 	TRUSTEE_STATE_INITIALIZING
@@ -40,14 +40,15 @@ const (
 	TRUSTEE_STATE_SHUTDOWN
 )
 
-// possible sending mode (rates, to be precise) for the trustees
+// Possible sending rates for the trustees.
 const (
-	TRUSTEE_KILL_SEND_PROCESS int16 = iota //kill the goroutine for sending messages
+	TRUSTEE_KILL_SEND_PROCESS int16 = iota // kills the goroutine responsible for sending messages
 	TRUSTEE_RATE_ACTIVE
 	TRUSTEE_RATE_STOPPED
 )
 
-const TRUSTEE_BASE_SLEEP_TIME = 10 * time.Millisecond //this is the base unit for how much time the trustee sleeps between ciphers to the relay
+// TRUSTEE_BASE_SLEEP_TIME is the base unit for how much time the trustee sleeps between sending ciphers to the relay.
+const TRUSTEE_BASE_SLEEP_TIME = 10 * time.Millisecond
 
 // TrusteeState contains the mutable state of the trustee.
 type TrusteeState struct {
@@ -76,10 +77,10 @@ type NeffShuffleResult struct {
 	proof []byte
 }
 
-/**
- * NewTrusteeState initializes the state of this trustee.
- * It must be called before anything else.
- */
+/*
+NewTrusteeState initializes the state of the trustee.
+It must be called before anything else.
+*/
 func NewTrusteeState(trusteeId int, nClients int, nTrustees int, payloadLength int) *TrusteeState {
 	params := new(TrusteeState)
 
@@ -111,9 +112,10 @@ func NewTrusteeState(trusteeId int, nClients int, nTrustees int, payloadLength i
 	return params
 }
 
-/**
- * When we receive this message, we should clean resources
- */
+/*
+Received_ALL_REL_SHUTDOWN handles ALL_REL_SHUTDOWN messages.
+When we receive this message we should  clean up resources.
+*/
 func (p *PriFiProtocol) Received_ALL_TRU_SHUTDOWN(msg ALL_ALL_SHUTDOWN) error {
 	log.Lvl1("Trustee " + strconv.Itoa(p.trusteeState.Id) + " : Received a SHUTDOWN message. ")
 
@@ -125,9 +127,10 @@ func (p *PriFiProtocol) Received_ALL_TRU_SHUTDOWN(msg ALL_ALL_SHUTDOWN) error {
 	return nil
 }
 
-/**
- * This is the "INIT" message that shares all the public parameters.
- */
+/*
+Received_ALL_REL_PARAMETERS handles ALL_REL_PARAMETERS.
+It initializes the trustee with the parameters contained in the message.
+*/
 func (p *PriFiProtocol) Received_ALL_TRU_PARAMETERS(msg ALL_ALL_PARAMETERS) error {
 
 	//this can only happens in the state RELAY_STATE_BEFORE_INIT
@@ -154,9 +157,10 @@ func (p *PriFiProtocol) Received_ALL_TRU_PARAMETERS(msg ALL_ALL_PARAMETERS) erro
 	return nil
 }
 
-/**
- * This is used when the trustee boots.
- * The first action of a trustee is to tell his public key to the relay (this, of course, provides no security, but this is a version of the protocol)
+/*
+Send_TRU_REL_PK tells the relay's public key to the relay
+(this, of course, provides no security, but this is an early version of the protocol).
+This is the first action of the trustee.
  */
 func (p *PriFiProtocol) Send_TRU_REL_PK() error {
 
@@ -173,8 +177,9 @@ func (p *PriFiProtocol) Send_TRU_REL_PK() error {
 	return nil
 }
 
-/**
- * This method sends DC-net ciphers to the relay continuously once started. One can control the rate by sending flags to "rateChan".
+/*
+Send_TRU_REL_DC_CIPHER sends DC-net ciphers to the relay continuously once started.
+One can control the rate by sending flags to "rateChan".
  */
 func (p *PriFiProtocol) Send_TRU_REL_DC_CIPHER(rateChan chan int16) {
 
@@ -210,11 +215,11 @@ func (p *PriFiProtocol) Send_TRU_REL_DC_CIPHER(rateChan chan int16) {
 	}
 }
 
-/**
- * This function Handles the request from the Relay when a cipher sending rate change is required
- *
- * Either the trustee must stop sending because the relay is at full capacity
- * Or the trustee sends normally because the relay has emptied up enough capacity
+/*
+Received_REL_TRU_TELL_RATE_CHANGE handles REL_TRU_TELL_RATE_CHANGE messages
+by changing the cipher sending rate.
+Either the trustee must stop sending because the relay is at full capacity
+or the trustee sends normally because the relay has emptied up enough capacity.
  */
 func (p *PriFiProtocol) Received_REL_TRU_TELL_RATE_CHANGE(msg REL_TRU_TELL_RATE_CHANGE) error {
 
@@ -227,10 +232,10 @@ func (p *PriFiProtocol) Received_REL_TRU_TELL_RATE_CHANGE(msg REL_TRU_TELL_RATE_
 	return nil
 }
 
-/**
- * Auxiliary function used by Send_TRU_REL_DC_CIPHER. It computes the DC-net's cipher and sends it.
- * It returns the new round number (previous + 1).
- */
+/*
+sendData is an auxiliary function used by Send_TRU_REL_DC_CIPHER. It computes the DC-net's cipher and sends it.
+It returns the new round number (previous + 1).
+*/
 func sendData(p *PriFiProtocol, roundId int32) (int32, error) {
 	data := p.trusteeState.CellCoder.TrusteeEncode(p.trusteeState.PayloadLength)
 
@@ -248,11 +253,14 @@ func sendData(p *PriFiProtocol, roundId int32) (int32, error) {
 	return roundId + 1, nil
 }
 
-/**
- * We receive this message when the connection to a relay is established. It contains the long-term and ephemeral public keys of the clients,
- * and a base given by the relay. In addition to deriving the secrets, the trustee uses the ephemeral keys to perform a neff shuffle. He remembers
- * this shuffle in order to check the correctness of the chain of shuffle afterwards.
- */
+/*
+Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE handles REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE messages.
+Those are sent when the connection to a relay is established.
+They contain the long-term and ephemeral public keys of the clients,
+and a base given by the relay. In addition to deriving the secrets,
+the trustee uses the ephemeral keys to perform a Neff shuffle. It remembers
+this shuffle in order to check the correctness of the chain of shuffle afterwards.
+*/
 func (p *PriFiProtocol) Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE(msg REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE) error {
 
 	//this can only happens in the state TRUSTEE_STATE_INITIALIZING
@@ -323,12 +331,13 @@ func (p *PriFiProtocol) Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE(m
 	return nil
 }
 
-/**
- * This message happens when all trustees have already shuffled. They need to verify all the shuffles, and also that
- * their own shuffle has been included in the chain of shuffles. If that's the case, this trustee signs the *last*
- * shuffle (which will be used by the clients), and send it back to the relay.
- * If everything succeed, starts the goroutine for sending DC-net ciphers to the relay.
- */
+/*
+Received_REL_TRU_TELL_TRANSCRIPT handles REL_TRU_TELL_TRANSCRIPT messages.
+Those are sent when all trustees have already shuffled. They need to verify all the shuffles, and also that
+their own shuffle has been included in the chain of shuffles. If that's the case, this trustee signs the *last*
+shuffle (which will be used by the clients), and sends it back to the relay.
+If everything succeed, starts the goroutine for sending DC-net ciphers to the relay.
+*/
 func (p *PriFiProtocol) Received_REL_TRU_TELL_TRANSCRIPT(msg REL_TRU_TELL_TRANSCRIPT) error {
 
 	//this can only happens in the state TRUSTEE_STATE_SHUFFLE_DONE

@@ -6,19 +6,19 @@ import (
 	"github.com/dedis/cothority/log"
 )
 
-/**
- * PriFi - Library
- * ***************
- * This is a network-agnostic PriFi library. Feed it with a MessageSender interface (that knows how to contact the different entities),
- * and call ReceivedMessage(msg) with the received messages.
- * Then, it runs the PriFi anonymous communication network among those entities.
- */
+/*
+PriFi - Library
+***************
+This is a network-agnostic PriFi library. Feed it with a MessageSender interface (that knows how to contact the different entities),
+and call ReceivedMessage(msg) with the received messages.
+Then, it runs the PriFi anonymous communication network among those entities.
+*/
 
-//TODO: combine states into a single interface
 // PriFiProtocol contains the mutable state of a PriFi entity.
 type PriFiProtocol struct {
 	role          int16
 	messageSender MessageSender
+	// TODO: combine states into a single interface
 	clientState   ClientState  //only one of those will be set
 	relayState    RelayState   //only one of those will be set
 	trusteeState  TrusteeState //only one of those will be set
@@ -37,45 +37,38 @@ const (
 // MessageSender is the interface that abstracts the network
 // interactions.
 type MessageSender interface {
-
-	/**
-	 * SendToClient tries to deliver the message "msg" to the client i.
-	 */
+	// SendToClient tries to deliver the message "msg" to the client i.
 	SendToClient(i int, msg interface{}) error
 
-	/**
-	 * SendToTrustee tries to deliver the message "msg" to the trustee i.
-	 */
+	// SendToTrustee tries to deliver the message "msg" to the trustee i.
 	SendToTrustee(i int, msg interface{}) error
 
-	/**
-	 * SendToRelay tries to deliver the message "msg" to the relay.
-	 */
+	// SendToRelay tries to deliver the message "msg" to the relay.
 	SendToRelay(msg interface{}) error
 
-	/**
-	 * BroadcastToAllClients tries to deliver the message "msg"
-	 * to every client, possibly using broadcast.
-	 */
+	/*
+	BroadcastToAllClients tries to deliver the message "msg"
+	to every client, possibly using broadcast.
+	*/
 	BroadcastToAllClients(msg interface{}) error
 
-	/**
-	 * ClientSubscribeToBroadcast should be called by the Clients
-	 * in order to receive the Broadcast messages.
-	 * Calling the function starts the handler but does not actually
-	 * listen for broadcast messages.
-	 * Sending true to startStopChan starts receiving the broadcasts.
-	 * Sending false to startStopChan stops receiving the broadcasts.
-	 */
+	/*
+	ClientSubscribeToBroadcast should be called by the Clients
+	in order to receive the Broadcast messages.
+	Calling the function starts the handler but does not actually
+	listen for broadcast messages.
+	Sending true to startStopChan starts receiving the broadcasts.
+	Sending false to startStopChan stops receiving the broadcasts.
+	*/
 	ClientSubscribeToBroadcast(clientName string, protocolInstance *PriFiProtocol, startStopChan chan bool) error
 }
 
 /*
- * call the functions below on the appropriate machine on the network.
- * if you call *without state* (one of the first 3 methods), IT IS NOT SUFFICIENT FOR PRIFI to start; this entity will expect a ALL_ALL_PARAMETERS as a
- * first message to finish initializing itself (this is handy if only the Relay has access to the configuration file).
- * Otherwise, the 3 last methods fully initialize the entity.
- */
+call the functions below on the appropriate machine on the network.
+if you call *without state* (one of the first 3 methods), IT IS NOT SUFFICIENT FOR PRIFI to start; this entity will expect a ALL_ALL_PARAMETERS as a
+first message to finish initializing itself (this is handy if only the Relay has access to the configuration file).
+Otherwise, the 3 last methods fully initialize the entity.
+*/
 
 // NewPriFiRelay creates a new PriFi relay entity state.
 // Note: the returned state is not sufficient for the PrFi protocol

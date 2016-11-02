@@ -36,9 +36,11 @@ import (
 // REL_CLI_DOWNSTREAM_DATA
 // CLI_REL_DOWNSTREAM_NACK
 
+// ALL_ALL_SHUTDOWN message tells the participants to stop the protocol.
 type ALL_ALL_SHUTDOWN struct {
 }
 
+// ALL_ALL_PARAMETERS message contains all the parameters used by the protocol.
 type ALL_ALL_PARAMETERS struct {
 	ClientDataOutputEnabled bool
 	DoLatencyTests          bool
@@ -57,79 +59,99 @@ type ALL_ALL_PARAMETERS struct {
 	UseUDP                  bool
 }
 
+// CLI_REL_TELL_PK_AND_EPH_PK message contains the public key and ephemeral key of a client
+// and is sent to the relay.
 type CLI_REL_TELL_PK_AND_EPH_PK struct {
 	Pk    abstract.Point
 	EphPk abstract.Point
 }
 
+// CLI_REL_UPSTREAM_DATA message contains the upstream data of a client for a given round
+// and is sent to the relay.
 type CLI_REL_UPSTREAM_DATA struct {
 	ClientId int
 	RoundId  int32
 	Data     []byte
 }
 
+// REL_CLI_DOWNSTREAM_DATA message contains the downstream data for a client for a given round
+// and is sent by the relay to the clients.
 type REL_CLI_DOWNSTREAM_DATA struct {
 	RoundId    int32
 	Data       []byte
 	FlagResync bool
 }
 
+// REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG message contains the ephemeral public keys and the signatures
+// of the trustees and is sent by the relay to the client.
 type REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG struct {
 	Base         abstract.Point
 	EphPks       []abstract.Point
 	TrusteesSigs [][]byte
 }
 
+// REL_CLI_TELL_TRUSTEES_PK message contains the public keys of the trustees
+// and is sent by the relay to the clients.
 type REL_CLI_TELL_TRUSTEES_PK struct {
 	Pks []abstract.Point
 }
 
+// REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE message contains the public keys and ephemeral keys
+// of the clients and is sent by the relay to the trustees.
 type REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE struct {
 	Pks    []abstract.Point
 	EphPks []abstract.Point
 	Base   abstract.Point
 }
 
+// REL_TRU_TELL_TRANSCRIPT message contains all the shuffles perfomrmed in a Neff shuffle round.
+// It is sent by the relay to the trustees to be verified.
 type REL_TRU_TELL_TRANSCRIPT struct {
 	G_s    []abstract.Point
 	EphPks [][]abstract.Point
 	Proofs [][]byte
 }
 
+// TRU_REL_DC_CIPHER message contains the DC-net cipher of a trustee for a given round and is sent to the relay.
 type TRU_REL_DC_CIPHER struct {
 	RoundId   int32
 	TrusteeId int
 	Data      []byte
 }
 
+// TRU_REL_SHUFFLE_SIG contains the signatures shuffled by a trustee and is sent to the relay.
 type TRU_REL_SHUFFLE_SIG struct {
 	TrusteeId int
 	Sig       []byte
 }
 
+// REL_TRU_TELL_RATE_CHANGE message asks the trustees to update their window capacity to adapt their
+// sending rate and is sent by the relay.
 type REL_TRU_TELL_RATE_CHANGE struct {
 	WindowCapacity int
 }
 
+// TRU_REL_TELL_NEW_BASE_AND_EPH_PKS message contains the new ephemeral key of a trustee and
+// is sent to the relay.
 type TRU_REL_TELL_NEW_BASE_AND_EPH_PKS struct {
 	NewBase   abstract.Point
 	NewEphPks []abstract.Point
 	Proof     []byte
 }
 
+// TRU_REL_TELL_PK message contains the public key of a trustee and is sent to the relay.
 type TRU_REL_TELL_PK struct {
 	TrusteeId int
 	Pk        abstract.Point
 }
 
 /*
- * The following message is a bit special. It's a REL_CLI_DOWNSTREAM_DATA, simply named with _UDP prefix to be able to distinguish them from type,
- * and theoretically that should be it. But since it doesn't go through SDA (which does support UDP yet), we have to manually convert it to bytes.
- * For that purpose, this message implements MarshallableMessage, defined in prifi-sda-wrapper/udp.go.
- * Hence, it has methods Print(), used for debug, ToBytes(), that converts it to a raw byte array, SetByte(), which simply store a byte array in the
- * structure (but does not decode it), and FromBytes(), which decodes the REL_CLI_DOWNSTREAM_DATA from the inner buffer set by SetBytes()
- */
-
+REL_CLI_DOWNSTREAM_DATA_UDP message is a bit special. It's a REL_CLI_DOWNSTREAM_DATA, simply named with _UDP postfix to be able to distinguish them from type,
+and theoretically that should be it. But since it doesn't go through SDA (which does not support UDP yet), we have to manually convert it to bytes.
+For that purpose, this message implements MarshallableMessage, defined in prifi-sda-wrapper/udp.go.
+Hence, it has methods Print(), used for debug, ToBytes(), that converts it to a raw byte array, SetByte(), which simply store a byte array in the
+structure (but does not decode it), and FromBytes(), which decodes the REL_CLI_DOWNSTREAM_DATA from the inner buffer set by SetBytes()
+*/
 type REL_CLI_DOWNSTREAM_DATA_UDP struct {
 	REL_CLI_DOWNSTREAM_DATA
 	byteEncoded []byte
@@ -200,9 +222,9 @@ func (m *REL_CLI_DOWNSTREAM_DATA_UDP) FromBytes() (interface{}, error) {
 	return resultMessage, nil
 }
 
-/**
- * ReceivedMessage must be called when a PriFi host receives a message.
- */
+
+// ReceivedMessage must be called when a PriFi host receives a message.
+// It takes care to call the correct message handler function.
 func (prifi *PriFiProtocol) ReceivedMessage(msg interface{}) error {
 
 	if prifi == nil {
