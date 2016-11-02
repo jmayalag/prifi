@@ -41,8 +41,7 @@ type SimulationConfig struct {
 
 var tomlConfig SimulationConfig
 
-// NewSimulation is used internally to register the simulation (see the init()
-// function above).
+// NewSimulation creates a new SDA simulation.
 func NewSimulation(config string) (sda.Simulation, error) {
 	es := &Simulation{}
 	_, err := toml.Decode(config, es)

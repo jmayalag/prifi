@@ -1,11 +1,11 @@
 package prifi
 
 /*
- * This class represents communication through UDP, and implements Broadcast, and ListenAndBlock (wait until there is one message).
- * When emulating in localhost with thread, we cannot use UDP broadcast (network interfaces usually ignore their self-sent messages),
- * hence this UDPChannel has two implementations : the classical UDP, and a cheating, localhost, fake-UDP broadcast done through go
- * channels.
- */
+This class represents communication through UDP, and implements Broadcast, and ListenAndBlock (wait until there is one message).
+When emulating in localhost with thread, we cannot use UDP broadcast (network interfaces usually ignore their self-sent messages),
+hence this UDPChannel has two implementations : the classical UDP, and a cheating, localhost, fake-UDP broadcast done through go
+channels.
+*/
 
 import (
 	"fmt"
@@ -18,28 +18,35 @@ import (
 	"github.com/dedis/cothority/log"
 )
 
+// UDPPORT is the port to be used for UDP communication.
 const UDPPORT int = 10101
+// MAXUDPSIZEINBYTES is the maximum message size we can send through UDP.
 const MAXUDPSIZEINBYTES int = 65507
-const FAKE_LOCAL_UDP_SIMULATED_LOSS_PERCENTAGE = 0 //let's make our local, dummy UDP channel lossy, for added realism
+// FAKE_LOCAL_UDP_SIMULATED_LOSS_PERCENTAGE sets the loss rate
+// of the simulated UDP channel for a more realistic simulation.
+const FAKE_LOCAL_UDP_SIMULATED_LOSS_PERCENTAGE = 0
 
-/**
- * Since we can only send []byte over UDP, each interface{} we want to send needs to implement MarshallableMessage.
- * It has methods Print(), used for debug, ToBytes(), that converts it to a raw byte array, SetByte(), which simply store a byte array in the
- * structure (but does not decode it), and FromBytes(), which decodes the interface{} from the inner buffer set by SetBytes()
- */
+/*
+MarshallableMessage must be implemented by messages that are sent through UDP as we can only send byte[] over UDP.
+It has methods Print() used for debug, ToBytes() that converts it to a raw byte array, SetByte() which simply store a byte array in the
+structure (but does not decode it), and FromBytes() which decodes the interface{} from the inner buffer set by SetBytes().
+*/
 type MarshallableMessage interface {
+	// Prints the message's content.
 	Print()
 
+	// Stores a byte array but does not decode it.
 	SetBytes(data []byte)
 
+	// Converts the message to a raw byte array.
 	ToBytes() ([]byte, error)
 
+	// Decodes the byte array set by SetBytes.
 	FromBytes() (interface{}, error)
 }
 
-/**
- * UDPChannel represents a UDP channel.
- */
+
+// UDPChannel represents a UDP channel.
 type UDPChannel interface {
 	// Broadcast sends a message to all nodes.
 	Broadcast(msg MarshallableMessage) error
@@ -48,17 +55,17 @@ type UDPChannel interface {
 	ListenAndBlock(msg MarshallableMessage, lastSeenMessage int) (MarshallableMessage, error)
 }
 
-/**
- * The localhost, non-udp, cheating udp channel that uses go-channels to transmit information.
- * It has perfect orderding, and no loss.
- */
+/*
+The localhost, non-udp, cheating udp channel that uses go-channels to transmit information.
+It has perfect orderding, and no loss.
+*/
 func newLocalhostUDPChannel() UDPChannel {
 	return &LocalhostChannel{}
 }
 
-/**
- * The real UDP channel. IT DOES NOT WORK IN LOCAL, as network interfaces usually ignore self-sent broadcasted messages.
- */
+/*
+The real UDP channel. IT DOES NOT WORK IN LOCAL, as network interfaces usually ignore self-sent broadcasted messages.
+*/
 func newRealUDPChannel() UDPChannel {
 	return &RealUDPChannel{}
 }
@@ -66,7 +73,7 @@ func newRealUDPChannel() UDPChannel {
 // LocalhostChannel emulates a UDP channel by using go channels instead of the network.
 type LocalhostChannel struct {
 	sync.RWMutex
-	lastMessageId int //the first real message has ID 1, as the struct puts in a 0 when initialized
+	lastMessageId int // The first real message has ID 1, as the struct puts in a 0 when initialized
 	lastMessage   []byte
 }
 

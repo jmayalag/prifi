@@ -6,6 +6,7 @@ import (
 	"net"
 )
 
+// Possible message/packet types.
 const (
 	DummyData = iota
 	SocksConnect
@@ -16,6 +17,7 @@ const (
 	SocksError
 )
 
+// Size of the data wrapper header.
 const (
 	DataWrapHeaderSize = uint16(10)
 )
