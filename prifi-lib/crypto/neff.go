@@ -2,11 +2,15 @@ package crypto
 
 import (
 	"fmt"
-	"math/rand"
-
 	"github.com/dedis/crypto/abstract"
+	"math/rand"
 )
 
+// Implements Andrew Neff's verifiable shuffle proof scheme as described in the
+// paper "Verifiable Mixing (Shuffling) of ElGamal Pairs", April 2004.
+// The function randomly shuffles and re-randomizes a set of ElGamal pairs,
+// producing a correctness proof in the process.
+// Returns (Xbar,Ybar), the shuffled and randomized pairs.
 func NeffShuffle(x []abstract.Point, base abstract.Point, suite abstract.Suite) ([]abstract.Point, abstract.Point) {
 
 	for k := 0; k < len(x); k++ {
@@ -27,8 +31,6 @@ func NeffShuffle(x []abstract.Point, base abstract.Point, suite abstract.Suite) 
 		fmt.Println("x2[", k, "] = ", x2[k])
 	}
 
-	//do the neff shuffle
-
 	//1. pick a new base
 	rand := suite.Cipher([]byte("randomStuff"))
 	base2 := suite.Scalar().Pick(rand)
@@ -43,8 +45,4 @@ func NeffShuffle(x []abstract.Point, base abstract.Point, suite abstract.Suite) 
 	baseFinal := suite.Point().Mul(base, base2)
 
 	return x3, baseFinal
-}
-
-func NeffVerify() {
-
 }
