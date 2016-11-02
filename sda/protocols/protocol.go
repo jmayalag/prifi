@@ -1,3 +1,6 @@
+// Package prifi-sda-protocol contains the SDA protocol that transmits
+// prifi-lib messages through the network.
+// As of now it only contains a dummy example protocol for demonstration purpose.
 package prifi
 
 import (

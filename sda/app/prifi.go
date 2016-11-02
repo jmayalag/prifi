@@ -1,6 +1,6 @@
 /*
-* Prifi-app starts a cothority node in either trustee, relay or client mode.
- */
+Prifi-app starts a cothority node in either trustee, relay or client mode.
+*/
 package main
 
 import (

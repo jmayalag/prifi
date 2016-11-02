@@ -1,3 +1,6 @@
+// Package prifi-sda-service contains the SDA service responsible
+// for starting the SDA protocols required to enable PriFi
+// communications.
 package prifi
 
 /*
@@ -39,12 +42,12 @@ type Service struct {
 }
 
 // Storage will be saved, on the contrary of the 'Service'-structure
-// which has per-service information stored
+// which has per-service information stored.
 type Storage struct {
 	TrusteeID string
 }
 
-// StartTrustee has to take a configuration and start the necessary
+// StartTrustee starts the necessary
 // protocols to enable the trustee-mode.
 func (s *Service) StartTrustee() error {
 	log.Info("Service", s, "running in trustee mode")
@@ -52,7 +55,7 @@ func (s *Service) StartTrustee() error {
 	return nil
 }
 
-// StartRelay has to take a configuration and start the necessary
+// StartRelay starts the necessary
 // protocols to enable the relay-mode.
 // In this example it simply starts the demo protocol
 func (s *Service) StartRelay(group *config.Group) error {
@@ -86,7 +89,7 @@ func (s *Service) StartRelay(group *config.Group) error {
 	return nil
 }
 
-// StartClient has to take a configuration and start the necessary
+// StartClient starts the necessary
 // protocols to enable the client-mode.
 func (s *Service) StartClient() error {
 	log.Info("Service", s, "running in client mode")

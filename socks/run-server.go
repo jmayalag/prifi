@@ -1,3 +1,5 @@
+// Launches a SOCKS5 server that listens to PriFi traffic
+// and forwards all connections.
 package main
 
 import (
@@ -44,8 +46,8 @@ const (
 	repAddressTypeNotSupported
 )
 
-// Launches a SOCKS5 server that listens on port 8081 and forwards
-// all connections.
+// Launches a SOCKS5 server that listens to PriFi traffic
+// and forwards all connections.
 func main() {
 
 	fmt.Println("Launching server...")
