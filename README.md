@@ -1,7 +1,7 @@
 
 ## PriFi: A Low-Latency and Tracking-Resistant Protocol for Local-Area Anonymous Communication
 
-## 1. Introduction
+## Introduction
 
 
 This repository implements PriFi, an anonymous communication protocol with provable traffic-analysis resistance and small latency suitable for wireless networks. PriFi provides a network access mechanism for protecting members of an organization who access the Internet while on-site (via privacy-preserving WiFi networking) and while off-site (via privacy-preserving virtual private networking or VPN). The small latency cost is achieved by leveraging the client-relay-server topology common in WiFi networks. The main entities of PriFi are: relay, trustee server (or Trustees), and clients. These collaborate to implement a Dining Cryptographer's network ([DC-nets](https://en.wikipedia.org/wiki/Dining_cryptographers_problem)) that can anonymize the client upstream traffic. The relay is a WiFi router that can process normal TCP/IP traffic in addition to running our protocol.
@@ -109,3 +109,7 @@ ReportingLimit = 10
 Hosts
 5
 ```
+
+## API Documentation
+
+The PriFi API documentation can be found in  `doc/doc.html`. 
