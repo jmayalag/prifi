@@ -109,6 +109,3 @@ ReportingLimit = 10
 Hosts
 5
 ```
-
-
-## References
