@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+<meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+<meta content="width=device-width, initial-scale=1" name="viewport">
+<meta content="#375EAB" name="theme-color">
+<title>prifi - PriFi documentation</title>
+<link href="../../../../.goduckstyle/style.css" rel="stylesheet" type="text/css">
+<link href="../../../../.goduckstyle/jquery.treeview.css" rel="stylesheet">
+<script type="text/javascript">window.initFuncs = [];</script>
+</link></link></meta></meta></meta></head>
+<body>
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+<div class="wide" id="topbar"><div class="container">
+<div class="top-heading" id="heading-wide">PriFi documentation</div>
+<div class="top-heading" id="heading-narrow"><a href="/">Go</a></div>
+<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>
+<form action="/search" method="GET">
+<div id="menu">
+
+
+
+
+
+</div>
+</form>
+</div></div>
+<div class="wide" id="page">
+<div class="container">
+<h1>Package prifi</h1>
+<div id="nav"></div>
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+<script type="text/javascript">
+	document.ANALYSIS_DATA = null;
+	document.CALLGRAPH = null;
+	</script>
+<div id="short-nav">
+<dl>
+<dd><code>import "github.com/lbarman/prifi_dev/prifi-sda-wrapper"</code></dd>
+</dl>
+<dl>
+<dd><a class="overviewLink" href="#pkg-overview">Overview</a></dd>
+<dd><a class="indexLink" href="#pkg-index">Index</a></dd>
+</dl>
+</div>
+<!-- The package's Name is printed as title by the top-level template -->
+<div class="toggleVisible" id="pkg-overview">
+<div class="collapsed">
+<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+</div>
+<div class="expanded">
+<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+<p>
+Package prifi-sda-wrapper contains a binding between the PriFi lib and the SDA framework.
+It uses SDA to provide network functionality to PriFi by implementing the MessageSender
+interface defined in prifi-lib/prifi.go.
+</p>
+</div>
+</div>
+<div class="toggleVisible" id="pkg-index">
+<div class="collapsed">
+<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+</div>
+<div class="expanded">
+<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+<div id="manual-nav">
+<dl>
+<dd><a href="#pkg-constants">Constants</a></dd>
+<dd><a href="#NewPriFiSDAWrapperProtocol">func NewPriFiSDAWrapperProtocol(n *sda.TreeNodeInstance) (sda.ProtocolInstance, error)</a></dd>
+<dd><a href="#NewSimulation">func NewSimulation(config string) (sda.Simulation, error)</a></dd>
+<dd><a href="#LocalhostChannel">type LocalhostChannel</a></dd>
+<dd>    <a href="#LocalhostChannel.Broadcast">func (lc *LocalhostChannel) Broadcast(msg MarshallableMessage) error</a></dd>
+<dd>    <a href="#LocalhostChannel.ListenAndBlock">func (lc *LocalhostChannel) ListenAndBlock(emptyMessage MarshallableMessage, lastSeenMessage int) (MarshallableMessage, error)</a></dd>
+<dd><a href="#MarshallableMessage">type MarshallableMessage</a></dd>
+<dd><a href="#MessageSender">type MessageSender</a></dd>
+<dd>    <a href="#MessageSender.BroadcastToAllClients">func (ms MessageSender) BroadcastToAllClients(msg interface{}) error</a></dd>
+<dd>    <a href="#MessageSender.ClientSubscribeToBroadcast">func (ms MessageSender) ClientSubscribeToBroadcast(clientName string, protocolInstance *prifi_lib.PriFiProtocol, startStopChan chan bool) error</a></dd>
+<dd>    <a href="#MessageSender.SendToClient">func (ms MessageSender) SendToClient(i int, msg interface{}) error</a></dd>
+<dd>    <a href="#MessageSender.SendToRelay">func (ms MessageSender) SendToRelay(msg interface{}) error</a></dd>
+<dd>    <a href="#MessageSender.SendToTrustee">func (ms MessageSender) SendToTrustee(i int, msg interface{}) error</a></dd>
+<dd><a href="#PriFiSDAWrapper">type PriFiSDAWrapper</a></dd>
+<dd>    <a href="#PriFiSDAWrapper.Received_ALL_ALL_PARAMETERS">func (p *PriFiSDAWrapper) Received_ALL_ALL_PARAMETERS(msg Struct_ALL_ALL_PARAMETERS) error</a></dd>
+<dd>    <a href="#PriFiSDAWrapper.Received_ALL_ALL_SHUTDOWN">func (p *PriFiSDAWrapper) Received_ALL_ALL_SHUTDOWN(msg Struct_ALL_ALL_SHUTDOWN) error</a></dd>
+<dd>    <a href="#PriFiSDAWrapper.Received_CLI_REL_TELL_PK_AND_EPH_PK">func (p *PriFiSDAWrapper) Received_CLI_REL_TELL_PK_AND_EPH_PK(msg Struct_CLI_REL_TELL_PK_AND_EPH_PK) error</a></dd>
+<dd>    <a href="#PriFiSDAWrapper.Received_CLI_REL_UPSTREAM_DATA">func (p *PriFiSDAWrapper) Received_CLI_REL_UPSTREAM_DATA(msg Struct_CLI_REL_UPSTREAM_DATA) error</a></dd>
+<dd>    <a href="#PriFiSDAWrapper.Received_REL_CLI_DOWNSTREAM_DATA">func (p *PriFiSDAWrapper) Received_REL_CLI_DOWNSTREAM_DATA(msg Struct_REL_CLI_DOWNSTREAM_DATA) error</a></dd>
+<dd>    <a href="#PriFiSDAWrapper.Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG">func (p *PriFiSDAWrapper) Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(msg Struct_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG) error</a></dd>
+<dd>    <a href="#PriFiSDAWrapper.Received_REL_CLI_TELL_TRUSTEES_PK">func (p *PriFiSDAWrapper) Received_REL_CLI_TELL_TRUSTEES_PK(msg Struct_REL_CLI_TELL_TRUSTEES_PK) error</a></dd>
+<dd>    <a href="#PriFiSDAWrapper.Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE">func (p *PriFiSDAWrapper) Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE(msg Struct_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE) error</a></dd>
+<dd>    <a href="#PriFiSDAWrapper.Received_REL_TRU_TELL_RATE_CHANGE">func (p *PriFiSDAWrapper) Received_REL_TRU_TELL_RATE_CHANGE(msg Struct_REL_TRU_TELL_RATE_CHANGE) error</a></dd>
+<dd>    <a href="#PriFiSDAWrapper.Received_REL_TRU_TELL_TRANSCRIPT">func (p *PriFiSDAWrapper) Received_REL_TRU_TELL_TRANSCRIPT(msg Struct_REL_TRU_TELL_TRANSCRIPT) error</a></dd>
+<dd>    <a href="#PriFiSDAWrapper.Received_TRU_REL_DC_CIPHER">func (p *PriFiSDAWrapper) Received_TRU_REL_DC_CIPHER(msg Struct_TRU_REL_DC_CIPHER) error</a></dd>
+<dd>    <a href="#PriFiSDAWrapper.Received_TRU_REL_SHUFFLE_SIG">func (p *PriFiSDAWrapper) Received_TRU_REL_SHUFFLE_SIG(msg Struct_TRU_REL_SHUFFLE_SIG) error</a></dd>
+<dd>    <a href="#PriFiSDAWrapper.Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS">func (p *PriFiSDAWrapper) Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS(msg Struct_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS) error</a></dd>
+<dd>    <a href="#PriFiSDAWrapper.Received_TRU_REL_TELL_PK">func (p *PriFiSDAWrapper) Received_TRU_REL_TELL_PK(msg Struct_TRU_REL_TELL_PK) error</a></dd>
+<dd>    <a href="#PriFiSDAWrapper.SetConfig">func (p *PriFiSDAWrapper) SetConfig(config prifi_lib.ALL_ALL_PARAMETERS)</a></dd>
+<dd>    <a href="#PriFiSDAWrapper.Start">func (p *PriFiSDAWrapper) Start() error</a></dd>
+<dd><a href="#RealUDPChannel">type RealUDPChannel</a></dd>
+<dd>    <a href="#RealUDPChannel.Broadcast">func (c *RealUDPChannel) Broadcast(msg MarshallableMessage) error</a></dd>
+<dd>    <a href="#RealUDPChannel.ListenAndBlock">func (c *RealUDPChannel) ListenAndBlock(emptyMessage MarshallableMessage, lastSeenMessage int) (MarshallableMessage, error)</a></dd>
+<dd><a href="#Simulation">type Simulation</a></dd>
+<dd>    <a href="#Simulation.Run">func (e *Simulation) Run(config *sda.SimulationConfig) error</a></dd>
+<dd>    <a href="#Simulation.Setup">func (e *Simulation) Setup(dir string, hosts []string) (*sda.SimulationConfig, error)</a></dd>
+<dd><a href="#SimulationConfig">type SimulationConfig</a></dd>
+<dd><a href="#Struct_ALL_ALL_PARAMETERS">type Struct_ALL_ALL_PARAMETERS</a></dd>
+<dd><a href="#Struct_ALL_ALL_SHUTDOWN">type Struct_ALL_ALL_SHUTDOWN</a></dd>
+<dd><a href="#Struct_CLI_REL_TELL_PK_AND_EPH_PK">type Struct_CLI_REL_TELL_PK_AND_EPH_PK</a></dd>
+<dd><a href="#Struct_CLI_REL_UPSTREAM_DATA">type Struct_CLI_REL_UPSTREAM_DATA</a></dd>
+<dd><a href="#Struct_REL_CLI_DOWNSTREAM_DATA">type Struct_REL_CLI_DOWNSTREAM_DATA</a></dd>
+<dd><a href="#Struct_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG">type Struct_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG</a></dd>
+<dd><a href="#Struct_REL_CLI_TELL_TRUSTEES_PK">type Struct_REL_CLI_TELL_TRUSTEES_PK</a></dd>
+<dd><a href="#Struct_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE">type Struct_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE</a></dd>
+<dd><a href="#Struct_REL_TRU_TELL_RATE_CHANGE">type Struct_REL_TRU_TELL_RATE_CHANGE</a></dd>
+<dd><a href="#Struct_REL_TRU_TELL_TRANSCRIPT">type Struct_REL_TRU_TELL_TRANSCRIPT</a></dd>
+<dd><a href="#Struct_TRU_REL_DC_CIPHER">type Struct_TRU_REL_DC_CIPHER</a></dd>
+<dd><a href="#Struct_TRU_REL_SHUFFLE_SIG">type Struct_TRU_REL_SHUFFLE_SIG</a></dd>
+<dd><a href="#Struct_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS">type Struct_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS</a></dd>
+<dd><a href="#Struct_TRU_REL_TELL_PK">type Struct_TRU_REL_TELL_PK</a></dd>
+<dd><a href="#UDPChannel">type UDPChannel</a></dd>
+</dl>
+</div><!-- #manual-nav -->
+<h4>Package files</h4>
+<p>
+<span style="font-size:90%">
+<a href="/src/github.com/lbarman/prifi_dev/prifi-sda-wrapper/doc.go">doc.go</a>
+<a href="/src/github.com/lbarman/prifi_dev/prifi-sda-wrapper/message_binders.go">message_binders.go</a>
+<a href="/src/github.com/lbarman/prifi_dev/prifi-sda-wrapper/message_sender.go">message_sender.go</a>
+<a href="/src/github.com/lbarman/prifi_dev/prifi-sda-wrapper/messages.go">messages.go</a>
+<a href="/src/github.com/lbarman/prifi_dev/prifi-sda-wrapper/prifi.go">prifi.go</a>
+<a href="/src/github.com/lbarman/prifi_dev/prifi-sda-wrapper/simulation.go">simulation.go</a>
+<a href="/src/github.com/lbarman/prifi_dev/prifi-sda-wrapper/udp.go">udp.go</a>
+</span>
+</p>
+</div><!-- .expanded -->
+</div><!-- #pkg-index -->
+<div class="toggle" id="pkg-callgraph" style="display: none">
+<div class="collapsed">
+<h2 class="toggleButton" title="Click to show Internal Call Graph section">Internal call graph ▹</h2>
+</div> <!-- .expanded -->
+<div class="expanded">
+<h2 class="toggleButton" title="Click to hide Internal Call Graph section">Internal call graph ▾</h2>
+<p>
+			  In the call graph viewer below, each node
+			  is a function belonging to this package
+			  and its children are the functions it
+			  calls—perhaps dynamically.
+			</p>
+<p>
+			  The root nodes are the entry points of the
+			  package: functions that may be called from
+			  outside the package.
+			  There may be non-exported or anonymous
+			  functions among them if they are called
+			  dynamically from another package.
+			</p>
+<p>
+			  Click a node to visit that function's source code.
+			  From there you can visit its callers by
+			  clicking its declaring <code>func</code>
+			  token.
+			</p>
+<p>
+			  Functions may be omitted if they were
+			  determined to be unreachable in the
+			  particular programs or tests that were
+			  analyzed.
+			</p>
+<!-- Zero means show all package entry points. -->
+<ul class="treeview" id="callgraph-0" style="margin-left: 0.5in"></ul>
+</div>
+</div> <!-- #pkg-callgraph -->
+<h2 id="pkg-constants">Constants</h2>
+<pre>const <span id="FAKE_LOCAL_UDP_SIMULATED_LOSS_PERCENTAGE">FAKE_LOCAL_UDP_SIMULATED_LOSS_PERCENTAGE</span> = 0</pre>
+<p>
+FAKE_LOCAL_UDP_SIMULATED_LOSS_PERCENTAGE sets the loss rate
+of the simulated UDP channel for a more realistic simulation.
+</p>
+<pre>const <span id="MAXUDPSIZEINBYTES">MAXUDPSIZEINBYTES</span> <a href="https://golang.org/pkg/builtin/#int">int</a> = 65507</pre>
+<p>
+MAXUDPSIZEINBYTES is the maximum message size we can send through UDP.
+</p>
+<pre>const <span id="UDPPORT">UDPPORT</span> <a href="https://golang.org/pkg/builtin/#int">int</a> = 10101</pre>
+<p>
+UDPPORT is the port to be used for UDP communication.
+</p>
+<h2 id="NewPriFiSDAWrapperProtocol">func <a href="/src/github.com/lbarman/prifi_dev/prifi-sda-wrapper/prifi.go?s=4589:4675#L99">NewPriFiSDAWrapperProtocol</a>
+<a class="permalink" href="#NewPriFiSDAWrapperProtocol">¶</a>
+</h2>
+<pre>func NewPriFiSDAWrapperProtocol(n *<a href="../../../../github.com/dedis/cothority/sda/index.html">sda</a>.<a href="../../../../github.com/dedis/cothority/sda/index.html#TreeNodeInstance">TreeNodeInstance</a>) (<a href="../../../../github.com/dedis/cothority/sda/index.html">sda</a>.<a href="../../../../github.com/dedis/cothority/sda/index.html#ProtocolInstance">ProtocolInstance</a>, <a href="https://golang.org/pkg/builtin/#error">error</a>)</pre>
+<p>
+NewPriFiSDAWrapperProtocol is called on all nodes of the SDA-tree (when they receive their first prifi message).
+It builds a network map (deterministic from the order of the tree), which allows to build the
+messageSender struct needed by PriFi-Lib.
+Then, it instantiate PriFi-Lib with the correct state, given the role of the node.
+Finally, it registers handlers so it can unmarshal messages and give them back to prifi. It is kind of redundant to have a handler for each
+message, as PriFi-Lib is able to recognize the messages (everything is fed to ReceivedMessage() in PriFi-Lib), but that is how the SDA works
+for now.
+</p>
+<h2 id="NewSimulation">func <a href="/src/github.com/lbarman/prifi_dev/prifi-sda-wrapper/simulation.go?s=950:1007#L35">NewSimulation</a>
+<a class="permalink" href="#NewSimulation">¶</a>
+</h2>
+<pre>func NewSimulation(config <a href="https://golang.org/pkg/builtin/#string">string</a>) (<a href="../../../../github.com/dedis/cothority/sda/index.html">sda</a>.<a href="../../../../github.com/dedis/cothority/sda/index.html#Simulation">Simulation</a>, <a href="https://golang.org/pkg/builtin/#error">error</a>)</pre>
+<p>
+NewSimulation creates a new SDA simulation.
+</p>
+<h2 id="LocalhostChannel">type <a href="/src/github.com/lbarman/prifi_dev/prifi-sda-wrapper/udp.go?s=2442:2608#L64">LocalhostChannel</a>
+<a class="permalink" href="#LocalhostChannel">¶</a>
+</h2>
+<pre>type LocalhostChannel struct {
+    <a href="../../../../sync/index.html">sync</a>.<a href="../../../../sync/index.html#RWMutex">RWMutex</a>
+    <span class="comment">// contains filtered or unexported fields</span>
+}</pre>
+<p>
+LocalhostChannel emulates a UDP channel by using go channels instead of the network.
+</p>
+<h3 id="LocalhostChannel.Broadcast">func (*LocalhostChannel) <a href="/src/github.com/lbarman/prifi_dev/prifi-sda-wrapper/udp.go?s=2811:2879#L77">Broadcast</a>
+<a class="permalink" href="#LocalhostChannel.Broadcast">¶</a>
+</h3>
+<pre>func (lc *<a href="#LocalhostChannel">LocalhostChannel</a>) Broadcast(msg <a href="#MarshallableMessage">MarshallableMessage</a>) <a href="https://golang.org/pkg/builtin/#error">error</a></pre>
+<p>
+Implements UDPChannel interface.
+</p>
+<h3 id="LocalhostChannel.ListenAndBlock">func (*LocalhostChannel) <a href="/src/github.com/lbarman/prifi_dev/prifi-sda-wrapper/udp.go?s=3389:3515#L103">ListenAndBlock</a>
+<a class="permalink" href="#LocalhostChannel.ListenAndBlock">¶</a>
+</h3>
+<pre>func (lc *<a href="#LocalhostChannel">LocalhostChannel</a>) ListenAndBlock(emptyMessage <a href="#MarshallableMessage">MarshallableMessage</a>, lastSeenMessage <a href="https://golang.org/pkg/builtin/#int">int</a>) (<a href="#MarshallableMessage">MarshallableMessage</a>, <a href="https://golang.org/pkg/builtin/#error">error</a>)</pre>
+<p>
+Implements UDPChannel interface.
+</p>
+<h2 id="MarshallableMessage">type <a href="/src/github.com/lbarman/prifi_dev/prifi-sda-wrapper/udp.go?s=1275:1581#L24">MarshallableMessage</a>
+<a class="permalink" href="#MarshallableMessage">¶</a>
+</h2>
+<pre>type MarshallableMessage interface {
+    <span class="comment">// Prints the message's content.</span>
+    Print()
+
+    <span class="comment">// Stores a byte array but does not decode it.</span>
+    SetBytes(data []<a href="https://golang.org/pkg/builtin/#byte">byte</a>)
+
+    <span class="comment">// Converts the message to a raw byte array.</span>
+    ToBytes() ([]<a href="https://golang.org/pkg/builtin/#byte">byte</a>, <a href="https://golang.org/pkg/builtin/#error">error</a>)
+
+    <span class="comment">// Decodes the byte array set by SetBytes.</span>
+    FromBytes() (interface{}, <a href="https://golang.org/pkg/builtin/#error">error</a>)
+}</pre>
+<p>
+MarshallableMessage must be implemented by messages that are sent through UDP as we can only send byte[] over UDP.
+It has methods Print() used for debug, ToBytes() that converts it to a raw byte array, SetByte() which simply store a byte array in the
+structure (but does not decode it), and FromBytes() which decodes the interface{} from the inner buffer set by SetBytes().
+</p>
+<h2 id="MessageSender">type <a href="/src/github.com/lbarman/prifi_dev/prifi-sda-wrapper/message_sender.go?s=509:658#L13">MessageSender</a>
+<a class="permalink" href="#MessageSender">¶</a>
+</h2>
+<pre>type MessageSender struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}</pre>
+<p>
+MessageSender is the struct we need to give PriFi-Lib so it can send messages.
+It needs to implement the MessageSender interface defined in prifi_lib/prifi.go.
+</p>
+<h3 id="MessageSender.BroadcastToAllClients">func (MessageSender) <a href="/src/github.com/lbarman/prifi_dev/prifi-sda-wrapper/message_sender.go?s=1668:1736#L57">BroadcastToAllClients</a>
+<a class="permalink" href="#MessageSender.BroadcastToAllClients">¶</a>
+</h3>
+<pre>func (ms <a href="#MessageSender">MessageSender</a>) BroadcastToAllClients(msg interface{}) <a href="https://golang.org/pkg/builtin/#error">error</a></pre>
+<p>
+Implements MessageSender interface.
+</p>
+<h3 id="MessageSender.ClientSubscribeToBroadcast">func (MessageSender) <a href="/src/github.com/lbarman/prifi_dev/prifi-sda-wrapper/message_sender.go?s=2039:2182#L69">ClientSubscribeToBroadcast</a>
+<a class="permalink" href="#MessageSender.ClientSubscribeToBroadcast">¶</a>
+</h3>
+<pre>func (ms <a href="#MessageSender">MessageSender</a>) ClientSubscribeToBroadcast(clientName <a href="https://golang.org/pkg/builtin/#string">string</a>, protocolInstance *<a href="../../../../github.com/lbarman/prifi_dev/prifi-lib/index.html">prifi_lib</a>.<a href="../../../../github.com/lbarman/prifi_dev/prifi-lib/index.html#PriFiProtocol">PriFiProtocol</a>, startStopChan chan <a href="https://golang.org/pkg/builtin/#bool">bool</a>) <a href="https://golang.org/pkg/builtin/#error">error</a></pre>
+<p>
+Implements MessageSender interface.
+</p>
+<h3 id="MessageSender.SendToClient">func (MessageSender) <a href="/src/github.com/lbarman/prifi_dev/prifi-sda-wrapper/message_sender.go?s=699:765#L21">SendToClient</a>
+<a class="permalink" href="#MessageSender.SendToClient">¶</a>
+</h3>
+<pre>func (ms <a href="#MessageSender">MessageSender</a>) SendToClient(i <a href="https://golang.org/pkg/builtin/#int">int</a>, msg interface{}) <a href="https://golang.org/pkg/builtin/#error">error</a></pre>
+<p>
+Implements MessageSender interface.
+</p>
+<h3 id="MessageSender.SendToRelay">func (MessageSender) <a href="/src/github.com/lbarman/prifi_dev/prifi-sda-wrapper/message_sender.go?s=1474:1532#L51">SendToRelay</a>
+<a class="permalink" href="#MessageSender.SendToRelay">¶</a>
+</h3>
+<pre>func (ms <a href="#MessageSender">MessageSender</a>) SendToRelay(msg interface{}) <a href="https://golang.org/pkg/builtin/#error">error</a></pre>
+<p>
+Implements MessageSender interface.
+</p>
+<h3 id="MessageSender.SendToTrustee">func (MessageSender) <a href="/src/github.com/lbarman/prifi_dev/prifi-sda-wrapper/message_sender.go?s=1083:1150#L36">SendToTrustee</a>
+<a class="permalink" href="#MessageSender.SendToTrustee">¶</a>
+</h3>
+<pre>func (ms <a href="#MessageSender">MessageSender</a>) SendToTrustee(i <a href="https://golang.org/pkg/builtin/#int">int</a>, msg interface{}) <a href="https://golang.org/pkg/builtin/#error">error</a></pre>
+<p>
+Implements MessageSender interface.
+</p>
+<h2 id="PriFiSDAWrapper">type <a href="/src/github.com/lbarman/prifi_dev/prifi-sda-wrapper/prifi.go?s=3399:3669#L71">PriFiSDAWrapper</a>
+<a class="permalink" href="#PriFiSDAWrapper">¶</a>
+</h2>
+<pre>type PriFiSDAWrapper struct {
+    *<a href="../../../../github.com/dedis/cothority/sda/index.html">sda</a>.<a href="../../../../github.com/dedis/cothority/sda/index.html#TreeNodeInstance">TreeNodeInstance</a>
+
+    ResultChannel chan interface{}
+    <span class="comment">// contains filtered or unexported fields</span>
+}</pre>
+<p>
+PriFiSDAWrapper represents the state of the protocol.
+It contains the SDA-tree and a channel that stops the simulation when it receives a "true".
+</p>
+<h3 id="PriFiSDAWrapper.Received_ALL_ALL_PARAMETERS">func (*PriFiSDAWrapper) <a href="/src/github.com/lbarman/prifi_dev/prifi-sda-wrapper/message_binders.go?s=433:523#L4">Received_ALL_ALL_PARAMETERS</a>
+<a class="permalink" href="#PriFiSDAWrapper.Received_ALL_ALL_PARAMETERS">¶</a>
+</h3>
+<pre>func (p *<a href="#PriFiSDAWrapper">PriFiSDAWrapper</a>) Received_ALL_ALL_PARAMETERS(msg <a href="#Struct_ALL_ALL_PARAMETERS">Struct_ALL_ALL_PARAMETERS</a>) <a href="https://golang.org/pkg/builtin/#error">error</a></pre>
+<p>
+Wrapper to be able to receive message from SDA.
+</p>
+<h3 id="PriFiSDAWrapper.Received_ALL_ALL_SHUTDOWN">func (*PriFiSDAWrapper) <a href="/src/github.com/lbarman/prifi_dev/prifi-sda-wrapper/message_binders.go?s=229:315#L1">Received_ALL_ALL_SHUTDOWN</a>
+<a class="permalink" href="#PriFiSDAWrapper.Received_ALL_ALL_SHUTDOWN">¶</a>
+</h3>
+<pre>func (p *<a href="#PriFiSDAWrapper">PriFiSDAWrapper</a>) Received_ALL_ALL_SHUTDOWN(msg <a href="#Struct_ALL_ALL_SHUTDOWN">Struct_ALL_ALL_SHUTDOWN</a>) <a href="https://golang.org/pkg/builtin/#error">error</a></pre>
+<p>
+Wrapper to be able to receive message from SDA.
+</p>
+<h3 id="PriFiSDAWrapper.Received_CLI_REL_TELL_PK_AND_EPH_PK">func (*PriFiSDAWrapper) <a href="/src/github.com/lbarman/prifi_dev/prifi-sda-wrapper/message_binders.go?s=1402:1508#L26">Received_CLI_REL_TELL_PK_AND_EPH_PK</a>
+<a class="permalink" href="#PriFiSDAWrapper.Received_CLI_REL_TELL_PK_AND_EPH_PK">¶</a>
+</h3>
+<pre>func (p *<a href="#PriFiSDAWrapper">PriFiSDAWrapper</a>) Received_CLI_REL_TELL_PK_AND_EPH_PK(msg <a href="#Struct_CLI_REL_TELL_PK_AND_EPH_PK">Struct_CLI_REL_TELL_PK_AND_EPH_PK</a>) <a href="https://golang.org/pkg/builtin/#error">error</a></pre>
+<p>
+Wrapper to be able to receive message from SDA.
+</p>
+<h3 id="PriFiSDAWrapper.Received_CLI_REL_UPSTREAM_DATA">func (*PriFiSDAWrapper) <a href="/src/github.com/lbarman/prifi_dev/prifi-sda-wrapper/message_binders.go?s=1636:1732#L30">Received_CLI_REL_UPSTREAM_DATA</a>
+<a class="permalink" href="#PriFiSDAWrapper.Received_CLI_REL_UPSTREAM_DATA">¶</a>
+</h3>
+<pre>func (p *<a href="#PriFiSDAWrapper">PriFiSDAWrapper</a>) Received_CLI_REL_UPSTREAM_DATA(msg <a href="#Struct_CLI_REL_UPSTREAM_DATA">Struct_CLI_REL_UPSTREAM_DATA</a>) <a href="https://golang.org/pkg/builtin/#error">error</a></pre>
+<p>
+Wrapper to be able to receive message from SDA.
+</p>
+<h3 id="PriFiSDAWrapper.Received_REL_CLI_DOWNSTREAM_DATA">func (*PriFiSDAWrapper) <a href="/src/github.com/lbarman/prifi_dev/prifi-sda-wrapper/message_binders.go?s=663:763#L11">Received_REL_CLI_DOWNSTREAM_DATA</a>
+<a class="permalink" href="#PriFiSDAWrapper.Received_REL_CLI_DOWNSTREAM_DATA">¶</a>
+</h3>
+<pre>func (p *<a href="#PriFiSDAWrapper">PriFiSDAWrapper</a>) Received_REL_CLI_DOWNSTREAM_DATA(msg <a href="#Struct_REL_CLI_DOWNSTREAM_DATA">Struct_REL_CLI_DOWNSTREAM_DATA</a>) <a href="https://golang.org/pkg/builtin/#error">error</a></pre>
+<p>
+Wrapper to be able to receive message from SDA.
+</p>
+<h3 id="PriFiSDAWrapper.Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG">func (*PriFiSDAWrapper) <a href="/src/github.com/lbarman/prifi_dev/prifi-sda-wrapper/message_binders.go?s=888:1016#L15">Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG</a>
+<a class="permalink" href="#PriFiSDAWrapper.Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG">¶</a>
+</h3>
+<pre>func (p *<a href="#PriFiSDAWrapper">PriFiSDAWrapper</a>) Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(msg <a href="#Struct_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG">Struct_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG</a>) <a href="https://golang.org/pkg/builtin/#error">error</a></pre>
+<p>
+Wrapper to be able to receive message from SDA.
+</p>
+<h3 id="PriFiSDAWrapper.Received_REL_CLI_TELL_TRUSTEES_PK">func (*PriFiSDAWrapper) <a href="/src/github.com/lbarman/prifi_dev/prifi-sda-wrapper/message_binders.go?s=1155:1257#L19">Received_REL_CLI_TELL_TRUSTEES_PK</a>
+<a class="permalink" href="#PriFiSDAWrapper.Received_REL_CLI_TELL_TRUSTEES_PK">¶</a>
+</h3>
+<pre>func (p *<a href="#PriFiSDAWrapper">PriFiSDAWrapper</a>) Received_REL_CLI_TELL_TRUSTEES_PK(msg <a href="#Struct_REL_CLI_TELL_TRUSTEES_PK">Struct_REL_CLI_TELL_TRUSTEES_PK</a>) <a href="https://golang.org/pkg/builtin/#error">error</a></pre>
+<p>
+Wrapper to be able to receive message from SDA.
+</p>
+<h3 id="PriFiSDAWrapper.Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE">func (*PriFiSDAWrapper) <a href="/src/github.com/lbarman/prifi_dev/prifi-sda-wrapper/message_binders.go?s=2753:2897#L53">Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE</a>
+<a class="permalink" href="#PriFiSDAWrapper.Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE">¶</a>
+</h3>
+<pre>func (p *<a href="#PriFiSDAWrapper">PriFiSDAWrapper</a>) Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE(msg <a href="#Struct_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE">Struct_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE</a>) <a href="https://golang.org/pkg/builtin/#error">error</a></pre>
+<p>
+Wrapper to be able to receive message from SDA.
+</p>
+<h3 id="PriFiSDAWrapper.Received_REL_TRU_TELL_RATE_CHANGE">func (*PriFiSDAWrapper) <a href="/src/github.com/lbarman/prifi_dev/prifi-sda-wrapper/message_binders.go?s=3269:3371#L61">Received_REL_TRU_TELL_RATE_CHANGE</a>
+<a class="permalink" href="#PriFiSDAWrapper.Received_REL_TRU_TELL_RATE_CHANGE">¶</a>
+</h3>
+<pre>func (p *<a href="#PriFiSDAWrapper">PriFiSDAWrapper</a>) Received_REL_TRU_TELL_RATE_CHANGE(msg <a href="#Struct_REL_TRU_TELL_RATE_CHANGE">Struct_REL_TRU_TELL_RATE_CHANGE</a>) <a href="https://golang.org/pkg/builtin/#error">error</a></pre>
+<p>
+Wrapper to be able to receive message from SDA.
+</p>
+<h3 id="PriFiSDAWrapper.Received_REL_TRU_TELL_TRANSCRIPT">func (*PriFiSDAWrapper) <a href="/src/github.com/lbarman/prifi_dev/prifi-sda-wrapper/message_binders.go?s=3044:3144#L57">Received_REL_TRU_TELL_TRANSCRIPT</a>
+<a class="permalink" href="#PriFiSDAWrapper.Received_REL_TRU_TELL_TRANSCRIPT">¶</a>
+</h3>
+<pre>func (p *<a href="#PriFiSDAWrapper">PriFiSDAWrapper</a>) Received_REL_TRU_TELL_TRANSCRIPT(msg <a href="#Struct_REL_TRU_TELL_TRANSCRIPT">Struct_REL_TRU_TELL_TRANSCRIPT</a>) <a href="https://golang.org/pkg/builtin/#error">error</a></pre>
+<p>
+Wrapper to be able to receive message from SDA.
+</p>
+<h3 id="PriFiSDAWrapper.Received_TRU_REL_DC_CIPHER">func (*PriFiSDAWrapper) <a href="/src/github.com/lbarman/prifi_dev/prifi-sda-wrapper/message_binders.go?s=1855:1943#L34">Received_TRU_REL_DC_CIPHER</a>
+<a class="permalink" href="#PriFiSDAWrapper.Received_TRU_REL_DC_CIPHER">¶</a>
+</h3>
+<pre>func (p *<a href="#PriFiSDAWrapper">PriFiSDAWrapper</a>) Received_TRU_REL_DC_CIPHER(msg <a href="#Struct_TRU_REL_DC_CIPHER">Struct_TRU_REL_DC_CIPHER</a>) <a href="https://golang.org/pkg/builtin/#error">error</a></pre>
+<p>
+Wrapper to be able to receive message from SDA.
+</p>
+<h3 id="PriFiSDAWrapper.Received_TRU_REL_SHUFFLE_SIG">func (*PriFiSDAWrapper) <a href="/src/github.com/lbarman/prifi_dev/prifi-sda-wrapper/message_binders.go?s=2062:2154#L38">Received_TRU_REL_SHUFFLE_SIG</a>
+<a class="permalink" href="#PriFiSDAWrapper.Received_TRU_REL_SHUFFLE_SIG">¶</a>
+</h3>
+<pre>func (p *<a href="#PriFiSDAWrapper">PriFiSDAWrapper</a>) Received_TRU_REL_SHUFFLE_SIG(msg <a href="#Struct_TRU_REL_SHUFFLE_SIG">Struct_TRU_REL_SHUFFLE_SIG</a>) <a href="https://golang.org/pkg/builtin/#error">error</a></pre>
+<p>
+Wrapper to be able to receive message from SDA.
+</p>
+<h3 id="PriFiSDAWrapper.Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS">func (*PriFiSDAWrapper) <a href="/src/github.com/lbarman/prifi_dev/prifi-sda-wrapper/message_binders.go?s=2275:2395#L42">Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS</a>
+<a class="permalink" href="#PriFiSDAWrapper.Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS">¶</a>
+</h3>
+<pre>func (p *<a href="#PriFiSDAWrapper">PriFiSDAWrapper</a>) Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS(msg <a href="#Struct_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS">Struct_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS</a>) <a href="https://golang.org/pkg/builtin/#error">error</a></pre>
+<p>
+Wrapper to be able to receive message from SDA.
+</p>
+<h3 id="PriFiSDAWrapper.Received_TRU_REL_TELL_PK">func (*PriFiSDAWrapper) <a href="/src/github.com/lbarman/prifi_dev/prifi-sda-wrapper/message_binders.go?s=2530:2614#L46">Received_TRU_REL_TELL_PK</a>
+<a class="permalink" href="#PriFiSDAWrapper.Received_TRU_REL_TELL_PK">¶</a>
+</h3>
+<pre>func (p *<a href="#PriFiSDAWrapper">PriFiSDAWrapper</a>) Received_TRU_REL_TELL_PK(msg <a href="#Struct_TRU_REL_TELL_PK">Struct_TRU_REL_TELL_PK</a>) <a href="https://golang.org/pkg/builtin/#error">error</a></pre>
+<p>
+Wrapper to be able to receive message from SDA.
+</p>
+<h3 id="PriFiSDAWrapper.SetConfig">func (*PriFiSDAWrapper) <a href="/src/github.com/lbarman/prifi_dev/prifi-sda-wrapper/prifi.go?s=3793:3865#L84">SetConfig</a>
+<a class="permalink" href="#PriFiSDAWrapper.SetConfig">¶</a>
+</h3>
+<pre>func (p *<a href="#PriFiSDAWrapper">PriFiSDAWrapper</a>) SetConfig(config <a href="../../../../github.com/lbarman/prifi_dev/prifi-lib/index.html">prifi_lib</a>.<a href="../../../../github.com/lbarman/prifi_dev/prifi-lib/index.html#ALL_ALL_PARAMETERS">ALL_ALL_PARAMETERS</a>)</pre>
+<p>
+SetConfig sets the protocol's configuration.
+It must be called before Start() on the node
+starting the protocol.
+</p>
+<h3 id="PriFiSDAWrapper.Start">func (*PriFiSDAWrapper) <a href="/src/github.com/lbarman/prifi_dev/prifi-sda-wrapper/prifi.go?s=940:979#L16">Start</a>
+<a class="permalink" href="#PriFiSDAWrapper.Start">¶</a>
+</h3>
+<pre>func (p *<a href="#PriFiSDAWrapper">PriFiSDAWrapper</a>) Start() <a href="https://golang.org/pkg/builtin/#error">error</a></pre>
+<p>
+Start is part of the sda protocol interface.
+It is called when the protocol is started and
+calls the PriFi library with the correct parameters.
+</p>
+<h2 id="RealUDPChannel">type <a href="/src/github.com/lbarman/prifi_dev/prifi-sda-wrapper/udp.go?s=2695:2773#L71">RealUDPChannel</a>
+<a class="permalink" href="#RealUDPChannel">¶</a>
+</h2>
+<pre>type RealUDPChannel struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}</pre>
+<p>
+RealUDPChannel uses real UDP communication to implement the UDPChannel interface.
+</p>
+<h3 id="RealUDPChannel.Broadcast">func (*RealUDPChannel) <a href="/src/github.com/lbarman/prifi_dev/prifi-sda-wrapper/udp.go?s=4599:4664#L142">Broadcast</a>
+<a class="permalink" href="#RealUDPChannel.Broadcast">¶</a>
+</h3>
+<pre>func (c *<a href="#RealUDPChannel">RealUDPChannel</a>) Broadcast(msg <a href="#MarshallableMessage">MarshallableMessage</a>) <a href="https://golang.org/pkg/builtin/#error">error</a></pre>
+<p>
+Implements UDPChannel interface.
+</p>
+<h3 id="RealUDPChannel.ListenAndBlock">func (*RealUDPChannel) <a href="/src/github.com/lbarman/prifi_dev/prifi-sda-wrapper/udp.go?s=5650:5773#L180">ListenAndBlock</a>
+<a class="permalink" href="#RealUDPChannel.ListenAndBlock">¶</a>
+</h3>
+<pre>func (c *<a href="#RealUDPChannel">RealUDPChannel</a>) ListenAndBlock(emptyMessage <a href="#MarshallableMessage">MarshallableMessage</a>, lastSeenMessage <a href="https://golang.org/pkg/builtin/#int">int</a>) (<a href="#MarshallableMessage">MarshallableMessage</a>, <a href="https://golang.org/pkg/builtin/#error">error</a>)</pre>
+<p>
+Implements UDPChannel interface.
+</p>
+<h2 id="Simulation">type <a href="/src/github.com/lbarman/prifi_dev/prifi-sda-wrapper/simulation.go?s=455:521#L14">Simulation</a>
+<a class="permalink" href="#Simulation">¶</a>
+</h2>
+<pre>type Simulation struct {
+    <a href="../../../../github.com/dedis/cothority/sda/index.html">sda</a>.<a href="../../../../github.com/dedis/cothority/sda/index.html#SimulationBFTree">SimulationBFTree</a>
+    <a href="#SimulationConfig">SimulationConfig</a>
+}</pre>
+<p>
+Simulation implements sda.Simulation.
+</p>
+<h3 id="Simulation.Run">func (*Simulation) <a href="/src/github.com/lbarman/prifi_dev/prifi-sda-wrapper/simulation.go?s=1540:1600#L60">Run</a>
+<a class="permalink" href="#Simulation.Run">¶</a>
+</h3>
+<pre>func (e *<a href="#Simulation">Simulation</a>) Run(config *<a href="../../../../github.com/dedis/cothority/sda/index.html">sda</a>.<a href="../../../../github.com/dedis/cothority/sda/index.html#SimulationConfig">SimulationConfig</a>) <a href="https://golang.org/pkg/builtin/#error">error</a></pre>
+<p>
+Run implements sda.Simulation.
+</p>
+<h3 id="Simulation.Setup">func (*Simulation) <a href="/src/github.com/lbarman/prifi_dev/prifi-sda-wrapper/simulation.go?s=1270:1357#L48">Setup</a>
+<a class="permalink" href="#Simulation.Setup">¶</a>
+</h3>
+<pre>func (e *<a href="#Simulation">Simulation</a>) Setup(dir <a href="https://golang.org/pkg/builtin/#string">string</a>, hosts []<a href="https://golang.org/pkg/builtin/#string">string</a>) (
+    *<a href="../../../../github.com/dedis/cothority/sda/index.html">sda</a>.<a href="../../../../github.com/dedis/cothority/sda/index.html#SimulationConfig">SimulationConfig</a>, <a href="https://golang.org/pkg/builtin/#error">error</a>)</pre>
+<p>
+Setup implements sda.Simulation.
+</p>
+<h2 id="SimulationConfig">type <a href="/src/github.com/lbarman/prifi_dev/prifi-sda-wrapper/simulation.go?s=590:868#L20">SimulationConfig</a>
+<a class="permalink" href="#SimulationConfig">¶</a>
+</h2>
+<pre>type SimulationConfig struct {
+    NClients              <a href="https://golang.org/pkg/builtin/#int">int</a>
+    NTrustees             <a href="https://golang.org/pkg/builtin/#int">int</a>
+    CellSizeUp            <a href="https://golang.org/pkg/builtin/#int">int</a>
+    CellSizeDown          <a href="https://golang.org/pkg/builtin/#int">int</a>
+    RelayWindowSize       <a href="https://golang.org/pkg/builtin/#int">int</a>
+    RelayUseDummyDataDown <a href="https://golang.org/pkg/builtin/#bool">bool</a>
+    RelayReportingLimit   <a href="https://golang.org/pkg/builtin/#int">int</a>
+    UseUDP                <a href="https://golang.org/pkg/builtin/#bool">bool</a>
+    DoLatencyTests        <a href="https://golang.org/pkg/builtin/#bool">bool</a>
+}</pre>
+<p>
+SimulationConfig is the config used by the simulation for PriFi
+</p>
+<h2 id="Struct_ALL_ALL_PARAMETERS">type <a href="/src/github.com/lbarman/prifi_dev/prifi-sda-wrapper/messages.go?s=427:513#L9">Struct_ALL_ALL_PARAMETERS</a>
+<a class="permalink" href="#Struct_ALL_ALL_PARAMETERS">¶</a>
+</h2>
+<pre>type Struct_ALL_ALL_PARAMETERS struct {
+    *<a href="../../../../github.com/dedis/cothority/sda/index.html">sda</a>.<a href="../../../../github.com/dedis/cothority/sda/index.html#TreeNode">TreeNode</a>
+    <a href="../../../../github.com/lbarman/prifi_dev/prifi-lib/index.html">prifi_lib</a>.<a href="../../../../github.com/lbarman/prifi_dev/prifi-lib/index.html#ALL_ALL_PARAMETERS">ALL_ALL_PARAMETERS</a>
+}</pre>
+<p>
+Wrapper to be able to send message through SDA.
+</p>
+<h2 id="Struct_ALL_ALL_SHUTDOWN">type <a href="/src/github.com/lbarman/prifi_dev/prifi-sda-wrapper/messages.go?s=293:375#L4">Struct_ALL_ALL_SHUTDOWN</a>
+<a class="permalink" href="#Struct_ALL_ALL_SHUTDOWN">¶</a>
+</h2>
+<pre>type Struct_ALL_ALL_SHUTDOWN struct {
+    *<a href="../../../../github.com/dedis/cothority/sda/index.html">sda</a>.<a href="../../../../github.com/dedis/cothority/sda/index.html#TreeNode">TreeNode</a>
+    <a href="../../../../github.com/lbarman/prifi_dev/prifi-lib/index.html">prifi_lib</a>.<a href="../../../../github.com/lbarman/prifi_dev/prifi-lib/index.html#ALL_ALL_SHUTDOWN">ALL_ALL_SHUTDOWN</a>
+}</pre>
+<p>
+Wrapper to be able to send message through SDA.
+</p>
+<h2 id="Struct_CLI_REL_TELL_PK_AND_EPH_PK">type <a href="/src/github.com/lbarman/prifi_dev/prifi-sda-wrapper/messages.go?s=565:667#L14">Struct_CLI_REL_TELL_PK_AND_EPH_PK</a>
+<a class="permalink" href="#Struct_CLI_REL_TELL_PK_AND_EPH_PK">¶</a>
+</h2>
+<pre>type Struct_CLI_REL_TELL_PK_AND_EPH_PK struct {
+    *<a href="../../../../github.com/dedis/cothority/sda/index.html">sda</a>.<a href="../../../../github.com/dedis/cothority/sda/index.html#TreeNode">TreeNode</a>
+    <a href="../../../../github.com/lbarman/prifi_dev/prifi-lib/index.html">prifi_lib</a>.<a href="../../../../github.com/lbarman/prifi_dev/prifi-lib/index.html#CLI_REL_TELL_PK_AND_EPH_PK">CLI_REL_TELL_PK_AND_EPH_PK</a>
+}</pre>
+<p>
+Wrapper to be able to send message through SDA.
+</p>
+<h2 id="Struct_CLI_REL_UPSTREAM_DATA">type <a href="/src/github.com/lbarman/prifi_dev/prifi-sda-wrapper/messages.go?s=719:811#L19">Struct_CLI_REL_UPSTREAM_DATA</a>
+<a class="permalink" href="#Struct_CLI_REL_UPSTREAM_DATA">¶</a>
+</h2>
+<pre>type Struct_CLI_REL_UPSTREAM_DATA struct {
+    *<a href="../../../../github.com/dedis/cothority/sda/index.html">sda</a>.<a href="../../../../github.com/dedis/cothority/sda/index.html#TreeNode">TreeNode</a>
+    <a href="../../../../github.com/lbarman/prifi_dev/prifi-lib/index.html">prifi_lib</a>.<a href="../../../../github.com/lbarman/prifi_dev/prifi-lib/index.html#CLI_REL_UPSTREAM_DATA">CLI_REL_UPSTREAM_DATA</a>
+}</pre>
+<p>
+Wrapper to be able to send message through SDA.
+</p>
+<h2 id="Struct_REL_CLI_DOWNSTREAM_DATA">type <a href="/src/github.com/lbarman/prifi_dev/prifi-sda-wrapper/messages.go?s=863:959#L24">Struct_REL_CLI_DOWNSTREAM_DATA</a>
+<a class="permalink" href="#Struct_REL_CLI_DOWNSTREAM_DATA">¶</a>
+</h2>
+<pre>type Struct_REL_CLI_DOWNSTREAM_DATA struct {
+    *<a href="../../../../github.com/dedis/cothority/sda/index.html">sda</a>.<a href="../../../../github.com/dedis/cothority/sda/index.html#TreeNode">TreeNode</a>
+    <a href="../../../../github.com/lbarman/prifi_dev/prifi-lib/index.html">prifi_lib</a>.<a href="../../../../github.com/lbarman/prifi_dev/prifi-lib/index.html#REL_CLI_DOWNSTREAM_DATA">REL_CLI_DOWNSTREAM_DATA</a>
+}</pre>
+<p>
+Wrapper to be able to send message through SDA.
+</p>
+<h2 id="Struct_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG">type <a href="/src/github.com/lbarman/prifi_dev/prifi-sda-wrapper/messages.go?s=1011:1135#L29">Struct_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG</a>
+<a class="permalink" href="#Struct_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG">¶</a>
+</h2>
+<pre>type Struct_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG struct {
+    *<a href="../../../../github.com/dedis/cothority/sda/index.html">sda</a>.<a href="../../../../github.com/dedis/cothority/sda/index.html#TreeNode">TreeNode</a>
+    <a href="../../../../github.com/lbarman/prifi_dev/prifi-lib/index.html">prifi_lib</a>.<a href="../../../../github.com/lbarman/prifi_dev/prifi-lib/index.html#REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG">REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG</a>
+}</pre>
+<p>
+Wrapper to be able to send message through SDA.
+</p>
+<h2 id="Struct_REL_CLI_TELL_TRUSTEES_PK">type <a href="/src/github.com/lbarman/prifi_dev/prifi-sda-wrapper/messages.go?s=1187:1285#L34">Struct_REL_CLI_TELL_TRUSTEES_PK</a>
+<a class="permalink" href="#Struct_REL_CLI_TELL_TRUSTEES_PK">¶</a>
+</h2>
+<pre>type Struct_REL_CLI_TELL_TRUSTEES_PK struct {
+    *<a href="../../../../github.com/dedis/cothority/sda/index.html">sda</a>.<a href="../../../../github.com/dedis/cothority/sda/index.html#TreeNode">TreeNode</a>
+    <a href="../../../../github.com/lbarman/prifi_dev/prifi-lib/index.html">prifi_lib</a>.<a href="../../../../github.com/lbarman/prifi_dev/prifi-lib/index.html#REL_CLI_TELL_TRUSTEES_PK">REL_CLI_TELL_TRUSTEES_PK</a>
+}</pre>
+<p>
+Wrapper to be able to send message through SDA.
+</p>
+<h2 id="Struct_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE">type <a href="/src/github.com/lbarman/prifi_dev/prifi-sda-wrapper/messages.go?s=1337:1477#L39">Struct_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE</a>
+<a class="permalink" href="#Struct_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE">¶</a>
+</h2>
+<pre>type Struct_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE struct {
+    *<a href="../../../../github.com/dedis/cothority/sda/index.html">sda</a>.<a href="../../../../github.com/dedis/cothority/sda/index.html#TreeNode">TreeNode</a>
+    <a href="../../../../github.com/lbarman/prifi_dev/prifi-lib/index.html">prifi_lib</a>.<a href="../../../../github.com/lbarman/prifi_dev/prifi-lib/index.html#REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE">REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE</a>
+}</pre>
+<p>
+Wrapper to be able to send message through SDA.
+</p>
+<h2 id="Struct_REL_TRU_TELL_RATE_CHANGE">type <a href="/src/github.com/lbarman/prifi_dev/prifi-sda-wrapper/messages.go?s=2253:2351#L69">Struct_REL_TRU_TELL_RATE_CHANGE</a>
+<a class="permalink" href="#Struct_REL_TRU_TELL_RATE_CHANGE">¶</a>
+</h2>
+<pre>type Struct_REL_TRU_TELL_RATE_CHANGE struct {
+    *<a href="../../../../github.com/dedis/cothority/sda/index.html">sda</a>.<a href="../../../../github.com/dedis/cothority/sda/index.html#TreeNode">TreeNode</a>
+    <a href="../../../../github.com/lbarman/prifi_dev/prifi-lib/index.html">prifi_lib</a>.<a href="../../../../github.com/lbarman/prifi_dev/prifi-lib/index.html#REL_TRU_TELL_RATE_CHANGE">REL_TRU_TELL_RATE_CHANGE</a>
+}</pre>
+<p>
+Wrapper to be able to send message through SDA.
+</p>
+<h2 id="Struct_REL_TRU_TELL_TRANSCRIPT">type <a href="/src/github.com/lbarman/prifi_dev/prifi-sda-wrapper/messages.go?s=1529:1625#L44">Struct_REL_TRU_TELL_TRANSCRIPT</a>
+<a class="permalink" href="#Struct_REL_TRU_TELL_TRANSCRIPT">¶</a>
+</h2>
+<pre>type Struct_REL_TRU_TELL_TRANSCRIPT struct {
+    *<a href="../../../../github.com/dedis/cothority/sda/index.html">sda</a>.<a href="../../../../github.com/dedis/cothority/sda/index.html#TreeNode">TreeNode</a>
+    <a href="../../../../github.com/lbarman/prifi_dev/prifi-lib/index.html">prifi_lib</a>.<a href="../../../../github.com/lbarman/prifi_dev/prifi-lib/index.html#REL_TRU_TELL_TRANSCRIPT">REL_TRU_TELL_TRANSCRIPT</a>
+}</pre>
+<p>
+Wrapper to be able to send message through SDA.
+</p>
+<h2 id="Struct_TRU_REL_DC_CIPHER">type <a href="/src/github.com/lbarman/prifi_dev/prifi-sda-wrapper/messages.go?s=1677:1761#L49">Struct_TRU_REL_DC_CIPHER</a>
+<a class="permalink" href="#Struct_TRU_REL_DC_CIPHER">¶</a>
+</h2>
+<pre>type Struct_TRU_REL_DC_CIPHER struct {
+    *<a href="../../../../github.com/dedis/cothority/sda/index.html">sda</a>.<a href="../../../../github.com/dedis/cothority/sda/index.html#TreeNode">TreeNode</a>
+    <a href="../../../../github.com/lbarman/prifi_dev/prifi-lib/index.html">prifi_lib</a>.<a href="../../../../github.com/lbarman/prifi_dev/prifi-lib/index.html#TRU_REL_DC_CIPHER">TRU_REL_DC_CIPHER</a>
+}</pre>
+<p>
+Wrapper to be able to send message through SDA.
+</p>
+<h2 id="Struct_TRU_REL_SHUFFLE_SIG">type <a href="/src/github.com/lbarman/prifi_dev/prifi-sda-wrapper/messages.go?s=1813:1901#L54">Struct_TRU_REL_SHUFFLE_SIG</a>
+<a class="permalink" href="#Struct_TRU_REL_SHUFFLE_SIG">¶</a>
+</h2>
+<pre>type Struct_TRU_REL_SHUFFLE_SIG struct {
+    *<a href="../../../../github.com/dedis/cothority/sda/index.html">sda</a>.<a href="../../../../github.com/dedis/cothority/sda/index.html#TreeNode">TreeNode</a>
+    <a href="../../../../github.com/lbarman/prifi_dev/prifi-lib/index.html">prifi_lib</a>.<a href="../../../../github.com/lbarman/prifi_dev/prifi-lib/index.html#TRU_REL_SHUFFLE_SIG">TRU_REL_SHUFFLE_SIG</a>
+}</pre>
+<p>
+Wrapper to be able to send message through SDA.
+</p>
+<h2 id="Struct_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS">type <a href="/src/github.com/lbarman/prifi_dev/prifi-sda-wrapper/messages.go?s=1953:2069#L59">Struct_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS</a>
+<a class="permalink" href="#Struct_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS">¶</a>
+</h2>
+<pre>type Struct_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS struct {
+    *<a href="../../../../github.com/dedis/cothority/sda/index.html">sda</a>.<a href="../../../../github.com/dedis/cothority/sda/index.html#TreeNode">TreeNode</a>
+    <a href="../../../../github.com/lbarman/prifi_dev/prifi-lib/index.html">prifi_lib</a>.<a href="../../../../github.com/lbarman/prifi_dev/prifi-lib/index.html#TRU_REL_TELL_NEW_BASE_AND_EPH_PKS">TRU_REL_TELL_NEW_BASE_AND_EPH_PKS</a>
+}</pre>
+<p>
+Wrapper to be able to send message through SDA.
+</p>
+<h2 id="Struct_TRU_REL_TELL_PK">type <a href="/src/github.com/lbarman/prifi_dev/prifi-sda-wrapper/messages.go?s=2121:2201#L64">Struct_TRU_REL_TELL_PK</a>
+<a class="permalink" href="#Struct_TRU_REL_TELL_PK">¶</a>
+</h2>
+<pre>type Struct_TRU_REL_TELL_PK struct {
+    *<a href="../../../../github.com/dedis/cothority/sda/index.html">sda</a>.<a href="../../../../github.com/dedis/cothority/sda/index.html#TreeNode">TreeNode</a>
+    <a href="../../../../github.com/lbarman/prifi_dev/prifi-lib/index.html">prifi_lib</a>.<a href="../../../../github.com/lbarman/prifi_dev/prifi-lib/index.html#TRU_REL_TELL_PK">TRU_REL_TELL_PK</a>
+}</pre>
+<p>
+Wrapper to be able to send message through SDA.
+</p>
+<h2 id="UDPChannel">type <a href="/src/github.com/lbarman/prifi_dev/prifi-sda-wrapper/udp.go?s=1624:1950#L40">UDPChannel</a>
+<a class="permalink" href="#UDPChannel">¶</a>
+</h2>
+<pre>type UDPChannel interface {
+    <span class="comment">// Broadcast sends a message to all nodes.</span>
+    Broadcast(msg <a href="#MarshallableMessage">MarshallableMessage</a>) <a href="https://golang.org/pkg/builtin/#error">error</a>
+
+    <span class="comment">// ListenAndBlock takes an empty MarshallableMessage as input, because the method does know how to parse the message.</span>
+    ListenAndBlock(msg <a href="#MarshallableMessage">MarshallableMessage</a>, lastSeenMessage <a href="https://golang.org/pkg/builtin/#int">int</a>) (<a href="#MarshallableMessage">MarshallableMessage</a>, <a href="https://golang.org/pkg/builtin/#error">error</a>)
+}</pre>
+<p>
+UDPChannel represents a UDP channel.
+</p>
+
+</div><!-- .container -->
+</div><!-- #page -->
+<!-- TODO(adonovan): load these from <head> using "defer" attribute? -->
+<script src="../../../../.goduckstyle/jquery.js" type="text/javascript"></script>
+<script src="../../../../.goduckstyle/jquery.treeview.js" type="text/javascript"></script>
+<script src="../../../../.goduckstyle/jquery.treeview.edit.js" type="text/javascript"></script>
+<script>var goVersion = "go1.7.3";</script>
+<script src="../../../../.goduckstyle/godocs.js" type="text/javascript"></script>
+</body>
+</html>
