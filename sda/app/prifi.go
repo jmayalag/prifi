@@ -95,14 +95,9 @@ func trustee(c *cli.Context) error {
 	host, err := cothorityd(c)
 	log.ErrFatal(err)
 	service := host.GetService(prifi.ServiceName).(*prifi.Service)
-	// Do other setups
-	group := getGroup(c)
-	// Log the list of participating nodes
-	for i := 0; i < len(group.Roster.List); i++ {
-		log.Lvl1(group.Roster.List[i]/*.Addresses .ServerIdentityID*/)
-	}
 
-	log.ErrFatal(service.StartTrustee())
+	group := getGroup(c)
+	log.ErrFatal(service.StartTrustee(group))
 
 	host.Start()
 	return nil
@@ -114,7 +109,7 @@ func relay(c *cli.Context) error {
 	host, err := cothorityd(c)
 	log.ErrFatal(err)
 	service := host.GetService(prifi.ServiceName).(*prifi.Service)
-	// Do other setups
+
 	group := getGroup(c)
 	log.ErrFatal(service.StartRelay(group))
 
@@ -128,8 +123,9 @@ func client(c *cli.Context) error {
 	host, err := cothorityd(c)
 	log.ErrFatal(err)
 	service := host.GetService(prifi.ServiceName).(*prifi.Service)
-	// Do other setups
-	log.ErrFatal(service.StartClient())
+
+	group := getGroup(c)
+	log.ErrFatal(service.StartClient(group))
 
 	host.Start()
 	return nil

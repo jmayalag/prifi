@@ -44,6 +44,7 @@ type PriFiSDAWrapper struct {
 	*sda.TreeNodeInstance
 	configSet     bool
 	config        PriFiSDAWrapperConfig
+	role          PriFiRole
 	ResultChannel chan interface{}
 
 	//this is the actual "PriFi" (DC-net) protocol/library, defined in prifi-lib/prifi.go
@@ -54,30 +55,10 @@ type PriFiSDAWrapper struct {
 func (p *PriFiSDAWrapper) Start() error {
 
 	if !p.configSet {
-		log.Error("Trying to start PriFi Library, but config not set !")
+		log.Fatal("Trying to start PriFi Library, but config not set !")
 	}
 
 	log.Lvl3("Starting PriFi-SDA-Wrapper Protocol")
-
-	//print the network host map
-	nTrustees := tomlConfig.NTrustees
-	nodes := p.TreeNodeInstance.List()
-	log.Lvl2("Relay      -> ", nodes[0].Name())
-	for i := 1; i < nTrustees+1; i++ {
-		log.Lvl2("Trustee", (i - 1), " -> ", nodes[i].Name())
-	}
-	for i := 1 + nTrustees; i < len(nodes); i++ {
-		log.Lvl2("Client ", (i - nTrustees - 1), " -> ", nodes[i].Name())
-	}
-
-	//simulate the first message received (here the parameters). If StartNow = true, the relay will handle the situation from now on
-	configMessageWrapper := Struct_ALL_ALL_PARAMETERS{p.TreeNode(), p.config}
-	_ = p.Received_ALL_ALL_PARAMETERS(configMessageWrapper)
-
-	//initialize the first message (here the dummy ping-pong game)
-	//firstMessage := &prifi_lib.CLI_REL_UPSTREAM_DATA{100, make([]byte, 0)}
-	//firstMessageWrapper := Struct_CLI_REL_UPSTREAM_DATA{p.TreeNode(), *firstMessage}
-	//_ = p.Received_CLI_REL_UPSTREAM_DATA(firstMessageWrapper)
 
 	return nil
 }
@@ -106,138 +87,177 @@ func init() {
 	sda.GlobalProtocolRegister("PriFi-SDA-Wrapper", NewPriFiSDAWrapperProtocol)
 }
 
-func (p *PriFiSDAWrapper) SetConfig(config PriFiSDAWrapperConfig) {
+// SetConfig configures the PriFi node.
+// It **MUST** be called in service.newProtocol or before Start().
+func (p *PriFiSDAWrapper) SetConfig(config *PriFiSDAWrapperConfig) {
 	p.config = config
+	p.role = config.Role
+
+	ms := p.buildMessageSender(config.Identities)
+
+	// Prifi-lib parameters
+	// TODO: read them from a config file (or let relay broadcast them ?)
+	nClients := len(ms.clients)
+	nTrustees := len(ms.trustees)
+	upCellSize := 1000
+	downCellSize := 10000
+	relayWindowSize := 10
+	relayUseDummyDataDown := false
+	relayReportingLimit := -10
+	useUDP := false
+	doLatencyTests := false
+	sendDataOutOfDCNet := false
+
+	experimentResultChan := p.ResultChannel
+
+	// Instantiate prifi-lib with the correct role
+	switch config.Role {
+	case Relay:
+		relayState := prifi_lib.NewRelayState(
+			nTrustees,
+			nClients,
+			upCellSize,
+			downCellSize,
+			relayWindowSize,
+			relayUseDummyDataDown,
+			relayReportingLimit,
+			experimentResultChan,
+			useUDP,
+			sendDataOutOfDCNet)
+
+		p.prifiProtocol = prifi_lib.NewPriFiRelayWithState(ms, relayState)
+
+	case Trustee:
+		id := config.Identities[p.ServerIdentity()].Id
+		trusteeState := prifi_lib.NewTrusteeState(id, nTrustees, nClients, upCellSize)
+		p.prifiProtocol = prifi_lib.NewPriFiTrusteeWithState(ms, trusteeState)
+
+	case Client:
+		id := config.Identities[p.ServerIdentity()].Id
+		clientState := prifi_lib.NewClientState(id,
+			nTrustees,
+			nClients,
+			upCellSize,
+			doLatencyTests,
+			useUDP,
+			sendDataOutOfDCNet)
+		p.prifiProtocol = prifi_lib.NewPriFiClientWithState(ms, clientState)
+	}
+
+	p.registerHandlers()
+
 	p.configSet = true
 	log.Lvl2("Setting PriFi config to be : ", config)
 }
 
-/**
- * This function is called on all nodes of the SDA-tree (when they receive their first prifi message).
- * It build a network map (deterministic from the order of the tree), which allows to build the
- * messageSender struct needed by PriFi-Lib.
- * Then, it instantiate PriFi-Lib with the correct state, given the role of the node.
- * Finally, it registers handlers so it can unmarshal messages and give them back to prifi. It is kind of ridiculous to have a handler for each
- * message, as PriFi-Lib is able to recognize the messages (everything is fed to ReceivedMessage() in PriFi-Lib), but that is how the SDA works
- * for now.
- */
-func NewPriFiSDAWrapperProtocol(n *sda.TreeNodeInstance) (sda.ProtocolInstance, error) {
+// buildMessageSender creates a MessageSender struct
+// given a mep between server identities and PriFi identities.
+func (p *PriFiSDAWrapper) buildMessageSender(identities map[network.ServerIdentity]PriFiIdentity) MessageSender {
+	nodes := p.List() // Has type []*sda.TreeNode
+	trustees := make(map[int]*sda.TreeNode)
+	clients := make(map[int]*sda.TreeNode)
+	var relay *sda.TreeNode = nil
 
-	//fill in the network host map
-	nTrustees := tomlConfig.NTrustees
-	nodes := n.List()
-	nodeRelay := nodes[0]
-	nodesTrustee := make(map[int]*sda.TreeNode)
-	for i := 1; i < nTrustees+1; i++ {
-		nodesTrustee[i-1] = nodes[i]
-	}
-	nodesClient := make(map[int]*sda.TreeNode)
-	for i := 1 + nTrustees; i < len(nodes); i++ {
-		nodesClient[i-1-nTrustees] = nodes[i]
-	}
-	messageSender := MessageSender{n, nodeRelay, nodesClient, nodesTrustee}
-
-	//parameters goes there
-	nClients := tomlConfig.NClients //my eyes are bleeding. Sorry for this part
-	upCellSize := tomlConfig.CellSizeUp
-	downCellSize := tomlConfig.CellSizeDown
-	relayWindowSize := tomlConfig.RelayWindowSize
-	relayUseDummyDataDown := tomlConfig.RelayUseDummyDataDown
-	relayReportingLimit := tomlConfig.RelayReportingLimit
-	useUDP := tomlConfig.UseUDP
-	doLatencyTests := tomlConfig.DoLatencyTests
-	sendDataOutOfDCNet := false
-
-	var prifiProtocol *prifi_lib.PriFiProtocol
-	experimentResultChan := make(chan interface{}, 1)
-
-	//first of all, instantiate our prifi library with the correct role, given our position in the tree
-	if n.Index() == 0 {
-		log.Print(n.Name(), " starting as a PriFi relay")
-		relayState := prifi_lib.NewRelayState(nTrustees, nClients, upCellSize, downCellSize, relayWindowSize, relayUseDummyDataDown, relayReportingLimit, experimentResultChan, useUDP, sendDataOutOfDCNet)
-		prifiProtocol = prifi_lib.NewPriFiRelayWithState(messageSender, relayState)
-	} else if n.Index() > 0 && n.Index() <= nTrustees {
-		trusteeId := n.Index() - 1
-		log.Print(n.Name(), " starting as PriFi trustee", trusteeId)
-		trusteeState := prifi_lib.NewTrusteeState(trusteeId, nTrustees, nClients, upCellSize)
-		prifiProtocol = prifi_lib.NewPriFiTrusteeWithState(messageSender, trusteeState)
-	} else {
-		clientId := (n.Index() - nTrustees - 1)
-		log.Print(n.Name(), " starting as a PriFi client", clientId)
-		clientState := prifi_lib.NewClientState(clientId, nTrustees, nClients, upCellSize, doLatencyTests, useUDP, sendDataOutOfDCNet)
-		prifiProtocol = prifi_lib.NewPriFiClientWithState(messageSender, clientState)
+	for i := 0; i < len(nodes); i++ {
+		id := identities[nodes[i].ServerIdentity]
+		switch id.Role {
+		case Client: clients[id.Id] = nodes[i]
+		case Trustee: trustees[id.Id] = nodes[i]
+		case Relay: relay = nodes[i]
+		}
 	}
 
-	//instantiate our PriFi wrapper protocol
-	prifiSDAWrapperHandlers := &PriFiSDAWrapper{
-		TreeNodeInstance: n,
-		ResultChannel:    experimentResultChan,
-		prifiProtocol:    prifiProtocol,
+	if relay == nil {
+		log.Fatal("Relay is not reachable !")
 	}
 
+	if len(trustees) < 1 {
+		log.Fatal("No trustee is reachable !")
+	}
+
+	if len(clients) < 2 {
+		log.Info("No other client is reachable, no anonymity is provided")
+	}
+
+	return MessageSender{p.TreeNodeInstance, relay, clients, trustees}
+}
+
+// registerHandlers contains the verbose code
+// that registers handlers for all prifi messages.
+func (p *PriFiSDAWrapper) registerHandlers() {
 	//register handlers
-	err := prifiSDAWrapperHandlers.RegisterHandler(prifiSDAWrapperHandlers.Received_ALL_ALL_PARAMETERS)
+	err := p.RegisterHandler(p.Received_ALL_ALL_PARAMETERS)
 	if err != nil {
 		return nil, errors.New("couldn't register handler: " + err.Error())
 	}
-	err = prifiSDAWrapperHandlers.RegisterHandler(prifiSDAWrapperHandlers.Received_ALL_ALL_SHUTDOWN)
+	err = p.RegisterHandler(p.Received_ALL_ALL_SHUTDOWN)
 	if err != nil {
 		return nil, errors.New("couldn't register handler: " + err.Error())
 	}
 
 	//register client handlers
-	err = prifiSDAWrapperHandlers.RegisterHandler(prifiSDAWrapperHandlers.Received_REL_CLI_DOWNSTREAM_DATA)
+	err = p.RegisterHandler(p.Received_REL_CLI_DOWNSTREAM_DATA)
 	if err != nil {
 		return nil, errors.New("couldn't register handler: " + err.Error())
 	}
-	err = prifiSDAWrapperHandlers.RegisterHandler(prifiSDAWrapperHandlers.Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG)
+	err = p.RegisterHandler(p.Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG)
 	if err != nil {
 		return nil, errors.New("couldn't register handler: " + err.Error())
 	}
-	err = prifiSDAWrapperHandlers.RegisterHandler(prifiSDAWrapperHandlers.Received_REL_CLI_TELL_TRUSTEES_PK)
+	err = p.RegisterHandler(p.Received_REL_CLI_TELL_TRUSTEES_PK)
 	if err != nil {
 		return nil, errors.New("couldn't register handler: " + err.Error())
 	}
 
 	//register relay handlers
-	err = prifiSDAWrapperHandlers.RegisterHandler(prifiSDAWrapperHandlers.Received_CLI_REL_TELL_PK_AND_EPH_PK)
+	err = p.RegisterHandler(p.Received_CLI_REL_TELL_PK_AND_EPH_PK)
 	if err != nil {
 		return nil, errors.New("couldn't register handler: " + err.Error())
 	}
-	err = prifiSDAWrapperHandlers.RegisterHandler(prifiSDAWrapperHandlers.Received_CLI_REL_UPSTREAM_DATA)
+	err = p.RegisterHandler(p.Received_CLI_REL_UPSTREAM_DATA)
 	if err != nil {
 		return nil, errors.New("couldn't register handler: " + err.Error())
 	}
-	err = prifiSDAWrapperHandlers.RegisterHandler(prifiSDAWrapperHandlers.Received_TRU_REL_DC_CIPHER)
+	err = p.RegisterHandler(p.Received_TRU_REL_DC_CIPHER)
 	if err != nil {
 		return nil, errors.New("couldn't register handler: " + err.Error())
 	}
-	err = prifiSDAWrapperHandlers.RegisterHandler(prifiSDAWrapperHandlers.Received_TRU_REL_SHUFFLE_SIG)
+	err = p.RegisterHandler(p.Received_TRU_REL_SHUFFLE_SIG)
 	if err != nil {
 		return nil, errors.New("couldn't register handler: " + err.Error())
 	}
-	err = prifiSDAWrapperHandlers.RegisterHandler(prifiSDAWrapperHandlers.Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS)
+	err = p.RegisterHandler(p.Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS)
 	if err != nil {
 		return nil, errors.New("couldn't register handler: " + err.Error())
 	}
-	err = prifiSDAWrapperHandlers.RegisterHandler(prifiSDAWrapperHandlers.Received_TRU_REL_TELL_PK)
+	err = p.RegisterHandler(p.Received_TRU_REL_TELL_PK)
 	if err != nil {
 		return nil, errors.New("couldn't register handler: " + err.Error())
 	}
 
 	//register trustees handlers
-	err = prifiSDAWrapperHandlers.RegisterHandler(prifiSDAWrapperHandlers.Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE)
+	err = p.RegisterHandler(p.Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE)
 	if err != nil {
 		return nil, errors.New("couldn't register handler: " + err.Error())
 	}
-	err = prifiSDAWrapperHandlers.RegisterHandler(prifiSDAWrapperHandlers.Received_REL_TRU_TELL_TRANSCRIPT)
+	err = p.RegisterHandler(p.Received_REL_TRU_TELL_TRANSCRIPT)
 	if err != nil {
 		return nil, errors.New("couldn't register handler: " + err.Error())
 	}
-	err = prifiSDAWrapperHandlers.RegisterHandler(prifiSDAWrapperHandlers.Received_REL_TRU_TELL_RATE_CHANGE)
+	err = p.RegisterHandler(p.Received_REL_TRU_TELL_RATE_CHANGE)
 	if err != nil {
 		return nil, errors.New("couldn't register handler: " + err.Error())
+	}
+}
+
+// NewPriFiSDAWrapperProtocol creates a bare PrifiSDAWrapper struct.
+// SetConfig **MUST** be called on it before it can participate
+// to the protocol.
+func NewPriFiSDAWrapperProtocol(n *sda.TreeNodeInstance) (sda.ProtocolInstance, error) {
+	p := &PriFiSDAWrapper{
+		TreeNodeInstance: n,
+		ResultChannel:    make(chan interface{}),
 	}
 
-	return prifiSDAWrapperHandlers, nil
+	return p, nil
 }

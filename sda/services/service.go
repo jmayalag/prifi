@@ -82,7 +82,6 @@ func (s *Service) StartRelay(group *config.Group) error {
 	})
 	pi.Start()
 
-	// Set up the configuration
 	return nil
 }
 
@@ -155,7 +154,7 @@ func (s *Service) tryLoad() error {
 	return nil
 }
 
-// newTemplate receives the context and a path where it can write its
+// newService receives the context and a path where it can write its
 // configuration, if desired. As we don't know when the service will exit,
 // we need to save the configuration on our own from time to time.
 func newService(c *sda.Context, path string) sda.Service {
@@ -170,6 +169,7 @@ func newService(c *sda.Context, path string) sda.Service {
 	return s
 }
 
+// parseDescription extracts a PriFiIdentity from a string
 func parseDescription(description string) (prifi.PriFiIdentity, error) {
 	desc := strings.Split(description, " ")
 	if len(desc) == 1 && desc[0] == "relay" {
@@ -198,7 +198,8 @@ func parseDescription(description string) (prifi.PriFiIdentity, error) {
 	}
 }
 
-// Reads the group configuration to assign PriFi roles to server identities and return them with the server
+// mapIdentities reads the group configuration to assign PriFi roles
+// to server identities and return them with the server
 // identity of the relay.
 func mapIdentities(group *config.Group) (map[network.ServerIdentity]prifi.PriFiIdentity, prifi.PriFiIdentity) {
 	m := make(map[network.ServerIdentity]prifi.PriFiIdentity)
