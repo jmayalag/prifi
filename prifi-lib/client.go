@@ -31,7 +31,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dedis/cothority/lib/dbg"
+	"github.com/dedis/cothority/log"
 	"github.com/dedis/crypto/abstract"
 	"github.com/lbarman/prifi_dev/prifi-lib/config"
 	"github.com/lbarman/prifi_dev/prifi-lib/crypto"
@@ -130,7 +130,7 @@ func NewClientState(clientId int, nTrustees int, nClients int, payloadLength int
 	//SOCKS STUFF
 	serverPort := ":"
 	if clientId == 1 {
-		dbg.Lvl1("Client 1 established")
+		log.Lvl1("Client 1 established")
 
 		// For stalling the handler
 		go socks.StallTester(30*time.Second, 10*time.Second, params.DataFromDCNet, params.PayloadLength)
@@ -138,7 +138,7 @@ func NewClientState(clientId int, nTrustees int, nClients int, payloadLength int
 
 		serverPort += "6789"
 	} else if clientId == 2 {
-		dbg.Lvl1("Client 2 established")
+		log.Lvl1("Client 2 established")
 		serverPort += "2345"
 	}
 
@@ -151,7 +151,7 @@ func NewClientState(clientId int, nTrustees int, nClients int, payloadLength int
  * When we receive this message, we should clean resources
  */
 func (p *PriFiProtocol) Received_ALL_CLI_SHUTDOWN(msg ALL_ALL_SHUTDOWN) error {
-	dbg.Lvl1("Client " + strconv.Itoa(p.clientState.Id) + " : Received a SHUTDOWN message. ")
+	log.Lvl1("Client " + strconv.Itoa(p.clientState.Id) + " : Received a SHUTDOWN message. ")
 
 	p.clientState.Lock()
 	defer p.clientState.Unlock()
@@ -171,12 +171,12 @@ func (p *PriFiProtocol) Received_ALL_CLI_PARAMETERS(msg ALL_ALL_PARAMETERS) erro
 
 	//this can only happens in the state RELAY_STATE_BEFORE_INIT
 	if p.clientState.currentState != CLIENT_STATE_BEFORE_INIT && !msg.ForceParams {
-		dbg.Lvl1("Client " + strconv.Itoa(p.clientState.Id) + " : Received a ALL_ALL_PARAMETERS, but not in state CLIENT_STATE_BEFORE_INIT, ignoring. ")
+		log.Lvl1("Client " + strconv.Itoa(p.clientState.Id) + " : Received a ALL_ALL_PARAMETERS, but not in state CLIENT_STATE_BEFORE_INIT, ignoring. ")
 		return nil
 	} else if p.clientState.currentState != CLIENT_STATE_BEFORE_INIT && msg.ForceParams {
-		dbg.Lvl2("Client " + strconv.Itoa(p.clientState.Id) + " : Received a ALL_ALL_PARAMETERS && ForceParams = true, processing. ")
+		log.Lvl2("Client " + strconv.Itoa(p.clientState.Id) + " : Received a ALL_ALL_PARAMETERS && ForceParams = true, processing. ")
 	} else {
-		dbg.Lvl3("Client : received ALL_ALL_PARAMETERS")
+		log.Lvl3("Client : received ALL_ALL_PARAMETERS")
 	}
 
 	//if by chance we had a broadcast-listener goroutine, kill it
@@ -187,14 +187,14 @@ func (p *PriFiProtocol) Received_ALL_CLI_PARAMETERS(msg ALL_ALL_PARAMETERS) erro
 	p.clientState = *NewClientState(msg.NextFreeClientId, msg.NTrustees, msg.NClients, msg.UpCellSize, msg.DoLatencyTests, msg.UseUDP, msg.ClientDataOutputEnabled)
 
 	//start the broadcast-listener goroutine
-	dbg.Lvl2("Client " + strconv.Itoa(p.clientState.Id) + " : starting the broadcast-listener goroutine")
+	log.Lvl2("Client " + strconv.Itoa(p.clientState.Id) + " : starting the broadcast-listener goroutine")
 	go p.messageSender.ClientSubscribeToBroadcast(p.clientState.Name, p, p.clientState.StartStopReceiveBroadcast)
 
 	//after receiving this message, we are done with the state CLIENT_STATE_BEFORE_INIT, and are ready for initializing
 	p.clientState.currentState = CLIENT_STATE_INITIALIZING //TODO: this is repetative of line 110
 
-	dbg.Lvlf5("%+v\n", p.clientState)
-	dbg.Lvl2("Client " + strconv.Itoa(p.clientState.Id) + " has been initialized by message. ")
+	log.Lvlf5("%+v\n", p.clientState)
+	log.Lvl2("Client " + strconv.Itoa(p.clientState.Id) + " has been initialized by message. ")
 
 	return nil
 }
@@ -214,7 +214,7 @@ func (p *PriFiProtocol) Received_REL_CLI_DOWNSTREAM_DATA(msg REL_CLI_DOWNSTREAM_
 
 	/*
 		if msg.RoundId == 3 && p.clientState.Id == 1 {
-			dbg.Error("Client " + strconv.Itoa(p.clientState.Id) + " : simulating loss, dropping TCP message for round 3.")
+			log.Error("Client " + strconv.Itoa(p.clientState.Id) + " : simulating loss, dropping TCP message for round 3.")
 			return nil
 		}
 	*/
@@ -222,11 +222,11 @@ func (p *PriFiProtocol) Received_REL_CLI_DOWNSTREAM_DATA(msg REL_CLI_DOWNSTREAM_
 	//this can only happens in the state TRUSTEE_STATE_SHUFFLE_DONE
 	if p.clientState.currentState != CLIENT_STATE_READY {
 		e := "Client " + strconv.Itoa(p.clientState.Id) + " : Received a REL_CLI_DOWNSTREAM_DATA, but not in state CLIENT_STATE_READY, in state " + strconv.Itoa(int(p.clientState.currentState))
-		dbg.Error(e)
+		log.Error(e)
 		p.clientState.Unlock()
 		return errors.New(e)
 	} else {
-		dbg.Lvl3("Client " + strconv.Itoa(p.clientState.Id) + " : Received a REL_CLI_DOWNSTREAM_DATA for round " + strconv.Itoa(int(msg.RoundId)))
+		log.Lvl3("Client " + strconv.Itoa(p.clientState.Id) + " : Received a REL_CLI_DOWNSTREAM_DATA for round " + strconv.Itoa(int(msg.RoundId)))
 	}
 
 	//check if it is in-order
@@ -235,9 +235,9 @@ func (p *PriFiProtocol) Received_REL_CLI_DOWNSTREAM_DATA(msg REL_CLI_DOWNSTREAM_
 
 		return p.ProcessDownStreamData(msg)
 	} else if msg.RoundId < p.clientState.RoundNo {
-		dbg.Lvl3("Client " + strconv.Itoa(p.clientState.Id) + " : Received a REL_CLI_DOWNSTREAM_DATA for round " + strconv.Itoa(int(msg.RoundId)) + " but we are in round " + strconv.Itoa(int(p.clientState.RoundNo)) + ", discarding.")
+		log.Lvl3("Client " + strconv.Itoa(p.clientState.Id) + " : Received a REL_CLI_DOWNSTREAM_DATA for round " + strconv.Itoa(int(msg.RoundId)) + " but we are in round " + strconv.Itoa(int(p.clientState.RoundNo)) + ", discarding.")
 	} else if msg.RoundId < p.clientState.RoundNo {
-		dbg.Lvl3("Client " + strconv.Itoa(p.clientState.Id) + " : Received a REL_CLI_DOWNSTREAM_DATA for round " + strconv.Itoa(int(msg.RoundId)) + " but we are in round " + strconv.Itoa(int(p.clientState.RoundNo)) + ", buffering.")
+		log.Lvl3("Client " + strconv.Itoa(p.clientState.Id) + " : Received a REL_CLI_DOWNSTREAM_DATA for round " + strconv.Itoa(int(msg.RoundId)) + " but we are in round " + strconv.Itoa(int(p.clientState.RoundNo)) + ", buffering.")
 
 		p.clientState.BufferedRoundData[msg.RoundId] = msg
 	}
@@ -260,7 +260,7 @@ func (p *PriFiProtocol) Received_REL_CLI_UDP_DOWNSTREAM_DATA(msg REL_CLI_DOWNSTR
 
 	/*
 		if msg.RoundId == 3 && p.clientState.Id == 1 {
-			dbg.Error("Client " + strconv.Itoa(p.clientState.Id) + " : simulating loss, dropping UDP message for round 3.")
+			log.Error("Client " + strconv.Itoa(p.clientState.Id) + " : simulating loss, dropping UDP message for round 3.")
 			return nil
 		}
 	*/
@@ -268,10 +268,10 @@ func (p *PriFiProtocol) Received_REL_CLI_UDP_DOWNSTREAM_DATA(msg REL_CLI_DOWNSTR
 	//this can only happens in the state TRUSTEE_STATE_SHUFFLE_DONE
 	if p.clientState.currentState != CLIENT_STATE_READY {
 		e := "Client " + strconv.Itoa(p.clientState.Id) + " : Received a REL_CLI_UDP_DOWNSTREAM_DATA, but not in state CLIENT_STATE_READY, in state " + strconv.Itoa(int(p.clientState.currentState))
-		dbg.Error(e)
+		log.Error(e)
 		return errors.New(e)
 	} else {
-		dbg.Lvl3("Client " + strconv.Itoa(p.clientState.Id) + " : Received a REL_CLI_UDP_DOWNSTREAM_DATA for round " + strconv.Itoa(int(msg.RoundId)))
+		log.Lvl3("Client " + strconv.Itoa(p.clientState.Id) + " : Received a REL_CLI_UDP_DOWNSTREAM_DATA for round " + strconv.Itoa(int(msg.RoundId)))
 	}
 
 	//check if it is in-order
@@ -280,9 +280,9 @@ func (p *PriFiProtocol) Received_REL_CLI_UDP_DOWNSTREAM_DATA(msg REL_CLI_DOWNSTR
 
 		return p.ProcessDownStreamData(msg)
 	} else if msg.RoundId < p.clientState.RoundNo {
-		dbg.Lvl3("Client " + strconv.Itoa(p.clientState.Id) + " : Received a REL_CLI_UDP_DOWNSTREAM_DATA for round " + strconv.Itoa(int(msg.RoundId)) + " but we are in round " + strconv.Itoa(int(p.clientState.RoundNo)) + ", discarding.")
+		log.Lvl3("Client " + strconv.Itoa(p.clientState.Id) + " : Received a REL_CLI_UDP_DOWNSTREAM_DATA for round " + strconv.Itoa(int(msg.RoundId)) + " but we are in round " + strconv.Itoa(int(p.clientState.RoundNo)) + ", discarding.")
 	} else if msg.RoundId < p.clientState.RoundNo {
-		dbg.Lvl3("Client " + strconv.Itoa(p.clientState.Id) + " : Received a REL_CLI_UDP_DOWNSTREAM_DATA for round " + strconv.Itoa(int(msg.RoundId)) + " but we are in round " + strconv.Itoa(int(p.clientState.RoundNo)) + ", buffering.")
+		log.Lvl3("Client " + strconv.Itoa(p.clientState.Id) + " : Received a REL_CLI_UDP_DOWNSTREAM_DATA for round " + strconv.Itoa(int(msg.RoundId)) + " but we are in round " + strconv.Itoa(int(p.clientState.RoundNo)) + ", buffering.")
 
 		p.clientState.BufferedRoundData[msg.RoundId] = msg
 	}
@@ -314,14 +314,14 @@ func (p *PriFiProtocol) ProcessDownStreamData(msg REL_CLI_DOWNSTREAM_DATA) error
 				timestamp := int64(binary.BigEndian.Uint64(msg.Data[4:12]))
 				diff := MsTimeStamp() - timestamp
 
-				dbg.Lvl1("Client " + strconv.Itoa(p.clientState.Id) + " : New latency measured " + strconv.FormatInt(diff, 10))
+				log.Lvl1("Client " + strconv.Itoa(p.clientState.Id) + " : New latency measured " + strconv.FormatInt(diff, 10))
 			}
 		}
 	}
 	//if the flag "Resync" is on, we cannot write data up, but need to resend the keys instead
 	if msg.FlagResync == true {
 
-		dbg.Lvl1("Client " + strconv.Itoa(p.clientState.Id) + " : Relay wants to resync, going to state CLIENT_STATE_INITIALIZING ")
+		log.Lvl1("Client " + strconv.Itoa(p.clientState.Id) + " : Relay wants to resync, going to state CLIENT_STATE_INITIALIZING ")
 		p.clientState.currentState = CLIENT_STATE_INITIALIZING
 
 		//TODO : regenerate ephemeral keys ?
@@ -396,10 +396,10 @@ func (p *PriFiProtocol) SendUpstreamData() error {
 	err := p.messageSender.SendToRelay(toSend)
 	if err != nil {
 		e := "Could not send CLI_REL_UPSTREAM_DATA, for round " + strconv.Itoa(int(p.clientState.RoundNo)) + ", error is " + err.Error()
-		dbg.Error(e)
+		log.Error(e)
 		return errors.New(e)
 	} else {
-		dbg.Lvl3("Client " + strconv.Itoa(p.clientState.Id) + " : sent CLI_REL_UPSTREAM_DATA for round " + strconv.Itoa(int(p.clientState.RoundNo)))
+		log.Lvl3("Client " + strconv.Itoa(p.clientState.Id) + " : sent CLI_REL_UPSTREAM_DATA for round " + strconv.Itoa(int(p.clientState.RoundNo)))
 	}
 
 	//clean old buffered messages
@@ -428,16 +428,16 @@ func (p *PriFiProtocol) Received_REL_CLI_TELL_TRUSTEES_PK(msg REL_CLI_TELL_TRUST
 	//this can only happens in the state CLIENT_STATE_INITIALIZING
 	if p.clientState.currentState != CLIENT_STATE_INITIALIZING {
 		e := "Client " + strconv.Itoa(p.clientState.Id) + " : Received a REL_CLI_TELL_TRUSTEES_PK, but not in state CLIENT_STATE_INITIALIZING, in state " + strconv.Itoa(int(p.clientState.currentState))
-		dbg.Error(e)
+		log.Error(e)
 		return errors.New(e)
 	} else {
-		dbg.Lvl3("Client " + strconv.Itoa(p.clientState.Id) + " : Received a REL_CLI_TELL_TRUSTEES_PK")
+		log.Lvl3("Client " + strconv.Itoa(p.clientState.Id) + " : Received a REL_CLI_TELL_TRUSTEES_PK")
 	}
 
 	//sanity check
 	if len(msg.Pks) < 1 {
 		e := "Client " + strconv.Itoa(p.clientState.Id) + " : len(msg.Pks) must be >= 1"
-		dbg.Error(e)
+		log.Error(e)
 		return errors.New(e)
 	}
 
@@ -461,10 +461,10 @@ func (p *PriFiProtocol) Received_REL_CLI_TELL_TRUSTEES_PK(msg REL_CLI_TELL_TRUST
 	err := p.messageSender.SendToRelay(toSend)
 	if err != nil {
 		e := "Could not send CLI_REL_TELL_PK_AND_EPH_PK, error is " + err.Error()
-		dbg.Error(e)
+		log.Error(e)
 		return errors.New(e)
 	} else {
-		dbg.Lvl3("Client " + strconv.Itoa(p.clientState.Id) + " : sent CLI_REL_TELL_PK_AND_EPH_PK")
+		log.Lvl3("Client " + strconv.Itoa(p.clientState.Id) + " : sent CLI_REL_TELL_PK_AND_EPH_PK")
 	}
 
 	//change state
@@ -490,10 +490,10 @@ func (p *PriFiProtocol) Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(msg REL_C
 	//this can only happens in the state TRUSTEE_STATE_SHUFFLE_DONE
 	if p.clientState.currentState != CLIENT_STATE_EPH_KEYS_SENT {
 		e := "Client " + strconv.Itoa(p.clientState.Id) + " : Received a REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG, but not in state CLIENT_STATE_EPH_KEYS_SENT, in state " + strconv.Itoa(int(p.clientState.currentState))
-		dbg.Error(e)
+		log.Error(e)
 		return errors.New(e)
 	} else {
-		dbg.Lvl3("Trustee " + strconv.Itoa(p.clientState.Id) + " : REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG") //TODO: this should be client
+		log.Lvl3("Trustee " + strconv.Itoa(p.clientState.Id) + " : REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG") //TODO: this should be client
 	}
 
 	//verify the signature
@@ -514,12 +514,12 @@ func (p *PriFiProtocol) Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(msg REL_C
 
 		if err != nil {
 			e := "Client " + strconv.Itoa(p.clientState.Id) + " : signature from trustee " + strconv.Itoa(j) + " is invalid "
-			dbg.Error(e)
+			log.Error(e)
 			return errors.New(e)
 		}
 	}
 
-	dbg.Lvl3("Client " + strconv.Itoa(p.clientState.Id) + "; all signatures Ok")
+	log.Lvl3("Client " + strconv.Itoa(p.clientState.Id) + "; all signatures Ok")
 
 	//now, using the ephemeral keys received (the output of the neff shuffle), identify our slot
 	myPrivKey := p.clientState.ephemeralPrivateKey
@@ -534,14 +534,14 @@ func (p *PriFiProtocol) Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(msg REL_C
 
 	if mySlot == -1 {
 		e := "Client " + strconv.Itoa(p.clientState.Id) + "; Can't recognize our slot !"
-		dbg.Error(e)
+		log.Error(e)
 
 		mySlot = p.clientState.Id
-		dbg.Lvl3("Client " + strconv.Itoa(p.clientState.Id) + "; Our self-assigned slot is " + strconv.Itoa(mySlot) + " out of " + strconv.Itoa(len(ephPubKeys)) + " slots")
+		log.Lvl3("Client " + strconv.Itoa(p.clientState.Id) + "; Our self-assigned slot is " + strconv.Itoa(mySlot) + " out of " + strconv.Itoa(len(ephPubKeys)) + " slots")
 
 		//return errors.New(e)
 	} else {
-		dbg.Lvl3("Client " + strconv.Itoa(p.clientState.Id) + "; Our slot is " + strconv.Itoa(mySlot) + " out of " + strconv.Itoa(len(ephPubKeys)) + " slots")
+		log.Lvl3("Client " + strconv.Itoa(p.clientState.Id) + "; Our slot is " + strconv.Itoa(mySlot) + " out of " + strconv.Itoa(len(ephPubKeys)) + " slots")
 	}
 
 	//prepare for commmunication
@@ -553,16 +553,16 @@ func (p *PriFiProtocol) Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(msg REL_C
 	if p.clientState.UseUDP {
 		if p.clientState.StartStopReceiveBroadcast == nil {
 			e := "Client " + strconv.Itoa(p.clientState.Id) + " wish to start listening with UDP, but doesn't have the appropriate helper."
-			dbg.Error(e)
+			log.Error(e)
 			return errors.New(e)
 		}
 		p.clientState.StartStopReceiveBroadcast <- true
-		dbg.Lvl3("Client " + strconv.Itoa(p.clientState.Id) + " indicated the udp-helper to start listening.")
+		log.Lvl3("Client " + strconv.Itoa(p.clientState.Id) + " indicated the udp-helper to start listening.")
 	}
 
 	//change state
 	p.clientState.currentState = CLIENT_STATE_READY
-	dbg.Lvl3("Client " + strconv.Itoa(p.clientState.Id) + " is ready to communicate.")
+	log.Lvl3("Client " + strconv.Itoa(p.clientState.Id) + " is ready to communicate.")
 
 	//produce a blank cell (we could embed data, but let's keep the code simple, one wasted message is not much)
 	upstreamCell := p.clientState.CellCoder.ClientEncode(make([]byte, 0), p.clientState.PayloadLength, p.clientState.MessageHistory)
@@ -572,10 +572,10 @@ func (p *PriFiProtocol) Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(msg REL_C
 	err := p.messageSender.SendToRelay(toSend)
 	if err != nil {
 		e := "Could not send CLI_REL_UPSTREAM_DATA, for round " + strconv.Itoa(int(p.clientState.RoundNo)) + ", error is " + err.Error()
-		dbg.Error(e)
+		log.Error(e)
 		return errors.New(e)
 	} else {
-		dbg.Lvl3("Client " + strconv.Itoa(p.clientState.Id) + " : sent CLI_REL_UPSTREAM_DATA for round " + strconv.Itoa(int(p.clientState.RoundNo)))
+		log.Lvl3("Client " + strconv.Itoa(p.clientState.Id) + " : sent CLI_REL_UPSTREAM_DATA for round " + strconv.Itoa(int(p.clientState.RoundNo)))
 	}
 
 	return nil

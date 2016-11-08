@@ -11,6 +11,7 @@ import (
 	"os"
 	"strings"
 	"strconv"
+	"errors"
 
 	"github.com/dedis/cothority/app/lib/config"
 	"github.com/dedis/cothority/log"
@@ -36,7 +37,7 @@ type Service struct {
 	// We need to embed the ServiceProcessor, so that incoming messages
 	// are correctly handled.
 	*sda.ServiceProcessor
-	group config.Group
+	group *config.Group
 	Storage *Storage
 	path    string
 	role prifi.PriFiRole
@@ -65,22 +66,25 @@ func (s *Service) StartRelay(group *config.Group) error {
 	s.group = group
 	s.role = prifi.Relay
 
-	var pi prifi.PriFiSDAWrapper
+	var wrapper *prifi.PriFiSDAWrapper
 	ids, relayIdentity := mapIdentities(group)
 
 	// Start the PriFi protocol on a flat tree with the relay as root
-	tree := group.Roster.GenerateNaryTreeWithRoot(100, relayIdentity)
+	tree := group.Roster.GenerateNaryTreeWithRoot(100, &relayIdentity)
 	pi, err := s.CreateProtocolService(prifi.ProtocolName, tree)
 
 	if err != nil {
 		log.Fatal("Unable to start Prifi protocol:", err)
 	}
 
-	pi.SetConfig(prifi.PriFiSDAWrapperConfig{
+	// Assert that pi has type PriFiSDAWrapper
+	wrapper = pi.(*prifi.PriFiSDAWrapper)
+
+	wrapper.SetConfig(&prifi.PriFiSDAWrapperConfig{
 		Identities: ids,
 		Role: prifi.Relay,
 	})
-	pi.Start()
+	wrapper.Start()
 
 	return nil
 }
@@ -105,7 +109,6 @@ func (s *Service) StartClient(group *config.Group) error {
 func (s *Service) NewProtocol(tn *sda.TreeNodeInstance, conf *sda.GenericConfig) (sda.ProtocolInstance, error) {
 	log.Lvl5("Setting node configuration from service")
 
-	var pi prifi.PriFiSDAWrapper
 	ids, _ := mapIdentities(s.group)
 
 	pi, err := prifi.NewPriFiSDAWrapperProtocol(tn)
@@ -113,12 +116,15 @@ func (s *Service) NewProtocol(tn *sda.TreeNodeInstance, conf *sda.GenericConfig)
 		return nil, err
 	}
 
-	pi.SetConfig(prifi.PriFiSDAWrapperConfig{
+	// Assert that pi has type PriFiSDAWrapper
+	wrapper := pi.(*prifi.PriFiSDAWrapper)
+
+	wrapper.SetConfig(&prifi.PriFiSDAWrapperConfig{
 		Identities: ids,
 		Role: s.role,
 	})
 
-	return pi, nil
+	return wrapper, nil
 }
 
 // saves the actual identity
@@ -170,16 +176,16 @@ func newService(c *sda.Context, path string) sda.Service {
 }
 
 // parseDescription extracts a PriFiIdentity from a string
-func parseDescription(description string) (prifi.PriFiIdentity, error) {
+func parseDescription(description string) (*prifi.PriFiIdentity, error) {
 	desc := strings.Split(description, " ")
 	if len(desc) == 1 && desc[0] == "relay" {
-		return prifi.PriFiIdentity{
+		return &prifi.PriFiIdentity{
 			Role: prifi.Relay,
 			Id: 0,
-		}
+		}, nil
 	} else if len(desc) == 2 {
-		id, err := strconv.Atoi(desc[1]); if err {
-			return error("Unable to parse id:")
+		id, err := strconv.Atoi(desc[1]); if err != nil {
+			return nil, errors.New("Unable to parse id:")
 		} else {
 			pid := prifi.PriFiIdentity{
 				Id: id,
@@ -189,19 +195,19 @@ func parseDescription(description string) (prifi.PriFiIdentity, error) {
 			} else if  desc[0] == "trustee" {
 				pid.Role = prifi.Trustee
 			} else {
-				return error("Invalid role.")
+				return nil, errors.New("Invalid role.")
 			}
-			return pid
+			return &pid, nil
 		}
 	} else {
-		return error("Invalid description.")
+		return nil, errors.New("Invalid description.")
 	}
 }
 
 // mapIdentities reads the group configuration to assign PriFi roles
 // to server identities and return them with the server
 // identity of the relay.
-func mapIdentities(group *config.Group) (map[network.ServerIdentity]prifi.PriFiIdentity, prifi.PriFiIdentity) {
+func mapIdentities(group *config.Group) (map[network.ServerIdentity]prifi.PriFiIdentity, network.ServerIdentity) {
 	m := make(map[network.ServerIdentity]prifi.PriFiIdentity)
 
 	// Read the description of the nodes in the config file to assign them PriFi roles.
@@ -212,13 +218,13 @@ func mapIdentities(group *config.Group) (map[network.ServerIdentity]prifi.PriFiI
 		if err != nil {
 			log.Info("Cannot parse node description, skipping:", err)
 		} else {
-			m[si] = id
+			m[*si] = *id
 		}
 	}
 
 	// Check that there is exactly one relay and at least one trustee and client
 	t, c, r := 0, 0, 0
-	var relay prifi.PriFiIdentity
+	var relay network.ServerIdentity
 
 	for k, v := range m {
 		switch v.Role {
@@ -229,7 +235,7 @@ func mapIdentities(group *config.Group) (map[network.ServerIdentity]prifi.PriFiI
 	}
 
 	if !(t > 0 && c > 0 && r == 1) {
-		log.ErrFatal("Config file does not contain exactly one relay and at least one trustee and client.")
+		log.Fatal("Config file does not contain exactly one relay and at least one trustee and client.")
 	}
 
 	return m, relay

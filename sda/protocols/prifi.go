@@ -17,6 +17,9 @@ import (
 	prifi_lib "github.com/lbarman/prifi_dev/prifi-lib"
 )
 
+// ProtocolName is the name used to register the SDA wrapper protocol with SDA.
+const ProtocolName = "Prifi-SDA-Wrapper"
+
 //the UDP channel we provide to PriFi. check udp.go for more details.
 var udpChan UDPChannel = newRealUDPChannel()// Cannot use localhost channel anymore for real deployment
 
@@ -84,13 +87,13 @@ func init() {
 	network.RegisterPacketType(prifi_lib.TRU_REL_TELL_NEW_BASE_AND_EPH_PKS{})
 	network.RegisterPacketType(prifi_lib.TRU_REL_TELL_PK{})
 
-	sda.GlobalProtocolRegister("PriFi-SDA-Wrapper", NewPriFiSDAWrapperProtocol)
+	sda.GlobalProtocolRegister(ProtocolName, NewPriFiSDAWrapperProtocol)
 }
 
 // SetConfig configures the PriFi node.
 // It **MUST** be called in service.newProtocol or before Start().
 func (p *PriFiSDAWrapper) SetConfig(config *PriFiSDAWrapperConfig) {
-	p.config = config
+	p.config = *config
 	p.role = config.Role
 
 	ms := p.buildMessageSender(config.Identities)
@@ -128,12 +131,12 @@ func (p *PriFiSDAWrapper) SetConfig(config *PriFiSDAWrapperConfig) {
 		p.prifiProtocol = prifi_lib.NewPriFiRelayWithState(ms, relayState)
 
 	case Trustee:
-		id := config.Identities[p.ServerIdentity()].Id
+		id := config.Identities[*(p.ServerIdentity())].Id
 		trusteeState := prifi_lib.NewTrusteeState(id, nTrustees, nClients, upCellSize)
 		p.prifiProtocol = prifi_lib.NewPriFiTrusteeWithState(ms, trusteeState)
 
 	case Client:
-		id := config.Identities[p.ServerIdentity()].Id
+		id := config.Identities[*(p.ServerIdentity())].Id
 		clientState := prifi_lib.NewClientState(id,
 			nTrustees,
 			nClients,
@@ -159,7 +162,7 @@ func (p *PriFiSDAWrapper) buildMessageSender(identities map[network.ServerIdenti
 	var relay *sda.TreeNode = nil
 
 	for i := 0; i < len(nodes); i++ {
-		id := identities[nodes[i].ServerIdentity]
+		id := identities[*(nodes[i].ServerIdentity)]
 		switch id.Role {
 		case Client: clients[id.Id] = nodes[i]
 		case Trustee: trustees[id.Id] = nodes[i]
@@ -176,7 +179,7 @@ func (p *PriFiSDAWrapper) buildMessageSender(identities map[network.ServerIdenti
 	}
 
 	if len(clients) < 2 {
-		log.Info("No other client is reachable, no anonymity is provided")
+		log.Info("Only one client is reachable, no anonymity is provided")
 	}
 
 	return MessageSender{p.TreeNodeInstance, relay, clients, trustees}
@@ -184,70 +187,72 @@ func (p *PriFiSDAWrapper) buildMessageSender(identities map[network.ServerIdenti
 
 // registerHandlers contains the verbose code
 // that registers handlers for all prifi messages.
-func (p *PriFiSDAWrapper) registerHandlers() {
+func (p *PriFiSDAWrapper) registerHandlers() error {
 	//register handlers
 	err := p.RegisterHandler(p.Received_ALL_ALL_PARAMETERS)
 	if err != nil {
-		return nil, errors.New("couldn't register handler: " + err.Error())
+		return errors.New("couldn't register handler: " + err.Error())
 	}
 	err = p.RegisterHandler(p.Received_ALL_ALL_SHUTDOWN)
 	if err != nil {
-		return nil, errors.New("couldn't register handler: " + err.Error())
+		return errors.New("couldn't register handler: " + err.Error())
 	}
 
 	//register client handlers
 	err = p.RegisterHandler(p.Received_REL_CLI_DOWNSTREAM_DATA)
 	if err != nil {
-		return nil, errors.New("couldn't register handler: " + err.Error())
+		return errors.New("couldn't register handler: " + err.Error())
 	}
 	err = p.RegisterHandler(p.Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG)
 	if err != nil {
-		return nil, errors.New("couldn't register handler: " + err.Error())
+		return errors.New("couldn't register handler: " + err.Error())
 	}
 	err = p.RegisterHandler(p.Received_REL_CLI_TELL_TRUSTEES_PK)
 	if err != nil {
-		return nil, errors.New("couldn't register handler: " + err.Error())
+		return errors.New("couldn't register handler: " + err.Error())
 	}
 
 	//register relay handlers
 	err = p.RegisterHandler(p.Received_CLI_REL_TELL_PK_AND_EPH_PK)
 	if err != nil {
-		return nil, errors.New("couldn't register handler: " + err.Error())
+		return errors.New("couldn't register handler: " + err.Error())
 	}
 	err = p.RegisterHandler(p.Received_CLI_REL_UPSTREAM_DATA)
 	if err != nil {
-		return nil, errors.New("couldn't register handler: " + err.Error())
+		return errors.New("couldn't register handler: " + err.Error())
 	}
 	err = p.RegisterHandler(p.Received_TRU_REL_DC_CIPHER)
 	if err != nil {
-		return nil, errors.New("couldn't register handler: " + err.Error())
+		return errors.New("couldn't register handler: " + err.Error())
 	}
 	err = p.RegisterHandler(p.Received_TRU_REL_SHUFFLE_SIG)
 	if err != nil {
-		return nil, errors.New("couldn't register handler: " + err.Error())
+		return errors.New("couldn't register handler: " + err.Error())
 	}
 	err = p.RegisterHandler(p.Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS)
 	if err != nil {
-		return nil, errors.New("couldn't register handler: " + err.Error())
+		return errors.New("couldn't register handler: " + err.Error())
 	}
 	err = p.RegisterHandler(p.Received_TRU_REL_TELL_PK)
 	if err != nil {
-		return nil, errors.New("couldn't register handler: " + err.Error())
+		return errors.New("couldn't register handler: " + err.Error())
 	}
 
 	//register trustees handlers
 	err = p.RegisterHandler(p.Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE)
 	if err != nil {
-		return nil, errors.New("couldn't register handler: " + err.Error())
+		return errors.New("couldn't register handler: " + err.Error())
 	}
 	err = p.RegisterHandler(p.Received_REL_TRU_TELL_TRANSCRIPT)
 	if err != nil {
-		return nil, errors.New("couldn't register handler: " + err.Error())
+		return errors.New("couldn't register handler: " + err.Error())
 	}
 	err = p.RegisterHandler(p.Received_REL_TRU_TELL_RATE_CHANGE)
 	if err != nil {
-		return nil, errors.New("couldn't register handler: " + err.Error())
+		return errors.New("couldn't register handler: " + err.Error())
 	}
+
+	return nil
 }
 
 // NewPriFiSDAWrapperProtocol creates a bare PrifiSDAWrapper struct.

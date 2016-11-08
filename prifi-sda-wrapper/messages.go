@@ -1,7 +1,7 @@
 package prifi
 
 import (
-	"github.com/dedis/cothority/lib/sda"
+	"github.com/dedis/cothority/sda"
 	prifi_lib "github.com/lbarman/prifi_dev/prifi-lib"
 )
 

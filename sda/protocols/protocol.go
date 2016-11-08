@@ -6,8 +6,6 @@ import (
 	"github.com/dedis/cothority/log"
 )
 
-const ProtocolName = "Protocool"
-
 // Define message struct
 type MyMsg struct {
 	Text string
@@ -32,7 +30,7 @@ type MyProtocol struct {
 func init() {
 	network.RegisterPacketType(MyMsg{})
 
-	sda.GlobalProtocolRegister(ProtocolName, newProtocolInstance)
+	//sda.GlobalProtocolRegister(ProtocolName, newProtocolInstance)
 }
 
 // This is called by the service when starting the protocol

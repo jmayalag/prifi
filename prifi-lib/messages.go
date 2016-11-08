@@ -5,7 +5,7 @@ import (
 	"errors"
 	"strconv"
 
-	"github.com/dedis/cothority/lib/dbg"
+	"github.com/dedis/cothority/log"
 	"github.com/dedis/crypto/abstract"
 )
 
@@ -136,7 +136,7 @@ type REL_CLI_DOWNSTREAM_DATA_UDP struct {
 }
 
 func (m REL_CLI_DOWNSTREAM_DATA_UDP) Print() {
-	dbg.Printf("%+v\n", m)
+	log.Printf("%+v\n", m)
 }
 
 func (m *REL_CLI_DOWNSTREAM_DATA_UDP) SetBytes(data []byte) {
@@ -169,7 +169,7 @@ func (m *REL_CLI_DOWNSTREAM_DATA_UDP) FromBytes() (interface{}, error) {
 	//the smallest message is 4 bytes, indicating a length of 0
 	if len(buffer) < 4 {
 		e := "Messages.go : FromBytes() : cannot decode, smaller than 4 bytes"
-		dbg.Error(e)
+		log.Error(e)
 		return REL_CLI_DOWNSTREAM_DATA_UDP{}, errors.New(e)
 	}
 
@@ -177,7 +177,7 @@ func (m *REL_CLI_DOWNSTREAM_DATA_UDP) FromBytes() (interface{}, error) {
 
 	if len(buffer) != messageSize {
 		e := "Messages.go : FromBytes() : cannot decode, advertised length is " + strconv.Itoa(messageSize) + ", actual length is " + strconv.Itoa(len(buffer))
-		dbg.Error(e)
+		log.Error(e)
 		return REL_CLI_DOWNSTREAM_DATA_UDP{}, errors.New(e)
 	}
 
@@ -204,7 +204,7 @@ func (m *REL_CLI_DOWNSTREAM_DATA_UDP) FromBytes() (interface{}, error) {
 func (prifi *PriFiProtocol) ReceivedMessage(msg interface{}) error {
 
 	if prifi == nil {
-		dbg.Print("Received a message ", msg)
+		log.Print("Received a message ", msg)
 		panic("But prifi is nil !")
 	}
 
@@ -269,7 +269,7 @@ func (prifi *PriFiProtocol) ReceivedMessage(msg interface{}) error {
 
 	//no need to push the error further up. display it here !
 	if err != nil {
-		dbg.Error("ReceivedMessage: got an error, " + err.Error())
+		log.Error("ReceivedMessage: got an error, " + err.Error())
 		return err
 	}
 

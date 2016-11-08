@@ -59,7 +59,7 @@ func (p *PriFiSDAWrapper) Start() error {
 func init() {
 
 	//register the prifi_lib's message with the network lib here
-	network.RegisterMessageType(prifi_lib.ALL_ALL_PARAMETERS{})
+	/*network.RegisterMessageType(prifi_lib.ALL_ALL_PARAMETERS{})
 	network.RegisterMessageType(prifi_lib.CLI_REL_TELL_PK_AND_EPH_PK{})
 	network.RegisterMessageType(prifi_lib.CLI_REL_UPSTREAM_DATA{})
 	network.RegisterMessageType(prifi_lib.REL_CLI_DOWNSTREAM_DATA{})
@@ -73,7 +73,7 @@ func init() {
 	network.RegisterMessageType(prifi_lib.TRU_REL_TELL_NEW_BASE_AND_EPH_PKS{})
 	network.RegisterMessageType(prifi_lib.TRU_REL_TELL_PK{})
 
-	sda.ProtocolRegisterName("PriFi-SDA-Wrapper", NewPriFiSDAWrapperProtocol)
+	sda.ProtocolRegisterName("PriFi-SDA-Wrapper", NewPriFiSDAWrapperProtocol)*/
 }
 
 //This is the PriFi-SDA-Wrapper protocol struct. It contains the SDA-tree, and a chanel that stops the simulation when it receives a "true"

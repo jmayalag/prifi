@@ -22,7 +22,7 @@ import (
 	"bytes"
 	"strconv"
 
-	"github.com/dedis/cothority/lib/dbg"
+	"github.com/dedis/cothority/log"
 	"github.com/dedis/crypto/abstract"
 	crypto_proof "github.com/dedis/crypto/proof"
 	"github.com/dedis/crypto/shuffle"
@@ -113,7 +113,7 @@ func NewTrusteeState(trusteeId int, nClients int, nTrustees int, payloadLength i
  * When we receive this message, we should clean resources
  */
 func (p *PriFiProtocol) Received_ALL_TRU_SHUTDOWN(msg ALL_ALL_SHUTDOWN) error {
-	dbg.Lvl1("Trustee " + strconv.Itoa(p.trusteeState.Id) + " : Received a SHUTDOWN message. ")
+	log.Lvl1("Trustee " + strconv.Itoa(p.trusteeState.Id) + " : Received a SHUTDOWN message. ")
 
 	//stop the sending process
 	p.trusteeState.sendingRate <- TRUSTEE_KILL_SEND_PROCESS
@@ -130,12 +130,12 @@ func (p *PriFiProtocol) Received_ALL_TRU_PARAMETERS(msg ALL_ALL_PARAMETERS) erro
 
 	//this can only happens in the state RELAY_STATE_BEFORE_INIT
 	if p.trusteeState.currentState != TRUSTEE_STATE_BEFORE_INIT && !msg.ForceParams {
-		dbg.Lvl1("Trustee " + strconv.Itoa(p.trusteeState.Id) + " : Received a ALL_ALL_PARAMETERS, but not in state TRUSTEE_STATE_BEFORE_INIT, ignoring. ")
+		log.Lvl1("Trustee " + strconv.Itoa(p.trusteeState.Id) + " : Received a ALL_ALL_PARAMETERS, but not in state TRUSTEE_STATE_BEFORE_INIT, ignoring. ")
 		return nil
 	} else if p.trusteeState.currentState != TRUSTEE_STATE_BEFORE_INIT && msg.ForceParams {
-		dbg.Lvl1("Trustee " + strconv.Itoa(p.trusteeState.Id) + " : Received a ALL_ALL_PARAMETERS && ForceParams = true, processing. ")
+		log.Lvl1("Trustee " + strconv.Itoa(p.trusteeState.Id) + " : Received a ALL_ALL_PARAMETERS && ForceParams = true, processing. ")
 	} else {
-		dbg.Lvl3("Trustee : received ALL_ALL_PARAMETERS")
+		log.Lvl3("Trustee : received ALL_ALL_PARAMETERS")
 	}
 
 	p.trusteeState = *NewTrusteeState(msg.NextFreeTrusteeId, msg.NTrustees, msg.NClients, msg.UpCellSize)
@@ -147,8 +147,8 @@ func (p *PriFiProtocol) Received_ALL_TRU_PARAMETERS(msg ALL_ALL_PARAMETERS) erro
 
 	p.trusteeState.currentState = TRUSTEE_STATE_INITIALIZING
 
-	dbg.Lvlf5("%+v\n", p.trusteeState)
-	dbg.Lvl2("Trustee " + strconv.Itoa(p.trusteeState.Id) + " has been initialized by message. ")
+	log.Lvlf5("%+v\n", p.trusteeState)
+	log.Lvl2("Trustee " + strconv.Itoa(p.trusteeState.Id) + " has been initialized by message. ")
 	return nil
 }
 
@@ -162,10 +162,10 @@ func (p *PriFiProtocol) Send_TRU_REL_PK() error {
 	err := p.messageSender.SendToRelay(toSend)
 	if err != nil {
 		e := "Could not send TRU_REL_TELL_PK, error is " + err.Error()
-		dbg.Error(e)
+		log.Error(e)
 		return errors.New(e)
 	} else {
-		dbg.Lvl3("Trustee " + strconv.Itoa(p.trusteeState.Id) + " : sent TRU_REL_TELL_PK ") //TODO: this should be "trustee"
+		log.Lvl3("Trustee " + strconv.Itoa(p.trusteeState.Id) + " : sent TRU_REL_TELL_PK ") //TODO: this should be "trustee"
 	}
 
 	return nil
@@ -184,7 +184,7 @@ func (p *PriFiProtocol) Send_TRU_REL_DC_CIPHER(rateChan chan int16) {
 		select {
 		case newRate := <-rateChan:
 			if currentRate != newRate {
-				dbg.Lvl2("Trustee " + strconv.Itoa(p.trusteeState.Id) + " : rate changed from " + strconv.Itoa(int(currentRate)) + " to " + strconv.Itoa(int(newRate)))
+				log.Lvl2("Trustee " + strconv.Itoa(p.trusteeState.Id) + " : rate changed from " + strconv.Itoa(int(currentRate)) + " to " + strconv.Itoa(int(newRate)))
 				currentRate = newRate
 			}
 
@@ -201,7 +201,7 @@ func (p *PriFiProtocol) Send_TRU_REL_DC_CIPHER(rateChan chan int16) {
 				time.Sleep(TRUSTEE_BASE_SLEEP_TIME)
 
 			} else {
-				dbg.Lvl2("Trustee " + strconv.Itoa(p.trusteeState.Id) + " : In unrecognized sending state")
+				log.Lvl2("Trustee " + strconv.Itoa(p.trusteeState.Id) + " : In unrecognized sending state")
 			}
 
 		}
@@ -237,10 +237,10 @@ func sendData(p *PriFiProtocol, roundId int32) (int32, error) {
 	err := p.messageSender.SendToRelay(toSend) //TODO : this should be the root ! make sure of it
 	if err != nil {
 		e := "Could not send Struct_TRU_REL_DC_CIPHER for round (" + strconv.Itoa(int(roundId)) + ") error is " + err.Error()
-		dbg.Error(e)
+		log.Error(e)
 		return roundId, errors.New(e)
 	} else {
-		dbg.Lvl3("Trustee " + strconv.Itoa(p.trusteeState.Id) + " : sent cipher " + strconv.Itoa(int(roundId)))
+		log.Lvl3("Trustee " + strconv.Itoa(p.trusteeState.Id) + " : sent cipher " + strconv.Itoa(int(roundId)))
 	}
 
 	return roundId + 1, nil
@@ -256,10 +256,10 @@ func (p *PriFiProtocol) Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE(m
 	//this can only happens in the state TRUSTEE_STATE_INITIALIZING
 	if p.trusteeState.currentState != TRUSTEE_STATE_INITIALIZING {
 		e := "Trustee " + strconv.Itoa(p.trusteeState.Id) + " : Received a REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE, but not in state TRUSTEE_STATE_INITIALIZING, in state " + strconv.Itoa(int(p.trusteeState.currentState))
-		dbg.Error(e)
+		log.Error(e)
 		return errors.New(e)
 	} else {
-		dbg.Lvl3("Trustee " + strconv.Itoa(p.trusteeState.Id) + " : Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE")
+		log.Lvl3("Trustee " + strconv.Itoa(p.trusteeState.Id) + " : Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE")
 	}
 
 	//begin parsing the message
@@ -271,7 +271,7 @@ func (p *PriFiProtocol) Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE(m
 	//sanity check
 	if len(clientsPks) < 2 || len(clientsEphemeralPks) < 2 || len(clientsPks) != len(clientsEphemeralPks) {
 		e := "Trustee " + strconv.Itoa(p.trusteeState.Id) + " : One of the following check failed : len(clientsPks)>1, len(clientsEphemeralPks)>1, len(clientsPks)==len(clientsEphemeralPks)"
-		dbg.Error(e)
+		log.Error(e)
 		return errors.New(e)
 	}
 
@@ -292,7 +292,7 @@ func (p *PriFiProtocol) Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE(m
 	_, err := crypto_proof.HashProve(config.CryptoSuite, "PairShuffle", rand, prover)
 	if err != nil {
 		e := "Could not neff-shuffle, error is " + err.Error()
-		dbg.Error(e)
+		log.Error(e)
 		return errors.New(e)
 	}
 
@@ -306,10 +306,10 @@ func (p *PriFiProtocol) Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE(m
 	err = p.messageSender.SendToRelay(toSend) //TODO : this should be the root ! make sure of it
 	if err != nil {
 		e := "Could not send TRU_REL_TELL_NEW_BASE_AND_EPH_PKS, error is " + err.Error()
-		dbg.Error(e)
+		log.Error(e)
 		return errors.New(e)
 	} else {
-		dbg.Lvl3("Trustee " + strconv.Itoa(p.trusteeState.Id) + " : sent TRU_REL_TELL_NEW_BASE_AND_EPH_PKS")
+		log.Lvl3("Trustee " + strconv.Itoa(p.trusteeState.Id) + " : sent TRU_REL_TELL_NEW_BASE_AND_EPH_PKS")
 	}
 
 	//remember our shuffle
@@ -332,10 +332,10 @@ func (p *PriFiProtocol) Received_REL_TRU_TELL_TRANSCRIPT(msg REL_TRU_TELL_TRANSC
 	//this can only happens in the state TRUSTEE_STATE_SHUFFLE_DONE
 	if p.trusteeState.currentState != TRUSTEE_STATE_SHUFFLE_DONE {
 		e := "Trustee " + strconv.Itoa(p.trusteeState.Id) + " : Received a REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE, but not in state TRUSTEE_STATE_SHUFFLE_DONE, in state " + strconv.Itoa(int(p.trusteeState.currentState))
-		dbg.Error(e)
+		log.Error(e)
 		return errors.New(e)
 	} else {
-		dbg.Lvl3("Trustee " + strconv.Itoa(p.trusteeState.Id) + " : Received_REL_TRU_TELL_TRANSCRIPT")
+		log.Lvl3("Trustee " + strconv.Itoa(p.trusteeState.Id) + " : Received_REL_TRU_TELL_TRANSCRIPT")
 	}
 
 	// PROTOBUF FLATTENS MY 2-DIMENSIONAL ARRAY. THIS IS A PATCH
@@ -351,7 +351,7 @@ func (p *PriFiProtocol) Received_REL_TRU_TELL_TRANSCRIPT(msg REL_TRU_TELL_TRANSC
 		}
 		msg.EphPks = b
 	} else {
-		dbg.Print("Probably the Protobuf lib has been patched ! you might remove this code.")
+		log.Print("Probably the Protobuf lib has been patched ! you might remove this code.")
 	}
 	// END OF PATCH
 
@@ -385,16 +385,16 @@ func (p *PriFiProtocol) Received_REL_TRU_TELL_TRANSCRIPT(msg REL_TRU_TELL_TRANSC
 		if !verify {
 			if err != nil {
 				e := "Could not verify the " + strconv.Itoa(j) + "th neff shuffle, error is " + err.Error()
-				dbg.Error(e)
+				log.Error(e)
 				return errors.New(e)
 			} else {
 				e := "Could not verify the " + strconv.Itoa(j) + "th neff shuffle, error is unknown."
-				dbg.Error(e)
+				log.Error(e)
 				return errors.New(e)
 			}
 		}
 	}
-	dbg.Lvl3("Trustee " + strconv.Itoa(p.trusteeState.Id) + " : Proofs verified...")
+	log.Lvl3("Trustee " + strconv.Itoa(p.trusteeState.Id) + " : Proofs verified...")
 
 	//we verify that our shuffle was included
 	ownPermutationFound := false
@@ -402,12 +402,12 @@ func (p *PriFiProtocol) Received_REL_TRU_TELL_TRANSCRIPT(msg REL_TRU_TELL_TRANSC
 
 		if G_s[j].Equal(p.trusteeState.neffShuffleToVerify.base) && bytes.Equal(p.trusteeState.neffShuffleToVerify.proof, proof_s[j]) {
 
-			dbg.Lvl3("Trustee " + strconv.Itoa(p.trusteeState.Id) + "; Find in transcript : Found indice " + strconv.Itoa(j) + " that seems to match, verifing all the keys...")
+			log.Lvl3("Trustee " + strconv.Itoa(p.trusteeState.Id) + "; Find in transcript : Found indice " + strconv.Itoa(j) + " that seems to match, verifing all the keys...")
 
 			allKeyEqual := true
 			for k := 0; k < p.trusteeState.nClients; k++ {
 				if !p.trusteeState.neffShuffleToVerify.pks[k].Equal(ephPublicKeys_s[j][k]) {
-					dbg.Lvl1("Trustee " + strconv.Itoa(p.trusteeState.Id) + "; Transcript invalid for trustee " + strconv.Itoa(j) + ". Aborting.")
+					log.Lvl1("Trustee " + strconv.Itoa(p.trusteeState.Id) + "; Transcript invalid for trustee " + strconv.Itoa(j) + ". Aborting.")
 					allKeyEqual = false
 					break
 				}
@@ -421,17 +421,17 @@ func (p *PriFiProtocol) Received_REL_TRU_TELL_TRANSCRIPT(msg REL_TRU_TELL_TRANSC
 
 	if !ownPermutationFound {
 		e := "Trustee " + strconv.Itoa(p.trusteeState.Id) + "; Can't find own transaction. Aborting."
-		dbg.Error(e)
+		log.Error(e)
 		return errors.New(e)
 	}
-	dbg.Lvl2("Trustee " + strconv.Itoa(p.trusteeState.Id) + " : We found our proof...")
+	log.Lvl2("Trustee " + strconv.Itoa(p.trusteeState.Id) + " : We found our proof...")
 
 	//prepare the transcript signature. Since it is OK, we're gonna sign the latest permutation
 	M := make([]byte, 0)
 	G_s_j_bytes, err := G_s[p.trusteeState.nTrustees-1].MarshalBinary()
 	if err != nil {
 		e := "Trustee " + strconv.Itoa(p.trusteeState.Id) + "; Can't marshall base, " + err.Error()
-		dbg.Error(e)
+		log.Error(e)
 		return errors.New(e)
 	}
 	M = append(M, G_s_j_bytes...)
@@ -440,7 +440,7 @@ func (p *PriFiProtocol) Received_REL_TRU_TELL_TRANSCRIPT(msg REL_TRU_TELL_TRANSC
 		pkBytes, err := ephPublicKeys_s[p.trusteeState.nTrustees-1][j].MarshalBinary()
 		if err != nil {
 			e := "Trustee " + strconv.Itoa(p.trusteeState.Id) + "; Can't marshall public key, " + err.Error()
-			dbg.Error(e)
+			log.Error(e)
 			return errors.New(e)
 		}
 		M = append(M, pkBytes...)
@@ -448,17 +448,17 @@ func (p *PriFiProtocol) Received_REL_TRU_TELL_TRANSCRIPT(msg REL_TRU_TELL_TRANSC
 
 	sig := crypto.SchnorrSign(config.CryptoSuite, rand, M, p.trusteeState.privateKey)
 
-	dbg.Lvl2("Trustee " + strconv.Itoa(p.trusteeState.Id) + "; Sending signature of transcript")
+	log.Lvl2("Trustee " + strconv.Itoa(p.trusteeState.Id) + "; Sending signature of transcript")
 
 	//send the answer
 	toSend := &TRU_REL_SHUFFLE_SIG{p.trusteeState.Id, sig}
 	err = p.messageSender.SendToRelay(toSend) //TODO : this should be the root ! make sure of it
 	if err != nil {
 		e := "Could not send TRU_REL_SHUFFLE_SIG, error is " + err.Error()
-		dbg.Error(e)
+		log.Error(e)
 		return errors.New(e)
 	} else {
-		dbg.Lvl3("Trustee " + strconv.Itoa(p.trusteeState.Id) + " : sent TRU_REL_SHUFFLE_SIG")
+		log.Lvl3("Trustee " + strconv.Itoa(p.trusteeState.Id) + " : sent TRU_REL_SHUFFLE_SIG")
 	}
 
 	//we can forget our shuffle
