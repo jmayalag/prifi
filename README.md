@@ -30,7 +30,7 @@ This binder now uses SDA, which is convenient, but could use any library. In par
 Currently, the PriFi code can be run through a simulation. To run it first
 make sure that:
 
-- `$GOPATH/src/github.com/dedis/cothority` is on branch `prifi` and pulled to
+- `$GOPATH/src/github.com/dedis/cothority` is on branch `master` and pulled to
 the latest version.
 - `$GOPATH/src/github.com/dedis/crypto` is on branch `master` and pulled to
 the latest version.

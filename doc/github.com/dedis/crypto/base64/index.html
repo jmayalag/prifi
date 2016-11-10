@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+<meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+<meta content="width=device-width, initial-scale=1" name="viewport">
+<meta content="#375EAB" name="theme-color">
+<title>base64 - The PriFi Project</title>
+<link href="../../../../.goduckstyle/style.css" rel="stylesheet" type="text/css">
+<link href="../../../../.goduckstyle/jquery.treeview.css" rel="stylesheet">
+<script type="text/javascript">window.initFuncs = [];</script>
+</link></link></meta></meta></meta></head>
+<body>
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+<div class="wide" id="topbar"><div class="container">
+<div class="top-heading" id="heading-wide">The PriFi Project</div>
+<div class="top-heading" id="heading-narrow"><a href="/">Go</a></div>
+<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>
+<form action="/search" method="GET">
+<div id="menu">
+
+
+
+
+
+</div>
+</form>
+</div></div>
+<div class="wide" id="page">
+<div class="container">
+<h1>Package base64</h1>
+<div id="nav"></div>
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+<script type="text/javascript">
+	document.ANALYSIS_DATA = null;
+	document.CALLGRAPH = null;
+	</script>
+<div id="short-nav">
+<dl>
+<dd><code>import "github.com/dedis/crypto/base64"</code></dd>
+</dl>
+<dl>
+<dd><a class="overviewLink" href="#pkg-overview">Overview</a></dd>
+<dd><a class="indexLink" href="#pkg-index">Index</a></dd>
+<dd><a class="examplesLink" href="#pkg-examples">Examples</a></dd>
+</dl>
+</div>
+<!-- The package's Name is printed as title by the top-level template -->
+<div class="toggleVisible" id="pkg-overview">
+<div class="collapsed">
+<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+</div>
+<div class="expanded">
+<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+<p>
+Package base64 implements base64 encoding as specified by RFC 4648.
+</p>
+<p>
+This is a hopefully temporary fork of the Go standard base64 package,
+modified slightly to support the unpadded flavors of base64 encoding.
+</p>
+</div>
+</div>
+<div class="toggleVisible" id="pkg-index">
+<div class="collapsed">
+<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+</div>
+<div class="expanded">
+<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+<div id="manual-nav">
+<dl>
+<dd><a href="#pkg-variables">Variables</a></dd>
+<dd><a href="#NewDecoder">func NewDecoder(enc *Encoding, r io.Reader) io.Reader</a></dd>
+<dd><a href="#NewEncoder">func NewEncoder(enc *Encoding, w io.Writer) io.WriteCloser</a></dd>
+<dd><a href="#CorruptInputError">type CorruptInputError</a></dd>
+<dd>    <a href="#CorruptInputError.Error">func (e CorruptInputError) Error() string</a></dd>
+<dd><a href="#Encoding">type Encoding</a></dd>
+<dd>    <a href="#NewEncoding">func NewEncoding(encoder string) *Encoding</a></dd>
+<dd>    <a href="#RawEncoding">func RawEncoding(encoder string) *Encoding</a></dd>
+<dd>    <a href="#Encoding.Decode">func (enc *Encoding) Decode(dst, src []byte) (n int, err error)</a></dd>
+<dd>    <a href="#Encoding.DecodeString">func (enc *Encoding) DecodeString(s string) ([]byte, error)</a></dd>
+<dd>    <a href="#Encoding.DecodedLen">func (enc *Encoding) DecodedLen(n int) int</a></dd>
+<dd>    <a href="#Encoding.Encode">func (enc *Encoding) Encode(dst, src []byte)</a></dd>
+<dd>    <a href="#Encoding.EncodeToString">func (enc *Encoding) EncodeToString(src []byte) string</a></dd>
+<dd>    <a href="#Encoding.EncodedLen">func (enc *Encoding) EncodedLen(n int) int</a></dd>
+</dl>
+</div><!-- #manual-nav -->
+<div id="pkg-examples">
+<h4>Examples</h4>
+<dl>
+<dd><a class="exampleLink" href="#example_Encoding_DecodeString">Encoding.DecodeString</a></dd>
+<dd><a class="exampleLink" href="#example_Encoding_EncodeToString">Encoding.EncodeToString</a></dd>
+<dd><a class="exampleLink" href="#example_NewEncoder">NewEncoder</a></dd>
+</dl>
+</div>
+<h4>Package files</h4>
+<p>
+<span style="font-size:90%">
+<a href="/src/github.com/dedis/crypto/base64/base64.go">base64.go</a>
+</span>
+</p>
+</div><!-- .expanded -->
+</div><!-- #pkg-index -->
+<div class="toggle" id="pkg-callgraph" style="display: none">
+<div class="collapsed">
+<h2 class="toggleButton" title="Click to show Internal Call Graph section">Internal call graph ▹</h2>
+</div> <!-- .expanded -->
+<div class="expanded">
+<h2 class="toggleButton" title="Click to hide Internal Call Graph section">Internal call graph ▾</h2>
+<p>
+			  In the call graph viewer below, each node
+			  is a function belonging to this package
+			  and its children are the functions it
+			  calls—perhaps dynamically.
+			</p>
+<p>
+			  The root nodes are the entry points of the
+			  package: functions that may be called from
+			  outside the package.
+			  There may be non-exported or anonymous
+			  functions among them if they are called
+			  dynamically from another package.
+			</p>
+<p>
+			  Click a node to visit that function's source code.
+			  From there you can visit its callers by
+			  clicking its declaring <code>func</code>
+			  token.
+			</p>
+<p>
+			  Functions may be omitted if they were
+			  determined to be unreachable in the
+			  particular programs or tests that were
+			  analyzed.
+			</p>
+<!-- Zero means show all package entry points. -->
+<ul class="treeview" id="callgraph-0" style="margin-left: 0.5in"></ul>
+</div>
+</div> <!-- #pkg-callgraph -->
+<h2 id="pkg-variables">Variables</h2>
+<pre>var <span id="RawStdEncoding">RawStdEncoding</span> = <a href="#RawEncoding">RawEncoding</a>(encodeStd)</pre>
+<p>
+RawStdEncoding is the standard raw, unpadded base64 encoding,
+as defined in RFC 4648 section 3.2.
+This is the same as StdEncoding but omits '=' padding characters.
+</p>
+<pre>var <span id="RawURLEncoding">RawURLEncoding</span> = <a href="#RawEncoding">RawEncoding</a>(encodeURL)</pre>
+<p>
+URLEncoding is the unpadded alternate base64 encoding defined in RFC 4648.
+It is typically used in URLs and file names.
+This is the same as URLEncoding but omits '=' padding characters.
+</p>
+<pre>var <span id="StdEncoding">StdEncoding</span> = <a href="#NewEncoding">NewEncoding</a>(encodeStd)</pre>
+<p>
+StdEncoding is the standard base64 encoding, as defined in
+RFC 4648.
+</p>
+<pre>var <span id="URLEncoding">URLEncoding</span> = <a href="#NewEncoding">NewEncoding</a>(encodeURL)</pre>
+<p>
+URLEncoding is the alternate base64 encoding defined in RFC 4648.
+It is typically used in URLs and file names.
+</p>
+<h2 id="NewDecoder">func <a href="/src/github.com/dedis/crypto/base64/base64.go?s=10265:10318#L414">NewDecoder</a>
+<a class="permalink" href="#NewDecoder">¶</a>
+</h2>
+<pre>func NewDecoder(enc *<a href="#Encoding">Encoding</a>, r <a href="../../../../io/index.html">io</a>.<a href="../../../../io/index.html#Reader">Reader</a>) <a href="../../../../io/index.html">io</a>.<a href="../../../../io/index.html#Reader">Reader</a></pre>
+<p>
+NewDecoder constructs a new base64 stream decoder.
+</p>
+<h2 id="NewEncoder">func <a href="/src/github.com/dedis/crypto/base64/base64.go?s=5541:5599#L215">NewEncoder</a>
+<a class="permalink" href="#NewEncoder">¶</a>
+</h2>
+<pre>func NewEncoder(enc *<a href="#Encoding">Encoding</a>, w <a href="../../../../io/index.html">io</a>.<a href="../../../../io/index.html#Writer">Writer</a>) <a href="../../../../io/index.html">io</a>.<a href="../../../../io/index.html#WriteCloser">WriteCloser</a></pre>
+<p>
+NewEncoder returns a new base64 stream encoder.  Data written to
+the returned writer will be encoded using enc and then written to w.
+Base64 encodings operate in 4-byte blocks; when finished
+writing, the caller must Close the returned encoder to flush any
+partially written blocks.
+</p>
+<div class="toggle" id="example_NewEncoder">
+<div class="collapsed">
+<p class="exampleHeading toggleButton">▹ <span class="text">Example</span></p>
+</div>
+<div class="expanded">
+<p class="exampleHeading toggleButton">▾ <span class="text">Example</span></p>
+<p>Code:</p>
+<pre class="code">input := []byte("foo\x00bar")
+encoder := base64.NewEncoder(base64.StdEncoding, os.Stdout)
+encoder.Write(input)
+<span class="comment">// Must close the encoder when finished to flush any partial blocks.</span>
+<span class="comment">// If you comment out the following line, the last partial block "r"</span>
+<span class="comment">// won't be encoded.</span>
+encoder.Close()
+<span class="comment"></span></pre>
+<p>Output:</p>
+<pre class="output">Zm9vAGJhcg==
+</pre>
+</div>
+</div>
+<h2 id="CorruptInputError">type <a href="/src/github.com/dedis/crypto/base64/base64.go?s=5890:5918#L233">CorruptInputError</a>
+<a class="permalink" href="#CorruptInputError">¶</a>
+</h2>
+<pre>type CorruptInputError <a href="https://golang.org/pkg/builtin/#int64">int64</a></pre>
+<h3 id="CorruptInputError.Error">func (CorruptInputError) <a href="/src/github.com/dedis/crypto/base64/base64.go?s=5920:5961#L235">Error</a>
+<a class="permalink" href="#CorruptInputError.Error">¶</a>
+</h3>
+<pre>func (e <a href="#CorruptInputError">CorruptInputError</a>) Error() <a href="https://golang.org/pkg/builtin/#string">string</a></pre>
+<h2 id="Encoding">type <a href="/src/github.com/dedis/crypto/base64/base64.go?s=803:882#L17">Encoding</a>
+<a class="permalink" href="#Encoding">¶</a>
+</h2>
+<pre>type Encoding struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}</pre>
+<p>
+An Encoding is a radix 64 encoding/decoding scheme, defined by a
+64-character alphabet.  The most common encoding is the "base64"
+encoding defined in RFC 4648 and used in MIME (RFC 2045) and PEM
+(RFC 1421).  RFC 4648 also defines an alternate encoding, which is
+the standard encoding with - and _ substituted for + and /.
+</p>
+<h3 id="NewEncoding">func <a href="/src/github.com/dedis/crypto/base64/base64.go?s=1431:1473#L41">NewEncoding</a>
+<a class="permalink" href="#NewEncoding">¶</a>
+</h3>
+<pre>func NewEncoding(encoder <a href="https://golang.org/pkg/builtin/#string">string</a>) *<a href="#Encoding">Encoding</a></pre>
+<p>
+NewEncoding returns a new padded Encoding defined by the given alphabet,
+which must be a 64-byte string.
+</p>
+<h3 id="RawEncoding">func <a href="/src/github.com/dedis/crypto/base64/base64.go?s=1627:1669#L47">RawEncoding</a>
+<a class="permalink" href="#RawEncoding">¶</a>
+</h3>
+<pre>func RawEncoding(encoder <a href="https://golang.org/pkg/builtin/#string">string</a>) *<a href="#Encoding">Encoding</a></pre>
+<p>
+RawEncoding returns a new unpadded Encoding
+defined by the given alphabet, which must be a 64-byte string.
+</p>
+<h3 id="Encoding.Decode">func (*Encoding) <a href="/src/github.com/dedis/crypto/base64/base64.go?s=8174:8237#L315">Decode</a>
+<a class="permalink" href="#Encoding.Decode">¶</a>
+</h3>
+<pre>func (enc *<a href="#Encoding">Encoding</a>) Decode(dst, src []<a href="https://golang.org/pkg/builtin/#byte">byte</a>) (n <a href="https://golang.org/pkg/builtin/#int">int</a>, err <a href="https://golang.org/pkg/builtin/#error">error</a>)</pre>
+<p>
+Decode decodes src using the encoding enc.  It writes at most
+DecodedLen(len(src)) bytes to dst and returns the number of bytes
+written.  If src contains invalid base64 data, it will return the
+number of bytes successfully written and CorruptInputError.
+New line characters (\r and \n) are ignored.
+</p>
+<h3 id="Encoding.DecodeString">func (*Encoding) <a href="/src/github.com/dedis/crypto/base64/base64.go?s=8399:8458#L322">DecodeString</a>
+<a class="permalink" href="#Encoding.DecodeString">¶</a>
+</h3>
+<pre>func (enc *<a href="#Encoding">Encoding</a>) DecodeString(s <a href="https://golang.org/pkg/builtin/#string">string</a>) ([]<a href="https://golang.org/pkg/builtin/#byte">byte</a>, <a href="https://golang.org/pkg/builtin/#error">error</a>)</pre>
+<p>
+DecodeString returns the bytes represented by the base64 string s.
+</p>
+<div class="toggle" id="example_Encoding_DecodeString">
+<div class="collapsed">
+<p class="exampleHeading toggleButton">▹ <span class="text">Example</span></p>
+</div>
+<div class="expanded">
+<p class="exampleHeading toggleButton">▾ <span class="text">Example</span></p>
+<p>Code:</p>
+<pre class="code">str := "c29tZSBkYXRhIHdpdGggACBhbmQg77u/"
+data, err := base64.StdEncoding.DecodeString(str)
+if err != nil {
+    fmt.Println("error:", err)
+    return
+}
+fmt.Printf("%q\n", data)
+<span class="comment"></span></pre>
+<p>Output:</p>
+<pre class="output">"some data with \x00 and \ufeff"
+</pre>
+</div>
+</div>
+<h3 id="Encoding.DecodedLen">func (*Encoding) <a href="/src/github.com/dedis/crypto/base64/base64.go?s=10504:10546#L420">DecodedLen</a>
+<a class="permalink" href="#Encoding.DecodedLen">¶</a>
+</h3>
+<pre>func (enc *<a href="#Encoding">Encoding</a>) DecodedLen(n <a href="https://golang.org/pkg/builtin/#int">int</a>) <a href="https://golang.org/pkg/builtin/#int">int</a></pre>
+<p>
+DecodedLen returns the maximum length in bytes of the decoded data
+corresponding to n bytes of base64-encoded data.
+</p>
+<h3 id="Encoding.Encode">func (*Encoding) <a href="/src/github.com/dedis/crypto/base64/base64.go?s=2836:2880#L86">Encode</a>
+<a class="permalink" href="#Encoding.Encode">¶</a>
+</h3>
+<pre>func (enc *<a href="#Encoding">Encoding</a>) Encode(dst, src []<a href="https://golang.org/pkg/builtin/#byte">byte</a>)</pre>
+<p>
+Encode encodes src using the encoding enc, writing
+EncodedLen(len(src)) bytes to dst.
+</p>
+<p>
+The encoding pads the output to a multiple of 4 bytes,
+so Encode is not appropriate for use on individual blocks
+of a large data stream.  Use NewEncoder() instead.
+</p>
+<h3 id="Encoding.EncodeToString">func (*Encoding) <a href="/src/github.com/dedis/crypto/base64/base64.go?s=3727:3781#L135">EncodeToString</a>
+<a class="permalink" href="#Encoding.EncodeToString">¶</a>
+</h3>
+<pre>func (enc *<a href="#Encoding">Encoding</a>) EncodeToString(src []<a href="https://golang.org/pkg/builtin/#byte">byte</a>) <a href="https://golang.org/pkg/builtin/#string">string</a></pre>
+<p>
+EncodeToString returns the base64 encoding of src.
+</p>
+<div class="toggle" id="example_Encoding_EncodeToString">
+<div class="collapsed">
+<p class="exampleHeading toggleButton">▹ <span class="text">Example</span></p>
+</div>
+<div class="expanded">
+<p class="exampleHeading toggleButton">▾ <span class="text">Example</span></p>
+<p>Code:</p>
+<pre class="code">data := []byte("any + old &amp; data")
+str := base64.StdEncoding.EncodeToString(data)
+fmt.Println(str)
+<span class="comment"></span></pre>
+<p>Output:</p>
+<pre class="output">YW55ICsgb2xkICYgZGF0YQ==
+</pre>
+</div>
+</div>
+<h3 id="Encoding.EncodedLen">func (*Encoding) <a href="/src/github.com/dedis/crypto/base64/base64.go?s=5738:5780#L221">EncodedLen</a>
+<a class="permalink" href="#Encoding.EncodedLen">¶</a>
+</h3>
+<pre>func (enc *<a href="#Encoding">Encoding</a>) EncodedLen(n <a href="https://golang.org/pkg/builtin/#int">int</a>) <a href="https://golang.org/pkg/builtin/#int">int</a></pre>
+<p>
+EncodedLen returns the length in bytes of the base64 encoding
+of an input buffer of length n.
+</p>
+
+</div><!-- .container -->
+</div><!-- #page -->
+<!-- TODO(adonovan): load these from <head> using "defer" attribute? -->
+<script src="../../../../.goduckstyle/jquery.js" type="text/javascript"></script>
+<script src="../../../../.goduckstyle/jquery.treeview.js" type="text/javascript"></script>
+<script src="../../../../.goduckstyle/jquery.treeview.edit.js" type="text/javascript"></script>
+<script>var goVersion = "go1.7.1";</script>
+<script src="../../../../.goduckstyle/godocs.js" type="text/javascript"></script>
+</body>
+</html>
