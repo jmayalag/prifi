@@ -1,0 +1,16 @@
+Description = "Prifi"
+
+[[servers]]
+  Address = "tcp://127.0.0.1:6000"
+  Public = "tn9jVNLOkkzbECbpGJC0Gl0q94Gl3XF62eBleBrovic="
+  Description = "client 0"
+
+[[servers]]
+  Address = "tcp://127.0.0.1:6001"
+  Public = "iwjdlBd0kAlOviatMvTuN95cB0am9mY8+DmeK86c3Fg="
+  Description = "trustee 0"
+
+[[servers]]
+  Address = "tcp://127.0.0.1:6002"
+  Public = "VYcxFJhJcfOLY/esG1Gr20Lnc+HkKm73v3YsEx7jRds="
+  Description = "relay"
