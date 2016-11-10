@@ -9,24 +9,24 @@ import (
 type ownedCoder struct {
 	suite abstract.Suite
 
-	// Length of Key and MAC part of verifiable DC-net point
+						  // Length of Key and MAC part of verifiable DC-net point
 	keylen, maclen int
 
-	// Verifiable DC-nets secrets shared with each peer.
+						  // Verifiable DC-nets secrets shared with each peer.
 	vkeys []abstract.Scalar
 
-	// The sum of all our verifiable DC-nets secrets.
+						  // The sum of all our verifiable DC-nets secrets.
 	vkey abstract.Scalar
 
-	// Pseudorandom DC-nets ciphers shared with each peer.
-	// On clients, there is one DC-nets cipher per trustee.
-	// On trustees, there ois one DC-nets cipher per client.
+						  // Pseudorandom DC-nets ciphers shared with each peer.
+						  // On clients, there is one DC-nets cipher per trustee.
+						  // On trustees, there ois one DC-nets cipher per client.
 	dcciphers []abstract.Cipher
 
-	// Pseudorandom stream
+						  // Pseudorandom stream
 	random abstract.Cipher
 
-	// Decoding state, used only by the relay
+						  // Decoding state, used only by the relay
 	point  abstract.Point
 	pnull  abstract.Point // neutral/identity element
 	xorbuf []byte
@@ -111,7 +111,7 @@ func (c *ownedCoder) ClientCellSize(payloadlen int) int {
 }
 
 func (c *ownedCoder) ClientSetup(suite abstract.Suite,
-	sharedsecrets []abstract.Cipher) {
+sharedsecrets []abstract.Cipher) {
 	c.commonSetup(suite)
 	keysize := suite.Cipher(nil).KeySize()
 
@@ -132,7 +132,7 @@ func (c *ownedCoder) ClientSetup(suite abstract.Suite,
 }
 
 func (c *ownedCoder) ClientEncode(payload []byte, payloadlen int,
-	history abstract.Cipher) []byte {
+history abstract.Cipher) []byte {
 
 	// Compute the verifiable blinding point for this cell.
 	// To protect clients from equivocation by relays,
@@ -224,7 +224,7 @@ func (c *ownedCoder) TrusteeCellSize(payloadlen int) int {
 // May produce coder configuration info to be passed to the relay,
 // which will become available to the RelaySetup() method below.
 func (c *ownedCoder) TrusteeSetup(suite abstract.Suite,
-	clientstreams []abstract.Cipher) []byte {
+clientstreams []abstract.Cipher) []byte {
 
 	// Compute shared secrets
 	c.ClientSetup(suite, clientstreams)
@@ -373,4 +373,35 @@ func (c *ownedCoder) ownerDecode(hdr []byte) []byte {
 	// Decrypt and return the payload data
 	c.suite.Cipher(key).XORKeyStream(dat, dat)
 	return dat
+}
+
+func (c *ownedCoder) Clone() CellCoder {
+
+	newCoder := new(ownedCoder)
+
+	newCoder.dcciphers = make([]abstract.Cipher, len(c.dcciphers))
+	for i, dccipher := range c.dcciphers {
+		newCoder.dcciphers[i] = dccipher.Clone()
+	}
+
+	newCoder.suite = c.suite
+	newCoder.xorbuf = make([]byte, len(c.xorbuf))
+	for i, x := range c.xorbuf {
+		newCoder.xorbuf[i] = x
+	}
+
+	newCoder.keylen = c.keylen
+	newCoder.maclen = c.maclen
+	newCoder.pnull = c.pnull.Clone()
+
+	if c.point != nil {
+		newCoder.point = c.point.Clone()
+	}
+	newCoder.random = c.random.Clone()
+	newCoder.vkey = c.vkey.Clone()
+	newCoder.vkeys = make([]abstract.Scalar, len(c.vkeys))
+	for i, vkey := range c.vkeys {
+		newCoder.vkeys[i] = vkey
+	}
+	return newCoder
 }

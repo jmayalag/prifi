@@ -1,8 +1,9 @@
 package dcnet
 
 import (
-	"github.com/dedis/crypto/nist"
 	"testing"
+
+	"github.com/dedis/crypto/nist"
 )
 
 func TestSimple(t *testing.T) {

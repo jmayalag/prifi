@@ -3,10 +3,11 @@ package dcnet
 import (
 	"bytes"
 	"fmt"
-	"github.com/dedis/crypto/abstract"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/dedis/crypto/abstract"
 )
 
 type TestNode struct {
