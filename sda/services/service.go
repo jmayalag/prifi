@@ -1,3 +1,6 @@
+// Package prifi-sda-service contains the SDA service responsible
+// for starting the SDA protocols required to enable PriFi
+// communications.
 package prifi
 
 /*
@@ -29,7 +32,7 @@ func init() {
 	serviceID = sda.ServiceFactory.ServiceID(ServiceName)
 }
 
-// This struct contains the state of the service
+// Service contains the state of the service
 type Service struct {
 	// We need to embed the ServiceProcessor, so that incoming messages
 	// are correctly handled.
@@ -38,13 +41,13 @@ type Service struct {
 	path    string
 }
 
-// This structure will be saved, on the contrary of the 'Service'-structure
-// which has per-service information stored
+// Storage will be saved, on the contrary of the 'Service'-structure
+// which has per-service information stored.
 type Storage struct {
 	TrusteeID string
 }
 
-// StartTrustee has to take a configuration and start the necessary
+// StartTrustee starts the necessary
 // protocols to enable the trustee-mode.
 func (s *Service) StartTrustee() error {
 	log.Info("Service", s, "running in trustee mode")
@@ -52,7 +55,7 @@ func (s *Service) StartTrustee() error {
 	return nil
 }
 
-// StartRelay has to take a configuration and start the necessary
+// StartRelay starts the necessary
 // protocols to enable the relay-mode.
 // In this example it simply starts the demo protocol
 func (s *Service) StartRelay(group *config.Group) error {
@@ -86,7 +89,7 @@ func (s *Service) StartRelay(group *config.Group) error {
 	return nil
 }
 
-// StartClient has to take a configuration and start the necessary
+// StartClient starts the necessary
 // protocols to enable the client-mode.
 func (s *Service) StartClient() error {
 	log.Info("Service", s, "running in client mode")
@@ -106,7 +109,7 @@ func (s *Service) NewProtocol(tn *sda.TreeNodeInstance, conf *sda.GenericConfig)
 	return nil, nil
 }
 
-// saves the actual identity
+// save saves the actual identity
 func (s *Service) save() {
 	log.Lvl3("Saving service")
 	b, err := network.MarshalRegisteredType(s.Storage)
@@ -120,7 +123,7 @@ func (s *Service) save() {
 	}
 }
 
-// Tries to load the configuration and updates if a configuration
+// tryLoad tries to load the configuration and updates if a configuration
 // is found, else it returns an error.
 func (s *Service) tryLoad() error {
 	configFile := s.path + "/identity.bin"
@@ -139,7 +142,7 @@ func (s *Service) tryLoad() error {
 	return nil
 }
 
-// newTemplate receives the context and a path where it can write its
+// newService receives the context and a path where it can write its
 // configuration, if desired. As we don't know when the service will exit,
 // we need to save the configuration on our own from time to time.
 func newService(c *sda.Context, path string) sda.Service {

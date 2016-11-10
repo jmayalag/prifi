@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+<meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+<meta content="width=device-width, initial-scale=1" name="viewport">
+<meta content="#375EAB" name="theme-color">
+<title>shuffle - The PriFi Project</title>
+<link href="../../../../.goduckstyle/style.css" rel="stylesheet" type="text/css">
+<link href="../../../../.goduckstyle/jquery.treeview.css" rel="stylesheet">
+<script type="text/javascript">window.initFuncs = [];</script>
+</link></link></meta></meta></meta></head>
+<body>
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+<div class="wide" id="topbar"><div class="container">
+<div class="top-heading" id="heading-wide">The PriFi Project</div>
+<div class="top-heading" id="heading-narrow"><a href="/">Go</a></div>
+<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>
+<form action="/search" method="GET">
+<div id="menu">
+
+
+
+
+
+</div>
+</form>
+</div></div>
+<div class="wide" id="page">
+<div class="container">
+<h1>Package shuffle</h1>
+<div id="nav"></div>
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+<script type="text/javascript">
+	document.ANALYSIS_DATA = null;
+	document.CALLGRAPH = null;
+	</script>
+<div id="short-nav">
+<dl>
+<dd><code>import "github.com/dedis/crypto/shuffle"</code></dd>
+</dl>
+<dl>
+<dd><a class="overviewLink" href="#pkg-overview">Overview</a></dd>
+<dd><a class="indexLink" href="#pkg-index">Index</a></dd>
+</dl>
+</div>
+<!-- The package's Name is printed as title by the top-level template -->
+<div class="toggleVisible" id="pkg-overview">
+<div class="collapsed">
+<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+</div>
+<div class="expanded">
+<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+<p>
+Package shuffle implements Andrew Neff's verifiable shuffle proof scheme.
+Neff's shuffle proof algorithm as implemented here is described in the paper
+"Verifiable Mixing (Shuffling) of ElGamal Pairs", April 2004.
+</p>
+<p>
+The PairShuffle type implements the general algorithm
+to prove the correctness of a shuffle of arbitrary ElGamal pairs.
+This will be the primary API of interest for most applications.
+For basic usage, the caller should first instantiate a PairShuffle object,
+then invoke PairShuffle.Init() to initialize the shuffle parameters,
+and finally invoke PairShuffle.Shuffle() to shuffle
+a list of ElGamal pairs, yielding a list of re-randomized pairs
+and a noninteractive proof of its correctness.
+</p>
+<p>
+The SimpleShuffle type implements Neff's more restrictive "simple shuffle",
+which requires the prover to know the discrete logarithms
+of all the individual ElGamal ciphertexts involved in the shuffle.
+The general PairShuffle builds on this SimpleShuffle scheme,
+but SimpleShuffle may also be used by itself in situations
+that satisfy its assumptions, and is more efficient.
+</p>
+</div>
+</div>
+<div class="toggleVisible" id="pkg-index">
+<div class="collapsed">
+<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+</div>
+<div class="expanded">
+<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+<div id="manual-nav">
+<dl>
+<dd><a href="#Biffle">func Biffle(suite abstract.Suite, G, H abstract.Point, X, Y [2]abstract.Point, rand abstract.Cipher) (Xbar, Ybar [2]abstract.Point, prover proof.Prover)</a></dd>
+<dd><a href="#BiffleTest">func BiffleTest(suite abstract.Suite, N int)</a></dd>
+<dd><a href="#BiffleVerifier">func BiffleVerifier(suite abstract.Suite, G, H abstract.Point, X, Y, Xbar, Ybar [2]abstract.Point) (verifier proof.Verifier)</a></dd>
+<dd><a href="#Shuffle">func Shuffle(group abstract.Group, g, h abstract.Point, X, Y []abstract.Point, rand cipher.Stream) (XX, YY []abstract.Point, P proof.Prover)</a></dd>
+<dd><a href="#TestShuffle">func TestShuffle(suite abstract.Suite, k int, N int)</a></dd>
+<dd><a href="#Verifier">func Verifier(group abstract.Group, g, h abstract.Point, X, Y, Xbar, Ybar []abstract.Point) proof.Verifier</a></dd>
+<dd><a href="#PairShuffle">type PairShuffle</a></dd>
+<dd>    <a href="#PairShuffle.Init">func (ps *PairShuffle) Init(grp abstract.Group, k int) *PairShuffle</a></dd>
+<dd>    <a href="#PairShuffle.Prove">func (ps *PairShuffle) Prove(pi []int, g, h abstract.Point, beta []abstract.Scalar, X, Y []abstract.Point, rand cipher.Stream, ctx proof.ProverContext) error</a></dd>
+<dd>    <a href="#PairShuffle.Verify">func (ps *PairShuffle) Verify(g, h abstract.Point, X, Y, Xbar, Ybar []abstract.Point, ctx proof.VerifierContext) error</a></dd>
+<dd><a href="#SimpleShuffle">type SimpleShuffle</a></dd>
+<dd>    <a href="#SimpleShuffle.Init">func (ss *SimpleShuffle) Init(grp abstract.Group, k int) *SimpleShuffle</a></dd>
+<dd>    <a href="#SimpleShuffle.Prove">func (ss *SimpleShuffle) Prove(G abstract.Point, gamma abstract.Scalar, x, y []abstract.Scalar, rand cipher.Stream, ctx proof.ProverContext) error</a></dd>
+<dd>    <a href="#SimpleShuffle.Verify">func (ss *SimpleShuffle) Verify(G, Gamma abstract.Point, ctx proof.VerifierContext) error</a></dd>
+</dl>
+</div><!-- #manual-nav -->
+<h4>Package files</h4>
+<p>
+<span style="font-size:90%">
+<a href="/src/github.com/dedis/crypto/shuffle/biffle.go">biffle.go</a>
+<a href="/src/github.com/dedis/crypto/shuffle/pair.go">pair.go</a>
+<a href="/src/github.com/dedis/crypto/shuffle/simple.go">simple.go</a>
+<a href="/src/github.com/dedis/crypto/shuffle/test.go">test.go</a>
+</span>
+</p>
+</div><!-- .expanded -->
+</div><!-- #pkg-index -->
+<div class="toggle" id="pkg-callgraph" style="display: none">
+<div class="collapsed">
+<h2 class="toggleButton" title="Click to show Internal Call Graph section">Internal call graph ▹</h2>
+</div> <!-- .expanded -->
+<div class="expanded">
+<h2 class="toggleButton" title="Click to hide Internal Call Graph section">Internal call graph ▾</h2>
+<p>
+			  In the call graph viewer below, each node
+			  is a function belonging to this package
+			  and its children are the functions it
+			  calls—perhaps dynamically.
+			</p>
+<p>
+			  The root nodes are the entry points of the
+			  package: functions that may be called from
+			  outside the package.
+			  There may be non-exported or anonymous
+			  functions among them if they are called
+			  dynamically from another package.
+			</p>
+<p>
+			  Click a node to visit that function's source code.
+			  From there you can visit its callers by
+			  clicking its declaring <code>func</code>
+			  token.
+			</p>
+<p>
+			  Functions may be omitted if they were
+			  determined to be unreachable in the
+			  particular programs or tests that were
+			  analyzed.
+			</p>
+<!-- Zero means show all package entry points. -->
+<ul class="treeview" id="callgraph-0" style="margin-left: 0.5in"></ul>
+</div>
+</div> <!-- #pkg-callgraph -->
+<h2 id="Biffle">func <a href="/src/github.com/dedis/crypto/shuffle/biffle.go?s=1433:1588#L37">Biffle</a>
+<a class="permalink" href="#Biffle">¶</a>
+</h2>
+<pre>func Biffle(suite <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Suite">Suite</a>, G, H <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Point">Point</a>,
+    X, Y [2]<a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Point">Point</a>, rand <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Cipher">Cipher</a>) (
+    Xbar, Ybar [2]<a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Point">Point</a>, prover <a href="../../../../github.com/dedis/crypto/proof/index.html">proof</a>.<a href="../../../../github.com/dedis/crypto/proof/index.html#Prover">Prover</a>)</pre>
+<p>
+Binary shuffle ("biffle") for 2 ciphertexts based on general ZKPs.
+</p>
+<h2 id="BiffleTest">func <a href="/src/github.com/dedis/crypto/shuffle/biffle.go?s=2560:2604#L78">BiffleTest</a>
+<a class="permalink" href="#BiffleTest">¶</a>
+</h2>
+<pre>func BiffleTest(suite <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Suite">Suite</a>, N <a href="https://golang.org/pkg/builtin/#int">int</a>)</pre>
+<h2 id="BiffleVerifier">func <a href="/src/github.com/dedis/crypto/shuffle/biffle.go?s=2316:2443#L69">BiffleVerifier</a>
+<a class="permalink" href="#BiffleVerifier">¶</a>
+</h2>
+<pre>func BiffleVerifier(suite <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Suite">Suite</a>, G, H <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Point">Point</a>,
+    X, Y, Xbar, Ybar [2]<a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Point">Point</a>) (
+    verifier <a href="../../../../github.com/dedis/crypto/proof/index.html">proof</a>.<a href="../../../../github.com/dedis/crypto/proof/index.html#Verifier">Verifier</a>)</pre>
+<h2 id="Shuffle">func <a href="/src/github.com/dedis/crypto/shuffle/pair.go?s=8431:8572#L302">Shuffle</a>
+<a class="permalink" href="#Shuffle">¶</a>
+</h2>
+<pre>func Shuffle(group <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Group">Group</a>, g, h <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Point">Point</a>, X, Y []<a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Point">Point</a>,
+    rand <a href="../../../../crypto/cipher/index.html">cipher</a>.<a href="../../../../crypto/cipher/index.html#Stream">Stream</a>) (XX, YY []<a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Point">Point</a>, P <a href="../../../../github.com/dedis/crypto/proof/index.html">proof</a>.<a href="../../../../github.com/dedis/crypto/proof/index.html#Prover">Prover</a>)</pre>
+<p>
+Randomly shuffle and re-randomize a set of ElGamal pairs,
+producing a correctness proof in the process.
+Returns (Xbar,Ybar), the shuffled and randomized pairs.
+If g or h is nil, the standard base point is used.
+</p>
+<h2 id="TestShuffle">func <a href="/src/github.com/dedis/crypto/shuffle/test.go?s=125:177#L1">TestShuffle</a>
+<a class="permalink" href="#TestShuffle">¶</a>
+</h2>
+<pre>func TestShuffle(suite <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Suite">Suite</a>, k <a href="https://golang.org/pkg/builtin/#int">int</a>, N <a href="https://golang.org/pkg/builtin/#int">int</a>)</pre>
+<h2 id="Verifier">func <a href="/src/github.com/dedis/crypto/shuffle/pair.go?s=9662:9769#L350">Verifier</a>
+<a class="permalink" href="#Verifier">¶</a>
+</h2>
+<pre>func Verifier(group <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Group">Group</a>, g, h <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Point">Point</a>,
+    X, Y, Xbar, Ybar []<a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Point">Point</a>) <a href="../../../../github.com/dedis/crypto/proof/index.html">proof</a>.<a href="../../../../github.com/dedis/crypto/proof/index.html#Verifier">Verifier</a></pre>
+<p>
+Produce a Sigma-protocol verifier to check the correctness of a shuffle.
+</p>
+<h2 id="PairShuffle">type <a href="/src/github.com/dedis/crypto/shuffle/pair.go?s=2738:2863#L74">PairShuffle</a>
+<a class="permalink" href="#PairShuffle">¶</a>
+</h2>
+<pre>type PairShuffle struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}</pre>
+<p>
+PairShuffle creates a proof of the correctness of a shuffle
+of a series of ElGamal pairs.
+</p>
+<p>
+The caller must first invoke Init()
+to establish the cryptographic parameters for the shuffle:
+in particular, the relevant cryptographic Group,
+and the number of ElGamal pairs to be shuffled.
+</p>
+<p>
+The caller then may either perform its own shuffle,
+according to a permutation of the caller's choosing,
+and invoke Prove() to create a proof of its correctness;
+or alternatively the caller may simply invoke Shuffle()
+to pick a random permutation, compute the shuffle,
+and compute the correctness proof.
+</p>
+<h3 id="PairShuffle.Init">func (*PairShuffle) <a href="/src/github.com/dedis/crypto/shuffle/pair.go?s=3091:3158#L88">Init</a>
+<a class="permalink" href="#PairShuffle.Init">¶</a>
+</h3>
+<pre>func (ps *<a href="#PairShuffle">PairShuffle</a>) Init(grp <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Group">Group</a>, k <a href="https://golang.org/pkg/builtin/#int">int</a>) *<a href="#PairShuffle">PairShuffle</a></pre>
+<p>
+Create a new PairShuffleProof instance for a k-element ElGamal pair shuffle.
+This protocol follows the ElGamal Pair Shuffle defined in section 4 of
+Andrew Neff, "Verifiable Mixing (Shuffling) of ElGamal Pairs", 2004.
+</p>
+<h3 id="PairShuffle.Prove">func (*PairShuffle) <a href="/src/github.com/dedis/crypto/shuffle/pair.go?s=3629:3790#L109">Prove</a>
+<a class="permalink" href="#PairShuffle.Prove">¶</a>
+</h3>
+<pre>func (ps *<a href="#PairShuffle">PairShuffle</a>) Prove(
+    pi []<a href="https://golang.org/pkg/builtin/#int">int</a>, g, h <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Point">Point</a>, beta []<a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Scalar">Scalar</a>,
+    X, Y []<a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Point">Point</a>, rand <a href="../../../../crypto/cipher/index.html">cipher</a>.<a href="../../../../crypto/cipher/index.html#Stream">Stream</a>,
+    ctx <a href="../../../../github.com/dedis/crypto/proof/index.html">proof</a>.<a href="../../../../github.com/dedis/crypto/proof/index.html#ProverContext">ProverContext</a>) <a href="https://golang.org/pkg/builtin/#error">error</a></pre>
+<h3 id="PairShuffle.Verify">func (*PairShuffle) <a href="/src/github.com/dedis/crypto/shuffle/pair.go?s=6328:6449#L218">Verify</a>
+<a class="permalink" href="#PairShuffle.Verify">¶</a>
+</h3>
+<pre>func (ps *<a href="#PairShuffle">PairShuffle</a>) Verify(
+    g, h <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Point">Point</a>, X, Y, Xbar, Ybar []<a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Point">Point</a>,
+    ctx <a href="../../../../github.com/dedis/crypto/proof/index.html">proof</a>.<a href="../../../../github.com/dedis/crypto/proof/index.html#VerifierContext">VerifierContext</a>) <a href="https://golang.org/pkg/builtin/#error">error</a></pre>
+<p>
+Verifier for ElGamal Pair Shuffle proofs.
+</p>
+<h2 id="SimpleShuffle">type <a href="/src/github.com/dedis/crypto/shuffle/simple.go?s=719:818#L31">SimpleShuffle</a>
+<a class="permalink" href="#SimpleShuffle">¶</a>
+</h2>
+<pre>type SimpleShuffle struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}</pre>
+<h3 id="SimpleShuffle.Init">func (*SimpleShuffle) <a href="/src/github.com/dedis/crypto/shuffle/simple.go?s=1270:1341#L62">Init</a>
+<a class="permalink" href="#SimpleShuffle.Init">¶</a>
+</h3>
+<pre>func (ss *<a href="#SimpleShuffle">SimpleShuffle</a>) Init(grp <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Group">Group</a>, k <a href="https://golang.org/pkg/builtin/#int">int</a>) *<a href="#SimpleShuffle">SimpleShuffle</a></pre>
+<h3 id="SimpleShuffle.Prove">func (*SimpleShuffle) <a href="/src/github.com/dedis/crypto/shuffle/simple.go?s=1775:1923#L75">Prove</a>
+<a class="permalink" href="#SimpleShuffle.Prove">¶</a>
+</h3>
+<pre>func (ss *<a href="#SimpleShuffle">SimpleShuffle</a>) Prove(G <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Point">Point</a>, gamma <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Scalar">Scalar</a>,
+    x, y []<a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Scalar">Scalar</a>, rand <a href="../../../../crypto/cipher/index.html">cipher</a>.<a href="../../../../crypto/cipher/index.html#Stream">Stream</a>,
+    ctx <a href="../../../../github.com/dedis/crypto/proof/index.html">proof</a>.<a href="../../../../github.com/dedis/crypto/proof/index.html#ProverContext">ProverContext</a>) <a href="https://golang.org/pkg/builtin/#error">error</a></pre>
+<p>
+The "Simple k-shuffle" defined in section 3 of
+Neff, "Verifiable Mixing (Shuffling) of ElGamal Pairs", 2004.
+The Scalar vector y must be a permutation of Scalar vector x
+but with all elements multiplied by common Scalar gamma.
+</p>
+<h3 id="SimpleShuffle.Verify">func (*SimpleShuffle) <a href="/src/github.com/dedis/crypto/shuffle/simple.go?s=4339:4429#L178">Verify</a>
+<a class="permalink" href="#SimpleShuffle.Verify">¶</a>
+</h3>
+<pre>func (ss *<a href="#SimpleShuffle">SimpleShuffle</a>) Verify(G, Gamma <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Point">Point</a>,
+    ctx <a href="../../../../github.com/dedis/crypto/proof/index.html">proof</a>.<a href="../../../../github.com/dedis/crypto/proof/index.html#VerifierContext">VerifierContext</a>) <a href="https://golang.org/pkg/builtin/#error">error</a></pre>
+<p>
+Verifier for Neff simple k-shuffle proofs.
+</p>
+
+</div><!-- .container -->
+</div><!-- #page -->
+<!-- TODO(adonovan): load these from <head> using "defer" attribute? -->
+<script src="../../../../.goduckstyle/jquery.js" type="text/javascript"></script>
+<script src="../../../../.goduckstyle/jquery.treeview.js" type="text/javascript"></script>
+<script src="../../../../.goduckstyle/jquery.treeview.edit.js" type="text/javascript"></script>
+<script>var goVersion = "go1.7.1";</script>
+<script src="../../../../.goduckstyle/godocs.js" type="text/javascript"></script>
+</body>
+</html>

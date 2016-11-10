@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+<meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+<meta content="width=device-width, initial-scale=1" name="viewport">
+<meta content="#375EAB" name="theme-color">
+<title>nist - The PriFi Project</title>
+<link href="../../../../.goduckstyle/style.css" rel="stylesheet" type="text/css">
+<link href="../../../../.goduckstyle/jquery.treeview.css" rel="stylesheet">
+<script type="text/javascript">window.initFuncs = [];</script>
+</link></link></meta></meta></meta></head>
+<body>
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+<div class="wide" id="topbar"><div class="container">
+<div class="top-heading" id="heading-wide">The PriFi Project</div>
+<div class="top-heading" id="heading-narrow"><a href="/">Go</a></div>
+<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>
+<form action="/search" method="GET">
+<div id="menu">
+
+
+
+
+
+</div>
+</form>
+</div></div>
+<div class="wide" id="page">
+<div class="container">
+<h1>Package nist</h1>
+<div id="nav"></div>
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+<script type="text/javascript">
+	document.ANALYSIS_DATA = null;
+	document.CALLGRAPH = null;
+	</script>
+<div id="short-nav">
+<dl>
+<dd><code>import "github.com/dedis/crypto/nist"</code></dd>
+</dl>
+<dl>
+<dd><a class="overviewLink" href="#pkg-overview">Overview</a></dd>
+<dd><a class="indexLink" href="#pkg-index">Index</a></dd>
+</dl>
+</div>
+<!-- The package's Name is printed as title by the top-level template -->
+<div class="toggleVisible" id="pkg-overview">
+<div class="collapsed">
+<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+</div>
+<div class="expanded">
+<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+<p>
+Package nist implements cryptographic groups and ciphersuites
+based on the NIST standards, using Go's built-in crypto library.
+</p>
+</div>
+</div>
+<div class="toggleVisible" id="pkg-index">
+<div class="collapsed">
+<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+</div>
+<div class="expanded">
+<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+<div id="manual-nav">
+<dl>
+<dd><a href="#NewAES128SHA256P256">func NewAES128SHA256P256() abstract.Suite</a></dd>
+<dd><a href="#NewAES128SHA256QR512">func NewAES128SHA256QR512() abstract.Suite</a></dd>
+<dd><a href="#ByteOrder">type ByteOrder</a></dd>
+<dd><a href="#Int">type Int</a></dd>
+<dd>    <a href="#NewInt">func NewInt(v *big.Int, m *big.Int) *Int</a></dd>
+<dd>    <a href="#NewInt64">func NewInt64(v int64, M *big.Int) *Int</a></dd>
+<dd>    <a href="#NewIntBytes">func NewIntBytes(a []byte, m *big.Int) *Int</a></dd>
+<dd>    <a href="#NewIntString">func NewIntString(n, d string, base int, m *big.Int) *Int</a></dd>
+<dd>    <a href="#Int.Add">func (i *Int) Add(a, b abstract.Scalar) abstract.Scalar</a></dd>
+<dd>    <a href="#Int.BigEndian">func (i *Int) BigEndian(min, max int) []byte</a></dd>
+<dd>    <a href="#Int.Bytes">func (i *Int) Bytes() []byte</a></dd>
+<dd>    <a href="#Int.Clone">func (i *Int) Clone() abstract.Scalar</a></dd>
+<dd>    <a href="#Int.Cmp">func (i *Int) Cmp(s2 abstract.Scalar) int</a></dd>
+<dd>    <a href="#Int.Div">func (i *Int) Div(a, b abstract.Scalar) abstract.Scalar</a></dd>
+<dd>    <a href="#Int.Equal">func (i *Int) Equal(s2 abstract.Scalar) bool</a></dd>
+<dd>    <a href="#Int.Exp">func (i *Int) Exp(a abstract.Scalar, e *big.Int) abstract.Scalar</a></dd>
+<dd>    <a href="#Int.HideDecode">func (i *Int) HideDecode(buf []byte)</a></dd>
+<dd>    <a href="#Int.HideEncode">func (i *Int) HideEncode(rand cipher.Stream) []byte</a></dd>
+<dd>    <a href="#Int.HideLen">func (i *Int) HideLen() int</a></dd>
+<dd>    <a href="#Int.Init">func (i *Int) Init(V *big.Int, m *big.Int) *Int</a></dd>
+<dd>    <a href="#Int.Init64">func (i *Int) Init64(v int64, m *big.Int) *Int</a></dd>
+<dd>    <a href="#Int.InitBytes">func (i *Int) InitBytes(a []byte, m *big.Int) *Int</a></dd>
+<dd>    <a href="#Int.InitString">func (i *Int) InitString(n, d string, base int, m *big.Int) *Int</a></dd>
+<dd>    <a href="#Int.Int64">func (i *Int) Int64() int64</a></dd>
+<dd>    <a href="#Int.Inv">func (i *Int) Inv(a abstract.Scalar) abstract.Scalar</a></dd>
+<dd>    <a href="#Int.Jacobi">func (i *Int) Jacobi(as abstract.Scalar) abstract.Scalar</a></dd>
+<dd>    <a href="#Int.LittleEndian">func (i *Int) LittleEndian(min, max int) []byte</a></dd>
+<dd>    <a href="#Int.MarshalBinary">func (i *Int) MarshalBinary() ([]byte, error)</a></dd>
+<dd>    <a href="#Int.MarshalSize">func (i *Int) MarshalSize() int</a></dd>
+<dd>    <a href="#Int.MarshalTo">func (i *Int) MarshalTo(w io.Writer) (int, error)</a></dd>
+<dd>    <a href="#Int.Mul">func (i *Int) Mul(a, b abstract.Scalar) abstract.Scalar</a></dd>
+<dd>    <a href="#Int.Neg">func (i *Int) Neg(a abstract.Scalar) abstract.Scalar</a></dd>
+<dd>    <a href="#Int.Nonzero">func (i *Int) Nonzero() bool</a></dd>
+<dd>    <a href="#Int.One">func (i *Int) One() abstract.Scalar</a></dd>
+<dd>    <a href="#Int.Pick">func (i *Int) Pick(rand cipher.Stream) abstract.Scalar</a></dd>
+<dd>    <a href="#Int.Set">func (i *Int) Set(a abstract.Scalar) abstract.Scalar</a></dd>
+<dd>    <a href="#Int.SetBytes">func (i *Int) SetBytes(a []byte) abstract.Scalar</a></dd>
+<dd>    <a href="#Int.SetInt64">func (i *Int) SetInt64(v int64) abstract.Scalar</a></dd>
+<dd>    <a href="#Int.SetString">func (i *Int) SetString(n, d string, base int) (*Int, bool)</a></dd>
+<dd>    <a href="#Int.SetUint64">func (i *Int) SetUint64(v uint64) abstract.Scalar</a></dd>
+<dd>    <a href="#Int.Sqrt">func (i *Int) Sqrt(as abstract.Scalar) bool</a></dd>
+<dd>    <a href="#Int.String">func (i *Int) String() string</a></dd>
+<dd>    <a href="#Int.Sub">func (i *Int) Sub(a, b abstract.Scalar) abstract.Scalar</a></dd>
+<dd>    <a href="#Int.Uint64">func (i *Int) Uint64() uint64</a></dd>
+<dd>    <a href="#Int.UnmarshalBinary">func (i *Int) UnmarshalBinary(buf []byte) error</a></dd>
+<dd>    <a href="#Int.UnmarshalFrom">func (i *Int) UnmarshalFrom(r io.Reader) (int, error)</a></dd>
+<dd>    <a href="#Int.Zero">func (i *Int) Zero() abstract.Scalar</a></dd>
+<dd><a href="#ResidueGroup">type ResidueGroup</a></dd>
+<dd>    <a href="#ResidueGroup.Order">func (g *ResidueGroup) Order() *big.Int</a></dd>
+<dd>    <a href="#ResidueGroup.Point">func (g *ResidueGroup) Point() abstract.Point</a></dd>
+<dd>    <a href="#ResidueGroup.PointLen">func (g *ResidueGroup) PointLen() int</a></dd>
+<dd>    <a href="#ResidueGroup.PrimeOrder">func (g *ResidueGroup) PrimeOrder() bool</a></dd>
+<dd>    <a href="#ResidueGroup.QuadraticResidueGroup">func (g *ResidueGroup) QuadraticResidueGroup(bitlen uint, rand cipher.Stream)</a></dd>
+<dd>    <a href="#ResidueGroup.Scalar">func (g *ResidueGroup) Scalar() abstract.Scalar</a></dd>
+<dd>    <a href="#ResidueGroup.ScalarLen">func (g *ResidueGroup) ScalarLen() int</a></dd>
+<dd>    <a href="#ResidueGroup.SetParams">func (g *ResidueGroup) SetParams(P, Q, R, G *big.Int)</a></dd>
+<dd>    <a href="#ResidueGroup.String">func (g *ResidueGroup) String() string</a></dd>
+<dd>    <a href="#ResidueGroup.Valid">func (g *ResidueGroup) Valid() bool</a></dd>
+</dl>
+</div><!-- #manual-nav -->
+<h4>Package files</h4>
+<p>
+<span style="font-size:90%">
+<a href="/src/github.com/dedis/crypto/nist/curve.go">curve.go</a>
+<a href="/src/github.com/dedis/crypto/nist/doc.go">doc.go</a>
+<a href="/src/github.com/dedis/crypto/nist/int.go">int.go</a>
+<a href="/src/github.com/dedis/crypto/nist/p256.go">p256.go</a>
+<a href="/src/github.com/dedis/crypto/nist/qrsuite.go">qrsuite.go</a>
+<a href="/src/github.com/dedis/crypto/nist/residue.go">residue.go</a>
+<a href="/src/github.com/dedis/crypto/nist/suite.go">suite.go</a>
+</span>
+</p>
+</div><!-- .expanded -->
+</div><!-- #pkg-index -->
+<div class="toggle" id="pkg-callgraph" style="display: none">
+<div class="collapsed">
+<h2 class="toggleButton" title="Click to show Internal Call Graph section">Internal call graph ▹</h2>
+</div> <!-- .expanded -->
+<div class="expanded">
+<h2 class="toggleButton" title="Click to hide Internal Call Graph section">Internal call graph ▾</h2>
+<p>
+			  In the call graph viewer below, each node
+			  is a function belonging to this package
+			  and its children are the functions it
+			  calls—perhaps dynamically.
+			</p>
+<p>
+			  The root nodes are the entry points of the
+			  package: functions that may be called from
+			  outside the package.
+			  There may be non-exported or anonymous
+			  functions among them if they are called
+			  dynamically from another package.
+			</p>
+<p>
+			  Click a node to visit that function's source code.
+			  From there you can visit its callers by
+			  clicking its declaring <code>func</code>
+			  token.
+			</p>
+<p>
+			  Functions may be omitted if they were
+			  determined to be unreachable in the
+			  particular programs or tests that were
+			  analyzed.
+			</p>
+<!-- Zero means show all package entry points. -->
+<ul class="treeview" id="callgraph-0" style="margin-left: 0.5in"></ul>
+</div>
+</div> <!-- #pkg-callgraph -->
+<h2 id="NewAES128SHA256P256">func <a href="/src/github.com/dedis/crypto/nist/suite.go?s=999:1040#L39">NewAES128SHA256P256</a>
+<a class="permalink" href="#NewAES128SHA256P256">¶</a>
+</h2>
+<pre>func NewAES128SHA256P256() <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Suite">Suite</a></pre>
+<p>
+Ciphersuite based on AES-128, SHA-256, and the NIST P-256 elliptic curve.
+</p>
+<h2 id="NewAES128SHA256QR512">func <a href="/src/github.com/dedis/crypto/nist/qrsuite.go?s=1177:1219#L43">NewAES128SHA256QR512</a>
+<a class="permalink" href="#NewAES128SHA256QR512">¶</a>
+</h2>
+<pre>func NewAES128SHA256QR512() <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Suite">Suite</a></pre>
+<p>
+Ciphersuite based on AES-128, SHA-256,
+and a residue group of quadratic residues modulo a 512-bit prime.
+This group size should be used only for testing and experimentation;
+512-bit DSA-style groups are no longer considered secure.
+</p>
+<h2 id="ByteOrder">type <a href="/src/github.com/dedis/crypto/nist/int.go?s=304:323#L10">ByteOrder</a>
+<a class="permalink" href="#ByteOrder">¶</a>
+</h2>
+<pre>type ByteOrder <a href="https://golang.org/pkg/builtin/#bool">bool</a></pre>
+<pre>const (
+    <span id="LittleEndian">LittleEndian</span> <a href="#ByteOrder">ByteOrder</a> = <a href="https://golang.org/pkg/builtin/#true">true</a>
+    <span id="BigEndian">BigEndian</span>    <a href="#ByteOrder">ByteOrder</a> = <a href="https://golang.org/pkg/builtin/#false">false</a>
+)</pre>
+<h2 id="Int">type <a href="/src/github.com/dedis/crypto/nist/int.go?s=1393:1567#L36">Int</a>
+<a class="permalink" href="#Int">¶</a>
+</h2>
+<pre>type Int struct {
+    V  <a href="../../../../math/big/index.html">big</a>.<a href="../../../../math/big/index.html#Int">Int</a>   <span class="comment">// Integer value from 0 through M-1</span>
+    M  *<a href="../../../../math/big/index.html">big</a>.<a href="../../../../math/big/index.html#Int">Int</a>  <span class="comment">// Modulus for finite field arithmetic</span>
+    BO <a href="#ByteOrder">ByteOrder</a> <span class="comment">// Endianness considered for this int</span>
+}</pre>
+<p>
+Int is a generic implementation of finite field arithmetic
+on integer finite fields with a given constant modulus,
+built using Go's built-in big.Int package.
+Int satisfies the abstract abstract.Scalar interface,
+and hence serves as a basic implementation of abstract.Scalar,
+e.g., representing discrete-log exponents of Schnorr groups
+or scalar multipliers for elliptic curves.
+</p>
+<p>
+Int offers an API similar to and compatible with big.Int,
+but "carries around" a pointer to the relevant modulus
+and automatically normalizes the value to that modulus
+after all arithmetic operations, simplifying modular arithmetic.
+Binary operations assume that the source(s)
+have the same modulus, but do not check this assumption.
+Unary and binary arithmetic operations may be performed on uninitialized
+target objects, and receive the modulus of the first operand.
+For efficiency the modulus field M is a pointer,
+whose target is assumed never to change.
+</p>
+<h3 id="NewInt">func <a href="/src/github.com/dedis/crypto/nist/int.go?s=1642:1682#L43">NewInt</a>
+<a class="permalink" href="#NewInt">¶</a>
+</h3>
+<pre>func NewInt(v *<a href="../../../../math/big/index.html">big</a>.<a href="../../../../math/big/index.html#Int">Int</a>, m *<a href="../../../../math/big/index.html">big</a>.<a href="../../../../math/big/index.html#Int">Int</a>) *<a href="#Int">Int</a></pre>
+<p>
+NewInt creaters a new Int with a given big.Int and a big.Int modulus.
+</p>
+<h3 id="NewInt64">func <a href="/src/github.com/dedis/crypto/nist/int.go?s=1792:1831#L48">NewInt64</a>
+<a class="permalink" href="#NewInt64">¶</a>
+</h3>
+<pre>func NewInt64(v <a href="https://golang.org/pkg/builtin/#int64">int64</a>, M *<a href="../../../../math/big/index.html">big</a>.<a href="../../../../math/big/index.html#Int">Int</a>) *<a href="#Int">Int</a></pre>
+<p>
+NewInt64 creates a new Int with a given int64 value and big.Int modulus.
+</p>
+<h3 id="NewIntBytes">func <a href="/src/github.com/dedis/crypto/nist/int.go?s=1954:1997#L54">NewIntBytes</a>
+<a class="permalink" href="#NewIntBytes">¶</a>
+</h3>
+<pre>func NewIntBytes(a []<a href="https://golang.org/pkg/builtin/#byte">byte</a>, m *<a href="../../../../math/big/index.html">big</a>.<a href="../../../../math/big/index.html#Int">Int</a>) *<a href="#Int">Int</a></pre>
+<p>
+NewIntBytes creates a new Int with a given slice of bytes and a big.Int
+modulus.
+</p>
+<h3 id="NewIntString">func <a href="/src/github.com/dedis/crypto/nist/int.go?s=2177:2234#L60">NewIntString</a>
+<a class="permalink" href="#NewIntString">¶</a>
+</h3>
+<pre>func NewIntString(n, d <a href="https://golang.org/pkg/builtin/#string">string</a>, base <a href="https://golang.org/pkg/builtin/#int">int</a>, m *<a href="../../../../math/big/index.html">big</a>.<a href="../../../../math/big/index.html#Int">Int</a>) *<a href="#Int">Int</a></pre>
+<p>
+NewIntString creates a new Int with a given string and a big.Int modulus.
+The value is set to a rational fraction n/d in a given base.
+</p>
+<h3 id="Int.Add">func (*Int) <a href="/src/github.com/dedis/crypto/nist/int.go?s=5607:5662#L194">Add</a>
+<a class="permalink" href="#Int.Add">¶</a>
+</h3>
+<pre>func (i *<a href="#Int">Int</a>) Add(a, b <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Scalar">Scalar</a>) <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Scalar">Scalar</a></pre>
+<p>
+Set target to a + b mod M, where M is a's modulus..
+</p>
+<h3 id="Int.BigEndian">func (*Int) <a href="/src/github.com/dedis/crypto/nist/int.go?s=9788:9832#L356">BigEndian</a>
+<a class="permalink" href="#Int.BigEndian">¶</a>
+</h3>
+<pre>func (i *<a href="#Int">Int</a>) BigEndian(min, max <a href="https://golang.org/pkg/builtin/#int">int</a>) []<a href="https://golang.org/pkg/builtin/#byte">byte</a></pre>
+<p>
+Encode the value of this Int into a big-endian byte-slice
+at least min bytes but no more than max bytes long.
+Panics if max != 0 and the Int cannot be represented in max bytes.
+</p>
+<h3 id="Int.Bytes">func (*Int) <a href="/src/github.com/dedis/crypto/nist/int.go?s=10494:10522#L384">Bytes</a>
+<a class="permalink" href="#Int.Bytes">¶</a>
+</h3>
+<pre>func (i *<a href="#Int">Int</a>) Bytes() []<a href="https://golang.org/pkg/builtin/#byte">byte</a></pre>
+<p>
+Bytes returns the variable length byte slice of the value.
+It returns the byte slice using the same endianness as i.
+</p>
+<h3 id="Int.Clone">func (*Int) <a href="/src/github.com/dedis/crypto/nist/int.go?s=4457:4494#L149">Clone</a>
+<a class="permalink" href="#Int.Clone">¶</a>
+</h3>
+<pre>func (i *<a href="#Int">Int</a>) Clone() <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Scalar">Scalar</a></pre>
+<h3 id="Int.Cmp">func (*Int) <a href="/src/github.com/dedis/crypto/nist/int.go?s=3892:3933#L125">Cmp</a>
+<a class="permalink" href="#Int.Cmp">¶</a>
+</h3>
+<pre>func (i *<a href="#Int">Int</a>) Cmp(s2 <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Scalar">Scalar</a>) <a href="https://golang.org/pkg/builtin/#int">int</a></pre>
+<p>
+Compare two Ints for equality or inequality
+</p>
+<h3 id="Int.Div">func (*Int) <a href="/src/github.com/dedis/crypto/nist/int.go?s=6441:6496#L235">Div</a>
+<a class="permalink" href="#Int.Div">¶</a>
+</h3>
+<pre>func (i *<a href="#Int">Int</a>) Div(a, b <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Scalar">Scalar</a>) <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Scalar">Scalar</a></pre>
+<p>
+Set to a * b^-1 mod M, where b^-1 is the modular inverse of b.
+</p>
+<h3 id="Int.Equal">func (*Int) <a href="/src/github.com/dedis/crypto/nist/int.go?s=3999:4043#L130">Equal</a>
+<a class="permalink" href="#Int.Equal">¶</a>
+</h3>
+<pre>func (i *<a href="#Int">Int</a>) Equal(s2 <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Scalar">Scalar</a>) <a href="https://golang.org/pkg/builtin/#bool">bool</a></pre>
+<p>
+Test two Ints for equality
+</p>
+<h3 id="Int.Exp">func (*Int) <a href="/src/github.com/dedis/crypto/nist/int.go?s=6920:6984#L255">Exp</a>
+<a class="permalink" href="#Int.Exp">¶</a>
+</h3>
+<pre>func (i *<a href="#Int">Int</a>) Exp(a <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Scalar">Scalar</a>, e *<a href="../../../../math/big/index.html">big</a>.<a href="../../../../math/big/index.html#Int">Int</a>) <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Scalar">Scalar</a></pre>
+<p>
+Set to a^e mod M,
+where e is an arbitrary big.Int exponent (not necessarily 0 &lt;= e &lt; M).
+</p>
+<h3 id="Int.HideDecode">func (*Int) <a href="/src/github.com/dedis/crypto/nist/int.go?s=12606:12642#L460">HideDecode</a>
+<a class="permalink" href="#Int.HideDecode">¶</a>
+</h3>
+<pre>func (i *<a href="#Int">Int</a>) HideDecode(buf []<a href="https://golang.org/pkg/builtin/#byte">byte</a>)</pre>
+<p>
+HideDecode a uniform representation of this object from a slice,
+whose length must be exactly HideLen().
+</p>
+<h3 id="Int.HideEncode">func (*Int) <a href="/src/github.com/dedis/crypto/nist/int.go?s=11652:11703#L425">HideEncode</a>
+<a class="permalink" href="#Int.HideEncode">¶</a>
+</h3>
+<pre>func (i *<a href="#Int">Int</a>) HideEncode(rand <a href="../../../../crypto/cipher/index.html">cipher</a>.<a href="../../../../crypto/cipher/index.html#Stream">Stream</a>) []<a href="https://golang.org/pkg/builtin/#byte">byte</a></pre>
+<p>
+HideEncode a Int such that it appears indistinguishable
+from a HideLen()-byte string chosen uniformly at random,
+assuming the Int contains a uniform integer modulo M.
+For a Int this always succeeds and returns non-nil.
+</p>
+<h3 id="Int.HideLen">func (*Int) <a href="/src/github.com/dedis/crypto/nist/int.go?s=11364:11391#L417">HideLen</a>
+<a class="permalink" href="#Int.HideLen">¶</a>
+</h3>
+<pre>func (i *<a href="#Int">Int</a>) HideLen() <a href="https://golang.org/pkg/builtin/#int">int</a></pre>
+<p>
+Return the length in bytes of a uniform byte-string encoding of this Int,
+satisfying the requirements of the Hiding interface.
+For a Int this is always the same length as the normal encoding.
+</p>
+<h3 id="Int.Init">func (*Int) <a href="/src/github.com/dedis/crypto/nist/int.go?s=2405:2452#L66">Init</a>
+<a class="permalink" href="#Int.Init">¶</a>
+</h3>
+<pre>func (i *<a href="#Int">Int</a>) Init(V *<a href="../../../../math/big/index.html">big</a>.<a href="../../../../math/big/index.html#Int">Int</a>, m *<a href="../../../../math/big/index.html">big</a>.<a href="../../../../math/big/index.html#Int">Int</a>) *<a href="#Int">Int</a></pre>
+<p>
+Initialize a Int with a given big.Int value and modulus pointer.
+Note that the value is copied; the modulus is not.
+</p>
+<h3 id="Int.Init64">func (*Int) <a href="/src/github.com/dedis/crypto/nist/int.go?s=2581:2627#L74">Init64</a>
+<a class="permalink" href="#Int.Init64">¶</a>
+</h3>
+<pre>func (i *<a href="#Int">Int</a>) Init64(v <a href="https://golang.org/pkg/builtin/#int64">int64</a>, m *<a href="../../../../math/big/index.html">big</a>.<a href="../../../../math/big/index.html#Int">Int</a>) *<a href="#Int">Int</a></pre>
+<p>
+Initialize a Int with an int64 value and big.Int modulus.
+</p>
+<h3 id="Int.InitBytes">func (*Int) <a href="/src/github.com/dedis/crypto/nist/int.go?s=2767:2817#L82">InitBytes</a>
+<a class="permalink" href="#Int.InitBytes">¶</a>
+</h3>
+<pre>func (i *<a href="#Int">Int</a>) InitBytes(a []<a href="https://golang.org/pkg/builtin/#byte">byte</a>, m *<a href="../../../../math/big/index.html">big</a>.<a href="../../../../math/big/index.html#Int">Int</a>) *<a href="#Int">Int</a></pre>
+<p>
+Initialize to a number represented in a big-endian byte string.
+</p>
+<h3 id="Int.InitString">func (*Int) <a href="/src/github.com/dedis/crypto/nist/int.go?s=2992:3056#L91">InitString</a>
+<a class="permalink" href="#Int.InitString">¶</a>
+</h3>
+<pre>func (i *<a href="#Int">Int</a>) InitString(n, d <a href="https://golang.org/pkg/builtin/#string">string</a>, base <a href="https://golang.org/pkg/builtin/#int">int</a>, m *<a href="../../../../math/big/index.html">big</a>.<a href="../../../../math/big/index.html#Int">Int</a>) *<a href="#Int">Int</a></pre>
+<p>
+Initialize a Int to a rational fraction n/d
+specified with a pair of strings in a given base.
+</p>
+<h3 id="Int.Int64">func (*Int) <a href="/src/github.com/dedis/crypto/nist/int.go?s=5139:5166#L176">Int64</a>
+<a class="permalink" href="#Int.Int64">¶</a>
+</h3>
+<pre>func (i *<a href="#Int">Int</a>) Int64() <a href="https://golang.org/pkg/builtin/#int64">int64</a></pre>
+<p>
+Return the int64 representation of the value.
+If the value is not representable in an int64 the result is undefined.
+</p>
+<h3 id="Int.Inv">func (*Int) <a href="/src/github.com/dedis/crypto/nist/int.go?s=6695:6747#L246">Inv</a>
+<a class="permalink" href="#Int.Inv">¶</a>
+</h3>
+<pre>func (i *<a href="#Int">Int</a>) Inv(a <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Scalar">Scalar</a>) <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Scalar">Scalar</a></pre>
+<p>
+Set to the modular inverse of a with respect to modulus M.
+</p>
+<h3 id="Int.Jacobi">func (*Int) <a href="/src/github.com/dedis/crypto/nist/int.go?s=7477:7533#L277">Jacobi</a>
+<a class="permalink" href="#Int.Jacobi">¶</a>
+</h3>
+<pre>func (i *<a href="#Int">Int</a>) Jacobi(as <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Scalar">Scalar</a>) <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Scalar">Scalar</a></pre>
+<p>
+Set to the Jacobi symbol of (a/M), which indicates whether a is
+zero (0), a positive square in M (1), or a non-square in M (-1).
+</p>
+<h3 id="Int.LittleEndian">func (*Int) <a href="/src/github.com/dedis/crypto/nist/int.go?s=10815:10862#L395">LittleEndian</a>
+<a class="permalink" href="#Int.LittleEndian">¶</a>
+</h3>
+<pre>func (i *<a href="#Int">Int</a>) LittleEndian(min, max <a href="https://golang.org/pkg/builtin/#int">int</a>) []<a href="https://golang.org/pkg/builtin/#byte">byte</a></pre>
+<p>
+Encode the value of this Int into a little-endian byte-slice
+at least min bytes but no more than max bytes long.
+Panics if max != 0 and the Int cannot be represented in max bytes.
+</p>
+<h3 id="Int.MarshalBinary">func (*Int) <a href="/src/github.com/dedis/crypto/nist/int.go?s=8544:8589#L310">MarshalBinary</a>
+<a class="permalink" href="#Int.MarshalBinary">¶</a>
+</h3>
+<pre>func (i *<a href="#Int">Int</a>) MarshalBinary() ([]<a href="https://golang.org/pkg/builtin/#byte">byte</a>, <a href="https://golang.org/pkg/builtin/#error">error</a>)</pre>
+<p>
+Encode the value of this Int into a byte-slice exactly Len() bytes long.
+</p>
+<h3 id="Int.MarshalSize">func (*Int) <a href="/src/github.com/dedis/crypto/nist/int.go?s=8400:8431#L305">MarshalSize</a>
+<a class="permalink" href="#Int.MarshalSize">¶</a>
+</h3>
+<pre>func (i *<a href="#Int">Int</a>) MarshalSize() <a href="https://golang.org/pkg/builtin/#int">int</a></pre>
+<p>
+Return the length in bytes of encoded integers with modulus M.
+The length of encoded Ints depends only on the size of the modulus,
+and not on the the value of the encoded integer,
+making the encoding is fixed-length for simplicity and security.
+</p>
+<h3 id="Int.MarshalTo">func (*Int) <a href="/src/github.com/dedis/crypto/nist/int.go?s=9412:9461#L345">MarshalTo</a>
+<a class="permalink" href="#Int.MarshalTo">¶</a>
+</h3>
+<pre>func (i *<a href="#Int">Int</a>) MarshalTo(w <a href="../../../../io/index.html">io</a>.<a href="../../../../io/index.html#Writer">Writer</a>) (<a href="https://golang.org/pkg/builtin/#int">int</a>, <a href="https://golang.org/pkg/builtin/#error">error</a>)</pre>
+<h3 id="Int.Mul">func (*Int) <a href="/src/github.com/dedis/crypto/nist/int.go?s=6222:6277#L226">Mul</a>
+<a class="permalink" href="#Int.Mul">¶</a>
+</h3>
+<pre>func (i *<a href="#Int">Int</a>) Mul(a, b <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Scalar">Scalar</a>) <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Scalar">Scalar</a></pre>
+<p>
+Set to a * b mod M.
+Target receives a's modulus.
+</p>
+<h3 id="Int.Neg">func (*Int) <a href="/src/github.com/dedis/crypto/nist/int.go?s=5995:6047#L213">Neg</a>
+<a class="permalink" href="#Int.Neg">¶</a>
+</h3>
+<pre>func (i *<a href="#Int">Int</a>) Neg(a <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Scalar">Scalar</a>) <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Scalar">Scalar</a></pre>
+<p>
+Set to -a mod M.
+</p>
+<h3 id="Int.Nonzero">func (*Int) <a href="/src/github.com/dedis/crypto/nist/int.go?s=4133:4161#L135">Nonzero</a>
+<a class="permalink" href="#Int.Nonzero">¶</a>
+</h3>
+<pre>func (i *<a href="#Int">Int</a>) Nonzero() <a href="https://golang.org/pkg/builtin/#bool">bool</a></pre>
+<p>
+Returns true if the integer value is nonzero.
+</p>
+<h3 id="Int.One">func (*Int) <a href="/src/github.com/dedis/crypto/nist/int.go?s=4756:4791#L162">One</a>
+<a class="permalink" href="#Int.One">¶</a>
+</h3>
+<pre>func (i *<a href="#Int">Int</a>) One() <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Scalar">Scalar</a></pre>
+<p>
+Set to the value 1.  The modulus must already be initialized.
+</p>
+<h3 id="Int.Pick">func (*Int) <a href="/src/github.com/dedis/crypto/nist/int.go?s=8041:8095#L296">Pick</a>
+<a class="permalink" href="#Int.Pick">¶</a>
+</h3>
+<pre>func (i *<a href="#Int">Int</a>) Pick(rand <a href="../../../../crypto/cipher/index.html">cipher</a>.<a href="../../../../crypto/cipher/index.html#Stream">Stream</a>) <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Scalar">Scalar</a></pre>
+<p>
+Pick a [pseudo-]random integer modulo M
+using bits from the given stream cipher.
+</p>
+<h3 id="Int.Set">func (*Int) <a href="/src/github.com/dedis/crypto/nist/int.go?s=4345:4397#L142">Set</a>
+<a class="permalink" href="#Int.Set">¶</a>
+</h3>
+<pre>func (i *<a href="#Int">Int</a>) Set(a <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Scalar">Scalar</a>) <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Scalar">Scalar</a></pre>
+<p>
+Set both value and modulus to be equal to another Int.
+Since this method copies the modulus as well,
+it may be used as an alternative to Init().
+</p>
+<h3 id="Int.SetBytes">func (*Int) <a href="/src/github.com/dedis/crypto/nist/int.go?s=10198:10246#L373">SetBytes</a>
+<a class="permalink" href="#Int.SetBytes">¶</a>
+</h3>
+<pre>func (i *<a href="#Int">Int</a>) SetBytes(a []<a href="https://golang.org/pkg/builtin/#byte">byte</a>) <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Scalar">Scalar</a></pre>
+<p>
+SetBytes set the value value to a number represented
+by a byte string.
+Endianness depends on the endianess set in i.
+</p>
+<h3 id="Int.SetInt64">func (*Int) <a href="/src/github.com/dedis/crypto/nist/int.go?s=4921:4968#L169">SetInt64</a>
+<a class="permalink" href="#Int.SetInt64">¶</a>
+</h3>
+<pre>func (i *<a href="#Int">Int</a>) SetInt64(v <a href="https://golang.org/pkg/builtin/#int64">int64</a>) <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Scalar">Scalar</a></pre>
+<p>
+Set to an arbitrary 64-bit "small integer" value.
+The modulus must already be initialized.
+</p>
+<h3 id="Int.SetString">func (*Int) <a href="/src/github.com/dedis/crypto/nist/int.go?s=3559:3618#L109">SetString</a>
+<a class="permalink" href="#Int.SetString">¶</a>
+</h3>
+<pre>func (i *<a href="#Int">Int</a>) SetString(n, d <a href="https://golang.org/pkg/builtin/#string">string</a>, base <a href="https://golang.org/pkg/builtin/#int">int</a>) (*<a href="#Int">Int</a>, <a href="https://golang.org/pkg/builtin/#bool">bool</a>)</pre>
+<p>
+Set value to a rational fraction n/d represented by a pair of strings.
+If d == "", then the denominator is taken to be 1.
+Returns (i,true) on success, or
+(nil,false) if either string fails to parse.
+</p>
+<h3 id="Int.SetUint64">func (*Int) <a href="/src/github.com/dedis/crypto/nist/int.go?s=5273:5322#L182">SetUint64</a>
+<a class="permalink" href="#Int.SetUint64">¶</a>
+</h3>
+<pre>func (i *<a href="#Int">Int</a>) SetUint64(v <a href="https://golang.org/pkg/builtin/#uint64">uint64</a>) <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Scalar">Scalar</a></pre>
+<p>
+Set to an arbitrary uint64 value.
+The modulus must already be initialized.
+</p>
+<h3 id="Int.Sqrt">func (*Int) <a href="/src/github.com/dedis/crypto/nist/int.go?s=7839:7882#L288">Sqrt</a>
+<a class="permalink" href="#Int.Sqrt">¶</a>
+</h3>
+<pre>func (i *<a href="#Int">Int</a>) Sqrt(as <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Scalar">Scalar</a>) <a href="https://golang.org/pkg/builtin/#bool">bool</a></pre>
+<p>
+Compute some square root of a mod M of one exists.
+Assumes the modulus M is an odd prime.
+Returns true on success, false if input a is not a square.
+(This really should be part of Go's big.Int library.)
+</p>
+<h3 id="Int.String">func (*Int) <a href="/src/github.com/dedis/crypto/nist/int.go?s=3273:3302#L101">String</a>
+<a class="permalink" href="#Int.String">¶</a>
+</h3>
+<pre>func (i *<a href="#Int">Int</a>) String() <a href="https://golang.org/pkg/builtin/#string">string</a></pre>
+<p>
+Return the Int's integer value in decimal string representation.
+</p>
+<h3 id="Int.Sub">func (*Int) <a href="/src/github.com/dedis/crypto/nist/int.go?s=5822:5877#L204">Sub</a>
+<a class="permalink" href="#Int.Sub">¶</a>
+</h3>
+<pre>func (i *<a href="#Int">Int</a>) Sub(a, b <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Scalar">Scalar</a>) <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Scalar">Scalar</a></pre>
+<p>
+Set target to a - b mod M.
+Target receives a's modulus.
+</p>
+<h3 id="Int.Uint64">func (*Int) <a href="/src/github.com/dedis/crypto/nist/int.go?s=5496:5525#L189">Uint64</a>
+<a class="permalink" href="#Int.Uint64">¶</a>
+</h3>
+<pre>func (i *<a href="#Int">Int</a>) Uint64() <a href="https://golang.org/pkg/builtin/#uint64">uint64</a></pre>
+<p>
+Return the uint64 representation of the value.
+If the value is not representable in an uint64 the result is undefined.
+</p>
+<h3 id="Int.UnmarshalBinary">func (*Int) <a href="/src/github.com/dedis/crypto/nist/int.go?s=9032:9079#L330">UnmarshalBinary</a>
+<a class="permalink" href="#Int.UnmarshalBinary">¶</a>
+</h3>
+<pre>func (i *<a href="#Int">Int</a>) UnmarshalBinary(buf []<a href="https://golang.org/pkg/builtin/#byte">byte</a>) <a href="https://golang.org/pkg/builtin/#error">error</a></pre>
+<p>
+Attempt to decode a Int from a byte-slice buffer.
+Returns an error if the buffer is not exactly Len() bytes long
+or if the contents of the buffer represents an out-of-range integer.
+</p>
+<h3 id="Int.UnmarshalFrom">func (*Int) <a href="/src/github.com/dedis/crypto/nist/int.go?s=9503:9556#L349">UnmarshalFrom</a>
+<a class="permalink" href="#Int.UnmarshalFrom">¶</a>
+</h3>
+<pre>func (i *<a href="#Int">Int</a>) UnmarshalFrom(r <a href="../../../../io/index.html">io</a>.<a href="../../../../io/index.html#Reader">Reader</a>) (<a href="https://golang.org/pkg/builtin/#int">int</a>, <a href="https://golang.org/pkg/builtin/#error">error</a>)</pre>
+<h3 id="Int.Zero">func (*Int) <a href="/src/github.com/dedis/crypto/nist/int.go?s=4622:4658#L156">Zero</a>
+<a class="permalink" href="#Int.Zero">¶</a>
+</h3>
+<pre>func (i *<a href="#Int">Int</a>) Zero() <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Scalar">Scalar</a></pre>
+<p>
+Set to the value 0.  The modulus must already be initialized.
+</p>
+<h2 id="ResidueGroup">type <a href="/src/github.com/dedis/crypto/nist/residue.go?s=5109:5165#L175">ResidueGroup</a>
+<a class="permalink" href="#ResidueGroup">¶</a>
+</h2>
+<pre>type ResidueGroup struct {
+    <a href="../../../../crypto/dsa/index.html">dsa</a>.<a href="../../../../crypto/dsa/index.html#Parameters">Parameters</a>
+    R *<a href="../../../../math/big/index.html">big</a>.<a href="../../../../math/big/index.html#Int">Int</a>
+}</pre>
+<p>
+A ResidueGroup represents a DSA-style modular integer arithmetic group,
+defined by two primes P and Q and an integer R, such that P = Q*R+1.
+Points in a ResidueGroup are R-residues modulo P,
+and Scalars are integer exponents modulo the group order Q.
+</p>
+<p>
+In traditional DSA groups P is typically much larger than Q,
+and hence use a large multiple R.
+This is done to minimize the computational cost of modular exponentiation
+while maximizing security against known classes of attacks:
+P must be on the order of thousands of bits long
+while for security Q is believed to require only hundreds of bits.
+Such computation-optimized groups are suitable
+for Diffie-Hellman agreement, DSA or ElGamal signatures, etc.,
+which depend on Point.Mul() and homomorphic properties.
+</p>
+<p>
+However, residue groups with large R are less suitable for
+public-key cryptographic techniques that require choosing Points
+pseudo-randomly or to contain embedded data,
+as required by ElGamal encryption for example, or by Dissent's
+hash-generator construction for verifiable DC-nets.
+For such purposes quadratic residue groups are more suitable -
+representing the special case where R=2 and hence P=2Q+1.
+As a result, the Point.Pick() method should be expected to work efficiently
+ONLY on quadratic residue groups in which R=2.
+</p>
+<h3 id="ResidueGroup.Order">func (*ResidueGroup) <a href="/src/github.com/dedis/crypto/nist/residue.go?s=6044:6083#L211">Order</a>
+<a class="permalink" href="#ResidueGroup.Order">¶</a>
+</h3>
+<pre>func (g *<a href="#ResidueGroup">ResidueGroup</a>) Order() *<a href="../../../../math/big/index.html">big</a>.<a href="../../../../math/big/index.html#Int">Int</a></pre>
+<p>
+Returns the order of this Residue group, namely the prime Q.
+</p>
+<h3 id="ResidueGroup.Point">func (*ResidueGroup) <a href="/src/github.com/dedis/crypto/nist/residue.go?s=5886:5931#L204">Point</a>
+<a class="permalink" href="#ResidueGroup.Point">¶</a>
+</h3>
+<pre>func (g *<a href="#ResidueGroup">ResidueGroup</a>) Point() <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Point">Point</a></pre>
+<p>
+Create a Point associated with this Residue group,
+with an initial value of nil.
+</p>
+<h3 id="ResidueGroup.PointLen">func (*ResidueGroup) <a href="/src/github.com/dedis/crypto/nist/residue.go?s=5726:5763#L200">PointLen</a>
+<a class="permalink" href="#ResidueGroup.PointLen">¶</a>
+</h3>
+<pre>func (g *<a href="#ResidueGroup">ResidueGroup</a>) PointLen() <a href="https://golang.org/pkg/builtin/#int">int</a></pre>
+<p>
+Return the number of bytes in the encoding of a Point
+for this Residue group.
+</p>
+<h3 id="ResidueGroup.PrimeOrder">func (*ResidueGroup) <a href="/src/github.com/dedis/crypto/nist/residue.go?s=5258:5298#L184">PrimeOrder</a>
+<a class="permalink" href="#ResidueGroup.PrimeOrder">¶</a>
+</h3>
+<pre>func (g *<a href="#ResidueGroup">ResidueGroup</a>) PrimeOrder() <a href="https://golang.org/pkg/builtin/#bool">bool</a></pre>
+<h3 id="ResidueGroup.QuadraticResidueGroup">func (*ResidueGroup) <a href="/src/github.com/dedis/crypto/nist/residue.go?s=7029:7106#L255">QuadraticResidueGroup</a>
+<a class="permalink" href="#ResidueGroup.QuadraticResidueGroup">¶</a>
+</h3>
+<pre>func (g *<a href="#ResidueGroup">ResidueGroup</a>) QuadraticResidueGroup(bitlen <a href="https://golang.org/pkg/builtin/#uint">uint</a>, rand <a href="../../../../crypto/cipher/index.html">cipher</a>.<a href="../../../../crypto/cipher/index.html#Stream">Stream</a>)</pre>
+<p>
+Initialize Residue group parameters for a quadratic residue group,
+by picking primes P and Q such that P=2Q+1
+and the smallest valid generator G for this group.
+</p>
+<h3 id="ResidueGroup.Scalar">func (*ResidueGroup) <a href="/src/github.com/dedis/crypto/nist/residue.go?s=5564:5611#L194">Scalar</a>
+<a class="permalink" href="#ResidueGroup.Scalar">¶</a>
+</h3>
+<pre>func (g *<a href="#ResidueGroup">ResidueGroup</a>) Scalar() <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Scalar">Scalar</a></pre>
+<p>
+Create a Scalar associated with this Residue group,
+with an initial value of nil.
+</p>
+<h3 id="ResidueGroup.ScalarLen">func (*ResidueGroup) <a href="/src/github.com/dedis/crypto/nist/residue.go?s=5402:5440#L190">ScalarLen</a>
+<a class="permalink" href="#ResidueGroup.ScalarLen">¶</a>
+</h3>
+<pre>func (g *<a href="#ResidueGroup">ResidueGroup</a>) ScalarLen() <a href="https://golang.org/pkg/builtin/#int">int</a></pre>
+<p>
+Return the number of bytes in the encoding of a Scalar
+for this Residue group.
+</p>
+<h3 id="ResidueGroup.SetParams">func (*ResidueGroup) <a href="/src/github.com/dedis/crypto/nist/residue.go?s=6693:6746#L242">SetParams</a>
+<a class="permalink" href="#ResidueGroup.SetParams">¶</a>
+</h3>
+<pre>func (g *<a href="#ResidueGroup">ResidueGroup</a>) SetParams(P, Q, R, G *<a href="../../../../math/big/index.html">big</a>.<a href="../../../../math/big/index.html#Int">Int</a>)</pre>
+<p>
+Explicitly initialize a ResidueGroup with given parameters.
+</p>
+<h3 id="ResidueGroup.String">func (*ResidueGroup) <a href="/src/github.com/dedis/crypto/nist/residue.go?s=5167:5205#L180">String</a>
+<a class="permalink" href="#ResidueGroup.String">¶</a>
+</h3>
+<pre>func (g *<a href="#ResidueGroup">ResidueGroup</a>) String() <a href="https://golang.org/pkg/builtin/#string">string</a></pre>
+<h3 id="ResidueGroup.Valid">func (*ResidueGroup) <a href="/src/github.com/dedis/crypto/nist/residue.go?s=6245:6280#L218">Valid</a>
+<a class="permalink" href="#ResidueGroup.Valid">¶</a>
+</h3>
+<pre>func (g *<a href="#ResidueGroup">ResidueGroup</a>) Valid() <a href="https://golang.org/pkg/builtin/#bool">bool</a></pre>
+<p>
+Validate the parameters for a Residue group,
+checking that P and Q are prime, P=Q*R+1,
+and that G is a valid generator for this group.
+</p>
+
+</div><!-- .container -->
+</div><!-- #page -->
+<!-- TODO(adonovan): load these from <head> using "defer" attribute? -->
+<script src="../../../../.goduckstyle/jquery.js" type="text/javascript"></script>
+<script src="../../../../.goduckstyle/jquery.treeview.js" type="text/javascript"></script>
+<script src="../../../../.goduckstyle/jquery.treeview.edit.js" type="text/javascript"></script>
+<script>var goVersion = "go1.7.1";</script>
+<script src="../../../../.goduckstyle/godocs.js" type="text/javascript"></script>
+</body>
+</html>

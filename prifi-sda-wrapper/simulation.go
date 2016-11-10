@@ -12,9 +12,8 @@ import (
 )
 
 /*
-This is a simple ExampleHandlers-protocol with two steps:
-- announcement - which sends a message to all children
-- reply - used for counting the number of children
+This simulation runs the PriFi protocol with the SDA as
+a network provider, using the parameters from a config file.
 */
 
 func init() {
@@ -27,7 +26,7 @@ type Simulation struct {
 	SimulationConfig
 }
 
-// SimulationConfig is the config used by the simulation for byzcoin
+// SimulationConfig is the config used by the simulation for PriFi
 type SimulationConfig struct {
 	NClients              int
 	NTrustees             int
@@ -42,8 +41,7 @@ type SimulationConfig struct {
 
 var tomlConfig SimulationConfig
 
-// NewSimulation is used internally to register the simulation (see the init()
-// function above).
+// NewSimulation creates a new SDA simulation.
 func NewSimulation(config string) (sda.Simulation, error) {
 	es := &Simulation{}
 	_, err := toml.Decode(config, es)
