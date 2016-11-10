@@ -308,7 +308,7 @@ func (p *PriFiProtocol) ConnectToTrustees() error {
 		NextFreeTrusteeId: 0,
 		NTrustees:         p.relayState.nTrustees,
 		StartNow:          true,
-		ForceParams:       true,
+		ForceParams:       false,
 		UpCellSize:        p.relayState.UpstreamCellSize,
 	}
 

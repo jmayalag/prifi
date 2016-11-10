@@ -38,7 +38,7 @@ type PriFiIdentity struct {
 
 type PriFiSDAWrapperConfig struct {
 	prifi_lib.ALL_ALL_PARAMETERS
-	Identities map[network.ServerIdentity]PriFiIdentity
+	Identities map[network.Address]PriFiIdentity
 	Role PriFiRole
 }
 
@@ -54,14 +54,15 @@ type PriFiSDAWrapper struct {
 	prifiProtocol *prifi_lib.PriFiProtocol
 }
 
-//the "PriFi-Wrapper-Protocol start". It calls the PriFi library with the correct parameters
+// Start implements the sda.Protocol interface.
 func (p *PriFiSDAWrapper) Start() error {
-
 	if !p.configSet {
 		log.Fatal("Trying to start PriFi Library, but config not set !")
 	}
 
 	log.Lvl3("Starting PriFi-SDA-Wrapper Protocol")
+
+	p.prifiProtocol.ConnectToTrustees()
 
 	return nil
 }
@@ -112,7 +113,6 @@ func (p *PriFiSDAWrapper) SetConfig(config *PriFiSDAWrapperConfig) {
 	sendDataOutOfDCNet := false
 
 	experimentResultChan := p.ResultChannel
-
 	// Instantiate prifi-lib with the correct role
 	switch config.Role {
 	case Relay:
@@ -131,12 +131,12 @@ func (p *PriFiSDAWrapper) SetConfig(config *PriFiSDAWrapperConfig) {
 		p.prifiProtocol = prifi_lib.NewPriFiRelayWithState(ms, relayState)
 
 	case Trustee:
-		id := config.Identities[*(p.ServerIdentity())].Id
+		id := config.Identities[p.ServerIdentity().Address].Id
 		trusteeState := prifi_lib.NewTrusteeState(id, nTrustees, nClients, upCellSize)
 		p.prifiProtocol = prifi_lib.NewPriFiTrusteeWithState(ms, trusteeState)
 
 	case Client:
-		id := config.Identities[*(p.ServerIdentity())].Id
+		id := config.Identities[p.ServerIdentity().Address].Id
 		clientState := prifi_lib.NewClientState(id,
 			nTrustees,
 			nClients,
@@ -150,23 +150,30 @@ func (p *PriFiSDAWrapper) SetConfig(config *PriFiSDAWrapperConfig) {
 	p.registerHandlers()
 
 	p.configSet = true
-	log.Lvl2("Setting PriFi config to be : ", config)
 }
 
 // buildMessageSender creates a MessageSender struct
 // given a mep between server identities and PriFi identities.
-func (p *PriFiSDAWrapper) buildMessageSender(identities map[network.ServerIdentity]PriFiIdentity) MessageSender {
+func (p *PriFiSDAWrapper) buildMessageSender(identities map[network.Address]PriFiIdentity) MessageSender {
 	nodes := p.List() // Has type []*sda.TreeNode
 	trustees := make(map[int]*sda.TreeNode)
 	clients := make(map[int]*sda.TreeNode)
 	var relay *sda.TreeNode = nil
 
 	for i := 0; i < len(nodes); i++ {
-		id := identities[*(nodes[i].ServerIdentity)]
+		id, ok := identities[nodes[i].ServerIdentity.Address]
+		if !ok {
+			log.Fatal("Unknow node with address", nodes[i].ServerIdentity.Address)
+		}
 		switch id.Role {
 		case Client: clients[id.Id] = nodes[i]
 		case Trustee: trustees[id.Id] = nodes[i]
-		case Relay: relay = nodes[i]
+		case Relay:
+			if relay == nil {
+				relay = nodes[i]
+			} else {
+				log.Fatal("Multiple relays")
+			}
 		}
 	}
 

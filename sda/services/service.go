@@ -94,7 +94,7 @@ func (s *Service) StartRelay(group *config.Group) error {
 func (s *Service) StartClient(group *config.Group) error {
 	log.Info("Service", s, "running in client mode")
 	s.group = group
-	s.role = prifi.Trustee
+	s.role = prifi.Client
 
 	return nil
 }
@@ -207,8 +207,9 @@ func parseDescription(description string) (*prifi.PriFiIdentity, error) {
 // mapIdentities reads the group configuration to assign PriFi roles
 // to server identities and return them with the server
 // identity of the relay.
-func mapIdentities(group *config.Group) (map[network.ServerIdentity]prifi.PriFiIdentity, network.ServerIdentity) {
-	m := make(map[network.ServerIdentity]prifi.PriFiIdentity)
+func mapIdentities(group *config.Group) (map[network.Address]prifi.PriFiIdentity, network.ServerIdentity) {
+	m := make(map[network.Address]prifi.PriFiIdentity)
+	var relay network.ServerIdentity
 
 	// Read the description of the nodes in the config file to assign them PriFi roles.
 	nodeList := group.Roster.List
@@ -218,17 +219,19 @@ func mapIdentities(group *config.Group) (map[network.ServerIdentity]prifi.PriFiI
 		if err != nil {
 			log.Info("Cannot parse node description, skipping:", err)
 		} else {
-			m[*si] = *id
+			m[si.Address] = *id
+			if id.Role == prifi.Relay {
+				relay = *si
+			}
 		}
 	}
 
 	// Check that there is exactly one relay and at least one trustee and client
 	t, c, r := 0, 0, 0
-	var relay network.ServerIdentity
 
-	for k, v := range m {
+	for _, v := range m {
 		switch v.Role {
-		case prifi.Relay: r++; relay = k
+		case prifi.Relay: r++
 		case prifi.Client: c++
 		case prifi.Trustee: t++
 		}
