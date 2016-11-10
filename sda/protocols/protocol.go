@@ -75,6 +75,7 @@ func (p *MyProtocol) HandleMsg(msg MyMsgStruct) error {
 
 // newProtocolInstance creates a new protocol instance (see MyProtocol comments)
 func newProtocolInstance(n *sda.TreeNodeInstance) (sda.ProtocolInstance, error) {
+	log.Info("Calling protocol.newProtocolInstance")
 	// Initialize protocol state
 	pi := &MyProtocol{
 		TreeNodeInstance: n,
