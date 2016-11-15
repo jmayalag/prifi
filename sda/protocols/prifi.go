@@ -132,7 +132,7 @@ func (p *PriFiSDAWrapper) SetConfig(config *PriFiSDAWrapperConfig) {
 
 	case Trustee:
 		id := config.Identities[p.ServerIdentity().Address].Id
-		trusteeState := prifi_lib.NewTrusteeState(id, nTrustees, nClients, upCellSize)
+		trusteeState := prifi_lib.NewTrusteeState(id, nClients, nTrustees, upCellSize)
 		p.prifiProtocol = prifi_lib.NewPriFiTrusteeWithState(ms, trusteeState)
 
 	case Client:
