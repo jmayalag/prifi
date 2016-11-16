@@ -14,3 +14,8 @@ Description = "Prifi"
   Address = "tcp://127.0.0.1:6002"
   Public = "VYcxFJhJcfOLY/esG1Gr20Lnc+HkKm73v3YsEx7jRds="
   Description = "relay"
+
+[[servers]]
+  Address = "tcp://127.0.0.1:6003"
+  Public = "jcH+mPRM6V66I/YHZ2L6ejIGWrD1OtGB7v7K3Js7aqs="
+  Description = "client 1"
