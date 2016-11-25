@@ -33,6 +33,11 @@ func init() {
 	network.RegisterPacketType(ConnectionResponse{})
 }
 
+type WaitQueue struct {
+	nTrustee int
+	nClient int
+}
+
 // This struct contains the state of the service
 type Service struct {
 	// We need to embed the ServiceProcessor, so that incoming messages
@@ -42,6 +47,9 @@ type Service struct {
 	Storage *Storage
 	path    string
 	role prifi.PriFiRole
+	identityMap *map[network.Address]prifi.PriFiIdentity
+	relayIdentity *network.ServerIdentity
+	waitQueue *WaitQueue
 }
 
 // This structure will be saved, on the contrary of the 'Service'-structure
@@ -50,7 +58,9 @@ type Storage struct {
 	TrusteeID string
 }
 
-type ConnectionRequest struct {}
+type ConnectionRequest struct {
+	Role prifi.PriFiRole
+}
 type DisconnectionRequest struct {}
 type ConnectionResponse struct {
 	Status bool
@@ -59,8 +69,26 @@ type ConnectionResponse struct {
 // HandleConnection receives connection requests from other nodes.
 // It decides when another PriFi protocol should be started.
 func (s *Service) HandleConnection(from *network.ServerIdentity, req *ConnectionRequest) (network.Body, error) {
-	log.Info(">>>> Received connection request ! <<<<<")
-	// TODO: Check that we are relay, store who wants to start the protocol and start if there are enough participants
+	log.Lvl3("Received connection request")
+
+	if s.role != prifi.Relay {
+		return nil, errors.New("This host is not the relay.")
+	}
+
+	// No integrity checks are performed here for simplicity.
+	// If a client sends a connection request with a role which
+	// is not it's own or sends multiple connection requests,
+	// this will be detected when the PriFi protocol attempts to start.
+	switch req.Role {
+	case prifi.Client: s.waitQueue.nClient++
+	case prifi.Trustee: s.waitQueue.nTrustee++
+	default: log.Error("Connection request from invalid node, ignoring")
+	}
+
+	if s.waitQueue.nClient >= 2 && s.waitQueue.nTrustee >= 1 {
+		s.startPriFi()
+	}
+
 	return &ConnectionResponse{true}, nil
 }
 
@@ -75,11 +103,11 @@ func (s *Service) HandleDisconnection(from *network.ServerIdentity, req *Disconn
 // protocols to enable the trustee-mode.
 func (s *Service) StartTrustee(group *config.Group) error {
 	log.Info("Service", s, "running in trustee mode")
-	s.group = group
 	s.role = prifi.Trustee
+	s.readGroup(group)
 
 	// Inform the relay that we want to join the protocol
-	err := sendConnectionRequest(group)
+	err := s.sendConnectionRequest()
 	if err != nil {
 		log.Error("Connection failed:", err)
 	}
@@ -91,29 +119,10 @@ func (s *Service) StartTrustee(group *config.Group) error {
 // protocols to enable the relay-mode.
 func (s *Service) StartRelay(group *config.Group) error {
 	log.Info("Service", s, "running in relay mode")
-	s.group = group
 	s.role = prifi.Relay
-	/*
-	var wrapper *prifi.PriFiSDAWrapper
-	ids, relayIdentity := mapIdentities(group)
+	s.readGroup(group)
+	s.waitQueue = &WaitQueue{0, 0}
 
-	// Start the PriFi protocol on a flat tree with the relay as root
-	tree := group.Roster.GenerateNaryTreeWithRoot(100, &relayIdentity)
-	pi, err := s.CreateProtocolService(prifi.ProtocolName, tree)
-
-	if err != nil {
-		log.Fatal("Unable to start Prifi protocol:", err)
-	}
-
-	// Assert that pi has type PriFiSDAWrapper
-	wrapper = pi.(*prifi.PriFiSDAWrapper)
-
-	wrapper.SetConfig(&prifi.PriFiSDAWrapperConfig{
-		Identities: ids,
-		Role: prifi.Relay,
-	})
-	wrapper.Start()
-	*/
 	return nil
 }
 
@@ -121,11 +130,11 @@ func (s *Service) StartRelay(group *config.Group) error {
 // protocols to enable the client-mode.
 func (s *Service) StartClient(group *config.Group) error {
 	log.Info("Service", s, "running in client mode")
-	s.group = group
 	s.role = prifi.Client
+	s.readGroup(group)
 
 	// Inform the relay that we want to join the protocol
-	err := sendConnectionRequest(group)
+	err := s.sendConnectionRequest()
 	if err != nil {
 		log.Error("Connection failed:", err)
 	}
@@ -143,8 +152,6 @@ func (s *Service) StartClient(group *config.Group) error {
 func (s *Service) NewProtocol(tn *sda.TreeNodeInstance, conf *sda.GenericConfig) (sda.ProtocolInstance, error) {
 	log.Lvl5("Setting node configuration from service")
 
-	ids, _ := mapIdentities(s.group)
-
 	pi, err := prifi.NewPriFiSDAWrapperProtocol(tn)
 	if err != nil {
 		return nil, err
@@ -154,7 +161,7 @@ func (s *Service) NewProtocol(tn *sda.TreeNodeInstance, conf *sda.GenericConfig)
 	wrapper := pi.(*prifi.PriFiSDAWrapper)
 
 	wrapper.SetConfig(&prifi.PriFiSDAWrapperConfig{
-		Identities: ids,
+		Identities: *s.identityMap,
 		Role: s.role,
 	})
 
@@ -281,10 +288,21 @@ func mapIdentities(group *config.Group) (map[network.Address]prifi.PriFiIdentity
 	return m, relay
 }
 
-func sendConnectionRequest(group *config.Group) error {
+// readGroup reads the group description and sets up the Service struct fields
+// accordingly. It *MUST* be called first when the node is started.
+func (s *Service) readGroup(group *config.Group) {
+	ids, relayId := mapIdentities(group)
+	s.identityMap = &ids
+	s.relayIdentity = &relayId
+	s.group = group
+}
+
+// sendConnectionRequest sends a connection request to the relay.
+// It is called by the client and trustee services at startup to
+// announce themselves to the relay.
+func (s *Service) sendConnectionRequest() error {
 	client := sda.NewClient(ServiceName)
-	_, relayIdentity := mapIdentities(group)
-	reply, err := client.Send(&relayIdentity, &ConnectionRequest{})
+	reply, err := client.Send(s.relayIdentity, &ConnectionRequest{s.role})
 	if e := network.ErrMsg(reply, err); e != nil {
 		return e
 	} else {
@@ -296,4 +314,34 @@ func sendConnectionRequest(group *config.Group) error {
 			return errors.New("Connection request refused by the relay.")
 		}
 	}
+	return nil
+}
+
+// startPriFi starts a PriFi protocol. It is called
+// by the relay as soon as enough participants are
+// ready (one trustee and two clients).
+func (s *Service) startPriFi() {
+	if s.role != prifi.Relay {
+		log.Error("Trying to start PriFi protocol from a non-relay node.")
+		return;
+	}
+
+	var wrapper *prifi.PriFiSDAWrapper
+
+	// Start the PriFi protocol on a flat tree with the relay as root
+	tree := s.group.Roster.GenerateNaryTreeWithRoot(100, s.relayIdentity)
+	pi, err := s.CreateProtocolService(prifi.ProtocolName, tree)
+
+	if err != nil {
+		log.Fatal("Unable to start Prifi protocol:", err)
+	}
+
+	// Assert that pi has type PriFiSDAWrapper
+	wrapper = pi.(*prifi.PriFiSDAWrapper)
+
+	wrapper.SetConfig(&prifi.PriFiSDAWrapperConfig{
+		Identities: *s.identityMap,
+		Role: prifi.Relay,
+	})
+	wrapper.Start()
 }
