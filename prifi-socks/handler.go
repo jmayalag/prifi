@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/dedis/crypto/abstract"
+	"github.com/Pamoi/cothority-experiments/log"
 )
 
 // Authentication methods
@@ -76,7 +77,12 @@ func ConnectToProxyServer(IP string, toServer chan []byte, fromServer chan []byt
 			if myConn == nil {
 
 				// Create a new connection with the SOCKS server
-				newConn, _ := net.Dial("tcp", IP)
+				newConn, err := net.Dial("tcp", IP)
+
+				if err != nil {
+					log.Fatal("Could not connect to SOCKS server:", err)
+				}
+
 				allConnections[connID] = newConn
 
 				// Create a control channel for this connection
