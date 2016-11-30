@@ -69,8 +69,12 @@ func (p *PriFiSDAWrapper) Start() error {
 
 // Stop aborts the current execution of the protocol.
 func (p *PriFiSDAWrapper) Stop() {
-	p.prifiProtocol.Received_ALL_REL_SHUTDOWN(prifi_lib.ALL_ALL_SHUTDOWN{})
-	//p.Shutdown()
+	err := p.prifiProtocol.Received_ALL_REL_SHUTDOWN(prifi_lib.ALL_ALL_SHUTDOWN{})
+	if err != nil {
+		log.Error("Could not stop PriFi:", err)
+	} else {
+		p.Shutdown()
+	}
 }
 
 /**
@@ -167,11 +171,8 @@ func (p *PriFiSDAWrapper) buildMessageSender(identities map[network.Address]PriF
 	var relay *sda.TreeNode = nil
 
 	for i := 0; i < len(nodes); i++ {
-		// TODO: The protocol should be started only with online nodes instead
-		if !checkConnectivity(nodes[i]) {
-			continue
-		}
 		id, ok := identities[nodes[i].ServerIdentity.Address]
+		log.Info("Node with role", id.Role, " at address", nodes[i].ServerIdentity.Address)
 		if !ok {
 			log.Fatal("Unknow node with address", nodes[i].ServerIdentity.Address)
 		}
