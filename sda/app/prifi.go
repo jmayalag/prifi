@@ -130,7 +130,7 @@ func client(c *cli.Context) error {
 
 // setupCothorityd sets up a new cothority node configuration (used by all prifi modes)
 func setupCothorityd(c *cli.Context) error {
-	server.InteractiveConfig("cothorityd")
+	server.InteractiveConfig(DefaultName)
 	return nil
 }
 
