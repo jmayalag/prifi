@@ -44,12 +44,12 @@ if [ ! -f "$confdir/$conf_file" ]; then
 	exit
 fi
 
-if [ ! -f "$confdir/$group_file" ]; then
-	echo "Group file does not exist: $confdir/$group_file"
+if [ ! -f "$PWD/$group_file" ]; then
+	echo "Group file does not exist: $PWD/$group_file"
 	exit
 fi
 
 # Run PriFi !
 
-go run $bin_file -c "$confdir/$conf_file" -g "$confdir/$group_file" -d "$dbg_lvl" "$1"
+go run $bin_file -c "$confdir/$conf_file" -g "$PWD/$group_file" -d "$dbg_lvl" "$1"
 
