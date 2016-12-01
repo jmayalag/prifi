@@ -62,9 +62,7 @@ type Storage struct {
 	TrusteeID string
 }
 
-type ConnectionRequest struct {
-	Role prifi.PriFiRole
-}
+type ConnectionRequest struct {}
 type DisconnectionRequest struct {}
 type ConnectionResponse struct {
 	Status bool
@@ -111,8 +109,33 @@ func (s *Service) HandleConnection(msg *network.Packet) {
 // HandleDisconnection receives disconnection requests.
 // It must stop the current PriFi protocol.
 func (s *Service) HandleDisconnection(msg *network.Packet)  {
-	// TODO: This one will be a bit more complicated
+	log.Lvl2("Received disconnection request from ", msg.ServerIdentity.Address)
 
+	// If we are not the relay, ignore the message
+	if s.role != prifi.Relay {
+		return
+	}
+
+	id, ok := s.identityMap[msg.ServerIdentity.Address]
+	if !ok {
+		log.Info("Ignoring connection from unknown node:", msg.ServerIdentity.Address)
+	}
+
+	// Remove node to the waiting queue
+	switch id.Role {
+	case prifi.Client: delete(s.waitQueue.clients, msg.ServerIdentity)
+	case prifi.Trustee: delete(s.waitQueue.trustees, msg.ServerIdentity)
+	default: log.Info("Ignoring disconnection request from node with invalid role.")
+	}
+
+	// Stop PriFi and restart if there are enough participants left.
+	if s.isPrifiRunning {
+		s.stopPriFi()
+	}
+
+	if len(s.waitQueue.clients) >= 2 && len(s.waitQueue.trustees) >= 1 {
+		s.startPriFi()
+	}
 }
 
 // StartTrustee has to take a configuration and start the necessary
@@ -323,9 +346,7 @@ func (s *Service) readGroup(group *config.Group) {
 // announce themselves to the relay.
 func (s *Service) sendConnectionRequest() error {
 	log.Lvl2("Sending connection request")
-	msg := &ConnectionRequest{s.role}
-	err := s.SendRaw(s.relayIdentity, msg)
-	return err
+	return s.SendRaw(s.relayIdentity, &ConnectionRequest{})
 }
 
 // startPriFi starts a PriFi protocol. It is called
@@ -376,6 +397,7 @@ func (s *Service) startPriFi() {
 	s.isPrifiRunning = true;
 }
 
+// stopPriFi stops the PriFi protocol currently running.
 func (s *Service) stopPriFi() {
 	log.Lvl1("Stopping PriFi protocol")
 
