@@ -6,6 +6,7 @@ dbg_lvl=3
 conf_file="config.toml"
 group_file="group.toml"
 bin_file="$GOPATH/src/github.com/lbarman/prifi_dev/sda/app/prifi.go"
+colors="true"
 
 print_usage() {
 	echo "Usage: run.sh <role> <id>"
@@ -51,5 +52,4 @@ fi
 
 # Run PriFi !
 
-go run $bin_file -c "$confdir/$conf_file" -g "$confdir/$group_file" -d "$dbg_lvl" "$1"
-
+DEBUG_COLOR=$colors go run $bin_file -c "$confdir/$conf_file" -g "$PWD/$group_file" -d "$dbg_lvl" "$1"
