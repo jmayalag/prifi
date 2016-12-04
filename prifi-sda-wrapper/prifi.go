@@ -12,15 +12,16 @@ import (
 	"errors"
 
 	"github.com/dedis/cothority/log"
-	"github.com/dedis/cothority/network"
 	"github.com/dedis/cothority/sda"
 	prifi_lib "github.com/lbarman/prifi_dev/prifi-lib"
 )
 
-//the UDP channel we provide to PriFi. check udp.go for more details.
+// The UDP channel we provide to PriFi. check udp.go for more details.
 var udpChan UDPChannel = newLocalhostUDPChannel() //use newRealUDPChannel() for real UDP
 
-//the "PriFi-Wrapper-Protocol start". It calls the PriFi library with the correct parameters
+// Start is part of the sda protocol interface.
+// It is called when the protocol is started and
+// calls the PriFi library with the correct parameters.
 func (p *PriFiSDAWrapper) Start() error {
 
 	if !p.configSet {
@@ -52,10 +53,10 @@ func (p *PriFiSDAWrapper) Start() error {
 	return nil
 }
 
-/**
- * On initialization of the PriFi-SDA-Wrapper protocol, it need to register the PriFi-Lib messages to be able to marshall them.
- * If we forget some messages there, it will crash when PriFi-Lib will call SendToXXX() with this message !
- */
+/*
+On initialization of the PriFi-SDA-Wrapper protocol, we need to register the PriFi-Lib messages to be able to marshall them.
+If we forget some messages there, it will crash when PriFi-Lib will call SendToXXX() with this message !
+*/
 func init() {
 
 	//register the prifi_lib's message with the network lib here
@@ -76,32 +77,36 @@ func init() {
 	sda.ProtocolRegisterName("PriFi-SDA-Wrapper", NewPriFiSDAWrapperProtocol)*/
 }
 
-//This is the PriFi-SDA-Wrapper protocol struct. It contains the SDA-tree, and a chanel that stops the simulation when it receives a "true"
+// PriFiSDAWrapper represents the state of the protocol.
+// It contains the SDA-tree and a channel that stops the simulation when it receives a "true".
 type PriFiSDAWrapper struct {
 	*sda.TreeNodeInstance
 	configSet     bool
 	config        prifi_lib.ALL_ALL_PARAMETERS
 	ResultChannel chan interface{}
 
-	//this is the actual "PriFi" (DC-net) protocol/library, defined in cothority/lib/prifi/prifi.go
+	// This is the actual "PriFi" (DC-net) protocol defined in prifi-lib/prifi.go
 	prifiProtocol *prifi_lib.PriFiProtocol
 }
 
+// SetConfig sets the protocol's configuration.
+// It must be called before Start() on the node
+// starting the protocol.
 func (p *PriFiSDAWrapper) SetConfig(config prifi_lib.ALL_ALL_PARAMETERS) {
 	p.config = config
 	p.configSet = true
 	log.Lvl2("Setting PriFi config to be : ", config)
 }
 
-/**
- * This function is called on all nodes of the SDA-tree (when they receive their first prifi message).
- * It build a network map (deterministic from the order of the tree), which allows to build the
- * messageSender struct needed by PriFi-Lib.
- * Then, it instantiate PriFi-Lib with the correct state, given the role of the node.
- * Finally, it registers handlers so it can unmarshal messages and give them back to prifi. It is kind of ridiculous to have a handler for each
- * message, as PriFi-Lib is able to recognize the messages (everything is fed to ReceivedMessage() in PriFi-Lib), but that is how the SDA works
- * for now.
- */
+/*
+NewPriFiSDAWrapperProtocol is called on all nodes of the SDA-tree (when they receive their first prifi message).
+It builds a network map (deterministic from the order of the tree), which allows to build the
+messageSender struct needed by PriFi-Lib.
+Then, it instantiate PriFi-Lib with the correct state, given the role of the node.
+Finally, it registers handlers so it can unmarshal messages and give them back to prifi. It is kind of redundant to have a handler for each
+message, as PriFi-Lib is able to recognize the messages (everything is fed to ReceivedMessage() in PriFi-Lib), but that is how the SDA works
+for now.
+*/
 func NewPriFiSDAWrapperProtocol(n *sda.TreeNodeInstance) (sda.ProtocolInstance, error) {
 
 	//fill in the network host map
