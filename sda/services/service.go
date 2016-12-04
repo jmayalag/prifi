@@ -1,3 +1,6 @@
+// Package prifi-sda-service contains the SDA service responsible
+// for starting the SDA protocols required to enable PriFi
+// communications.
 package prifi
 
 /*
@@ -6,12 +9,12 @@ package prifi
  */
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
-	"strings"
 	"strconv"
-	"errors"
+	"strings"
 
 	"github.com/dedis/cothority/app/lib/config"
 	"github.com/dedis/cothority/log"
@@ -22,7 +25,7 @@ import (
 
 // ServiceName is the name to refer to the Template service from another
 // package.
-const ServiceName = "PrifiService"
+const ServiceName = "ExampleService"
 
 var serviceID sda.ServiceID
 
@@ -32,24 +35,24 @@ func init() {
 	serviceID = sda.ServiceFactory.ServiceID(ServiceName)
 }
 
-// This struct contains the state of the service
+// Service contains the state of the service
 type Service struct {
 	// We need to embed the ServiceProcessor, so that incoming messages
 	// are correctly handled.
 	*sda.ServiceProcessor
-	group *config.Group
+	group   *config.Group
 	Storage *Storage
 	path    string
-	role prifi.PriFiRole
+	role    prifi.PriFiRole
 }
 
-// This structure will be saved, on the contrary of the 'Service'-structure
-// which has per-service information stored
+// Storage will be saved, on the contrary of the 'Service'-structure
+// which has per-service information stored.
 type Storage struct {
 	TrusteeID string
 }
 
-// StartTrustee has to take a configuration and start the necessary
+// StartTrustee starts the necessary
 // protocols to enable the trustee-mode.
 func (s *Service) StartTrustee(group *config.Group) error {
 	log.Info("Service", s, "running in trustee mode")
@@ -59,8 +62,9 @@ func (s *Service) StartTrustee(group *config.Group) error {
 	return nil
 }
 
-// StartRelay has to take a configuration and start the necessary
+// StartRelay starts the necessary
 // protocols to enable the relay-mode.
+// In this example it simply starts the demo protocol
 func (s *Service) StartRelay(group *config.Group) error {
 	log.Info("Service", s, "running in relay mode")
 	s.group = group
@@ -82,14 +86,14 @@ func (s *Service) StartRelay(group *config.Group) error {
 
 	wrapper.SetConfig(&prifi.PriFiSDAWrapperConfig{
 		Identities: ids,
-		Role: prifi.Relay,
+		Role:       prifi.Relay,
 	})
 	wrapper.Start()
 
 	return nil
 }
 
-// StartClient has to take a configuration and start the necessary
+// StartClient starts the necessary
 // protocols to enable the client-mode.
 func (s *Service) StartClient(group *config.Group) error {
 	log.Info("Service", s, "running in client mode")
@@ -121,13 +125,13 @@ func (s *Service) NewProtocol(tn *sda.TreeNodeInstance, conf *sda.GenericConfig)
 
 	wrapper.SetConfig(&prifi.PriFiSDAWrapperConfig{
 		Identities: ids,
-		Role: s.role,
+		Role:       s.role,
 	})
 
 	return wrapper, nil
 }
 
-// saves the actual identity
+// save saves the actual identity
 func (s *Service) save() {
 	log.Lvl3("Saving service")
 	b, err := network.MarshalRegisteredType(s.Storage)
@@ -141,7 +145,7 @@ func (s *Service) save() {
 	}
 }
 
-// Tries to load the configuration and updates if a configuration
+// tryLoad tries to load the configuration and updates if a configuration
 // is found, else it returns an error.
 func (s *Service) tryLoad() error {
 	configFile := s.path + "/identity.bin"
@@ -181,10 +185,11 @@ func parseDescription(description string) (*prifi.PriFiIdentity, error) {
 	if len(desc) == 1 && desc[0] == "relay" {
 		return &prifi.PriFiIdentity{
 			Role: prifi.Relay,
-			Id: 0,
+			Id:   0,
 		}, nil
 	} else if len(desc) == 2 {
-		id, err := strconv.Atoi(desc[1]); if err != nil {
+		id, err := strconv.Atoi(desc[1])
+		if err != nil {
 			return nil, errors.New("Unable to parse id:")
 		} else {
 			pid := prifi.PriFiIdentity{
@@ -192,7 +197,7 @@ func parseDescription(description string) (*prifi.PriFiIdentity, error) {
 			}
 			if desc[0] == "client" {
 				pid.Role = prifi.Client
-			} else if  desc[0] == "trustee" {
+			} else if desc[0] == "trustee" {
 				pid.Role = prifi.Trustee
 			} else {
 				return nil, errors.New("Invalid role.")
@@ -231,9 +236,12 @@ func mapIdentities(group *config.Group) (map[network.Address]prifi.PriFiIdentity
 
 	for _, v := range m {
 		switch v.Role {
-		case prifi.Relay: r++
-		case prifi.Client: c++
-		case prifi.Trustee: t++
+		case prifi.Relay:
+			r++
+		case prifi.Client:
+			c++
+		case prifi.Trustee:
+			t++
 		}
 	}
 

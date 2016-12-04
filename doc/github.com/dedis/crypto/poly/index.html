@@ -1,0 +1,1416 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+<meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+<meta content="width=device-width, initial-scale=1" name="viewport">
+<meta content="#375EAB" name="theme-color">
+<title>poly - The PriFi Project</title>
+<link href="../../../../.goduckstyle/style.css" rel="stylesheet" type="text/css">
+<link href="../../../../.goduckstyle/jquery.treeview.css" rel="stylesheet">
+<script type="text/javascript">window.initFuncs = [];</script>
+</link></link></meta></meta></meta></head>
+<body>
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+<div class="wide" id="topbar"><div class="container">
+<div class="top-heading" id="heading-wide">The PriFi Project</div>
+<div class="top-heading" id="heading-narrow"><a href="/">Go</a></div>
+<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>
+<form action="/search" method="GET">
+<div id="menu">
+
+
+
+
+
+</div>
+</form>
+</div></div>
+<div class="wide" id="page">
+<div class="container">
+<h1>Package poly</h1>
+<div id="nav"></div>
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+<script type="text/javascript">
+	document.ANALYSIS_DATA = null;
+	document.CALLGRAPH = null;
+	</script>
+<div id="short-nav">
+<dl>
+<dd><code>import "github.com/dedis/crypto/poly"</code></dd>
+</dl>
+<dl>
+<dd><a class="overviewLink" href="#pkg-overview">Overview</a></dd>
+<dd><a class="indexLink" href="#pkg-index">Index</a></dd>
+</dl>
+</div>
+<!-- The package's Name is printed as title by the top-level template -->
+<div class="toggleVisible" id="pkg-overview">
+<div class="collapsed">
+<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+</div>
+<div class="expanded">
+<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+<pre>This package implements the Deal cryptographic primitive, which is based
+* on poly/sharing.go
+*
+* Failures are frequent in large-scale systems. When reliability is paramount,
+* the system requires some guarentee that it will still be able to make
+* progress in the midst of failures. To do so, recovering critical information
+* from failed nodes is often needed. Herein is the importance of this package.
+* The deal package provides such reliability in the area of private keys.
+*
+* If a server wishes to have extra reliability for a private key it is using,
+* it can construct a Deal struct. A Deal will take the private key and
+* shard it into secret shares via poly/sharing.go logic. The server can
+* then give the shares to a group of other servers who can act as insurers
+* of the Deal. The insurers will keep the secret shares. If the original
+* server ever goes offline, another server could ask the insurers for their
+* secret shares and then combine them into the original secret key. Hence, this
+* server could continue in the place of the original and the sytem can continue
+* to make progress.
+*
+* This file provides structs for handling the cryptographic logic of this
+* process. Other files can use these primitives to build a more robust
+* system. In particular, there are 5 structs (3 public, 2 private):
+*
+*   1) Deal = respondible for sharding the secret, creating shares, and
+*                tracking which shares belong to which insurers
+</pre>
+<p>
+*
+</p>
+<pre>*   2) State = responsible for keeping state about a given Deal such
+*              as shares recovered and messages that either certify the
+*              Deal or prove that it is malicious
+*
+*   3) signature = proves that an insurer has signed off on a Deal.
+*                  The signature could either be used to express
+*                  approval or disapproval
+*
+*   4) blameProof = provides proof that a given Deal share was malicously
+*                   constructed. A valid blameProof proves that the Deal
+*                   is untrustworthy and that the creator of the Deal is
+*                   malicious
+*
+*   5) Response = a union of signature and blameProof. This serves as a public
+*                 wrapper for the two structs.
+*
+* Further documentation for each of the different structs can be found below.
+* It is suggested to start with the Deal struct referring to the others
+* as necessary. Once a general knowledge of Deal is gained, the others
+* will make more sense.
+*
+* Code using this package will typically have the following flow (please see
+* "Key Terms" below for a definition of terms used):
+*
+* Step I: Take out the Deal
+*
+*   1) The Dealer constructs a new Deal and stores it within a State.
+*
+* Step II: Certify the Dealer
+*
+*   1) The Dealer sends the Deal to the insurers.
+*
+*   2) The insurers verify the Deal is well-formed and make sure that their
+*      secret shares are valid.
+*
+*     a) If a secret share is invalid, an insurer creates a blameProof and sends
+*        it back.
+*
+*     b) If the share is valid, an insurer creates a signature to send
+*        to the Dealer.
+*
+*   3) The Dealer receives the message from the insurer.
+*
+*     a) If it is a valid blameProof, the Dealer must start all over and
+*        construct a non-malicious Deal (or, the system can ban this malicious
+*        Dealer).
+*
+*     b) If the message is a signature, the Dealer can add the signature
+*        to its State.
+*
+*   4) Repeat steps 1-3 until the Dealer has collected enough
+*      signatures for the Deal to be certified.
+*
+* Step III: Distribute the Deal
+*
+*   1) Once the Deal is certified, the Dealer can then send the deal to
+*      clients.
+*
+*   2) Clients can then request the signatures from the insurers to make sure
+*      the Deal is indeed certified.
+*
+*     a) This prevents a malicious Dealer from simply leaving out valid
+*        blameProofs and only sending good signatures to the clients.
+*
+*   3) Once the client receives enough signatures, the client will then trust
+*      the Dealer to do work with the deald private key.
+*
+* Step IV: Perform work for Clients
+*
+* Step V: Reconstruct the Deal Secret (if the Dealer goes down)
+*
+*   1) If the Dealer is unresponsive for too long, a client can inform the
+*      insurers of the Deal.
+*
+*   2) The insurers can then check if the Dealer is indeed unresponsive.
+*
+*     a) If so, the insurer reveal its share and sends it to the client.
+*
+*   3) The client repeats steps 1-2 until enough shares are recovered to
+*      reconstruct the secret.
+*
+*   4) The client reconstructs the secret and takes over for the Dealer.
+*
+*
+*
+* Key Terms:
+*   Dealer = the server making a Deal
+*   client   = recipients of a Deal who are trusting the Dealer
+*   insurer  = servers who store secret shares of a deal. Such servers help
+*              during secret reconstruction.
+*
+*   Users of this code = programmers wishing to use this code in programs
+</pre>
+<p>
+Package poly implements polynomial commitments, openings,
+and verifiable Shamir secret sharing.
+</p>
+</div>
+</div>
+<div class="toggleVisible" id="pkg-index">
+<div class="collapsed">
+<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+</div>
+<div class="expanded">
+<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+<div id="manual-nav">
+<dl>
+<dd><a href="#Deal">type Deal</a></dd>
+<dd>    <a href="#Deal.ConstructDeal">func (p *Deal) ConstructDeal(secretPair *config.KeyPair, longPair *config.KeyPair, t, r int, insurers []abstract.Point) *Deal</a></dd>
+<dd>    <a href="#Deal.DealerId">func (p *Deal) DealerId() string</a></dd>
+<dd>    <a href="#Deal.DealerKey">func (p *Deal) DealerKey() abstract.Point</a></dd>
+<dd>    <a href="#Deal.Equal">func (p *Deal) Equal(p2 *Deal) bool</a></dd>
+<dd>    <a href="#Deal.Id">func (p *Deal) Id() string</a></dd>
+<dd>    <a href="#Deal.Insurers">func (p *Deal) Insurers() []abstract.Point</a></dd>
+<dd>    <a href="#Deal.MarshalBinary">func (p *Deal) MarshalBinary() ([]byte, error)</a></dd>
+<dd>    <a href="#Deal.MarshalSize">func (p *Deal) MarshalSize() int</a></dd>
+<dd>    <a href="#Deal.MarshalTo">func (p *Deal) MarshalTo(w io.Writer) (int, error)</a></dd>
+<dd>    <a href="#Deal.ProduceResponse">func (p *Deal) ProduceResponse(i int, gKeyPair *config.KeyPair) (*Response, error)</a></dd>
+<dd>    <a href="#Deal.PubPoly">func (p *Deal) PubPoly() *PubPoly</a></dd>
+<dd>    <a href="#Deal.RevealShare">func (p *Deal) RevealShare(i int, gKeyPair *config.KeyPair) abstract.Scalar</a></dd>
+<dd>    <a href="#Deal.String">func (p *Deal) String() string</a></dd>
+<dd>    <a href="#Deal.UnmarshalBinary">func (p *Deal) UnmarshalBinary(buf []byte) error</a></dd>
+<dd>    <a href="#Deal.UnmarshalFrom">func (p *Deal) UnmarshalFrom(r io.Reader) (int, error)</a></dd>
+<dd>    <a href="#Deal.UnmarshalInit">func (p *Deal) UnmarshalInit(t, r, n int, suite abstract.Suite) *Deal</a></dd>
+<dd>    <a href="#Deal.VerifyRevealedShare">func (p *Deal) VerifyRevealedShare(i int, share abstract.Scalar) error</a></dd>
+<dd><a href="#PriPoly">type PriPoly</a></dd>
+<dd>    <a href="#PriPoly.Add">func (p *PriPoly) Add(p1, p2 *PriPoly) *PriPoly</a></dd>
+<dd>    <a href="#PriPoly.Equal">func (p1 *PriPoly) Equal(p2 *PriPoly) bool</a></dd>
+<dd>    <a href="#PriPoly.Eval">func (p *PriPoly) Eval(i int) abstract.Scalar</a></dd>
+<dd>    <a href="#PriPoly.Pick">func (p *PriPoly) Pick(g abstract.Group, k int, s0 abstract.Scalar, rand cipher.Stream) *PriPoly</a></dd>
+<dd>    <a href="#PriPoly.Secret">func (p *PriPoly) Secret() abstract.Scalar</a></dd>
+<dd>    <a href="#PriPoly.String">func (p *PriPoly) String() string</a></dd>
+<dd><a href="#PriShares">type PriShares</a></dd>
+<dd>    <a href="#PriShares.Empty">func (ps *PriShares) Empty(g abstract.Group, k, n int)</a></dd>
+<dd>    <a href="#PriShares.Secret">func (ps *PriShares) Secret() abstract.Scalar</a></dd>
+<dd>    <a href="#PriShares.SetShare">func (ps *PriShares) SetShare(i int, s abstract.Scalar)</a></dd>
+<dd>    <a href="#PriShares.Share">func (ps *PriShares) Share(i int) abstract.Scalar</a></dd>
+<dd>    <a href="#PriShares.Split">func (ps *PriShares) Split(p *PriPoly, n int) *PriShares</a></dd>
+<dd>    <a href="#PriShares.String">func (ps *PriShares) String() string</a></dd>
+<dd><a href="#PubPoly">type PubPoly</a></dd>
+<dd>    <a href="#PubPoly.Add">func (pub *PubPoly) Add(p1, p2 *PubPoly) *PubPoly</a></dd>
+<dd>    <a href="#PubPoly.Check">func (pub *PubPoly) Check(i int, share abstract.Scalar) bool</a></dd>
+<dd>    <a href="#PubPoly.Commit">func (pub *PubPoly) Commit(pri *PriPoly, b abstract.Point) *PubPoly</a></dd>
+<dd>    <a href="#PubPoly.Equal">func (p1 *PubPoly) Equal(p2 *PubPoly) bool</a></dd>
+<dd>    <a href="#PubPoly.Eval">func (pub *PubPoly) Eval(i int) abstract.Point</a></dd>
+<dd>    <a href="#PubPoly.GetK">func (pub *PubPoly) GetK() int</a></dd>
+<dd>    <a href="#PubPoly.Init">func (pub *PubPoly) Init(g abstract.Group, k int, b abstract.Point) *PubPoly</a></dd>
+<dd>    <a href="#PubPoly.InitNull">func (pub *PubPoly) InitNull(g abstract.Group, k int, b abstract.Point) *PubPoly</a></dd>
+<dd>    <a href="#PubPoly.MarshalBinary">func (pub *PubPoly) MarshalBinary() ([]byte, error)</a></dd>
+<dd>    <a href="#PubPoly.MarshalSize">func (pub *PubPoly) MarshalSize() int</a></dd>
+<dd>    <a href="#PubPoly.MarshalTo">func (pub *PubPoly) MarshalTo(w io.Writer) (int, error)</a></dd>
+<dd>    <a href="#PubPoly.SecretCommit">func (pub *PubPoly) SecretCommit() abstract.Point</a></dd>
+<dd>    <a href="#PubPoly.String">func (p *PubPoly) String() string</a></dd>
+<dd>    <a href="#PubPoly.UnmarshalBinary">func (pub *PubPoly) UnmarshalBinary(b []byte) error</a></dd>
+<dd>    <a href="#PubPoly.UnmarshalFrom">func (pub *PubPoly) UnmarshalFrom(r io.Reader) (int, error)</a></dd>
+<dd><a href="#PubShares">type PubShares</a></dd>
+<dd>    <a href="#PubShares.SecretCommit">func (ps *PubShares) SecretCommit() abstract.Point</a></dd>
+<dd>    <a href="#PubShares.SetShare">func (ps *PubShares) SetShare(i int, p abstract.Point)</a></dd>
+<dd>    <a href="#PubShares.Share">func (ps *PubShares) Share(i int) abstract.Point</a></dd>
+<dd>    <a href="#PubShares.Split">func (ps *PubShares) Split(pub *PubPoly, n int) *PubShares</a></dd>
+<dd>    <a href="#PubShares.String">func (ps *PubShares) String() string</a></dd>
+<dd><a href="#Receiver">type Receiver</a></dd>
+<dd>    <a href="#NewReceiver">func NewReceiver(suite abstract.Suite, info Threshold, key *config.KeyPair) *Receiver</a></dd>
+<dd>    <a href="#Receiver.AddDeal">func (r *Receiver) AddDeal(index int, deal *Deal) (*Response, error)</a></dd>
+<dd>    <a href="#Receiver.Init">func (r *Receiver) Init(suite abstract.Suite, info Threshold, key *config.KeyPair) *Receiver</a></dd>
+<dd>    <a href="#Receiver.ProduceSharedSecret">func (r *Receiver) ProduceSharedSecret() (*SharedSecret, error)</a></dd>
+<dd><a href="#Response">type Response</a></dd>
+<dd>    <a href="#Response.Equal">func (r *Response) Equal(r2 *Response) bool</a></dd>
+<dd>    <a href="#Response.MarshalBinary">func (r *Response) MarshalBinary() ([]byte, error)</a></dd>
+<dd>    <a href="#Response.MarshalSize">func (r *Response) MarshalSize() int</a></dd>
+<dd>    <a href="#Response.MarshalTo">func (r *Response) MarshalTo(w io.Writer) (int, error)</a></dd>
+<dd>    <a href="#Response.String">func (r Response) String() string</a></dd>
+<dd>    <a href="#Response.UnmarshalBinary">func (r *Response) UnmarshalBinary(buf []byte) error</a></dd>
+<dd>    <a href="#Response.UnmarshalFrom">func (rp *Response) UnmarshalFrom(r io.Reader) (int, error)</a></dd>
+<dd>    <a href="#Response.UnmarshalInit">func (r *Response) UnmarshalInit(suite abstract.Suite) *Response</a></dd>
+<dd><a href="#Schnorr">type Schnorr</a></dd>
+<dd>    <a href="#NewSchnorr">func NewSchnorr(suite abstract.Suite, info Threshold, longterm *SharedSecret) *Schnorr</a></dd>
+<dd>    <a href="#Schnorr.AddPartialSig">func (s *Schnorr) AddPartialSig(ps *SchnorrPartialSig) error</a></dd>
+<dd>    <a href="#Schnorr.EmptySchnorrSig">func (s *Schnorr) EmptySchnorrSig() *SchnorrSig</a></dd>
+<dd>    <a href="#Schnorr.Init">func (s *Schnorr) Init(suite abstract.Suite, info Threshold, longterm *SharedSecret) *Schnorr</a></dd>
+<dd>    <a href="#Schnorr.NewRound">func (s *Schnorr) NewRound(random *SharedSecret, h hash.Hash) error</a></dd>
+<dd>    <a href="#Schnorr.RevealPartialSig">func (s *Schnorr) RevealPartialSig() *SchnorrPartialSig</a></dd>
+<dd>    <a href="#Schnorr.Sig">func (s *Schnorr) Sig() (*SchnorrSig, error)</a></dd>
+<dd>    <a href="#Schnorr.VerifySchnorrSig">func (s *Schnorr) VerifySchnorrSig(sig *SchnorrSig, h hash.Hash) error</a></dd>
+<dd><a href="#SchnorrPartialSig">type SchnorrPartialSig</a></dd>
+<dd>    <a href="#SchnorrPartialSig.Equal">func (pss *SchnorrPartialSig) Equal(pss2 *SchnorrPartialSig) bool</a></dd>
+<dd><a href="#SchnorrSig">type SchnorrSig</a></dd>
+<dd>    <a href="#SchnorrSig.Equal">func (s *SchnorrSig) Equal(s2 *SchnorrSig) bool</a></dd>
+<dd>    <a href="#SchnorrSig.Init">func (s *SchnorrSig) Init(suite abstract.Suite, info Threshold) *SchnorrSig</a></dd>
+<dd><a href="#SharedSecret">type SharedSecret</a></dd>
+<dd><a href="#State">type State</a></dd>
+<dd>    <a href="#State.AddResponse">func (ps *State) AddResponse(i int, response *Response) error</a></dd>
+<dd>    <a href="#State.DealCertified">func (ps *State) DealCertified() error</a></dd>
+<dd>    <a href="#State.Init">func (ps *State) Init(deal Deal) *State</a></dd>
+<dd>    <a href="#State.RevealShare">func (ps *State) RevealShare(i int, gKeyPair *config.KeyPair) (abstract.Scalar, error)</a></dd>
+<dd>    <a href="#State.SufficientSignatures">func (ps *State) SufficientSignatures() error</a></dd>
+<dd><a href="#Threshold">type Threshold</a></dd>
+<dd>    <a href="#Threshold.Equal">func (p *Threshold) Equal(p2 Threshold) bool</a></dd>
+</dl>
+</div><!-- #manual-nav -->
+<h4>Package files</h4>
+<p>
+<span style="font-size:90%">
+<a href="/src/github.com/dedis/crypto/poly/deal.go">deal.go</a>
+<a href="/src/github.com/dedis/crypto/poly/joint.go">joint.go</a>
+<a href="/src/github.com/dedis/crypto/poly/schnorr.go">schnorr.go</a>
+<a href="/src/github.com/dedis/crypto/poly/sharing.go">sharing.go</a>
+</span>
+</p>
+</div><!-- .expanded -->
+</div><!-- #pkg-index -->
+<div class="toggle" id="pkg-callgraph" style="display: none">
+<div class="collapsed">
+<h2 class="toggleButton" title="Click to show Internal Call Graph section">Internal call graph ▹</h2>
+</div> <!-- .expanded -->
+<div class="expanded">
+<h2 class="toggleButton" title="Click to hide Internal Call Graph section">Internal call graph ▾</h2>
+<p>
+			  In the call graph viewer below, each node
+			  is a function belonging to this package
+			  and its children are the functions it
+			  calls—perhaps dynamically.
+			</p>
+<p>
+			  The root nodes are the entry points of the
+			  package: functions that may be called from
+			  outside the package.
+			  There may be non-exported or anonymous
+			  functions among them if they are called
+			  dynamically from another package.
+			</p>
+<p>
+			  Click a node to visit that function's source code.
+			  From there you can visit its callers by
+			  clicking its declaring <code>func</code>
+			  token.
+			</p>
+<p>
+			  Functions may be omitted if they were
+			  determined to be unreachable in the
+			  particular programs or tests that were
+			  analyzed.
+			</p>
+<!-- Zero means show all package entry points. -->
+<ul class="treeview" id="callgraph-0" style="margin-left: 0.5in"></ul>
+</div>
+</div> <!-- #pkg-callgraph -->
+<h2 id="Deal">type <a href="/src/github.com/dedis/crypto/poly/deal.go?s=6986:7967#L175">Deal</a>
+<a class="permalink" href="#Deal">¶</a>
+</h2>
+<pre>type Deal struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}</pre>
+<p>
+Deal structs are mechanisms by which a server can deal other servers
+* that an abstract.Scalar will be availble even if the secret's owner goes
+* down. The secret to be deald will be sharded into shared secrets that can
+* be combined using Lagrange Interpolation to produce the original secret.
+* Other servers will act as insurers maintaining a share. If a client ever
+* needs the secret to be reconstructed, it can contact the insurers to regain
+* the shares and reconstruct the secret.
+*
+* The insurers and secrets arrays should remain synchronized. In other words,
+* insurers[i] and secrets[i] should both refer to the same server.
+*
+* Note to users of this code:
+*
+*   Here is a list of methods that should be called by each type of server:
+*
+* - Dealers
+*   * ConstructDeal
+*
+* - Insurers
+*   * ProduceResponse
+*   * State.RevealShare (public wrapper to Deal.RevealShare in State struct)
+*
+* - Clients
+*   * VerifyRevealedShare
+*
+* - All
+*   * UnmarshalInit
+*   * Id
+*   * DealerId
+*   * Insurers
+*   * State.DealCertified
+*   * State.SufficientSignatures
+</p>
+<h3 id="Deal.ConstructDeal">func (*Deal) <a href="/src/github.com/dedis/crypto/poly/deal.go?s=8525:8651#L229">ConstructDeal</a>
+<a class="permalink" href="#Deal.ConstructDeal">¶</a>
+</h3>
+<pre>func (p *<a href="#Deal">Deal</a>) ConstructDeal(secretPair *<a href="../../../../github.com/dedis/crypto/config/index.html">config</a>.<a href="../../../../github.com/dedis/crypto/config/index.html#KeyPair">KeyPair</a>,
+    longPair *<a href="../../../../github.com/dedis/crypto/config/index.html">config</a>.<a href="../../../../github.com/dedis/crypto/config/index.html#KeyPair">KeyPair</a>, t, r <a href="https://golang.org/pkg/builtin/#int">int</a>, insurers []<a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Point">Point</a>) *<a href="#Deal">Deal</a></pre>
+<p>
+Constructs a new Deal to guarentee a secret.
+*
+* Arguments
+*    secretPair   = the keypair of the secret to be deald
+*    longPair     = the long term keypair of the Dealer
+*    t            = minimum number of shares needed to reconstruct the secret.
+*    r            = minimum signatures needed to certify the Deal
+*    insurers     = a list of the long-term public keys of the insurers.
+*
+*
+* It is expected that:
+*
+*    t &lt;= r &lt;= len(insurers)
+*
+*    secretPair.Suite == longPair.Suite
+*
+* Returns
+*   A newly constructed Deal
+</p>
+<h3 id="Deal.DealerId">func (*Deal) <a href="/src/github.com/dedis/crypto/poly/deal.go?s=11498:11530#L326">DealerId</a>
+<a class="permalink" href="#Deal.DealerId">¶</a>
+</h3>
+<pre>func (p *<a href="#Deal">Deal</a>) DealerId() <a href="https://golang.org/pkg/builtin/#string">string</a></pre>
+<p>
+Returns the id of the Dealer (aka its long term public key)
+</p>
+<h3 id="Deal.DealerKey">func (*Deal) <a href="/src/github.com/dedis/crypto/poly/deal.go?s=11617:11658#L331">DealerKey</a>
+<a class="permalink" href="#Deal.DealerKey">¶</a>
+</h3>
+<pre>func (p *<a href="#Deal">Deal</a>) DealerKey() <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Point">Point</a></pre>
+<p>
+Returns a copy of the Dealer's long term public key
+</p>
+<h3 id="Deal.Equal">func (*Deal) <a href="/src/github.com/dedis/crypto/poly/deal.go?s=19590:19625#L577">Equal</a>
+<a class="permalink" href="#Deal.Equal">¶</a>
+</h3>
+<pre>func (p *<a href="#Deal">Deal</a>) Equal(p2 *<a href="#Deal">Deal</a>) <a href="https://golang.org/pkg/builtin/#bool">bool</a></pre>
+<p>
+Tests whether two Deal structs are equal
+*
+* Arguments
+*    p2 = a pointer to the struct to test for equality
+*
+* Returns
+*   true if equal, false otherwise
+</p>
+<h3 id="Deal.Id">func (*Deal) <a href="/src/github.com/dedis/crypto/poly/deal.go?s=11381:11407#L321">Id</a>
+<a class="permalink" href="#Deal.Id">¶</a>
+</h3>
+<pre>func (p *<a href="#Deal">Deal</a>) Id() <a href="https://golang.org/pkg/builtin/#string">string</a></pre>
+<p>
+Returns the id of the Deal
+</p>
+<h3 id="Deal.Insurers">func (*Deal) <a href="/src/github.com/dedis/crypto/poly/deal.go?s=11825:11867#L337">Insurers</a>
+<a class="permalink" href="#Deal.Insurers">¶</a>
+</h3>
+<pre>func (p *<a href="#Deal">Deal</a>) Insurers() []<a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Point">Point</a></pre>
+<p>
+Returns the list of insurers of the deal.
+A copy of insurers is return to prevent tampering.
+</p>
+<h3 id="Deal.MarshalBinary">func (*Deal) <a href="/src/github.com/dedis/crypto/poly/deal.go?s=20756:20802#L626">MarshalBinary</a>
+<a class="permalink" href="#Deal.MarshalBinary">¶</a>
+</h3>
+<pre>func (p *<a href="#Deal">Deal</a>) MarshalBinary() ([]<a href="https://golang.org/pkg/builtin/#byte">byte</a>, <a href="https://golang.org/pkg/builtin/#error">error</a>)</pre>
+<p>
+Marshals a Deal struct into a byte array
+*
+* Returns
+*   A buffer of the marshalled struct
+*   The error status of the marshalling (nil if no error)
+*
+* Note
+*   The buffer is formatted as follows:
+*
+*      ||id||pubKey||pubPoly||==insurers_array==||==secrets==||
+*
+*   Remember: n == len(insurers) == len(secrets)
+</p>
+<h3 id="Deal.MarshalSize">func (*Deal) <a href="/src/github.com/dedis/crypto/poly/deal.go?s=20277:20309#L608">MarshalSize</a>
+<a class="permalink" href="#Deal.MarshalSize">¶</a>
+</h3>
+<pre>func (p *<a href="#Deal">Deal</a>) MarshalSize() <a href="https://golang.org/pkg/builtin/#int">int</a></pre>
+<p>
+Returns the number of bytes used by this struct when marshalled
+*
+* Returns
+*   The marshal size
+*
+* Note
+*   This function can be used after UnmarshalInit
+</p>
+<h3 id="Deal.MarshalTo">func (*Deal) <a href="/src/github.com/dedis/crypto/poly/deal.go?s=23430:23480#L739">MarshalTo</a>
+<a class="permalink" href="#Deal.MarshalTo">¶</a>
+</h3>
+<pre>func (p *<a href="#Deal">Deal</a>) MarshalTo(w <a href="../../../../io/index.html">io</a>.<a href="../../../../io/index.html#Writer">Writer</a>) (<a href="https://golang.org/pkg/builtin/#int">int</a>, <a href="https://golang.org/pkg/builtin/#error">error</a>)</pre>
+<p>
+Marshals a Deal struct using an io.Writer
+*
+* Arguments
+*    w = the writer to use for marshalling
+*
+* Returns
+*   The number of bytes written
+*   The error status of the write (nil if no errors)
+</p>
+<h3 id="Deal.ProduceResponse">func (*Deal) <a href="/src/github.com/dedis/crypto/poly/deal.go?s=17605:17687#L511">ProduceResponse</a>
+<a class="permalink" href="#Deal.ProduceResponse">¶</a>
+</h3>
+<pre>func (p *<a href="#Deal">Deal</a>) ProduceResponse(i <a href="https://golang.org/pkg/builtin/#int">int</a>, gKeyPair *<a href="../../../../github.com/dedis/crypto/config/index.html">config</a>.<a href="../../../../github.com/dedis/crypto/config/index.html#KeyPair">KeyPair</a>) (*<a href="#Response">Response</a>, <a href="https://golang.org/pkg/builtin/#error">error</a>)</pre>
+<p>
+For insurers, produces a response to a Deal. If the insurer's share is
+* valid, the function returns a Response expressing the insurer's approval.
+* Otherwise, a Response with a blameProof blaming the Dealer is made.
+*
+* Arguments
+*    i        = the index of the insurer in the insurers list
+*    gkeypair = the long term public/private keypair of the insurer.
+*
+* Return
+*   the Response, or nil if there is an error.
+*   an error, nil otherwise.
+</p>
+<h3 id="Deal.PubPoly">func (*Deal) <a href="/src/github.com/dedis/crypto/poly/deal.go?s=11293:11326#L316">PubPoly</a>
+<a class="permalink" href="#Deal.PubPoly">¶</a>
+</h3>
+<pre>func (p *<a href="#Deal">Deal</a>) PubPoly() *<a href="#PubPoly">PubPoly</a></pre>
+<h3 id="Deal.RevealShare">func (*Deal) <a href="/src/github.com/dedis/crypto/poly/deal.go?s=18583:18658#L542">RevealShare</a>
+<a class="permalink" href="#Deal.RevealShare">¶</a>
+</h3>
+<pre>func (p *<a href="#Deal">Deal</a>) RevealShare(i <a href="https://golang.org/pkg/builtin/#int">int</a>, gKeyPair *<a href="../../../../github.com/dedis/crypto/config/index.html">config</a>.<a href="../../../../github.com/dedis/crypto/config/index.html#KeyPair">KeyPair</a>) <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Scalar">Scalar</a></pre>
+<p>
+An internal function, reveals the secret share that the insurer has been
+* protecting. The public version is State.RevealShare.
+*
+* Arguments
+*    i        = the index of the insurer
+*    gkeyPair = the long-term keypair of the insurer
+*
+* Return
+*   the revealed private share
+</p>
+<h3 id="Deal.String">func (*Deal) <a href="/src/github.com/dedis/crypto/poly/deal.go?s=24105:24135#L770">String</a>
+<a class="permalink" href="#Deal.String">¶</a>
+</h3>
+<pre>func (p *<a href="#Deal">Deal</a>) String() <a href="https://golang.org/pkg/builtin/#string">string</a></pre>
+<p>
+Returns a string representation of the Deal for easy debugging
+*
+* Returns
+*   The Deal's string representation
+</p>
+<h3 id="Deal.UnmarshalBinary">func (*Deal) <a href="/src/github.com/dedis/crypto/poly/deal.go?s=21938:21986#L681">UnmarshalBinary</a>
+<a class="permalink" href="#Deal.UnmarshalBinary">¶</a>
+</h3>
+<pre>func (p *<a href="#Deal">Deal</a>) UnmarshalBinary(buf []<a href="https://golang.org/pkg/builtin/#byte">byte</a>) <a href="https://golang.org/pkg/builtin/#error">error</a></pre>
+<p>
+Unmarshals a Deal from a byte buffer
+*
+* Arguments
+*    buf = the buffer containing the Deal
+*
+* Returns
+*   The error status of the unmarshalling (nil if no error)
+</p>
+<h3 id="Deal.UnmarshalFrom">func (*Deal) <a href="/src/github.com/dedis/crypto/poly/deal.go?s=23784:23838#L756">UnmarshalFrom</a>
+<a class="permalink" href="#Deal.UnmarshalFrom">¶</a>
+</h3>
+<pre>func (p *<a href="#Deal">Deal</a>) UnmarshalFrom(r <a href="../../../../io/index.html">io</a>.<a href="../../../../io/index.html#Reader">Reader</a>) (<a href="https://golang.org/pkg/builtin/#int">int</a>, <a href="https://golang.org/pkg/builtin/#error">error</a>)</pre>
+<p>
+Unmarshals a Deal struct using an io.Reader
+*
+* Arguments
+*    r = the reader to use for unmarshalling
+*
+* Returns
+*   The number of bytes read
+*   The error status of the read (nil if no errors)
+</p>
+<h3 id="Deal.UnmarshalInit">func (*Deal) <a href="/src/github.com/dedis/crypto/poly/deal.go?s=10197:10266#L282">UnmarshalInit</a>
+<a class="permalink" href="#Deal.UnmarshalInit">¶</a>
+</h3>
+<pre>func (p *<a href="#Deal">Deal</a>) UnmarshalInit(t, r, n <a href="https://golang.org/pkg/builtin/#int">int</a>, suite <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Suite">Suite</a>) *<a href="#Deal">Deal</a></pre>
+<p>
+Initializes a Deal for unmarshalling
+*
+* Arguments
+*    t           = the minimum number of shares needed to reconstruct the scalar
+*    r           = the minimum number of positive Response's needed to cerifty the
+*                  deal
+*    n           = the total number of insurers.
+*    suite       = the suite used within the Deal
+*
+* Returns
+*   An initialized Deal ready to be unmarshalled
+</p>
+<h3 id="Deal.VerifyRevealedShare">func (*Deal) <a href="/src/github.com/dedis/crypto/poly/deal.go?s=19142:19212#L559">VerifyRevealedShare</a>
+<a class="permalink" href="#Deal.VerifyRevealedShare">¶</a>
+</h3>
+<pre>func (p *<a href="#Deal">Deal</a>) VerifyRevealedShare(i <a href="https://golang.org/pkg/builtin/#int">int</a>, share <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Scalar">Scalar</a>) <a href="https://golang.org/pkg/builtin/#error">error</a></pre>
+<p>
+Verify that a revealed share is properly formed. This should be called by
+*in clients or others who request an insurer to reveal its shared secret.
+*
+* Arguments
+*    i     = the index of the share
+*    share = the share to validate.
+*
+* Return
+*   Whether the secret is valid
+</p>
+<h2 id="PriPoly">type <a href="/src/github.com/dedis/crypto/poly/sharing.go?s=904:1036#L19">PriPoly</a>
+<a class="permalink" href="#PriPoly">¶</a>
+</h2>
+<pre>type PriPoly struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}</pre>
+<p>
+Private polynomial for Shamir secret sharing.
+</p>
+<h3 id="PriPoly.Add">func (*PriPoly) <a href="/src/github.com/dedis/crypto/poly/sharing.go?s=2444:2491#L76">Add</a>
+<a class="permalink" href="#PriPoly.Add">¶</a>
+</h3>
+<pre>func (p *<a href="#PriPoly">PriPoly</a>) Add(p1, p2 *<a href="#PriPoly">PriPoly</a>) *<a href="#PriPoly">PriPoly</a></pre>
+<p>
+Set to the component-wise addition of two polynomials,
+which are assumed to be of the same degree and from the same Scalar field.
+</p>
+<h3 id="PriPoly.Equal">func (*PriPoly) <a href="/src/github.com/dedis/crypto/poly/sharing.go?s=1753:1795#L48">Equal</a>
+<a class="permalink" href="#PriPoly.Equal">¶</a>
+</h3>
+<pre>func (p1 *<a href="#PriPoly">PriPoly</a>) Equal(p2 *<a href="#PriPoly">PriPoly</a>) <a href="https://golang.org/pkg/builtin/#bool">bool</a></pre>
+<p>
+Test polynomials for equality component-wise.
+Assumes they are of the same degree and from the same Scalar field.
+</p>
+<h3 id="PriPoly.Eval">func (*PriPoly) <a href="/src/github.com/dedis/crypto/poly/sharing.go?s=2054:2099#L62">Eval</a>
+<a class="permalink" href="#PriPoly.Eval">¶</a>
+</h3>
+<pre>func (p *<a href="#PriPoly">PriPoly</a>) Eval(i <a href="https://golang.org/pkg/builtin/#int">int</a>) <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Scalar">Scalar</a></pre>
+<p>
+Evaluate the polynomial to produce the secret for party i.
+</p>
+<h3 id="PriPoly.Pick">func (*PriPoly) <a href="/src/github.com/dedis/crypto/poly/sharing.go?s=1181:1278#L26">Pick</a>
+<a class="permalink" href="#PriPoly.Pick">¶</a>
+</h3>
+<pre>func (p *<a href="#PriPoly">PriPoly</a>) Pick(g <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Group">Group</a>, k <a href="https://golang.org/pkg/builtin/#int">int</a>, s0 <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Scalar">Scalar</a>,
+    rand <a href="../../../../crypto/cipher/index.html">cipher</a>.<a href="../../../../crypto/cipher/index.html#Stream">Stream</a>) *<a href="#PriPoly">PriPoly</a></pre>
+<p>
+Create a fresh sharing polynomial in the Scalar space of a given group.
+Shares the provided Scalar s, or picks a random one if s == nil.
+</p>
+<h3 id="PriPoly.Secret">func (*PriPoly) <a href="/src/github.com/dedis/crypto/poly/sharing.go?s=1570:1612#L42">Secret</a>
+<a class="permalink" href="#PriPoly.Secret">¶</a>
+</h3>
+<pre>func (p *<a href="#PriPoly">PriPoly</a>) Secret() <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Scalar">Scalar</a></pre>
+<p>
+Return the shared secret from a private sharing polynomial.
+</p>
+<h3 id="PriPoly.String">func (*PriPoly) <a href="/src/github.com/dedis/crypto/poly/sharing.go?s=2778:2811#L92">String</a>
+<a class="permalink" href="#PriPoly.String">¶</a>
+</h3>
+<pre>func (p *<a href="#PriPoly">PriPoly</a>) String() <a href="https://golang.org/pkg/builtin/#string">string</a></pre>
+<p>
+Dump a string representation of the polynomial.
+</p>
+<h2 id="PriShares">type <a href="/src/github.com/dedis/crypto/poly/sharing.go?s=3039:3226#L105">PriShares</a>
+<a class="permalink" href="#PriShares">¶</a>
+</h2>
+<pre>type PriShares struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}</pre>
+<p>
+Secret shares generated from a private polynomial.
+</p>
+<h3 id="PriShares.Empty">func (*PriShares) <a href="/src/github.com/dedis/crypto/poly/sharing.go?s=3950:4004#L135">Empty</a>
+<a class="permalink" href="#PriShares.Empty">¶</a>
+</h3>
+<pre>func (ps *<a href="#PriShares">PriShares</a>) Empty(g <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Group">Group</a>, k, n <a href="https://golang.org/pkg/builtin/#int">int</a>)</pre>
+<p>
+Initialize a set of secret-shares to an initially empty list,
+before populating using SetShare() and reconstruction.
+</p>
+<h3 id="PriShares.Secret">func (*PriShares) <a href="/src/github.com/dedis/crypto/poly/sharing.go?s=4812:4857#L169">Secret</a>
+<a class="permalink" href="#PriShares.Secret">¶</a>
+</h3>
+<pre>func (ps *<a href="#PriShares">PriShares</a>) Secret() <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Scalar">Scalar</a></pre>
+<p>
+Use Lagrange interpolation to reconstruct a secret,
+from a private share array of which
+at least a threshold k of shares are populated (non-nil).
+</p>
+<h3 id="PriShares.SetShare">func (*PriShares) <a href="/src/github.com/dedis/crypto/poly/sharing.go?s=4088:4143#L142">SetShare</a>
+<a class="permalink" href="#PriShares.SetShare">¶</a>
+</h3>
+<pre>func (ps *<a href="#PriShares">PriShares</a>) SetShare(i <a href="https://golang.org/pkg/builtin/#int">int</a>, s <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Scalar">Scalar</a>)</pre>
+<p>
+Set node i's share.
+</p>
+<h3 id="PriShares.Share">func (*PriShares) <a href="/src/github.com/dedis/crypto/poly/sharing.go?s=3756:3805#L129">Share</a>
+<a class="permalink" href="#PriShares.Share">¶</a>
+</h3>
+<pre>func (ps *<a href="#PriShares">PriShares</a>) Share(i <a href="https://golang.org/pkg/builtin/#int">int</a>) <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Scalar">Scalar</a></pre>
+<p>
+Return a given node i's share.
+</p>
+<h3 id="PriShares.Split">func (*PriShares) <a href="/src/github.com/dedis/crypto/poly/sharing.go?s=3513:3569#L115">Split</a>
+<a class="permalink" href="#PriShares.Split">¶</a>
+</h3>
+<pre>func (ps *<a href="#PriShares">PriShares</a>) Split(p *<a href="#PriPoly">PriPoly</a>, n <a href="https://golang.org/pkg/builtin/#int">int</a>) *<a href="#PriShares">PriShares</a></pre>
+<p>
+Create a desired number of secret-shares from a private polynomial,
+each of which is typically to be distributed to a distinct party.
+Any k of these shares may be used to reconstruct the original secret.
+Amounts to evaluating the private polynomial at positions 1, ..., n.
+</p>
+<h3 id="PriShares.String">func (*PriShares) <a href="/src/github.com/dedis/crypto/poly/sharing.go?s=5381:5417#L195">String</a>
+<a class="permalink" href="#PriShares.String">¶</a>
+</h3>
+<pre>func (ps *<a href="#PriShares">PriShares</a>) String() <a href="https://golang.org/pkg/builtin/#string">string</a></pre>
+<h2 id="PubPoly">type <a href="/src/github.com/dedis/crypto/poly/sharing.go?s=5645:5837#L212">PubPoly</a>
+<a class="permalink" href="#PubPoly">¶</a>
+</h2>
+<pre>type PubPoly struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}</pre>
+<p>
+A public commitment to a secret-sharing polynomial.
+</p>
+<h3 id="PubPoly.Add">func (*PubPoly) <a href="/src/github.com/dedis/crypto/poly/sharing.go?s=9257:9306#L342">Add</a>
+<a class="permalink" href="#PubPoly.Add">¶</a>
+</h3>
+<pre>func (pub *<a href="#PubPoly">PubPoly</a>) Add(p1, p2 *<a href="#PubPoly">PubPoly</a>) *<a href="#PubPoly">PubPoly</a></pre>
+<p>
+Homomorphically add two public polynomial commitments,
+to form a public commitment to the sum of the two polynomials.
+</p>
+<h3 id="PubPoly.Check">func (*PubPoly) <a href="/src/github.com/dedis/crypto/poly/sharing.go?s=9781:9841#L361">Check</a>
+<a class="permalink" href="#PubPoly.Check">¶</a>
+</h3>
+<pre>func (pub *<a href="#PubPoly">PubPoly</a>) Check(i <a href="https://golang.org/pkg/builtin/#int">int</a>, share <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Scalar">Scalar</a>) <a href="https://golang.org/pkg/builtin/#bool">bool</a></pre>
+<p>
+Check a secret share against a public polynomial commitment.
+This amounts to evaluating the polynomial under homomorphic encryption.
+</p>
+<h3 id="PubPoly.Commit">func (*PubPoly) <a href="/src/github.com/dedis/crypto/poly/sharing.go?s=6822:6889#L245">Commit</a>
+<a class="permalink" href="#PubPoly.Commit">¶</a>
+</h3>
+<pre>func (pub *<a href="#PubPoly">PubPoly</a>) Commit(pri *<a href="#PriPoly">PriPoly</a>, b <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Point">Point</a>) *<a href="#PubPoly">PubPoly</a></pre>
+<p>
+Initialize to a public commitment to a given private polynomial.
+Create commitments as encryptions of a given base point b,
+or the standard base if b == nil.
+</p>
+<h3 id="PubPoly.Equal">func (*PubPoly) <a href="/src/github.com/dedis/crypto/poly/sharing.go?s=8538:8580#L314">Equal</a>
+<a class="permalink" href="#PubPoly.Equal">¶</a>
+</h3>
+<pre>func (p1 *<a href="#PubPoly">PubPoly</a>) Equal(p2 *<a href="#PubPoly">PubPoly</a>) <a href="https://golang.org/pkg/builtin/#bool">bool</a></pre>
+<p>
+Test polynomial commitments for equality.
+Assumes they are of the same degree and from the same group.
+</p>
+<h3 id="PubPoly.Eval">func (*PubPoly) <a href="/src/github.com/dedis/crypto/poly/sharing.go?s=8873:8919#L328">Eval</a>
+<a class="permalink" href="#PubPoly.Eval">¶</a>
+</h3>
+<pre>func (pub *<a href="#PubPoly">PubPoly</a>) Eval(i <a href="https://golang.org/pkg/builtin/#int">int</a>) <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Point">Point</a></pre>
+<p>
+Homomorphically evaluate a commitment to the share for party i.
+</p>
+<h3 id="PubPoly.GetK">func (*PubPoly) <a href="/src/github.com/dedis/crypto/poly/sharing.go?s=6600:6630#L238">GetK</a>
+<a class="permalink" href="#PubPoly.GetK">¶</a>
+</h3>
+<pre>func (pub *<a href="#PubPoly">PubPoly</a>) GetK() <a href="https://golang.org/pkg/builtin/#int">int</a></pre>
+<p>
+Return k : the number of shares needed to reconstruct a secret from the corresponding pripoly
+</p>
+<h3 id="PubPoly.Init">func (*PubPoly) <a href="/src/github.com/dedis/crypto/poly/sharing.go?s=5989:6065#L220">Init</a>
+<a class="permalink" href="#PubPoly.Init">¶</a>
+</h3>
+<pre>func (pub *<a href="#PubPoly">PubPoly</a>) Init(g <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Group">Group</a>, k <a href="https://golang.org/pkg/builtin/#int">int</a>, b <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Point">Point</a>) *<a href="#PubPoly">PubPoly</a></pre>
+<p>
+Initialize to an empty polynomial for a given group and threshold (degree),
+typically before using Decode() to fill in from a received message.
+</p>
+<h3 id="PubPoly.InitNull">func (*PubPoly) <a href="/src/github.com/dedis/crypto/poly/sharing.go?s=6326:6406#L229">InitNull</a>
+<a class="permalink" href="#PubPoly.InitNull">¶</a>
+</h3>
+<pre>func (pub *<a href="#PubPoly">PubPoly</a>) InitNull(g <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Group">Group</a>, k <a href="https://golang.org/pkg/builtin/#int">int</a>, b <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Point">Point</a>) *<a href="#PubPoly">PubPoly</a></pre>
+<p>
+InitNull does the same thing as Init PLUS initialize every points / coef to the Null
+Identity Element so we can use it like a "temp" / "aggregate" variable to add with others poly
+</p>
+<h3 id="PubPoly.MarshalBinary">func (*PubPoly) <a href="/src/github.com/dedis/crypto/poly/sharing.go?s=7415:7466#L269">MarshalBinary</a>
+<a class="permalink" href="#PubPoly.MarshalBinary">¶</a>
+</h3>
+<pre>func (pub *<a href="#PubPoly">PubPoly</a>) MarshalBinary() ([]<a href="https://golang.org/pkg/builtin/#byte">byte</a>, <a href="https://golang.org/pkg/builtin/#error">error</a>)</pre>
+<p>
+Encode this polynomial into a byte slice exactly Len() bytes long.
+</p>
+<h3 id="PubPoly.MarshalSize">func (*PubPoly) <a href="/src/github.com/dedis/crypto/poly/sharing.go?s=7264:7301#L264">MarshalSize</a>
+<a class="permalink" href="#PubPoly.MarshalSize">¶</a>
+</h3>
+<pre>func (pub *<a href="#PubPoly">PubPoly</a>) MarshalSize() <a href="https://golang.org/pkg/builtin/#int">int</a></pre>
+<p>
+Return the encoded length of this polynomial commitment.
+</p>
+<h3 id="PubPoly.MarshalTo">func (*PubPoly) <a href="/src/github.com/dedis/crypto/poly/sharing.go?s=8106:8161#L298">MarshalTo</a>
+<a class="permalink" href="#PubPoly.MarshalTo">¶</a>
+</h3>
+<pre>func (pub *<a href="#PubPoly">PubPoly</a>) MarshalTo(w <a href="../../../../io/index.html">io</a>.<a href="../../../../io/index.html#Writer">Writer</a>) (<a href="https://golang.org/pkg/builtin/#int">int</a>, <a href="https://golang.org/pkg/builtin/#error">error</a>)</pre>
+<h3 id="PubPoly.SecretCommit">func (*PubPoly) <a href="/src/github.com/dedis/crypto/poly/sharing.go?s=7132:7181#L259">SecretCommit</a>
+<a class="permalink" href="#PubPoly.SecretCommit">¶</a>
+</h3>
+<pre>func (pub *<a href="#PubPoly">PubPoly</a>) SecretCommit() <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Point">Point</a></pre>
+<p>
+Return the secret commit (constant term) from this polynomial.
+</p>
+<h3 id="PubPoly.String">func (*PubPoly) <a href="/src/github.com/dedis/crypto/poly/sharing.go?s=9988:10021#L368">String</a>
+<a class="permalink" href="#PubPoly.String">¶</a>
+</h3>
+<pre>func (p *<a href="#PubPoly">PubPoly</a>) String() <a href="https://golang.org/pkg/builtin/#string">string</a></pre>
+<p>
+Dump a string representation of the polynomial commitment.
+</p>
+<h3 id="PubPoly.UnmarshalBinary">func (*PubPoly) <a href="/src/github.com/dedis/crypto/poly/sharing.go?s=7762:7813#L283">UnmarshalBinary</a>
+<a class="permalink" href="#PubPoly.UnmarshalBinary">¶</a>
+</h3>
+<pre>func (pub *<a href="#PubPoly">PubPoly</a>) UnmarshalBinary(b []<a href="https://golang.org/pkg/builtin/#byte">byte</a>) <a href="https://golang.org/pkg/builtin/#error">error</a></pre>
+<p>
+Decode this polynomial from a slice exactly Len() bytes long.
+</p>
+<h3 id="PubPoly.UnmarshalFrom">func (*PubPoly) <a href="/src/github.com/dedis/crypto/poly/sharing.go?s=8221:8280#L303">UnmarshalFrom</a>
+<a class="permalink" href="#PubPoly.UnmarshalFrom">¶</a>
+</h3>
+<pre>func (pub *<a href="#PubPoly">PubPoly</a>) UnmarshalFrom(r <a href="../../../../io/index.html">io</a>.<a href="../../../../io/index.html#Reader">Reader</a>) (<a href="https://golang.org/pkg/builtin/#int">int</a>, <a href="https://golang.org/pkg/builtin/#error">error</a>)</pre>
+<h2 id="PubShares">type <a href="/src/github.com/dedis/crypto/poly/sharing.go?s=10294:10539#L385">PubShares</a>
+<a class="permalink" href="#PubShares">¶</a>
+</h2>
+<pre>type PubShares struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}</pre>
+<p>
+Public commitments to shares generated from a private polynomial.
+</p>
+<h3 id="PubShares.SecretCommit">func (*PubShares) <a href="/src/github.com/dedis/crypto/poly/sharing.go?s=11855:11905#L443">SecretCommit</a>
+<a class="permalink" href="#PubShares.SecretCommit">¶</a>
+</h3>
+<pre>func (ps *<a href="#PubShares">PubShares</a>) SecretCommit() <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Point">Point</a></pre>
+<p>
+Use Lagrange interpolation homomorphically
+to reconstruct a secret commitment,
+from an array of share commitments of which
+at least a threshold k of shares are populated (non-nil).
+</p>
+<h3 id="PubShares.SetShare">func (*PubShares) <a href="/src/github.com/dedis/crypto/poly/sharing.go?s=11094:11148#L415">SetShare</a>
+<a class="permalink" href="#PubShares.SetShare">¶</a>
+</h3>
+<pre>func (ps *<a href="#PubShares">PubShares</a>) SetShare(i <a href="https://golang.org/pkg/builtin/#int">int</a>, p <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Point">Point</a>)</pre>
+<p>
+Set node i's share commitment.
+</p>
+<h3 id="PubShares.Share">func (*PubShares) <a href="/src/github.com/dedis/crypto/poly/sharing.go?s=10990:11038#L410">Share</a>
+<a class="permalink" href="#PubShares.Share">¶</a>
+</h3>
+<pre>func (ps *<a href="#PubShares">PubShares</a>) Share(i <a href="https://golang.org/pkg/builtin/#int">int</a>) <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Point">Point</a></pre>
+<p>
+Return the share commitment for a given party i.
+</p>
+<h3 id="PubShares.Split">func (*PubShares) <a href="/src/github.com/dedis/crypto/poly/sharing.go?s=10708:10766#L395">Split</a>
+<a class="permalink" href="#PubShares.Split">¶</a>
+</h3>
+<pre>func (ps *<a href="#PubShares">PubShares</a>) Split(pub *<a href="#PubPoly">PubPoly</a>, n <a href="https://golang.org/pkg/builtin/#int">int</a>) *<a href="#PubShares">PubShares</a></pre>
+<p>
+Create individual share commitments from a polynomial commitment,
+one for each of n parties.
+Homomorphically evaluates the polynomial at positions 1, ..., n.
+</p>
+<h3 id="PubShares.String">func (*PubShares) <a href="/src/github.com/dedis/crypto/poly/sharing.go?s=12561:12597#L472">String</a>
+<a class="permalink" href="#PubShares.String">¶</a>
+</h3>
+<pre>func (ps *<a href="#PubShares">PubShares</a>) String() <a href="https://golang.org/pkg/builtin/#string">string</a></pre>
+<h2 id="Receiver">type <a href="/src/github.com/dedis/crypto/poly/joint.go?s=1735:2402#L41">Receiver</a>
+<a class="permalink" href="#Receiver">¶</a>
+</h2>
+<pre>type Receiver struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}</pre>
+<p>
+Receiver Part : Receiver struct is basically the underlying structure of the general matrix.
+If a peer is a receiver, it will receive all deals and compute all of its share and then he will
+be able to generate the SharedSecret
+</p>
+<h3 id="NewReceiver">func <a href="/src/github.com/dedis/crypto/poly/joint.go?s=2430:2515#L63">NewReceiver</a>
+<a class="permalink" href="#NewReceiver">¶</a>
+</h3>
+<pre>func NewReceiver(suite <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Suite">Suite</a>, info <a href="#Threshold">Threshold</a>, key *<a href="../../../../github.com/dedis/crypto/config/index.html">config</a>.<a href="../../../../github.com/dedis/crypto/config/index.html#KeyPair">KeyPair</a>) *<a href="#Receiver">Receiver</a></pre>
+<p>
+Returns a new Receiver
+</p>
+<h3 id="Receiver.AddDeal">func (*Receiver) <a href="/src/github.com/dedis/crypto/poly/joint.go?s=3309:3377#L86">AddDeal</a>
+<a class="permalink" href="#Receiver.AddDeal">¶</a>
+</h3>
+<pre>func (r *<a href="#Receiver">Receiver</a>) AddDeal(index <a href="https://golang.org/pkg/builtin/#int">int</a>, deal *<a href="#Deal">Deal</a>) (*<a href="#Response">Response</a>, <a href="https://golang.org/pkg/builtin/#error">error</a>)</pre>
+<p>
+Adddeal adds a deal to the array of deals the receiver already has.
+You must give the index of the receiver so the receiver can generate its
+response for this deal to the dealer,
+i.e. index is generally the index of the receiver in the matrix, and
+is usually fixed.
+It will return a Response to be sent back to the Dealer so he can verify its
+deal
+</p>
+<h3 id="Receiver.Init">func (*Receiver) <a href="/src/github.com/dedis/crypto/poly/joint.go?s=2711:2803#L70">Init</a>
+<a class="permalink" href="#Receiver.Init">¶</a>
+</h3>
+<pre>func (r *<a href="#Receiver">Receiver</a>) Init(suite <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Suite">Suite</a>, info <a href="#Threshold">Threshold</a>, key *<a href="../../../../github.com/dedis/crypto/config/index.html">config</a>.<a href="../../../../github.com/dedis/crypto/config/index.html#KeyPair">KeyPair</a>) *<a href="#Receiver">Receiver</a></pre>
+<p>
+Init a new Receiver struct
+info is the info about the structure of the polynomials used
+key is the long-term public key of the receiver
+</p>
+<h3 id="Receiver.ProduceSharedSecret">func (*Receiver) <a href="/src/github.com/dedis/crypto/poly/joint.go?s=4185:4248#L108">ProduceSharedSecret</a>
+<a class="permalink" href="#Receiver.ProduceSharedSecret">¶</a>
+</h3>
+<pre>func (r *<a href="#Receiver">Receiver</a>) ProduceSharedSecret() (*<a href="#SharedSecret">SharedSecret</a>, <a href="https://golang.org/pkg/builtin/#error">error</a>)</pre>
+<p>
+ProduceSharedSecret will generate the sharedsecret relative to this receiver
+it will throw an error if something is wrong such as not enough Dealers received
+The shared secret can be computed when all deals have been sent and
+basically consists of a
+1. Public Polynomial which is basically the sums of all Dealers's polynomial
+2. Share of the global Private Polynomial (which is to never be computed directly), which is
+</p>
+<pre>basically SUM of fj(i) for a receiver i
+</pre>
+<h2 id="Response">type <a href="/src/github.com/dedis/crypto/poly/deal.go?s=44927:45266#L1469">Response</a>
+<a class="permalink" href="#Response">¶</a>
+</h2>
+<pre>type Response struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}</pre>
+<p>
+The Response struct is a union of the signature and blameProof types.
+* It is the public-facing message that insurers send in response to a Deal.
+* It hides the details of signature's and blameProofs so that users of
+* this code will not have to worry about them.
+*
+* Please see the signature and blameProof structs for more details.
+</p>
+<h3 id="Response.Equal">func (*Response) <a href="/src/github.com/dedis/crypto/poly/deal.go?s=46361:46404#L1533">Equal</a>
+<a class="permalink" href="#Response.Equal">¶</a>
+</h3>
+<pre>func (r *<a href="#Response">Response</a>) Equal(r2 *<a href="#Response">Response</a>) <a href="https://golang.org/pkg/builtin/#bool">bool</a></pre>
+<p>
+Tests whether two Response structs are equal
+*
+* Arguments
+*    r2 = a pointer to the struct to test for equality
+*
+* Returns
+*   true if equal, false otherwise
+</p>
+<h3 id="Response.MarshalBinary">func (*Response) <a href="/src/github.com/dedis/crypto/poly/deal.go?s=47571:47621#L1581">MarshalBinary</a>
+<a class="permalink" href="#Response.MarshalBinary">¶</a>
+</h3>
+<pre>func (r *<a href="#Response">Response</a>) MarshalBinary() ([]<a href="https://golang.org/pkg/builtin/#byte">byte</a>, <a href="https://golang.org/pkg/builtin/#error">error</a>)</pre>
+<p>
+Marshals a Response struct into a byte array
+*
+* Returns
+*   A buffer of the marshalled struct
+*   The error status of the marshalling (nil if no error)
+*
+* Note
+*   The buffer is formatted as follows:
+*
+*   ||signature_Or_blameProof_Length||Type||signature_or_blameProof||
+</p>
+<h3 id="Response.MarshalSize">func (*Response) <a href="/src/github.com/dedis/crypto/poly/deal.go?s=46996:47032#L1558">MarshalSize</a>
+<a class="permalink" href="#Response.MarshalSize">¶</a>
+</h3>
+<pre>func (r *<a href="#Response">Response</a>) MarshalSize() <a href="https://golang.org/pkg/builtin/#int">int</a></pre>
+<p>
+Returns the number of bytes used by this struct when marshalled
+*
+* Returns
+*   The marshal size
+*
+* Note
+*   Since signature structs and blameProof structs can be of
+*   variable length, this function is only useful for a Response that is
+*   already unmarshalled. Do not call before unmarshalling.
+</p>
+<h3 id="Response.MarshalTo">func (*Response) <a href="/src/github.com/dedis/crypto/poly/deal.go?s=49677:49731#L1665">MarshalTo</a>
+<a class="permalink" href="#Response.MarshalTo">¶</a>
+</h3>
+<pre>func (r *<a href="#Response">Response</a>) MarshalTo(w <a href="../../../../io/index.html">io</a>.<a href="../../../../io/index.html#Writer">Writer</a>) (<a href="https://golang.org/pkg/builtin/#int">int</a>, <a href="https://golang.org/pkg/builtin/#error">error</a>)</pre>
+<p>
+Marshals a Response struct using an io.Writer
+*
+* Arguments
+*    w = the writer to use for marshalling
+*
+* Returns
+*   The number of bytes written
+*   The error status of the write (nil if no errors)
+</p>
+<h3 id="Response.String">func (Response) <a href="/src/github.com/dedis/crypto/poly/deal.go?s=50742:50775#L1708">String</a>
+<a class="permalink" href="#Response.String">¶</a>
+</h3>
+<pre>func (r <a href="#Response">Response</a>) String() <a href="https://golang.org/pkg/builtin/#string">string</a></pre>
+<p>
+Returns a string representation of the Response for easy debugging
+*
+* Returns
+*   The Response's string representation
+</p>
+<h3 id="Response.UnmarshalBinary">func (*Response) <a href="/src/github.com/dedis/crypto/poly/deal.go?s=48510:48562#L1622">UnmarshalBinary</a>
+<a class="permalink" href="#Response.UnmarshalBinary">¶</a>
+</h3>
+<pre>func (r *<a href="#Response">Response</a>) UnmarshalBinary(buf []<a href="https://golang.org/pkg/builtin/#byte">byte</a>) <a href="https://golang.org/pkg/builtin/#error">error</a></pre>
+<p>
+Unmarshals a Response from a byte buffer
+*
+* Arguments
+*    buf = the buffer containing the blameProof
+*
+* Returns
+*   The error status of the unmarshalling (nil if no error)
+</p>
+<h3 id="Response.UnmarshalFrom">func (*Response) <a href="/src/github.com/dedis/crypto/poly/deal.go?s=50039:50098#L1682">UnmarshalFrom</a>
+<a class="permalink" href="#Response.UnmarshalFrom">¶</a>
+</h3>
+<pre>func (rp *<a href="#Response">Response</a>) UnmarshalFrom(r <a href="../../../../io/index.html">io</a>.<a href="../../../../io/index.html#Reader">Reader</a>) (<a href="https://golang.org/pkg/builtin/#int">int</a>, <a href="https://golang.org/pkg/builtin/#error">error</a>)</pre>
+<p>
+Unmarshals a Response struct using an io.Reader
+*
+* Arguments
+*    r = the reader to use for unmarshalling
+*
+* Returns
+*   The number of bytes read
+*   The error status of the read (nil if no errors)
+</p>
+<h3 id="Response.UnmarshalInit">func (*Response) <a href="/src/github.com/dedis/crypto/poly/deal.go?s=46090:46154#L1520">UnmarshalInit</a>
+<a class="permalink" href="#Response.UnmarshalInit">¶</a>
+</h3>
+<pre>func (r *<a href="#Response">Response</a>) UnmarshalInit(suite <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Suite">Suite</a>) *<a href="#Response">Response</a></pre>
+<p>
+Initializes a Response struct for unmarshalling
+*
+* Arguments
+*    suite = the suite used for the signature or blameProof
+*
+* Returns
+*   An initialized Response ready to be unmarshalled
+</p>
+<h2 id="Schnorr">type <a href="/src/github.com/dedis/crypto/poly/schnorr.go?s=1236:1948#L22">Schnorr</a>
+<a class="permalink" href="#Schnorr">¶</a>
+</h2>
+<pre>type Schnorr struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}</pre>
+<p>
+Schnorr holds the data necessary to complete a distributed schnorr signature
+and will implement the necessary methods.
+You can setup a schnorr struct with a LongTerm shared secret
+and when you want to sign something, you will have to:
+</p>
+<pre>- Start a new round specifying the random shared secret chosen and the message to sign
+- Generate the partial signature of the current node
+- Collect every others partial signature
+- Generate the signature
+- Do whatever you want to do with
+- Start a new round with the same schnorr struct
+</pre>
+<p>
+If you want to verify a given signature, use
+schnorr.VerifySignature(SchnorrSig, msg)
+CAREFUL: your schnorr signature is a LONG TERM signature, you must keep the same during
+all rounds, else you won't be able to verify any signatures. The following have to stay
+the same:
+</p>
+<pre>- LongTerm sharedSecret
+- PolyInfo
+</pre>
+<p>
+If you know these are the same throughout differents rounds, you can create many schnorr structs. This is
+definitly NOT the way it is intented to be used, so use it at your own risks.
+</p>
+<h3 id="NewSchnorr">func <a href="/src/github.com/dedis/crypto/poly/schnorr.go?s=2866:2952#L75">NewSchnorr</a>
+<a class="permalink" href="#NewSchnorr">¶</a>
+</h3>
+<pre>func NewSchnorr(suite <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Suite">Suite</a>, info <a href="#Threshold">Threshold</a>, longterm *<a href="#SharedSecret">SharedSecret</a>) *<a href="#Schnorr">Schnorr</a></pre>
+<p>
+Instantiates a Schnorr struct. A wrapper around Init
+</p>
+<h3 id="Schnorr.AddPartialSig">func (*Schnorr) <a href="/src/github.com/dedis/crypto/poly/schnorr.go?s=6852:6912#L186">AddPartialSig</a>
+<a class="permalink" href="#Schnorr.AddPartialSig">¶</a>
+</h3>
+<pre>func (s *<a href="#Schnorr">Schnorr</a>) AddPartialSig(ps *<a href="#SchnorrPartialSig">SchnorrPartialSig</a>) <a href="https://golang.org/pkg/builtin/#error">error</a></pre>
+<p>
+Receives a signature from other peers,
+adds it to its list of partial signatures and verifies it
+It returns an error if
+- it can not validate this given partial signature
+</p>
+<pre>against the longterm and random shared secret
+</pre>
+<p>
+- there is already a partial signature added for this index
+NOTE : let s = RevealPartialSig(), s is NOT added automatically to the
+set of partial signature, for now you have to do it yourself by calling
+AddPartialSig(s)
+</p>
+<h3 id="Schnorr.EmptySchnorrSig">func (*Schnorr) <a href="/src/github.com/dedis/crypto/poly/schnorr.go?s=9437:9484#L264">EmptySchnorrSig</a>
+<a class="permalink" href="#Schnorr.EmptySchnorrSig">¶</a>
+</h3>
+<pre>func (s *<a href="#Schnorr">Schnorr</a>) EmptySchnorrSig() *<a href="#SchnorrSig">SchnorrSig</a></pre>
+<h3 id="Schnorr.Init">func (*Schnorr) <a href="/src/github.com/dedis/crypto/poly/schnorr.go?s=3041:3134#L80">Init</a>
+<a class="permalink" href="#Schnorr.Init">¶</a>
+</h3>
+<pre>func (s *<a href="#Schnorr">Schnorr</a>) Init(suite <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Suite">Suite</a>, info <a href="#Threshold">Threshold</a>, longterm *<a href="#SharedSecret">SharedSecret</a>) *<a href="#Schnorr">Schnorr</a></pre>
+<p>
+Initializes the Schnorr struct
+</p>
+<h3 id="Schnorr.NewRound">func (*Schnorr) <a href="/src/github.com/dedis/crypto/poly/schnorr.go?s=3565:3632#L91">NewRound</a>
+<a class="permalink" href="#Schnorr.NewRound">¶</a>
+</h3>
+<pre>func (s *<a href="#Schnorr">Schnorr</a>) NewRound(random *<a href="#SharedSecret">SharedSecret</a>, h <a href="../../../../hash/index.html">hash</a>.<a href="../../../../hash/index.html#Hash">Hash</a>) <a href="https://golang.org/pkg/builtin/#error">error</a></pre>
+<p>
+Sets the random key for the d.schnorr algo + sets the msg to be signed.
+You call this function when you want a new signature to be issued on a specific message.
+The security of the distributed schnorr signature protocol is the same as for the regular :
+The random secret "must be fresh* for "each* signature / signed message (hence the 'NewRound')
+</p>
+<h3 id="Schnorr.RevealPartialSig">func (*Schnorr) <a href="/src/github.com/dedis/crypto/poly/schnorr.go?s=5998:6053#L161">RevealPartialSig</a>
+<a class="permalink" href="#Schnorr.RevealPartialSig">¶</a>
+</h3>
+<pre>func (s *<a href="#Schnorr">Schnorr</a>) RevealPartialSig() *<a href="#SchnorrPartialSig">SchnorrPartialSig</a></pre>
+<p>
+Reveals the partial signature for this peer
+Si = Ri + H(m || V) * Pi
+with :
+</p>
+<pre>- Ri = share of the random secret for peer i
+- V  = public commitment of the random secret (i.e. Public random poly evaluated at point 0 )
+- Pi = share of the longterm secret for peer i
+</pre>
+<p>
+This signature is to be sent to each other peer
+</p>
+<h3 id="Schnorr.Sig">func (*Schnorr) <a href="/src/github.com/dedis/crypto/poly/schnorr.go?s=7519:7563#L202">Sig</a>
+<a class="permalink" href="#Schnorr.Sig">¶</a>
+</h3>
+<pre>func (s *<a href="#Schnorr">Schnorr</a>) Sig() (*<a href="#SchnorrSig">SchnorrSig</a>, <a href="https://golang.org/pkg/builtin/#error">error</a>)</pre>
+<p>
+Generates the global schnorr signature
+by reconstructing the secret contained in the partial responses
+</p>
+<h3 id="Schnorr.VerifySchnorrSig">func (*Schnorr) <a href="/src/github.com/dedis/crypto/poly/schnorr.go?s=8546:8616#L236">VerifySchnorrSig</a>
+<a class="permalink" href="#Schnorr.VerifySchnorrSig">¶</a>
+</h3>
+<pre>func (s *<a href="#Schnorr">Schnorr</a>) VerifySchnorrSig(sig *<a href="#SchnorrSig">SchnorrSig</a>, h <a href="../../../../hash/index.html">hash</a>.<a href="../../../../hash/index.html#Hash">Hash</a>) <a href="https://golang.org/pkg/builtin/#error">error</a></pre>
+<p>
+Verifies if a given signature is correct regarding the message.
+NOTE: This belongs to the schnorr structs however it can be called at any time you want.
+This check is static, meaning it only needs the longterm shared secret, and the signature to
+check. Think of the schnorr signature as a black box having two inputs:
+</p>
+<pre>- a message to be signed + a random secret ==&gt; NewRound
+- a message + a signature to check on ==&gt; VerifySchnorrSig
+</pre>
+<h2 id="SchnorrPartialSig">type <a href="/src/github.com/dedis/crypto/poly/schnorr.go?s=2138:2358#L51">SchnorrPartialSig</a>
+<a class="permalink" href="#SchnorrPartialSig">¶</a>
+</h2>
+<pre>type SchnorrPartialSig struct {
+    <span class="comment">// The index of this partial signature regarding the global one</span>
+    <span class="comment">// same as the "receiver" index in the joint.go code</span>
+    Index <a href="https://golang.org/pkg/builtin/#int">int</a>
+
+    <span class="comment">// The partial signature itself</span>
+    Part *<a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Scalar">Scalar</a>
+}</pre>
+<p>
+Partial Schnorr Sig represents the partial signatures that each peer must generate in order to
+create the "global" signature. This struct must be sent across each peer for each peer
+</p>
+<h3 id="SchnorrPartialSig.Equal">func (*SchnorrPartialSig) <a href="/src/github.com/dedis/crypto/poly/schnorr.go?s=9301:9366#L260">Equal</a>
+<a class="permalink" href="#SchnorrPartialSig.Equal">¶</a>
+</h3>
+<pre>func (pss *<a href="#SchnorrPartialSig">SchnorrPartialSig</a>) Equal(pss2 *<a href="#SchnorrPartialSig">SchnorrPartialSig</a>) <a href="https://golang.org/pkg/builtin/#bool">bool</a></pre>
+<h2 id="SchnorrSig">type <a href="/src/github.com/dedis/crypto/poly/schnorr.go?s=2640:2808#L65">SchnorrSig</a>
+<a class="permalink" href="#SchnorrSig">¶</a>
+</h2>
+<pre>type SchnorrSig struct {
+
+    <span class="comment">// the signature itself</span>
+    Signature *<a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Scalar">Scalar</a>
+
+    <span class="comment">// the random public polynomial used during the signature generation</span>
+    Random *<a href="#PubPoly">PubPoly</a>
+}</pre>
+<p>
+SchnorrSig represents the final signature of a distribtued threshold schnorr signature
+which can be verified against a message
+This struct is not intended to be constructed manually but can be:
+</p>
+<pre>- produced by the Schnorr struct
+- verified against a Schnorr struct
+</pre>
+<h3 id="SchnorrSig.Equal">func (*SchnorrSig) <a href="/src/github.com/dedis/crypto/poly/schnorr.go?s=9765:9812#L275">Equal</a>
+<a class="permalink" href="#SchnorrSig.Equal">¶</a>
+</h3>
+<pre>func (s *<a href="#SchnorrSig">SchnorrSig</a>) Equal(s2 *<a href="#SchnorrSig">SchnorrSig</a>) <a href="https://golang.org/pkg/builtin/#bool">bool</a></pre>
+<p>
+Tests on equality
+</p>
+<h3 id="SchnorrSig.Init">func (*SchnorrSig) <a href="/src/github.com/dedis/crypto/poly/schnorr.go?s=9586:9661#L269">Init</a>
+<a class="permalink" href="#SchnorrSig.Init">¶</a>
+</h3>
+<pre>func (s *<a href="#SchnorrSig">SchnorrSig</a>) Init(suite <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Suite">Suite</a>, info <a href="#Threshold">Threshold</a>) *<a href="#SchnorrSig">SchnorrSig</a></pre>
+<p>
+Initialises the struct so it can decode itself
+</p>
+<h2 id="SharedSecret">type <a href="/src/github.com/dedis/crypto/poly/joint.go?s=1142:1497#L23">SharedSecret</a>
+<a class="permalink" href="#SharedSecret">¶</a>
+</h2>
+<pre>type SharedSecret struct {
+
+    <span class="comment">// The shared public polynomial</span>
+    Pub *<a href="#PubPoly">PubPoly</a>
+
+    <span class="comment">// The share of the shared secret</span>
+    Share *<a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Scalar">Scalar</a>
+
+    <span class="comment">// The index where the share has been evaluated in the shared private polynomial</span>
+    <span class="comment">// and the index to use where the share can be checked against the shared</span>
+    <span class="comment">// public polynomial</span>
+    <span class="comment">// f(i) = share for peer i</span>
+    Index <a href="https://golang.org/pkg/builtin/#int">int</a>
+}</pre>
+<p>
+Represent the output of a VSS Pedersen scheme : a global public polynomial and a share of its related priv poly
+for a peer
+A SharedSecret is generated by the receiver's func : ProduceSharedSecret
+This SharedSecret is used by the distributed t-n Schnorr algorithm as a
+shared key.
+</p>
+<h2 id="State">type <a href="/src/github.com/dedis/crypto/poly/deal.go?s=25470:25837#L814">State</a>
+<a class="permalink" href="#State">¶</a>
+</h2>
+<pre>type State struct {
+
+    <span class="comment">// The actual deal</span>
+    Deal <a href="#Deal">Deal</a>
+
+    <span class="comment">// Primarily used by clients, contains shares the client has currently</span>
+    <span class="comment">// obtained from insurers. This is what will be used to reconstruct the</span>
+    <span class="comment">// deald secret.</span>
+    PriShares <a href="#PriShares">PriShares</a>
+    <span class="comment">// contains filtered or unexported fields</span>
+}</pre>
+<p>
+The State struct is responsible for maintaining state about Deal
+* structs. It consists of three main pieces:
+*
+*    1. The deal itself, which should be treated like an immutable object
+*    2. The shared secrets the server has recovered so far
+*    3. A list of responses from insurers cerifying or blaming the deal
+*
+* Each server should have one State per Deal
+*
+* Note to users of this code:
+*
+*    To add a share to PriShares, do:
+*
+*       p.PriShares.SetShare(index, share)
+*
+*    To reconstruct the secret, do:
+*
+*       p.PriShares.Secret()
+*
+*    Be warned that Secret will panic unless there are enough shares to
+*    reconstruct the secret. (See poly/sharing.go for more info)
+*
+* TODO Consider if it is worth adding a String function
+</p>
+<h3 id="State.AddResponse">func (*State) <a href="/src/github.com/dedis/crypto/poly/deal.go?s=26608:26669#L858">AddResponse</a>
+<a class="permalink" href="#State.AddResponse">¶</a>
+</h3>
+<pre>func (ps *<a href="#State">State</a>) AddResponse(i <a href="https://golang.org/pkg/builtin/#int">int</a>, response *<a href="#Response">Response</a>) <a href="https://golang.org/pkg/builtin/#error">error</a></pre>
+<p>
+Adds a response from an insurer to the State. Checks to see whether the response
+* is valid and then adds it.
+*
+* Arguments
+*    i        = the index in the signature array this signature belongs
+*    response = the response to add
+*
+* Returns
+*   nil if the deal was added succesfully, an error otherwise.
+</p>
+<h3 id="State.DealCertified">func (*State) <a href="/src/github.com/dedis/crypto/poly/deal.go?s=31644:31682#L1002">DealCertified</a>
+<a class="permalink" href="#State.DealCertified">¶</a>
+</h3>
+<pre>func (ps *<a href="#State">State</a>) DealCertified() <a href="https://golang.org/pkg/builtin/#error">error</a></pre>
+<p>
+This public function checks whether the Deal is certified. Three things
+* must hold for this to be the case:
+*
+*   1) The deal must be syntatically valid.
+*   2) It must have &gt;= r valid signatures
+*   3) It must not have any valid blameProofs
+*
+*
+* Use this function when determining whether a deal is safe to be accepted.
+*
+* Please see dealCertified for more details.
+</p>
+<h3 id="State.Init">func (*State) <a href="/src/github.com/dedis/crypto/poly/deal.go?s=25965:26004#L837">Init</a>
+<a class="permalink" href="#State.Init">¶</a>
+</h3>
+<pre>func (ps *<a href="#State">State</a>) Init(deal <a href="#Deal">Deal</a>) *<a href="#State">State</a></pre>
+<p>
+Initializes a new State
+*
+* Arguments
+*    deal = the deal to keep track of
+*
+* Returns
+*   An initialized State
+</p>
+<h3 id="State.RevealShare">func (*State) <a href="/src/github.com/dedis/crypto/poly/deal.go?s=28956:29042#L927">RevealShare</a>
+<a class="permalink" href="#State.RevealShare">¶</a>
+</h3>
+<pre>func (ps *<a href="#State">State</a>) RevealShare(i <a href="https://golang.org/pkg/builtin/#int">int</a>, gKeyPair *<a href="../../../../github.com/dedis/crypto/config/index.html">config</a>.<a href="../../../../github.com/dedis/crypto/config/index.html#KeyPair">KeyPair</a>) (<a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Scalar">Scalar</a>, <a href="https://golang.org/pkg/builtin/#error">error</a>)</pre>
+<p>
+A public wrapper for Deal.RevealShare, ensures that a share is only
+* revealed for a Deal that has received a sufficient number of signatures.
+* An insurer should call this function on behalf of a client after verifying
+* that the Dealer is non-responsive.
+*
+* Arguments
+*    i        = the index of the insurer
+*    gkeyPair = the long-term keypair of the insurer
+*
+* Return
+*   (share, error)
+*      share = the revealed private share, or nil if the deal share is corrupted
+*      error = nil if successful, error if the deal share is corrupted
+*
+*   This error checking insures that a good insurer who has produced a valid blameproof does
+*   not reveal an incorrect share.
+*
+* Postcondition
+*   panics if an insufficient number of signatures have been received
+*
+*
+* Note
+*   The reason that SufficientSignatures is used instead of DealCertified is
+*   to prevent the following senario:
+*
+*      1) A malicious server creates a deal and selects as an insurer another
+*         malicious peer. The malicious peer is given an invalid share.
+*
+*      2) The other insurers certify the deal and the malicious insurer does
+*         not respond.
+*
+*      3) The malicious server enters the system and gives its deal to clients.
+*
+*      4) The malicious insurer then sends out the valid blameProof.
+*
+*      5) Now, the good insurers are unable to reveal the secret and reconstruct
+*         the deal.
+*
+*      6) The malicious server leaves the system. The insurance policy is now
+*         useless.
+*
+*   To prevent this, blameproofs are not taken into consideration. As a result,
+*   any server that produces an invalid share risks having its secret revealed
+*   at any moment after the deal has garnered enough signatures to be
+*   considered certified otherwise. This is further incentive to create valid deals.
+</p>
+<h3 id="State.SufficientSignatures">func (*State) <a href="/src/github.com/dedis/crypto/poly/deal.go?s=32008:32053#L1013">SufficientSignatures</a>
+<a class="permalink" href="#State.SufficientSignatures">¶</a>
+</h3>
+<pre>func (ps *<a href="#State">State</a>) SufficientSignatures() <a href="https://golang.org/pkg/builtin/#error">error</a></pre>
+<p>
+This public function checks whether the State has received enough signatures
+* for a deal to be considered certified. It ignores any valid blame proofs.
+*
+* Use this function when determining whether it is safe to reveal a share.
+*
+* Please see dealCertified for more details.
+</p>
+<h2 id="Threshold">type <a href="/src/github.com/dedis/crypto/poly/joint.go?s=598:845#L9">Threshold</a>
+<a class="permalink" href="#Threshold">¶</a>
+</h2>
+<pre>type Threshold struct {
+    <span class="comment">// How many peer do we need to reconstruct a secret</span>
+    T <a href="https://golang.org/pkg/builtin/#int">int</a>
+    <span class="comment">// How many peers do we need to verify</span>
+    R <a href="https://golang.org/pkg/builtin/#int">int</a>
+    <span class="comment">// How many peers are collaborating into constructing the shared secret ( i.e. MatrixShare is of size NxN)</span>
+    N <a href="https://golang.org/pkg/builtin/#int">int</a>
+}</pre>
+<p>
+PolyInfo describe the information needed to construct (and verify) a matrixShare
+</p>
+<h3 id="Threshold.Equal">func (*Threshold) <a href="/src/github.com/dedis/crypto/poly/joint.go?s=5200:5244#L140">Equal</a>
+<a class="permalink" href="#Threshold.Equal">¶</a>
+</h3>
+<pre>func (p *<a href="#Threshold">Threshold</a>) Equal(p2 <a href="#Threshold">Threshold</a>) <a href="https://golang.org/pkg/builtin/#bool">bool</a></pre>
+<p>
+PolyInfo marshalling :
+</p>
+
+</div><!-- .container -->
+</div><!-- #page -->
+<!-- TODO(adonovan): load these from <head> using "defer" attribute? -->
+<script src="../../../../.goduckstyle/jquery.js" type="text/javascript"></script>
+<script src="../../../../.goduckstyle/jquery.treeview.js" type="text/javascript"></script>
+<script src="../../../../.goduckstyle/jquery.treeview.edit.js" type="text/javascript"></script>
+<script>var goVersion = "go1.7.1";</script>
+<script src="../../../../.goduckstyle/godocs.js" type="text/javascript"></script>
+</body>
+</html>

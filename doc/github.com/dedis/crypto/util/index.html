@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+<meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+<meta content="width=device-width, initial-scale=1" name="viewport">
+<meta content="#375EAB" name="theme-color">
+<title>util - The PriFi Project</title>
+<link href="../../../../.goduckstyle/style.css" rel="stylesheet" type="text/css">
+<link href="../../../../.goduckstyle/jquery.treeview.css" rel="stylesheet">
+<script type="text/javascript">window.initFuncs = [];</script>
+</link></link></meta></meta></meta></head>
+<body>
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+<div class="wide" id="topbar"><div class="container">
+<div class="top-heading" id="heading-wide">The PriFi Project</div>
+<div class="top-heading" id="heading-narrow"><a href="/">Go</a></div>
+<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>
+<form action="/search" method="GET">
+<div id="menu">
+
+
+
+
+
+</div>
+</form>
+</div></div>
+<div class="wide" id="page">
+<div class="container">
+<h1>Package util</h1>
+<div id="nav"></div>
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+<script type="text/javascript">
+	document.ANALYSIS_DATA = null;
+	document.CALLGRAPH = null;
+	</script>
+<div id="short-nav">
+<dl>
+<dd><code>import "github.com/dedis/crypto/util"</code></dd>
+</dl>
+<dl>
+<dd><a class="overviewLink" href="#pkg-overview">Overview</a></dd>
+<dd><a class="indexLink" href="#pkg-index">Index</a></dd>
+</dl>
+</div>
+<!-- The package's Name is printed as title by the top-level template -->
+<div class="toggleVisible" id="pkg-overview">
+<div class="collapsed">
+<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+</div>
+<div class="expanded">
+<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+</div>
+</div>
+<div class="toggleVisible" id="pkg-index">
+<div class="collapsed">
+<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+</div>
+<div class="expanded">
+<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+<div id="manual-nav">
+<dl>
+<dd><a href="#Grow">func Grow(s []byte, n int) ([]byte, []byte)</a></dd>
+<dd><a href="#IsRace">func IsRace(err error) bool</a></dd>
+<dd><a href="#Reverse">func Reverse(dst, src []byte) []byte</a></dd>
+<dd><a href="#Replacer">type Replacer</a></dd>
+<dd>    <a href="#Replacer.Abort">func (r *Replacer) Abort()</a></dd>
+<dd>    <a href="#Replacer.Commit">func (r *Replacer) Commit() error</a></dd>
+<dd>    <a href="#Replacer.ForceCommit">func (r *Replacer) ForceCommit() error</a></dd>
+<dd>    <a href="#Replacer.Open">func (r *Replacer) Open(filename string) error</a></dd>
+</dl>
+</div><!-- #manual-nav -->
+<h4>Package files</h4>
+<p>
+<span style="font-size:90%">
+<a href="/src/github.com/dedis/crypto/util/grow.go">grow.go</a>
+<a href="/src/github.com/dedis/crypto/util/replace.go">replace.go</a>
+<a href="/src/github.com/dedis/crypto/util/reverse.go">reverse.go</a>
+</span>
+</p>
+</div><!-- .expanded -->
+</div><!-- #pkg-index -->
+<div class="toggle" id="pkg-callgraph" style="display: none">
+<div class="collapsed">
+<h2 class="toggleButton" title="Click to show Internal Call Graph section">Internal call graph ▹</h2>
+</div> <!-- .expanded -->
+<div class="expanded">
+<h2 class="toggleButton" title="Click to hide Internal Call Graph section">Internal call graph ▾</h2>
+<p>
+			  In the call graph viewer below, each node
+			  is a function belonging to this package
+			  and its children are the functions it
+			  calls—perhaps dynamically.
+			</p>
+<p>
+			  The root nodes are the entry points of the
+			  package: functions that may be called from
+			  outside the package.
+			  There may be non-exported or anonymous
+			  functions among them if they are called
+			  dynamically from another package.
+			</p>
+<p>
+			  Click a node to visit that function's source code.
+			  From there you can visit its callers by
+			  clicking its declaring <code>func</code>
+			  token.
+			</p>
+<p>
+			  Functions may be omitted if they were
+			  determined to be unreachable in the
+			  particular programs or tests that were
+			  analyzed.
+			</p>
+<!-- Zero means show all package entry points. -->
+<ul class="treeview" id="callgraph-0" style="margin-left: 0.5in"></ul>
+</div>
+</div> <!-- #pkg-callgraph -->
+<h2 id="Grow">func <a href="/src/github.com/dedis/crypto/util/grow.go?s=364:407#L1">Grow</a>
+<a class="permalink" href="#Grow">¶</a>
+</h2>
+<pre>func Grow(s []<a href="https://golang.org/pkg/builtin/#byte">byte</a>, n <a href="https://golang.org/pkg/builtin/#int">int</a>) ([]<a href="https://golang.org/pkg/builtin/#byte">byte</a>, []<a href="https://golang.org/pkg/builtin/#byte">byte</a>)</pre>
+<p>
+Grow makes room for an additional n bytes at the end of slice s.
+Returns the complete resulting slice, and a sub-slice representing
+the newly-extended n-byte region, which the caller must initialize.
+Simply re-slices s in-place if it already has sufficient capacity;
+otherwise allocates a larger slice and copies the existing portion.
+</p>
+<h2 id="IsRace">func <a href="/src/github.com/dedis/crypto/util/replace.go?s=3717:3744#L117">IsRace</a>
+<a class="permalink" href="#IsRace">¶</a>
+</h2>
+<pre>func IsRace(err <a href="https://golang.org/pkg/builtin/#error">error</a>) <a href="https://golang.org/pkg/builtin/#bool">bool</a></pre>
+<p>
+Returns true if an error returned by Commit() indicates
+that the commit failed because a concurrent write was detected
+and the force flag was not specified.
+</p>
+<h2 id="Reverse">func <a href="/src/github.com/dedis/crypto/util/reverse.go?s=289:325#L1">Reverse</a>
+<a class="permalink" href="#Reverse">¶</a>
+</h2>
+<pre>func Reverse(dst, src []<a href="https://golang.org/pkg/builtin/#byte">byte</a>) []<a href="https://golang.org/pkg/builtin/#byte">byte</a></pre>
+<p>
+Reverse copies src into dst in byte-reversed order and returns dst,
+such that src[0] goes into dst[len-1] and vice versa.
+dst and src may be the same slice but otherwise must not overlap.
+</p>
+<p>
+XXX would be nice to have this function in the 'bytes' standard package
+</p>
+<h2 id="Replacer">type <a href="/src/github.com/dedis/crypto/util/replace.go?s=72:267#L1">Replacer</a>
+<a class="permalink" href="#Replacer">¶</a>
+</h2>
+<pre>type Replacer struct {
+    Name <a href="https://golang.org/pkg/builtin/#string">string</a>      <span class="comment">// Name of the file being replaced</span>
+    Info <a href="../../../../os/index.html">os</a>.<a href="../../../../os/index.html#FileInfo">FileInfo</a> <span class="comment">// Timestamp of target file before replacement</span>
+    File *<a href="../../../../os/index.html">os</a>.<a href="../../../../os/index.html#File">File</a>    <span class="comment">// Temporary file used for writing</span>
+}</pre>
+<h3 id="Replacer.Abort">func (*Replacer) <a href="/src/github.com/dedis/crypto/util/replace.go?s=3416:3442#L105">Abort</a>
+<a class="permalink" href="#Replacer.Abort">¶</a>
+</h3>
+<pre>func (r *<a href="#Replacer">Replacer</a>) Abort()</pre>
+<p>
+Abort replacement by closing and deleting the temporary file.
+It is harmless to call Abort() after the Replacer
+has already committed or aborted:
+thus, the caller may wish to 'defer r.Abort()' immediately after Open().
+</p>
+<h3 id="Replacer.Commit">func (*Replacer) <a href="/src/github.com/dedis/crypto/util/replace.go?s=2255:2288#L61">Commit</a>
+<a class="permalink" href="#Replacer.Commit">¶</a>
+</h3>
+<pre>func (r *<a href="#Replacer">Replacer</a>) Commit() <a href="https://golang.org/pkg/builtin/#error">error</a></pre>
+<p>
+Attempt to commit the temporary replacement file to the target.
+On success, Close()s the temporary file and atomically renames it
+to the target filename saved in the Name field.
+</p>
+<p>
+Returns an error if the target was modified by someone else
+in the time since the temporary file was created.
+In this case, the caller might for example call Abort()
+and create a new Replacer after accounting for the new modifications.
+Alternatively the caller might call ForceCommit() instead after
+warning the user that state might be lost and prompting for confirmation.
+</p>
+<h3 id="Replacer.ForceCommit">func (*Replacer) <a href="/src/github.com/dedis/crypto/util/replace.go?s=3108:3146#L96">ForceCommit</a>
+<a class="permalink" href="#Replacer.ForceCommit">¶</a>
+</h3>
+<pre>func (r *<a href="#Replacer">Replacer</a>) ForceCommit() <a href="https://golang.org/pkg/builtin/#error">error</a></pre>
+<p>
+Commit the temporary replacement file
+without checking for concurrent modifications in the meantime.
+</p>
+<h3 id="Replacer.Open">func (*Replacer) <a href="/src/github.com/dedis/crypto/util/replace.go?s=1127:1173#L24">Open</a>
+<a class="permalink" href="#Replacer.Open">¶</a>
+</h3>
+<pre>func (r *<a href="#Replacer">Replacer</a>) Open(filename <a href="https://golang.org/pkg/builtin/#string">string</a>) <a href="https://golang.org/pkg/builtin/#error">error</a></pre>
+<p>
+Open a file to replace an existing file as safely as possible,
+attempting to avoid corruption on crash or concurrent writers.
+</p>
+<p>
+Creates a new temporary file in the same directory as the target,
+but does not actually touch the target until Close() is called.
+The caller can also call Abort() to close and delete the temporary file
+without replacing the original file.
+</p>
+<p>
+If r.Info is nil, sets it to the status of the target file
+at the time of this Open() call, for later race detection on Close().
+The caller can pre-set r.Info to a different timestamp
+to define the race-detection window explicitly:
+e.g., using an earlier timestamp obtained
+when the original file was first read.
+</p>
+<p>
+Something like this functionality might be useful to have in os.ioutil.
+</p>
+
+</div><!-- .container -->
+</div><!-- #page -->
+<!-- TODO(adonovan): load these from <head> using "defer" attribute? -->
+<script src="../../../../.goduckstyle/jquery.js" type="text/javascript"></script>
+<script src="../../../../.goduckstyle/jquery.treeview.js" type="text/javascript"></script>
+<script src="../../../../.goduckstyle/jquery.treeview.edit.js" type="text/javascript"></script>
+<script>var goVersion = "go1.7.1";</script>
+<script src="../../../../.goduckstyle/godocs.js" type="text/javascript"></script>
+</body>
+</html>

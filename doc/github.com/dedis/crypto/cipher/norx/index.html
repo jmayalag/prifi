@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+<meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+<meta content="width=device-width, initial-scale=1" name="viewport">
+<meta content="#375EAB" name="theme-color">
+<title>norx - The PriFi Project</title>
+<link href="../../../../../.goduckstyle/style.css" rel="stylesheet" type="text/css">
+<link href="../../../../../.goduckstyle/jquery.treeview.css" rel="stylesheet">
+<script type="text/javascript">window.initFuncs = [];</script>
+</link></link></meta></meta></meta></head>
+<body>
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+<div class="wide" id="topbar"><div class="container">
+<div class="top-heading" id="heading-wide">The PriFi Project</div>
+<div class="top-heading" id="heading-narrow"><a href="/">Go</a></div>
+<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>
+<form action="/search" method="GET">
+<div id="menu">
+
+
+
+
+
+</div>
+</form>
+</div></div>
+<div class="wide" id="page">
+<div class="container">
+<h1>Package norx</h1>
+<div id="nav"></div>
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+<script type="text/javascript">
+	document.ANALYSIS_DATA = null;
+	document.CALLGRAPH = null;
+	</script>
+<div id="short-nav">
+<dl>
+<dd><code>import "github.com/dedis/crypto/cipher/norx"</code></dd>
+</dl>
+<dl>
+<dd><a class="overviewLink" href="#pkg-overview">Overview</a></dd>
+<dd><a class="indexLink" href="#pkg-index">Index</a></dd>
+<dd><a href="#pkg-subdirectories">Subdirectories</a></dd>
+</dl>
+</div>
+<!-- The package's Name is printed as title by the top-level template -->
+<div class="toggleVisible" id="pkg-overview">
+<div class="collapsed">
+<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+</div>
+<div class="expanded">
+<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+<p>
+Package NORX implements the experimental NORX cipher.
+For details on the NORX cipher see <a href="https://norx.io">https://norx.io</a>
+This package is very experimental and NOT for use in prodution systems.
+</p>
+<p>
+This is a fork of the NORX implementation in Go by Philipp Jovanovic,
+from <a href="http://github.com/daeinar/norx-go">http://github.com/daeinar/norx-go</a>
+</p>
+</div>
+</div>
+<div class="toggleVisible" id="pkg-index">
+<div class="collapsed">
+<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+</div>
+<div class="expanded">
+<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+<div id="manual-nav">
+<dl>
+<dd><a href="#pkg-constants">Constants</a></dd>
+<dd><a href="#AEAD_decrypt">func AEAD_decrypt(m []uint8, mlen *uint64, h []uint8, hlen uint64, c []uint8, clen uint64, t []uint8, tlen uint64, nonce []uint8, key []uint8) int</a></dd>
+<dd><a href="#AEAD_encrypt">func AEAD_encrypt(c []uint8, clen *uint64, h []uint8, hlen uint64, m []uint8, mlen uint64, t []uint8, tlen uint64, nonce []uint8, key []uint8)</a></dd>
+<dd><a href="#BURN64">func BURN64(x []uint64, xlen uint64)</a></dd>
+<dd><a href="#BURN8">func BURN8(x []uint8, xlen uint64)</a></dd>
+<dd><a href="#F">func F(s []uint64)</a></dd>
+<dd><a href="#G">func G(a, b, c, d uint64) (uint64, uint64, uint64, uint64)</a></dd>
+<dd><a href="#H">func H(x, y uint64) uint64</a></dd>
+<dd><a href="#LOAD64">func LOAD64(x []uint8) uint64</a></dd>
+<dd><a href="#NewCipher">func NewCipher(key []byte, options ...interface{}) abstract.Cipher</a></dd>
+<dd><a href="#ROTR">func ROTR(x, c uint64) uint64</a></dd>
+<dd><a href="#STORE64">func STORE64(out []uint8, v uint64)</a></dd>
+</dl>
+</div><!-- #manual-nav -->
+<h4>Package files</h4>
+<p>
+<span style="font-size:90%">
+<a href="/src/github.com/dedis/crypto/cipher/norx/norx.go">norx.go</a>
+<a href="/src/github.com/dedis/crypto/cipher/norx/sponge.go">sponge.go</a>
+<a href="/src/github.com/dedis/crypto/cipher/norx/utils.go">utils.go</a>
+</span>
+</p>
+</div><!-- .expanded -->
+</div><!-- #pkg-index -->
+<div class="toggle" id="pkg-callgraph" style="display: none">
+<div class="collapsed">
+<h2 class="toggleButton" title="Click to show Internal Call Graph section">Internal call graph ▹</h2>
+</div> <!-- .expanded -->
+<div class="expanded">
+<h2 class="toggleButton" title="Click to hide Internal Call Graph section">Internal call graph ▾</h2>
+<p>
+			  In the call graph viewer below, each node
+			  is a function belonging to this package
+			  and its children are the functions it
+			  calls—perhaps dynamically.
+			</p>
+<p>
+			  The root nodes are the entry points of the
+			  package: functions that may be called from
+			  outside the package.
+			  There may be non-exported or anonymous
+			  functions among them if they are called
+			  dynamically from another package.
+			</p>
+<p>
+			  Click a node to visit that function's source code.
+			  From there you can visit its callers by
+			  clicking its declaring <code>func</code>
+			  token.
+			</p>
+<p>
+			  Functions may be omitted if they were
+			  determined to be unreachable in the
+			  particular programs or tests that were
+			  analyzed.
+			</p>
+<!-- Zero means show all package entry points. -->
+<ul class="treeview" id="callgraph-0" style="margin-left: 0.5in"></ul>
+</div>
+</div> <!-- #pkg-callgraph -->
+<h2 id="pkg-constants">Constants</h2>
+<pre>const (
+    <span id="NORX_W">NORX_W</span>         = 64                                     <span class="comment">// wordsize</span>
+    <span id="NORX_R">NORX_R</span>         = 4                                      <span class="comment">// number of rounds</span>
+    <span id="NORX_D">NORX_D</span>         = 1                                      <span class="comment">// parallelism degree</span>
+    <span id="NORX_A">NORX_A</span>         = <a href="#NORX_W">NORX_W</a> * 4                             <span class="comment">// tag size</span>
+    <span id="WORDS_RATE">WORDS_RATE</span>     = 10                                     <span class="comment">// number of words in the rate</span>
+    <span id="WORDS_STATE">WORDS_STATE</span>    = 16                                     <span class="comment">// ... in the state</span>
+    <span id="BYTES_WORD">BYTES_WORD</span>     = <a href="#NORX_W">NORX_W</a> / 8                             <span class="comment">// byte size of a word</span>
+    <span id="BYTES_RATE">BYTES_RATE</span>     = <a href="#WORDS_RATE">WORDS_RATE</a> * <a href="#BYTES_WORD">BYTES_WORD</a>                <span class="comment">// ... of the rate</span>
+    <span id="BYTES_TAG">BYTES_TAG</span>      = <a href="#NORX_A">NORX_A</a> / 8                             <span class="comment">// ... of the tag</span>
+    <span id="HEADER_TAG">HEADER_TAG</span>     = 1 &lt;&lt; 0                                 <span class="comment">// domain separation constant for header</span>
+    <span id="PAYLOAD_TAG">PAYLOAD_TAG</span>    = 1 &lt;&lt; 1                                 <span class="comment">// ... for payload</span>
+    <span id="TRAILER_TAG">TRAILER_TAG</span>    = 1 &lt;&lt; 2                                 <span class="comment">// ... for trailer</span>
+    <span id="FINAL_TAG">FINAL_TAG</span>      = 1 &lt;&lt; 3                                 <span class="comment">// ... for finalisation</span>
+    <span id="BRANCH_TAG">BRANCH_TAG</span>     = 1 &lt;&lt; 4                                 <span class="comment">// ... for branching</span>
+    <span id="MERGE_TAG">MERGE_TAG</span>      = 1 &lt;&lt; 5                                 <span class="comment">// ... for merging</span>
+    <span id="R0">R0</span>, <span id="R1">R1</span>, <span id="R2">R2</span>, <span id="R3">R3</span> = 8, 19, 40, 63                          <span class="comment">// rotation offsets</span>
+    <span id="U0">U0</span>, <span id="U1">U1</span>         = 0x243F6A8885A308D3, 0x13198A2E03707344 <span class="comment">// initialisation constants</span>
+    <span id="U2">U2</span>, <span id="U3">U3</span>         = 0xA4093822299F31D0, 0x082EFA98EC4E6C89 <span class="comment">// ...</span>
+    <span id="U4">U4</span>, <span id="U5">U5</span>         = 0xAE8858DC339325A1, 0x670A134EE52D7FA6 <span class="comment">// ...</span>
+    <span id="U6">U6</span>, <span id="U7">U7</span>         = 0xC4316D80CD967541, 0xD21DFBF8B630B762 <span class="comment">// ...</span>
+    <span id="U8">U8</span>, <span id="U9">U9</span>         = 0x375A18D261E7F892, 0x343D1F187D92285B <span class="comment">// ...</span>
+)</pre>
+<h2 id="AEAD_decrypt">func <a href="/src/github.com/dedis/crypto/cipher/norx/norx.go?s=7500:7653#L314">AEAD_decrypt</a>
+<a class="permalink" href="#AEAD_decrypt">¶</a>
+</h2>
+<pre>func AEAD_decrypt(
+    m []<a href="https://golang.org/pkg/builtin/#uint8">uint8</a>, mlen *<a href="https://golang.org/pkg/builtin/#uint64">uint64</a>,
+    h []<a href="https://golang.org/pkg/builtin/#uint8">uint8</a>, hlen <a href="https://golang.org/pkg/builtin/#uint64">uint64</a>,
+    c []<a href="https://golang.org/pkg/builtin/#uint8">uint8</a>, clen <a href="https://golang.org/pkg/builtin/#uint64">uint64</a>,
+    t []<a href="https://golang.org/pkg/builtin/#uint8">uint8</a>, tlen <a href="https://golang.org/pkg/builtin/#uint64">uint64</a>,
+    nonce []<a href="https://golang.org/pkg/builtin/#uint8">uint8</a>,
+    key []<a href="https://golang.org/pkg/builtin/#uint8">uint8</a>) <a href="https://golang.org/pkg/builtin/#int">int</a></pre>
+<h2 id="AEAD_encrypt">func <a href="/src/github.com/dedis/crypto/cipher/norx/norx.go?s=7107:7256#L296">AEAD_encrypt</a>
+<a class="permalink" href="#AEAD_encrypt">¶</a>
+</h2>
+<pre>func AEAD_encrypt(
+    c []<a href="https://golang.org/pkg/builtin/#uint8">uint8</a>, clen *<a href="https://golang.org/pkg/builtin/#uint64">uint64</a>,
+    h []<a href="https://golang.org/pkg/builtin/#uint8">uint8</a>, hlen <a href="https://golang.org/pkg/builtin/#uint64">uint64</a>,
+    m []<a href="https://golang.org/pkg/builtin/#uint8">uint8</a>, mlen <a href="https://golang.org/pkg/builtin/#uint64">uint64</a>,
+    t []<a href="https://golang.org/pkg/builtin/#uint8">uint8</a>, tlen <a href="https://golang.org/pkg/builtin/#uint64">uint64</a>,
+    nonce []<a href="https://golang.org/pkg/builtin/#uint8">uint8</a>,
+    key []<a href="https://golang.org/pkg/builtin/#uint8">uint8</a>)</pre>
+<h2 id="BURN64">func <a href="/src/github.com/dedis/crypto/cipher/norx/utils.go?s=788:824#L32">BURN64</a>
+<a class="permalink" href="#BURN64">¶</a>
+</h2>
+<pre>func BURN64(x []<a href="https://golang.org/pkg/builtin/#uint64">uint64</a>, xlen <a href="https://golang.org/pkg/builtin/#uint64">uint64</a>)</pre>
+<h2 id="BURN8">func <a href="/src/github.com/dedis/crypto/cipher/norx/utils.go?s=692:726#L25">BURN8</a>
+<a class="permalink" href="#BURN8">¶</a>
+</h2>
+<pre>func BURN8(x []<a href="https://golang.org/pkg/builtin/#uint8">uint8</a>, xlen <a href="https://golang.org/pkg/builtin/#uint64">uint64</a>)</pre>
+<h2 id="F">func <a href="/src/github.com/dedis/crypto/cipher/norx/norx.go?s=2210:2228#L52">F</a>
+<a class="permalink" href="#F">¶</a>
+</h2>
+<pre>func F(s []<a href="https://golang.org/pkg/builtin/#uint64">uint64</a>)</pre>
+<h2 id="G">func <a href="/src/github.com/dedis/crypto/cipher/norx/norx.go?s=1998:2056#L39">G</a>
+<a class="permalink" href="#G">¶</a>
+</h2>
+<pre>func G(a, b, c, d <a href="https://golang.org/pkg/builtin/#uint64">uint64</a>) (<a href="https://golang.org/pkg/builtin/#uint64">uint64</a>, <a href="https://golang.org/pkg/builtin/#uint64">uint64</a>, <a href="https://golang.org/pkg/builtin/#uint64">uint64</a>, <a href="https://golang.org/pkg/builtin/#uint64">uint64</a>)</pre>
+<h2 id="H">func <a href="/src/github.com/dedis/crypto/cipher/norx/norx.go?s=1933:1959#L35">H</a>
+<a class="permalink" href="#H">¶</a>
+</h2>
+<pre>func H(x, y <a href="https://golang.org/pkg/builtin/#uint64">uint64</a>) <a href="https://golang.org/pkg/builtin/#uint64">uint64</a></pre>
+<h2 id="LOAD64">func <a href="/src/github.com/dedis/crypto/cipher/norx/utils.go?s=216:245#L3">LOAD64</a>
+<a class="permalink" href="#LOAD64">¶</a>
+</h2>
+<pre>func LOAD64(x []<a href="https://golang.org/pkg/builtin/#uint8">uint8</a>) <a href="https://golang.org/pkg/builtin/#uint64">uint64</a></pre>
+<h2 id="NewCipher">func <a href="/src/github.com/dedis/crypto/cipher/norx/sponge.go?s=1102:1168#L43">NewCipher</a>
+<a class="permalink" href="#NewCipher">¶</a>
+</h2>
+<pre>func NewCipher(key []<a href="https://golang.org/pkg/builtin/#byte">byte</a>, options ...interface{}) <a href="../../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../../github.com/dedis/crypto/abstract/index.html#Cipher">Cipher</a></pre>
+<p>
+NewCipher creates a Cipher implementing the 64-4-1 mode of NORX.
+</p>
+<h2 id="ROTR">func <a href="/src/github.com/dedis/crypto/cipher/norx/norx.go?s=1867:1896#L31">ROTR</a>
+<a class="permalink" href="#ROTR">¶</a>
+</h2>
+<pre>func ROTR(x, c <a href="https://golang.org/pkg/builtin/#uint64">uint64</a>) <a href="https://golang.org/pkg/builtin/#uint64">uint64</a></pre>
+<h2 id="STORE64">func <a href="/src/github.com/dedis/crypto/cipher/norx/utils.go?s=453:488#L14">STORE64</a>
+<a class="permalink" href="#STORE64">¶</a>
+</h2>
+<pre>func STORE64(out []<a href="https://golang.org/pkg/builtin/#uint8">uint8</a>, v <a href="https://golang.org/pkg/builtin/#uint64">uint64</a>)</pre>
+<h2 id="pkg-subdirectories">Subdirectories</h2>
+<div class="pkg-dir">
+<table>
+<tr>
+<th class="pkg-name">Name</th>
+<th class="pkg-synopsis">Synopsis</th>
+</tr>
+<tr>
+<td colspan="2"><a href="..">..</a></td>
+</tr>
+<tr>
+<td class="pkg-name" style="padding-left: 0px;">
+<a href="check/index.html">check</a>
+</td>
+<td class="pkg-synopsis">
+</td>
+</tr>
+</table>
+</div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+<!-- TODO(adonovan): load these from <head> using "defer" attribute? -->
+<script src="../../../../../.goduckstyle/jquery.js" type="text/javascript"></script>
+<script src="../../../../../.goduckstyle/jquery.treeview.js" type="text/javascript"></script>
+<script src="../../../../../.goduckstyle/jquery.treeview.edit.js" type="text/javascript"></script>
+<script>var goVersion = "go1.7.1";</script>
+<script src="../../../../../.goduckstyle/godocs.js" type="text/javascript"></script>
+</body>
+</html>
