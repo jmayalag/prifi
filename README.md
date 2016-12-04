@@ -1,5 +1,3 @@
-Disclamer : this is a temporary README, copy-pasted from an internal discussion. We should clean it up.
-
 # ReadMe
 
 ## Base
@@ -32,11 +30,21 @@ this code is located in https://github.com/lbarman/prifi_dev/tree/PriFi-SDA/prot
 
 To run the new code, simply run 
 
-./prifi.sh <DEBUG_LVL>
+./run-prifi-standalone.sh <role> <id>
+
+for each different entities. For now, start the relay last.
+
+!!! START : BROKEN !!!
+
+There used to be a way to run on the simulation plateform of Cothority, by doing
+
+./run-prifi-via-simulation.sh <debug_lvl>
 
 ... in the main folder, where DEBUG_LVL is 1,2, or 3. It's a shortcut to start a SDA-simulation in localhost, that creates some SDA-nodes; then the PriFi-SDA-Wrapper protocol is started by SDA, and it assigns the relay, trustees, clients; to some nodes; Finally, the PriFi-Lib is called by the PriFi-SDA-Wrapper (by artificially sending a first message to the relay).
 
 ​The mentioned simulation (which contains the number of clients, trustees, etc) is defined in https://github.com/lbarman/prifi_dev/blob/PriFi-SDA/simul/runfiles/prifi_simple.toml
+
+!!! END : BROKEN !!!
 
 ## Debugging
 
