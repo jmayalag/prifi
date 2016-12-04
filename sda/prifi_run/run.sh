@@ -11,7 +11,7 @@ colors="true"
 print_usage() {
 	echo "Usage: run.sh <role> <id>"
 	echo "	Role: client, relay or trustee"
-	echo "	Id: integer, only for relay or trustee roles"
+	echo "	Id: integer, only for client or trustee roles"
 }
 
 test_digit() {
