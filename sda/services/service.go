@@ -18,6 +18,7 @@ import (
 	"github.com/dedis/cothority/network"
 	"github.com/dedis/cothority/sda"
 	"github.com/lbarman/prifi_dev/sda/protocols"
+	"sync"
 )
 
 // ServiceName is the name to refer to the Template service from another
@@ -32,10 +33,12 @@ func init() {
 	serviceID = sda.ServiceFactory.ServiceID(ServiceName)
 	network.RegisterPacketType(ConnectionRequest{})
 	network.RegisterPacketType(DisconnectionRequest{})
-	network.RegisterPacketType(ConnectionResponse{})
 }
 
-type WaitQueue struct {
+// waitQueue contains the list of nodes that are currently willing
+// to participate to the protocol.
+type waitQueue struct {
+	mutex sync.Mutex
 	trustees map[*network.ServerIdentity]bool
 	clients map[*network.ServerIdentity]bool
 }
@@ -51,7 +54,7 @@ type Service struct {
 	role prifi.PriFiRole
 	identityMap map[network.Address]prifi.PriFiIdentity
 	relayIdentity *network.ServerIdentity
-	waitQueue *WaitQueue
+	waitQueue *waitQueue
 	prifiWrapper *prifi.PriFiSDAWrapper
 	isPrifiRunning bool
 }
@@ -62,11 +65,13 @@ type Storage struct {
 	TrusteeID string
 }
 
+// ConnectionRequest messages are sent to the relay
+// by nodes that want to join the protocol.
 type ConnectionRequest struct {}
+
+// DisconnectionRequest messages are sent to the relay
+// by nodes that want to leave the protocol.
 type DisconnectionRequest struct {}
-type ConnectionResponse struct {
-	Status bool
-}
 
 // HandleConnection receives connection requests from other nodes.
 // It decides when another PriFi protocol should be started.
@@ -81,7 +86,11 @@ func (s *Service) HandleConnection(msg *network.Packet) {
 	id, ok := s.identityMap[msg.ServerIdentity.Address]
 	if !ok {
 		log.Info("Ignoring connection from unknown node:", msg.ServerIdentity.Address)
+		return
 	}
+
+	s.waitQueue.mutex.Lock()
+	defer s.waitQueue.mutex.Unlock()
 
 	// Add node to the waiting queue
 	switch id.Role {
@@ -119,7 +128,11 @@ func (s *Service) HandleDisconnection(msg *network.Packet)  {
 	id, ok := s.identityMap[msg.ServerIdentity.Address]
 	if !ok {
 		log.Info("Ignoring connection from unknown node:", msg.ServerIdentity.Address)
+		return
 	}
+
+	s.waitQueue.mutex.Lock()
+	defer s.waitQueue.mutex.Unlock()
 
 	// Remove node to the waiting queue
 	switch id.Role {
@@ -160,7 +173,7 @@ func (s *Service) StartRelay(group *config.Group) error {
 	log.Info("Service", s, "running in relay mode")
 	s.role = prifi.Relay
 	s.readGroup(group)
-	s.waitQueue = &WaitQueue{
+	s.waitQueue = &waitQueue{
 		clients: make(map[*network.ServerIdentity]bool),
 		trustees: make(map[*network.ServerIdentity]bool),
 	}
@@ -357,7 +370,7 @@ func (s *Service) startPriFi() {
 
 	if s.role != prifi.Relay {
 		log.Error("Trying to start PriFi protocol from a non-relay node.")
-		return;
+		return
 	}
 
 	var wrapper *prifi.PriFiSDAWrapper
@@ -403,12 +416,12 @@ func (s *Service) stopPriFi() {
 
 	if s.role != prifi.Relay {
 		log.Error("Trying to stop PriFi protocol from a non-relay node.")
-		return;
+		return
 	}
 
 	if !s.isPrifiRunning || s.prifiWrapper == nil {
 		log.Error("Trying to stop PriFi protocol but it has not started.")
-		return;
+		return
 	}
 
 	s.prifiWrapper.Stop()
