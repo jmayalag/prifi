@@ -32,7 +32,7 @@ To run the new code, simply run
 
 ./run-prifi-standalone.sh <role> <id>
 
-for each different entities. For now, start the relay last.
+for each different entities. For now, start the relay last. The DebugLVL is specified in sda/run_prifi/run.sh.
 
 !!! START : BROKEN !!!
 
