@@ -49,6 +49,10 @@ type PriFiSDAWrapper struct {
 	config        PriFiSDAWrapperConfig
 	role          PriFiRole
 	ResultChannel chan interface{}
+	// running is a pointer to the service's variable
+	// indicating if the protocol is running. It should
+	// be set to false when the protocol is stopped.
+	running	      *bool // TODO: We should use a lock before modifying it
 
 	//this is the actual "PriFi" (DC-net) protocol/library, defined in prifi-lib/prifi.go
 	prifiProtocol *prifi_lib.PriFiProtocol

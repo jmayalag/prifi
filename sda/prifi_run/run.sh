@@ -56,5 +56,4 @@ fi
 # Run PriFi !
 
 DEBUG_COLOR=$colors go run $bin_file -c "$confdir/$conf_file" -g "$PWD/$group_file" -d "$dbg_lvl" "$1"
-echo -e "$okMsg Script done."
 
