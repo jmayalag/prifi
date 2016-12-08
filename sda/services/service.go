@@ -1,7 +1,7 @@
 // Package prifi-sda-service contains the SDA service responsible
 // for starting the SDA protocols required to enable PriFi
 // communications.
-package prifi
+package services
 
 /*
 * This is the internal part of the API. As probably the prifi-service will
@@ -55,11 +55,11 @@ type Service struct {
 	group   *config.Group
 	Storage *Storage
 	path    string
-	role prifi.PriFiRole
-	identityMap map[network.Address]prifi.PriFiIdentity
+	role protocols.PriFiRole
+	identityMap map[network.Address]protocols.PriFiIdentity
 	relayIdentity *network.ServerIdentity
 	waitQueue *waitQueue
-	prifiWrapper *prifi.PriFiSDAWrapper
+	prifiWrapper *protocols.PriFiSDAWrapper
 	isPrifiRunning bool
 }
 
@@ -83,7 +83,7 @@ func (s *Service) HandleConnection(msg *network.Packet) {
 	log.Lvl2("Received new connection request from ", msg.ServerIdentity.Address)
 
 	// If we are not the relay, ignore the message
-	if s.role != prifi.Relay {
+	if s.role != protocols.Relay {
 		return
 	}
 
@@ -98,11 +98,11 @@ func (s *Service) HandleConnection(msg *network.Packet) {
 
 	// Add node to the waiting queue
 	switch id.Role {
-	case prifi.Client:
+	case protocols.Client:
 		if _, ok := s.waitQueue.clients[msg.ServerIdentity]; !ok {
 			s.waitQueue.clients[msg.ServerIdentity] = true
 		}
-	case prifi.Trustee:
+	case protocols.Trustee:
 		if _, ok := s.waitQueue.trustees[msg.ServerIdentity]; !ok {
 			s.waitQueue.trustees[msg.ServerIdentity] = true
 		}
@@ -125,7 +125,7 @@ func (s *Service) HandleDisconnection(msg *network.Packet)  {
 	log.Lvl2("Received disconnection request from ", msg.ServerIdentity.Address)
 
 	// If we are not the relay, ignore the message
-	if s.role != prifi.Relay {
+	if s.role != protocols.Relay {
 		return
 	}
 
@@ -140,8 +140,8 @@ func (s *Service) HandleDisconnection(msg *network.Packet)  {
 
 	// Remove node to the waiting queue
 	switch id.Role {
-	case prifi.Client: delete(s.waitQueue.clients, msg.ServerIdentity)
-	case prifi.Trustee: delete(s.waitQueue.trustees, msg.ServerIdentity)
+	case protocols.Client: delete(s.waitQueue.clients, msg.ServerIdentity)
+	case protocols.Trustee: delete(s.waitQueue.trustees, msg.ServerIdentity)
 	default: log.Info("Ignoring disconnection request from node with invalid role.")
 	}
 
@@ -159,7 +159,7 @@ func (s *Service) HandleDisconnection(msg *network.Packet)  {
 // protocols to enable the trustee-mode.
 func (s *Service) StartTrustee(group *config.Group) error {
 	log.Info("Service", s, "running in trustee mode")
-	s.role = prifi.Trustee
+	s.role = protocols.Trustee
 	s.readGroup(group)
 
 	s.autoConnect()
@@ -172,7 +172,7 @@ func (s *Service) StartTrustee(group *config.Group) error {
 // In this example it simply starts the demo protocol
 func (s *Service) StartRelay(group *config.Group) error {
 	log.Info("Service", s, "running in relay mode")
-	s.role = prifi.Relay
+	s.role = protocols.Relay
 	s.readGroup(group)
 	s.waitQueue = &waitQueue{
 		clients: make(map[*network.ServerIdentity]bool),
@@ -186,7 +186,7 @@ func (s *Service) StartRelay(group *config.Group) error {
 // protocols to enable the client-mode.
 func (s *Service) StartClient(group *config.Group) error {
 	log.Info("Service", s, "running in client mode")
-	s.role = prifi.Client
+	s.role = protocols.Client
 	s.readGroup(group)
 
 	s.autoConnect()
@@ -204,17 +204,17 @@ func (s *Service) StartClient(group *config.Group) error {
 func (s *Service) NewProtocol(tn *sda.TreeNodeInstance, conf *sda.GenericConfig) (sda.ProtocolInstance, error) {
 	log.Lvl5("Setting node configuration from service")
 
-	pi, err := prifi.NewPriFiSDAWrapperProtocol(tn)
+	pi, err := protocols.NewPriFiSDAWrapperProtocol(tn)
 	if err != nil {
 		return nil, err
 	}
 
 	// Assert that pi has type PriFiSDAWrapper
-	wrapper := pi.(*prifi.PriFiSDAWrapper)
+	wrapper := pi.(*protocols.PriFiSDAWrapper)
 
 	s.isPrifiRunning = true
 
-	wrapper.SetConfig(&prifi.PriFiSDAWrapperConfig{
+	wrapper.SetConfig(&protocols.PriFiSDAWrapperConfig{
 		Identities: s.identityMap,
 		Role: s.role,
 	})
@@ -276,11 +276,11 @@ func newService(c *sda.Context, path string) sda.Service {
 }
 
 // parseDescription extracts a PriFiIdentity from a string
-func parseDescription(description string) (*prifi.PriFiIdentity, error) {
+func parseDescription(description string) (*protocols.PriFiIdentity, error) {
 	desc := strings.Split(description, " ")
 	if len(desc) == 1 && desc[0] == "relay" {
-		return &prifi.PriFiIdentity{
-			Role: prifi.Relay,
+		return &protocols.PriFiIdentity{
+			Role: protocols.Relay,
 			Id:   0,
 		}, nil
 	} else if len(desc) == 2 {
@@ -288,13 +288,13 @@ func parseDescription(description string) (*prifi.PriFiIdentity, error) {
 		if err != nil {
 			return nil, errors.New("Unable to parse id:")
 		} else {
-			pid := prifi.PriFiIdentity{
+			pid := protocols.PriFiIdentity{
 				Id: id,
 			}
 			if desc[0] == "client" {
-				pid.Role = prifi.Client
+				pid.Role = protocols.Client
 			} else if desc[0] == "trustee" {
-				pid.Role = prifi.Trustee
+				pid.Role = protocols.Trustee
 			} else {
 				return nil, errors.New("Invalid role.")
 			}
@@ -308,8 +308,8 @@ func parseDescription(description string) (*prifi.PriFiIdentity, error) {
 // mapIdentities reads the group configuration to assign PriFi roles
 // to server addresses and returns them with the server
 // identity of the relay.
-func mapIdentities(group *config.Group) (map[network.Address]prifi.PriFiIdentity, network.ServerIdentity) {
-	m := make(map[network.Address]prifi.PriFiIdentity)
+func mapIdentities(group *config.Group) (map[network.Address]protocols.PriFiIdentity, network.ServerIdentity) {
+	m := make(map[network.Address]protocols.PriFiIdentity)
 	var relay network.ServerIdentity
 
 	// Read the description of the nodes in the config file to assign them PriFi roles.
@@ -321,7 +321,7 @@ func mapIdentities(group *config.Group) (map[network.Address]prifi.PriFiIdentity
 			log.Info("Cannot parse node description, skipping:", err)
 		} else {
 			m[si.Address] = *id
-			if id.Role == prifi.Relay {
+			if id.Role == protocols.Relay {
 				relay = *si
 			}
 		}
@@ -332,11 +332,11 @@ func mapIdentities(group *config.Group) (map[network.Address]prifi.PriFiIdentity
 
 	for _, v := range m {
 		switch v.Role {
-		case prifi.Relay:
+		case protocols.Relay:
 			r++
-		case prifi.Client:
+		case protocols.Client:
 			c++
-		case prifi.Trustee:
+		case protocols.Trustee:
 			t++
 		}
 	}
@@ -389,12 +389,12 @@ func (s *Service) autoConnect() {
 func (s *Service) startPriFi() {
 	log.Lvl1("Starting PriFi protocol")
 
-	if s.role != prifi.Relay {
+	if s.role != protocols.Relay {
 		log.Error("Trying to start PriFi protocol from a non-relay node.")
 		return
 	}
 
-	var wrapper *prifi.PriFiSDAWrapper
+	var wrapper *protocols.PriFiSDAWrapper
 
 	participants := make([]*network.ServerIdentity, len(s.waitQueue.trustees) + len(s.waitQueue.clients) + 1)
 	participants[0] = s.relayIdentity
@@ -412,19 +412,19 @@ func (s *Service) startPriFi() {
 
 	// Start the PriFi protocol on a flat tree with the relay as root
 	tree := roster.GenerateNaryTreeWithRoot(100, s.relayIdentity)
-	pi, err := s.CreateProtocolService(prifi.ProtocolName, tree)
+	pi, err := s.CreateProtocolService(protocols.ProtocolName, tree)
 
 	if err != nil {
 		log.Fatal("Unable to start Prifi protocol:", err)
 	}
 
 	// Assert that pi has type PriFiSDAWrapper
-	wrapper = pi.(*prifi.PriFiSDAWrapper)
+	wrapper = pi.(*protocols.PriFiSDAWrapper)
 	s.prifiWrapper = wrapper
 
-	wrapper.SetConfig(&prifi.PriFiSDAWrapperConfig{
+	wrapper.SetConfig(&protocols.PriFiSDAWrapperConfig{
 		Identities: s.identityMap,
-		Role: prifi.Relay,
+		Role: protocols.Relay,
 	})
 	wrapper.Start()
 
@@ -435,7 +435,7 @@ func (s *Service) startPriFi() {
 func (s *Service) stopPriFi() {
 	log.Lvl1("Stopping PriFi protocol")
 
-	if s.role != prifi.Relay {
+	if s.role != protocols.Relay {
 		log.Error("Trying to stop PriFi protocol from a non-relay node.")
 		return
 	}

@@ -1,4 +1,4 @@
-package prifi
+package protocols
 
 /*
  * PRIFI SDA WRAPPER

@@ -1,4 +1,4 @@
-package prifi
+package protocols
 
 func (p *PriFiSDAWrapper) Received_ALL_ALL_SHUTDOWN(msg Struct_ALL_ALL_SHUTDOWN) error {
 	err := p.prifiProtocol.ReceivedMessage(msg.ALL_ALL_SHUTDOWN)

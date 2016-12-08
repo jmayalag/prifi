@@ -1,4 +1,4 @@
-package prifi
+package protocols
 
 /*
  * This class represent communication through UDP, and implements Broadcast, and ListenAndBlock (wait until there is one message).
