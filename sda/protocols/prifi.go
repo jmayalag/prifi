@@ -172,6 +172,8 @@ func (p *PriFiSDAWrapper) buildMessageSender(identities map[network.Address]PriF
 	nodes := p.List() // Has type []*sda.TreeNode
 	trustees := make(map[int]*sda.TreeNode)
 	clients := make(map[int]*sda.TreeNode)
+	trusteeId := 0
+	clientId := 0
 	var relay *sda.TreeNode = nil
 
 	for i := 0; i < len(nodes); i++ {
@@ -180,8 +182,8 @@ func (p *PriFiSDAWrapper) buildMessageSender(identities map[network.Address]PriF
 			log.Fatal("Unknow node with address", nodes[i].ServerIdentity.Address)
 		}
 		switch id.Role {
-		case Client: clients[id.Id] = nodes[i]
-		case Trustee: trustees[id.Id] = nodes[i]
+		case Client: clients[clientId] = nodes[i]; clientId++
+		case Trustee: trustees[trusteeId] = nodes[i]; trusteeId++
 		case Relay:
 			if relay == nil {
 				relay = nodes[i]
@@ -200,7 +202,7 @@ func (p *PriFiSDAWrapper) buildMessageSender(identities map[network.Address]PriF
 	}
 
 	if len(clients) < 2 {
-		log.Info("Only one client is reachable, no anonymity is provided")
+		log.Fatal("At least two clients must be reachable !")
 	}
 
 	return MessageSender{p.TreeNodeInstance, relay, clients, trustees}
