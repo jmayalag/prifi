@@ -33,9 +33,10 @@ sleep 3
 
 read -p "PriFi deployed. Press [enter] to kill all..." key
 
-kill $RELAYPID 2>/dev/null
-kill $TRUSTEE0PID 2>/dev/null
-kill $CLIENT0PID 2>/dev/null
-kill $CLIENT1PID 2>/dev/null
+kill -9 -$RELAYPID 2>/dev/null
+kill -9 -$TRUSTEE0PID 2>/dev/null
+kill -9 -$CLIENT0PID 2>/dev/null
+kill -9 -$CLIENT1PID 2>/dev/null
+pkill prifi
 
 echo -e "Script done."
