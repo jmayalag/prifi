@@ -79,7 +79,7 @@ type DisconnectionRequest struct {}
 // HandleConnection receives connection requests from other nodes.
 // It decides when another PriFi protocol should be started.
 func (s *Service) HandleConnection(msg *network.Packet) {
-	log.Lvl2("Received new connection request from ", msg.ServerIdentity.Address)
+	log.Lvl3("Received new connection request from ", msg.ServerIdentity.Address)
 
 	// If we are not the relay, ignore the message
 	if s.role != protocols.Relay {
@@ -178,15 +178,6 @@ func (s *Service) StartRelay(group *config.Group) error {
 		trustees: make(map[*network.ServerIdentity]bool),
 	}
 
-	socksServerConfig = &protocols.SOCKSConfig{
-		Port: "8081",
-		PayloadLength: 1000, //todo : this is wrong
-		DataForDCNet: make(chan []byte),
-		DataFromDCNet: make(chan []byte),
-	}
-
-	go socks.ConnectToSocksServer("127.0.0.1:8081", socksServerConfig.DataForDCNet, socksServerConfig.DataFromDCNet)
-
 	return nil
 }
 
@@ -203,18 +194,28 @@ func (s *Service) StartClient(group *config.Group) error {
 
 	socksClientConfig = &protocols.SOCKSConfig{
 		Port: ":6789",
-		PayloadLength: 1000, //todo : this is wrong
-		DataForDCNet: make(chan []byte),
-		DataFromDCNet: make(chan []byte),
+		PayloadLength: 100, //todo : this is wrong
+		UpstreamChannel: make(chan []byte),
+		DownstreamChannel: make(chan []byte),
 	}
 
 	// For stalling the handler
 	//go socks.StallTester(30*time.Second, 10*time.Second, socksClientConfig.DataFromDCNet, socksClientConfig.PayloadLength)
 	//go socks.StallTester(30*time.Second, 10*time.Second, socksClientConfig.DataForDCNet, socksClientConfig.PayloadLength)
 
-	go socks.StartSocksServer(socksClientConfig.Port, socksClientConfig.PayloadLength, socksClientConfig.DataForDCNet, socksClientConfig.DataFromDCNet)
+	go socks.StartSocksServer(socksClientConfig.Port, socksClientConfig.PayloadLength, socksClientConfig.UpstreamChannel, socksClientConfig.DownstreamChannel)
 
-	s.autoConnect()
+
+	socksServerConfig = &protocols.SOCKSConfig{
+		Port: "8081",
+		PayloadLength: 100, //todo : this is wrong
+		UpstreamChannel: socksClientConfig.UpstreamChannel,
+		DownstreamChannel: socksClientConfig.DownstreamChannel,
+	}
+
+	go socks.StartSocksClient("127.0.0.1:8081", socksServerConfig.UpstreamChannel, socksServerConfig.DownstreamChannel)
+
+	//s.autoConnect()
 
 	return nil
 }
