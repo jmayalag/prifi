@@ -16,7 +16,7 @@ test_cothority() {
 print_usage() {
 	echo
 	echo -e "Usage: run-prifi-standalone.sh \e[33mrole id\e[97m"
-	echo -e "	\e[33mrole\e[97m: client, relay or trustee"
+	echo -e "	\e[33mrole\e[97m: client, relay or trustee (or sockstest)"
 	echo -e "	\e[33mid\e[97m: integer (only for client or trustee roles)"
 	echo
 }
@@ -34,7 +34,7 @@ test_digit() {
 
 # Argument validation
 
-if [ "$#" -eq 1 ] && [ ! "$1" = "relay" ]; then
+if [ "$#" -eq 1 ] && [ ! "$1" = "relay" -a ! "$1" = "sockstest" ]; then
 	echo -e "$errorMsg could not understand the parameters."
 	print_usage
 	exit

@@ -60,6 +60,12 @@ func main() {
 			Aliases: []string{"c"},
 			Action:  client,
 		},
+		{
+			Name:    "sockstest",
+			Usage:   "only starts the socks server and the socks clients without prifi",
+			Aliases: []string{"socks"},
+			Action:  socks,
+		},
 	}
 	app.Flags = []cli.Flag{
 		cli.IntFlag{
@@ -126,6 +132,19 @@ func client(c *cli.Context) error {
 
 	group := getGroup(c)
 	log.ErrFatal(service.StartClient(group))
+
+	host.Start()
+	return nil
+}
+
+// this is used to test the socks server and clients integrated to PriFi, without using DC-nets.
+func socks(c *cli.Context) error {
+	log.Info("Starting socks tunnel (bypassing PriFi)")
+	host, err := cothorityd(c)
+	log.ErrFatal(err)
+	service := host.GetService(services.ServiceName).(*services.Service)
+
+	log.ErrFatal(service.StartSocksTunnelOnly())
 
 	host.Start()
 	return nil

@@ -220,6 +220,31 @@ func (s *Service) StartClient(group *config.Group) error {
 	return nil
 }
 
+
+// StartClient starts the necessary
+// protocols to enable the client-mode.
+func (s *Service) StartSocksTunnelOnly() error {
+	log.Info("Service", s, "running in socks-tunnel-only mode")
+
+	socksClientConfig = &protocols.SOCKSConfig{
+		Port: ":6789",
+		PayloadLength: 100,
+		UpstreamChannel: make(chan []byte),
+		DownstreamChannel: make(chan []byte),
+	}
+
+	socksServerConfig = &protocols.SOCKSConfig{
+		Port: "8081",
+		PayloadLength: 100,
+		UpstreamChannel: socksClientConfig.UpstreamChannel,
+		DownstreamChannel: socksClientConfig.DownstreamChannel,
+	}
+	go socks.StartSocksServer(socksClientConfig.Port, socksClientConfig.PayloadLength, socksClientConfig.UpstreamChannel, socksClientConfig.DownstreamChannel)
+	go socks.StartSocksClient("127.0.0.1:8081", socksServerConfig.UpstreamChannel, socksServerConfig.DownstreamChannel)
+
+	return nil
+}
+
 // NewProtocol is called on all nodes of a Tree (except the root, since it is
 // the one starting the protocol) so it's the Service that will be called to
 // generate the PI on all others node.

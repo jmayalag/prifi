@@ -26,7 +26,7 @@ test_digit() {
 
 # Argument validation
 
-if [ "$#" -eq 1 ] && [ ! "$1" = "relay" ]; then
+if [ "$#" -eq 1 ] && [ ! "$1" = "relay" -a ! "$1" = "sockstest" ]; then
 	print_usage
 	exit
 elif [ "$#" -eq 2 ]; then
@@ -42,6 +42,11 @@ fi
 # Check that config files exist
 
 confdir="$PWD/$1$2"
+
+#if testing the socks client, the config file used is the one from any client
+if [ "$1" = "sockstest" ]; then
+	confdir="$PWD/client0"
+fi
 
 if [ ! -f "$confdir/$conf_file" ]; then
 	echo -e "$errorMsg Config file does not exist: $confdir/$conf_file"
