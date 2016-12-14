@@ -218,8 +218,6 @@ func NewRelayState(nTrustees int, nClients int, upstreamCellSize int, downstream
 	// Sets the new state
 	params.currentState = RELAY_STATE_COLLECTING_TRUSTEES_PKS
 
-	go socks.StartSocksClient("127.0.0.1:8081", params.DataFromDCNet, params.PriorityDataForClients)
-
 	return params
 }
 
