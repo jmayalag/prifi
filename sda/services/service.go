@@ -178,6 +178,15 @@ func (s *Service) StartRelay(group *config.Group) error {
 		trustees: make(map[*network.ServerIdentity]bool),
 	}
 
+	socksServerConfig = &protocols.SOCKSConfig{
+		Port: "127.0.0.1:8081",
+		PayloadLength: 100, //todo : this is wrong
+		UpstreamChannel: make(chan []byte),
+		DownstreamChannel: make(chan []byte),
+	}
+
+	go socks.StartSocksClient(socksServerConfig.Port, socksServerConfig.UpstreamChannel, socksServerConfig.DownstreamChannel)
+
 	return nil
 }
 
@@ -199,23 +208,9 @@ func (s *Service) StartClient(group *config.Group) error {
 		DownstreamChannel: make(chan []byte),
 	}
 
-	// For stalling the handler
-	//go socks.StallTester(30*time.Second, 10*time.Second, socksClientConfig.DataFromDCNet, socksClientConfig.PayloadLength)
-	//go socks.StallTester(30*time.Second, 10*time.Second, socksClientConfig.DataForDCNet, socksClientConfig.PayloadLength)
-
 	go socks.StartSocksServer(socksClientConfig.Port, socksClientConfig.PayloadLength, socksClientConfig.UpstreamChannel, socksClientConfig.DownstreamChannel)
 
-
-	socksServerConfig = &protocols.SOCKSConfig{
-		Port: "8081",
-		PayloadLength: 100, //todo : this is wrong
-		UpstreamChannel: socksClientConfig.UpstreamChannel,
-		DownstreamChannel: socksClientConfig.DownstreamChannel,
-	}
-
-	go socks.StartSocksClient("127.0.0.1:8081", socksServerConfig.UpstreamChannel, socksServerConfig.DownstreamChannel)
-
-	//s.autoConnect()
+	s.autoConnect()
 
 	return nil
 }
@@ -234,13 +229,13 @@ func (s *Service) StartSocksTunnelOnly() error {
 	}
 
 	socksServerConfig = &protocols.SOCKSConfig{
-		Port: "8081",
+		Port: "127.0.0.1:8081",
 		PayloadLength: 100,
 		UpstreamChannel: socksClientConfig.UpstreamChannel,
 		DownstreamChannel: socksClientConfig.DownstreamChannel,
 	}
 	go socks.StartSocksServer(socksClientConfig.Port, socksClientConfig.PayloadLength, socksClientConfig.UpstreamChannel, socksClientConfig.DownstreamChannel)
-	go socks.StartSocksClient("127.0.0.1:8081", socksServerConfig.UpstreamChannel, socksServerConfig.DownstreamChannel)
+	go socks.StartSocksClient(socksServerConfig.Port, socksServerConfig.UpstreamChannel, socksServerConfig.DownstreamChannel)
 
 	return nil
 }
@@ -269,6 +264,7 @@ func (s *Service) NewProtocol(tn *sda.TreeNodeInstance, conf *sda.GenericConfig)
 		Identities: s.identityMap,
 		Role: s.role,
 		ClientSideSocksConfig: socksClientConfig,
+		RelaySideSocksConfig: socksServerConfig,
 	})
 
 	return wrapper, nil
@@ -474,9 +470,12 @@ func (s *Service) startPriFiCommunicateProtocol() {
 	wrapper = pi.(*protocols.PriFiSDAWrapper)
 	s.prifiWrapper = wrapper
 
+
 	wrapper.SetConfig(&protocols.PriFiSDAWrapperConfig{
 		Identities: s.identityMap,
-		Role: protocols.Relay,
+		Role: s.role,
+		ClientSideSocksConfig: socksClientConfig, //this is nil, it's ok
+		RelaySideSocksConfig: socksServerConfig,
 	})
 	wrapper.Start()
 
