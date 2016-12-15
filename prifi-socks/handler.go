@@ -7,8 +7,8 @@ import (
 	"net"
 	"time"
 
-	"github.com/dedis/crypto/abstract"
 	"github.com/dedis/cothority/log"
+	"strconv"
 )
 
 // Authentication methods
@@ -47,58 +47,63 @@ const (
 )
 
 /*
-ConnectToProxyServer connects the relay to the proxy server and proxies messages between the relay and the server.
+ * This is a socks CLIENT. It is run by the PriFi's relay to connect to some SOCKS server. dataForServer contains the
+ * relay's output, i.e. the anonymized traffic. dataFromServer should be the downstream traffic for the PriFi clients.
  */
-func ConnectToProxyServer(IP string, toServer chan []byte, fromServer chan []byte) {
+func ConnectToSocksServer(serverAddress string, dataForServer chan []byte, dataFromServer chan []byte) {
 
-	allConnections := make(map[uint32]net.Conn)     // Stores all live connections
+	socksConnections := make(map[uint32]net.Conn)     // Stores all live connections
 	controlChannels := make(map[uint32]chan uint16) // Stores the control channels for each live connection
-	currentState := uint16(ResumeCommunication)     // Keeps track of current state (stalled or resumed)
+	currentSendingState := uint16(ResumeCommunication)     // Keeps track of current state (stalled or resumed)
 
 	for {
 		// Block on receiving a packet
-		data := <-toServer
+		data := <-dataForServer
+
+		log.Lvl1("SOCKS PROXY GOT DATA")
 
 		// Extract the data from the packet
-		myPacket := ExtractFull(data)
-		packetType := myPacket.Type
-		connID := myPacket.ID
-		clientPacket := myPacket.Data[:myPacket.MessageLength]
+		packet := ParseSocksPacketFromBytes(data)
+		socksConnectionId := packet.Id
+		packetPayload := packet.Data[:packet.MessageLength]
 
-		// Retreive the requested connection if possible
-		myConn := allConnections[connID]
+		// Retrieve the requested connection if possible
+		socksConnection := socksConnections[socksConnectionId]
 
 		// Check the type of the packet
-		switch packetType {
+		switch packet.Type {
 		case SocksConnect: // Indicates a new connection established (this is important to identify if a connection ID overlap has occured)
 
 			// If no channel exists yet, create one and setup a channel handler (this means no connection ID overlap occured)
-			if myConn == nil {
+			if socksConnection == nil {
 
 				// Create a new connection with the SOCKS server
-				newConn, err := net.Dial("tcp", IP)
+				newConn, err := net.Dial("tcp", serverAddress)
 
 				if err != nil {
-					log.Fatal("Could not connect to SOCKS server:", err)
+					log.Error("SOCKS PriFi Client: Could not connect to SOCKS server.", err)
+				} else {
+					socksConnections[socksConnectionId] = newConn
+
+					// Create a control channel for this connection
+					controlChannels[socksConnectionId] = make(chan uint16, 1)
+
+					// Instantiate a connection handler and pass it the current state
+					controlChannels[socksConnectionId] <- currentSendingState
+					go handleSocksClientConnection(newConn, socksConnectionId, 4000, controlChannels[socksConnectionId], dataFromServer, dataForServer)
+
+					// Send the received packet to the SOCKS server
+					newConn.Write(packetPayload)
 				}
-
-				allConnections[connID] = newConn
-
-				// Create a control channel for this connection
-				controlChannels[connID] = make(chan uint16, 1)
-
-				// Instantiate a connection handler and pass it the current state
-				controlChannels[connID] <- currentState
-				go handleConnection(newConn, connID, 4000, controlChannels[connID], fromServer, toServer)
-
-				// Send the received packet to the SOCKS server
-				newConn.Write(clientPacket)
 
 			} else { // Otherwise a connection ID overlap has occured, reject the connection
 
 				// Create Socks Error message and send it back to the client
-				newData := NewDataWrap(SocksError, myPacket.ID, 0, 0, []byte{})
-				fromServer <- newData.ToBytes()
+				newData := NewSocksPacket(SocksError, packet.Id, 0, 0, []byte{})
+				dataFromServer <- newData.ToBytes()
+
+				log.Error("SOCKS PriFi Client: Received a SocksConnect message with ID", packet.Id, "but this connection already exists. Rejecting.")
+
 				continue
 
 			}
@@ -111,7 +116,9 @@ func ConnectToProxyServer(IP string, toServer chan []byte, fromServer chan []byt
 			}
 
 			// Change the Current State to stalled
-			currentState = StallCommunication
+			currentSendingState = StallCommunication
+
+			log.Lvl2("SOCKS PriFi Client: All communications stalled.")
 
 		case ResumeCommunication: // Indicates that all connection handlers should resume sending data back to the relay
 
@@ -121,22 +128,29 @@ func ConnectToProxyServer(IP string, toServer chan []byte, fromServer chan []byt
 			}
 
 			// Change the Current State to resumed
-			currentState = ResumeCommunication
+			currentSendingState = ResumeCommunication
+
+			log.Lvl2("SOCKS PriFi Client: All communications resumed.")
 
 		case SocksData: // Indicates this is a normal packet that needs to be proxied to the SOCKS server
 
 			// Check if the connection exist, and send the packet to the SOCKS server
-			if myConn != nil {
-				myConn.Write(clientPacket)
+			if socksConnection != nil {
+				socksConnection.Write(packetPayload)
+			} else {
+				log.Error("SOCKS PriFi Client: Got data for an unexisting connection "+strconv.Itoa(int(socksConnectionId))+", dropping.")
 			}
 
 		case SocksClosed: // Indicates a connection has been closed
 
 			// Delete the connection and it's corresponding control channel
-			delete(allConnections, connID)
-			delete(controlChannels, connID)
+			delete(socksConnections, socksConnectionId)
+			delete(controlChannels, socksConnectionId)
+
+			log.Lvl2("SOCKS PriFi Client: Freeing ressources for connection "+strconv.Itoa(int(socksConnectionId))+".")
 
 		default:
+			log.Error("SOCKS PriFi Client: Unrecognized message type.")
 			break
 
 		}
@@ -146,13 +160,14 @@ func ConnectToProxyServer(IP string, toServer chan []byte, fromServer chan []byt
 }
 
 /*
-ListenToBrowser handles SOCKS5 connections with the browser.
+ * This is started by the PriFi clients, so the app on their computer can connect to this "fake" Socks server (fake in the sense that the
+ * output is actually forwarded to prifi and anonymized).
  */
-func ListenToBrowser(port string, payloadLength int, key abstract.Scalar, toServer chan []byte, fromServer chan []byte) {
+func StartSocksServer(localListeningAddress string, payloadLength int, dataToSocksServer chan []byte, dataFromSocksServer chan []byte) {
 
 	// Setup a thread to listen at the assigned port
 	socksConnections := make(chan net.Conn, 1)
-	go browserConnectionListener(port, socksConnections)
+	go acceptSocksClients(localListeningAddress, socksConnections)
 
 	socksProxyActiveConnections := make(map[uint32]net.Conn) // Stores all live connections (Reserve socksProxyActiveConnections[0])
 	controlChannels := make(map[uint32]chan uint16)          // Stores the control channels for each live connection
@@ -167,37 +182,37 @@ func ListenToBrowser(port string, payloadLength int, key abstract.Scalar, toServ
 		case conn := <-socksConnections:
 
 			// Generate Socks connection ID
-			newSocksProxyId := generateUniqueID(key, socksProxyActiveConnections)
+			newSocksProxyId := generateRandomUniqueId(socksProxyActiveConnections)
 			socksProxyActiveConnections[newSocksProxyId] = conn
 			controlChannels[newSocksProxyId] = make(chan uint16, 1)
 			counter[newSocksProxyId] = 1
 
+			log.Lvl2("SOCKS PriFi Server : got a new connection, assigned id "+strconv.Itoa(int(newSocksProxyId)))
+
 			// Instantiate a connection handler and pass it the current state
 			controlChannels[newSocksProxyId] <- currentState
-			go handleConnection(conn, newSocksProxyId, payloadLength, controlChannels[newSocksProxyId], toServer, fromServer)
-			fmt.Println("Connection", newSocksProxyId, "Established")
+			go handleSocksClientConnection(conn, newSocksProxyId, payloadLength, controlChannels[newSocksProxyId], dataToSocksServer, dataFromSocksServer)
 
 		// Plaintext downstream data (relay->client->Socks proxy)
-		case bufferData := <-fromServer:
+		case bufferData := <-dataFromSocksServer:
 
 			// Extract the data from the packet
-			myData := ExtractFull(bufferData)
-			socksConnId := myData.ID
+			myData := ParseSocksPacketFromBytes(bufferData)
+			socksConnId := myData.Id
 			packetType := myData.Type
 			dataLength := myData.MessageLength
 			data := myData.Data[:dataLength]
 
 			// Skip if the connection doesn't exist or the connection ID is 0, unless it's a control message (stall, resume)
-			if packetType == StallCommunication || packetType == ResumeCommunication {
-				//fmt.Println("Stall/Resume Control Received")
-			} else if socksConnId == 0 || socksProxyActiveConnections[socksConnId] == nil {
+			if (packetType != StallCommunication && packetType != ResumeCommunication) && (socksConnId == 0 || socksProxyActiveConnections[socksConnId] == nil) {
+				log.Error("SOCKS PriFi Server: Got data for an unexisting connection "+strconv.Itoa(int(socksConnId))+", dropping.")
 				continue
 			}
 
 			// Check the type of message
 			switch packetType {
 			case SocksError: // Indicates SOCKS connection error (usually happens if the connection ID being used is not globally unique)
-				fmt.Println("DUPLICATE ID", socksConnId)
+				log.Error("SOCKS PriFi Server: Got an error for connection "+strconv.Itoa(int(socksConnId))+", closing.")
 
 				// Close the connection and Delete the connection and it's corresponding control channel
 				socksProxyActiveConnections[socksConnId].Close()
@@ -214,6 +229,9 @@ func ListenToBrowser(port string, payloadLength int, key abstract.Scalar, toServ
 				// Change the Current State to stalled
 				currentState = StallCommunication
 
+				log.Lvl2("SOCKS PriFi Server: All communications stalled.")
+
+
 			case ResumeCommunication: // Indicates that all connection handlers should resume sending data back to the relay
 
 				// Send the control message to all existing control channels
@@ -224,12 +242,14 @@ func ListenToBrowser(port string, payloadLength int, key abstract.Scalar, toServ
 				// Change the Current State to resumed
 				currentState = ResumeCommunication
 
+				log.Lvl2("SOCKS PriFi Server: All communications resumed.")
+
 			case SocksData, SocksConnect: // Indicates receiving SOCKS data
 
 				// If it's the second messages
 				if counter[socksConnId] == 2 {
 					// Replace the IP & Port fields set to the servers IP & PORT to the clients IP & PORT
-					data = replaceData(data, socksProxyActiveConnections[socksConnId].LocalAddr())
+					data = ipMaskerade(data, socksProxyActiveConnections[socksConnId].LocalAddr())
 				}
 
 				// Write the data back to the browser
@@ -242,6 +262,8 @@ func ListenToBrowser(port string, payloadLength int, key abstract.Scalar, toServ
 				delete(socksProxyActiveConnections, socksConnId)
 				delete(controlChannels, socksConnId)
 
+				log.Error("SOCKS PriFi Server: Connection "+strconv.Itoa(int(socksConnId))+" closed.")
+
 			default:
 				break
 			}
@@ -252,7 +274,9 @@ func ListenToBrowser(port string, payloadLength int, key abstract.Scalar, toServ
 /*
 handleConnection handles reading data from a connection with a SOCKS entity (Browser, SOCKS Server) and forwarding it to a PriFi entity (Client, Relay).
  */
-func handleConnection(conn net.Conn, connID uint32, payloadLength int, control chan uint16, sendData chan []byte, closedChan chan []byte) {
+func handleSocksClientConnection(conn net.Conn, connID uint32, payloadLength int, control chan uint16, sendData chan []byte, closedChan chan []byte) {
+
+	log.Lvl2("SOCKS started to handle connection "+strconv.Itoa(int(connID)))
 
 	dataChannel := make(chan []byte, 1) // Channel to communicate the data read from the connection with the SOCKS entity
 	var dataBuffer [][]byte             // Buffer to store data to be sent later
@@ -260,7 +284,7 @@ func handleConnection(conn net.Conn, connID uint32, payloadLength int, control c
 	messageType := uint16(SocksConnect) // This variable is used to ensure that the first packet sent back to the PriFi entity is a SocksConnect packet (It is only useful for the client-side handler)
 
 	// Create connection reader to read from the connection with the SOCKS entity
-	go connectionReader(conn, payloadLength-int(DataWrapHeaderSize), dataChannel)
+	go connectionReader(conn, payloadLength-int(SocksPacketHeaderSize), dataChannel)
 
 	for {
 
@@ -269,19 +293,23 @@ func handleConnection(conn net.Conn, connID uint32, payloadLength int, control c
 
 		case controlMessage := <-control: // Read control message
 
+			log.Lvl2("SOCKS handler for connection "+strconv.Itoa(int(connID)) +" just got a control message")
+
 			// Check the type of control (Stall, Resume)
 			switch controlMessage {
 
 			case StallCommunication:
+				log.Lvl2("SOCKS handler for connection "+strconv.Itoa(int(connID)) +" just got a control message (was a stall)")
 				sendingOK = false // Indicate that forwarding to the PriFi entity is not permitted
 
 			case ResumeCommunication:
+				log.Lvl2("SOCKS handler for connection "+strconv.Itoa(int(connID)) +" just got a control message (was a resume)")
 				sendingOK = true // Indicate that forwarding to the PriFi entity is permitted
 
 				// For all buffered data, send it to the PriFi entity
 				for i := 0; i < len(dataBuffer); i++ {
 					// Create data packate
-					newData := NewDataWrap(messageType, connID, uint16(len(dataBuffer[i])), uint16(payloadLength), dataBuffer[i])
+					newData := NewSocksPacket(messageType, connID, uint16(len(dataBuffer[i])), uint16(payloadLength), dataBuffer[i])
 					if messageType == SocksConnect {
 						messageType = SocksData
 					}
@@ -294,7 +322,7 @@ func handleConnection(conn net.Conn, connID uint32, payloadLength int, control c
 						conn.Close() // Close the connection
 
 						// Create a connection closed message and send it back
-						closeConn := NewDataWrap(SocksClosed, connID, 0, 0, []byte{})
+						closeConn := NewSocksPacket(SocksClosed, connID, 0, 0, []byte{})
 						closedChan <- closeConn.ToBytes()
 
 						return
@@ -310,11 +338,13 @@ func handleConnection(conn net.Conn, connID uint32, payloadLength int, control c
 
 		case data := <-dataChannel: // Read data from SOCKS entity
 
+			log.Lvl2("SOCKS handler for connection "+strconv.Itoa(int(connID)) +" just got a come data")
+
 			// Check if forwarding to the PriFi entity is permitted
 			if sendingOK {
 
 				// Create the packet from the data
-				newData := NewDataWrap(messageType, connID, uint16(len(data)), uint16(payloadLength), data)
+				newData := NewSocksPacket(messageType, connID, uint16(len(data)), uint16(payloadLength), data)
 				if messageType == SocksConnect {
 					messageType = SocksData
 				}
@@ -328,7 +358,7 @@ func handleConnection(conn net.Conn, connID uint32, payloadLength int, control c
 					conn.Close() // Close the connection
 
 					// Create a connection closed message and send it back
-					closeConn := NewDataWrap(SocksClosed, connID, 0, 0, []byte{})
+					closeConn := NewSocksPacket(SocksClosed, connID, 0, 0, []byte{})
 					closedChan <- closeConn.ToBytes()
 
 					return
@@ -349,17 +379,24 @@ func handleConnection(conn net.Conn, connID uint32, payloadLength int, control c
 /*
 browserConnectionListener listens and accepts connections at a certain port
  */
-func browserConnectionListener(port string, newConnections chan<- net.Conn) {
+func acceptSocksClients(port string, newConnections chan<- net.Conn) {
+
+	log.Lvl2("SOCKS listener is listening for connections on port " + port)
+
 	lsock, err := net.Listen("tcp", port)
 
 	if err != nil {
+		log.Error("SOCKS listener cannot start listening, shutting down :", err.Error())
 		return
 	}
 
 	for {
 		conn, err := lsock.Accept()
 
+		log.Lvl2("SOCKS listener just accepted a connection.")
+
 		if err != nil {
+			log.Error("SOCKS listener got an error with this new connection, shutting down :", err.Error())
 			lsock.Close()
 			return
 		}
@@ -390,7 +427,7 @@ func connectionReader(conn net.Conn, readLength int, dataChannel chan []byte) {
 /*
 replaceData replaces the IP & PORT data in the SOCKS5 connect server reply
 */
-func replaceData(buf []byte, addr net.Addr) []byte {
+func ipMaskerade(buf []byte, addr net.Addr) []byte {
 	buf = buf[:4]
 
 	//Check if address exists
@@ -437,11 +474,11 @@ func replaceData(buf []byte, addr net.Addr) []byte {
 /*
 generateUniqueID generates a unique SOCK connection ID from a private key
 */
-func generateUniqueID(key abstract.Scalar, connections map[uint32]net.Conn) uint32 {
+func generateRandomUniqueId(connections map[uint32]net.Conn) uint32 {
 
-	id := generateID(key)
-	for connections[id] != nil { // If local conflicts occur, keep trying untill we find a locally unique ID
-		id = generateID(key)
+	id := generateRandomId()
+	for connections[id] != nil { // If local conflicts occur, keep trying until we find a locally unique ID
+		id = generateRandomId()
 	}
 
 	return id
@@ -450,7 +487,7 @@ func generateUniqueID(key abstract.Scalar, connections map[uint32]net.Conn) uint
 /*
 generateID generates an ID from a private key
 */
-func generateID(key abstract.Scalar) uint32 {
+func generateRandomId() uint32 {
 	var n uint32
 	binary.Read(rand.Reader, binary.LittleEndian, &n)
 
@@ -463,10 +500,12 @@ StallTester sends a stall message after "timeBeforeStall" seconds, and a resume 
 func StallTester(timeBeforeStall time.Duration, stallFor time.Duration, myChannel chan []byte, payload int) {
 
 	time.Sleep(timeBeforeStall)
-	stallConn := NewDataWrap(StallCommunication, 0, 0, uint16(payload), []byte{})
+	log.Lvl2("SOCKS : Sending stall message...")
+	stallConn := NewSocksPacket(StallCommunication, 0, 0, uint16(payload), []byte{})
 	myChannel <- stallConn.ToBytes()
 
 	time.Sleep(stallFor)
-	resumeConn := NewDataWrap(ResumeCommunication, 0, 0, uint16(payload), []byte{})
+	log.Lvl2("SOCKS : Sending resume message...")
+	resumeConn := NewSocksPacket(ResumeCommunication, 0, 0, uint16(payload), []byte{})
 	myChannel <- resumeConn.ToBytes()
 }

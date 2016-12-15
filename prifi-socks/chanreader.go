@@ -29,10 +29,6 @@ func (cr *chanreader) Read(p []byte) (n int, err error) {
 	return act, nil
 }
 
-func newChanReader(c <-chan []byte) *chanreader {
-	return &chanreader{[]byte{}, c, false}
-}
-
 func min(x, y int) int {
 	if x < y {
 		return x
