@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/dedis/crypto/abstract"
-	"github.com/Pamoi/cothority-experiments/log"
+	"github.com/dedis/cothority/log"
 )
 
 // Authentication methods
