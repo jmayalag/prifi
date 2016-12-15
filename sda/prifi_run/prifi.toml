@@ -5,3 +5,5 @@ RelayUseDummyDataDown = false
 RelayReportingLimit = 10
 UseUDP = true
 DoLatencyTests = true
+SocksServerPort = 12345
+SocksClientPort = 8081

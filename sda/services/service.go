@@ -38,6 +38,23 @@ func init() {
 	network.RegisterPacketType(DisconnectionRequest{})
 }
 
+
+type PriFiconfig struct {
+	CellSizeUp            int
+	CellSizeDown          int
+	RelayWindowSize       int
+	RelayUseDummyDataDown bool
+	RelayReportingLimit   int
+	UseUDP                bool
+	DoLatencyTests        bool
+	SocksServerPort		int
+	SocksClientPort		int
+}
+
+func (s *Service) SetConfig(config *PriFiconfig) {
+	log.Lvlf3("%+v\n", config)
+}
+
 // waitQueue contains the list of nodes that are currently willing
 // to participate to the protocol.
 type waitQueue struct {

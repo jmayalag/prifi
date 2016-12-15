@@ -90,8 +90,13 @@ func main() {
 		},
 		cli.IntFlag{
 			Name:  "port, p",
-			Value: -1, // will depend on if we run a relay or client
-			Usage: "port for the socks handler",
+			Value: 12345,
+			Usage: "port for the socks server (this is the port that you need to set in your browser)",
+		},
+		cli.IntFlag{
+			Name:  "port_client",
+			Value: 8081,
+			Usage: "port for the socks client (that will connect to a remote socks server)",
 		},
 		cli.StringFlag{
 			Name:  "group, g",
@@ -116,7 +121,7 @@ func main() {
 func readConfigAndStartCothority(c *cli.Context) (*sda.Conode, *config.Group, *services.Service) {
 	//parse PriFi parameters
 	prifiConfig, err := readPriFiConfigFile(c)
-	fmt.Println(prifiConfig)
+
 	if err != nil {
 		log.Error("Could not read prifi config:", err)
 		os.Exit(1)
@@ -131,6 +136,9 @@ func readConfigAndStartCothority(c *cli.Context) (*sda.Conode, *config.Group, *s
 
 	//finds the PriFi service
 	service := host.GetService(services.ServiceName).(*services.Service)
+
+	//set the config from the .toml file
+	service.SetConfig(prifiConfig)
 
 	//reads the group description
 	group := readCothorityGroupConfig(c)
@@ -235,17 +243,7 @@ func startCothorityNode(c *cli.Context) (*sda.Conode, error) {
  * CONFIG
  */
 
-type PriFiToml struct {
-	CellSizeUp            int
-	CellSizeDown          int
-	RelayWindowSize       int
-	RelayUseDummyDataDown bool
-	RelayReportingLimit   int
-	UseUDP                bool
-	DoLatencyTests        bool
-}
-
-func readPriFiConfigFile(c *cli.Context) (*PriFiToml, error) {
+func readPriFiConfigFile(c *cli.Context) (*services.PriFiconfig, error) {
 
 	cfile := c.GlobalString("prifi_config")
 
@@ -259,14 +257,20 @@ func readPriFiConfigFile(c *cli.Context) (*PriFiToml, error) {
 		log.Error("Could not read file \"", cfile, "\" (specified by flag prifi_config)")
 	}
 
-	tomlConfig := &PriFiToml{}
+	tomlConfig := &services.PriFiconfig{}
 	_, err = toml.Decode(string(tomlRawData), tomlConfig)
 	if err != nil {
 		log.Error("Could not parse toml file", cfile)
 		return nil, err
 	}
 
-	fmt.Print(tomlConfig)
+	//ports can be overriden by the command line params
+	if c.GlobalIsSet("port") {
+		tomlConfig.SocksServerPort = c.GlobalInt("port")
+	}
+	if c.GlobalIsSet("port_client") {
+		tomlConfig.SocksClientPort = c.GlobalInt("port_client")
+	}
 
 	return tomlConfig, nil
 }
