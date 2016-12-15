@@ -46,10 +46,9 @@ const (
 	repAddressTypeNotSupported
 )
 
-/**
- * Connects the relay to the proxy server and proxies messages between the relay and the server
+/*
+ConnectToProxyServer connects the relay to the proxy server and proxies messages between the relay and the server.
  */
-
 func ConnectToProxyServer(IP string, toServer chan []byte, fromServer chan []byte) {
 
 	allConnections := make(map[uint32]net.Conn)     // Stores all live connections
@@ -146,15 +145,14 @@ func ConnectToProxyServer(IP string, toServer chan []byte, fromServer chan []byt
 
 }
 
-/**
- * Handles SOCKS5 connections with the browser
+/*
+ListenToBrowser handles SOCKS5 connections with the browser.
  */
-
 func ListenToBrowser(port string, payloadLength int, key abstract.Scalar, toServer chan []byte, fromServer chan []byte) {
 
 	// Setup a thread to listen at the assigned port
 	socksConnections := make(chan net.Conn, 1)
-	go browserConnectionListner(port, socksConnections)
+	go browserConnectionListener(port, socksConnections)
 
 	socksProxyActiveConnections := make(map[uint32]net.Conn) // Stores all live connections (Reserve socksProxyActiveConnections[0])
 	controlChannels := make(map[uint32]chan uint16)          // Stores the control channels for each live connection
@@ -251,10 +249,9 @@ func ListenToBrowser(port string, payloadLength int, key abstract.Scalar, toServ
 	}
 }
 
-/**
- * Handles reading data from a connection with a SOCKS entity (Browser, SOCKS Server) and forwarding it to a PriFi entity (Client, Relay)
+/*
+handleConnection handles reading data from a connection with a SOCKS entity (Browser, SOCKS Server) and forwarding it to a PriFi entity (Client, Relay).
  */
-
 func handleConnection(conn net.Conn, connID uint32, payloadLength int, control chan uint16, sendData chan []byte, closedChan chan []byte) {
 
 	dataChannel := make(chan []byte, 1) // Channel to communicate the data read from the connection with the SOCKS entity
@@ -349,11 +346,10 @@ func handleConnection(conn net.Conn, connID uint32, payloadLength int, control c
 	}
 }
 
-/**
- * Listens and accepts connections at a certain port
+/*
+browserConnectionListener listens and accepts connections at a certain port
  */
-
-func browserConnectionListner(port string, newConnections chan<- net.Conn) {
+func browserConnectionListener(port string, newConnections chan<- net.Conn) {
 	lsock, err := net.Listen("tcp", port)
 
 	if err != nil {
@@ -373,9 +369,8 @@ func browserConnectionListner(port string, newConnections chan<- net.Conn) {
 }
 
 /**
-Reads data from a connection and forwards it into a data channel, maximum data read must be specified
+connectionReader reads data from a connection and forwards it into a data channel, maximum data read must be specified.
 */
-
 func connectionReader(conn net.Conn, readLength int, dataChannel chan []byte) {
 	for {
 		// Read data from the connection
@@ -392,10 +387,9 @@ func connectionReader(conn net.Conn, readLength int, dataChannel chan []byte) {
 	}
 }
 
-/**
-Replaces the IP & PORT data in the SOCKS5 connect server reply
+/*
+replaceData replaces the IP & PORT data in the SOCKS5 connect server reply
 */
-
 func replaceData(buf []byte, addr net.Addr) []byte {
 	buf = buf[:4]
 
@@ -440,10 +434,9 @@ func replaceData(buf []byte, addr net.Addr) []byte {
 	return buf
 }
 
-/**
-Generates a unique SOCK connection ID from a private key
+/*
+generateUniqueID generates a unique SOCK connection ID from a private key
 */
-
 func generateUniqueID(key abstract.Scalar, connections map[uint32]net.Conn) uint32 {
 
 	id := generateID(key)
@@ -454,10 +447,9 @@ func generateUniqueID(key abstract.Scalar, connections map[uint32]net.Conn) uint
 	return id
 }
 
-/**
-Generates an ID from a private key
+/*
+generateID generates an ID from a private key
 */
-
 func generateID(key abstract.Scalar) uint32 {
 	var n uint32
 	binary.Read(rand.Reader, binary.LittleEndian, &n)
@@ -465,10 +457,9 @@ func generateID(key abstract.Scalar) uint32 {
 	return n
 }
 
-/**
-Function that sends a stall message after "timeBeforeStall" seconds, and a resume message after "stallFor" seconds
+/*
+StallTester sends a stall message after "timeBeforeStall" seconds, and a resume message after "stallFor" seconds.
 */
-
 func StallTester(timeBeforeStall time.Duration, stallFor time.Duration, myChannel chan []byte, payload int) {
 
 	time.Sleep(timeBeforeStall)
