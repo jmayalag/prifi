@@ -15,7 +15,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-
 	"github.com/dedis/cothority/app/lib/config"
 	"github.com/dedis/cothority/log"
 	"github.com/dedis/cothority/network"
@@ -23,6 +22,8 @@ import (
 	"github.com/lbarman/prifi_dev/sda/protocols"
 	"sync"
 	"time"
+
+	socks "github.com/lbarman/prifi_dev/prifi-socks"
 )
 
 const ServiceName = "PriFiService"
@@ -111,9 +112,9 @@ func (s *Service) HandleConnection(msg *network.Packet) {
 	// Start (or restart) PriFi if there are enough participants
 	if len(s.waitQueue.clients) >= 2 && len(s.waitQueue.trustees) >= 1 {
 		if s.isPrifiRunning {
-			s.stopPriFi()
+			s.stopPriFiCommunicateProtocol()
 		}
-		s.startPriFi()
+		s.startPriFiCommunicateProtocol()
 	}
 }
 
@@ -145,11 +146,11 @@ func (s *Service) HandleDisconnection(msg *network.Packet)  {
 
 	// Stop PriFi and restart if there are enough participants left.
 	if s.isPrifiRunning {
-		s.stopPriFi()
+		s.stopPriFiCommunicateProtocol()
 	}
 
 	if len(s.waitQueue.clients) >= 2 && len(s.waitQueue.trustees) >= 1 {
-		s.startPriFi()
+		s.startPriFiCommunicateProtocol()
 	}
 }
 
@@ -177,8 +178,20 @@ func (s *Service) StartRelay(group *config.Group) error {
 		trustees: make(map[*network.ServerIdentity]bool),
 	}
 
+	socksServerConfig = &protocols.SOCKSConfig{
+		Port: "8081",
+		PayloadLength: 1000, //todo : this is wrong
+		DataForDCNet: make(chan []byte),
+		DataFromDCNet: make(chan []byte),
+	}
+
+	go socks.ConnectToSocksServer("127.0.0.1:8081", socksServerConfig.DataForDCNet, socksServerConfig.DataFromDCNet)
+
 	return nil
 }
+
+var socksClientConfig *protocols.SOCKSConfig
+var socksServerConfig *protocols.SOCKSConfig
 
 // StartClient starts the necessary
 // protocols to enable the client-mode.
@@ -186,6 +199,20 @@ func (s *Service) StartClient(group *config.Group) error {
 	log.Info("Service", s, "running in client mode")
 	s.role = protocols.Client
 	s.readGroup(group)
+
+
+	socksClientConfig = &protocols.SOCKSConfig{
+		Port: ":6789",
+		PayloadLength: 1000, //todo : this is wrong
+		DataForDCNet: make(chan []byte),
+		DataFromDCNet: make(chan []byte),
+	}
+
+	// For stalling the handler
+	//go socks.StallTester(30*time.Second, 10*time.Second, socksClientConfig.DataFromDCNet, socksClientConfig.PayloadLength)
+	//go socks.StallTester(30*time.Second, 10*time.Second, socksClientConfig.DataForDCNet, socksClientConfig.PayloadLength)
+
+	go socks.StartSocksServer(socksClientConfig.Port, socksClientConfig.PayloadLength, socksClientConfig.DataForDCNet, socksClientConfig.DataFromDCNet)
 
 	s.autoConnect()
 
@@ -215,6 +242,7 @@ func (s *Service) NewProtocol(tn *sda.TreeNodeInstance, conf *sda.GenericConfig)
 	wrapper.SetConfig(&protocols.PriFiSDAWrapperConfig{
 		Identities: s.identityMap,
 		Role: s.role,
+		ClientSideSocksConfig: socksClientConfig,
 	})
 
 	return wrapper, nil
@@ -384,7 +412,7 @@ func (s *Service) autoConnect() {
 // startPriFi starts a PriFi protocol. It is called
 // by the relay as soon as enough participants are
 // ready (one trustee and two clients).
-func (s *Service) startPriFi() {
+func (s *Service) startPriFiCommunicateProtocol() {
 	log.Lvl1("Starting PriFi protocol")
 
 	if s.role != protocols.Relay {
@@ -430,7 +458,7 @@ func (s *Service) startPriFi() {
 }
 
 // stopPriFi stops the PriFi protocol currently running.
-func (s *Service) stopPriFi() {
+func (s *Service) stopPriFiCommunicateProtocol() {
 	log.Lvl1("Stopping PriFi protocol")
 
 	if s.role != protocols.Relay {

@@ -64,6 +64,7 @@ const RELAY_FAILED_CONNECTION_WAIT_BEFORE_RETRY = 10 * time.Second
 // Trustees stop sending when capacity <= lower limit
 const TRUSTEE_WINDOW_LOWER_LIMIT = 1
 const MAX_ALLOWED_TRUSTEE_CIPHERS_BUFFERED = 10
+
 // Trustees resume sending when capacity = lower limit + ratio*(max - lower limit)
 const RESUME_SENDING_CAPACITY_RATIO = 0.9
 
@@ -217,7 +218,7 @@ func NewRelayState(nTrustees int, nClients int, upstreamCellSize int, downstream
 	// Sets the new state
 	params.currentState = RELAY_STATE_COLLECTING_TRUSTEES_PKS
 
-	go socks.ConnectToProxyServer("127.0.0.1:8081", params.DataFromDCNet, params.PriorityDataForClients)
+	go socks.ConnectToSocksServer("127.0.0.1:8081", params.DataFromDCNet, params.PriorityDataForClients)
 
 	return params
 }
@@ -301,7 +302,6 @@ func (p *PriFiProtocol) Received_ALL_REL_PARAMETERS(msg ALL_ALL_PARAMETERS) erro
 
 	return nil
 }
-
 
 // ConnectToTrustees connects to the trustees and initializes them with default parameters.
 func (p *PriFiProtocol) ConnectToTrustees() error {
@@ -402,7 +402,7 @@ func (p *PriFiProtocol) Received_CLI_REL_UPSTREAM_DATA(msg CLI_REL_UPSTREAM_DATA
 			p.finalizeUpstreamData()
 
 			// sleep so it does not go too fast for debug
-			//time.Sleep(100 * time.Millisecond)
+			time.Sleep(PROCESSING_LOOP_SLEEP_TIME)
 
 			// send the data down (to finalize this round)
 			p.sendDownstreamData()
@@ -543,7 +543,7 @@ func (p *PriFiProtocol) finalizeUpstreamData() error {
 	}
 
 	if p.relayState.DataOutputEnabled {
-		packetType, _, _, _ := socks.ExtractHeader(upstreamPlaintext)
+		packetType, _, _, _ := socks.ParseSocksHeaderFromBytes(upstreamPlaintext)
 
 		switch packetType {
 		case socks.SocksData, socks.SocksConnect, socks.StallCommunication, socks.ResumeCommunication:
@@ -633,8 +633,10 @@ func (p *PriFiProtocol) sendDownstreamData() error {
 	// prepare for the next round
 	p.relayState.locks.coder.Lock() // Lock on CellCoder
 
-	timeSpent := time.Since(p.relayState.currentDCNetRound.startTime)
-	log.Lvl2("Relay finished round "+strconv.Itoa(int(p.relayState.currentDCNetRound.currentRound))+" (after", timeSpent, ").")
+	if false {
+		timeSpent := time.Since(p.relayState.currentDCNetRound.startTime)
+		log.Lvl2("Relay finished round " + strconv.Itoa(int(p.relayState.currentDCNetRound.currentRound)) + " (after", timeSpent, ").")
+	}
 
 	//prepare for the next round
 	nextRound := p.relayState.currentDCNetRound.currentRound + 1
@@ -874,7 +876,7 @@ Those are sent by the trustees once they finished a Neff-Shuffle.
 In that case, we forward the result to the next trustee.
 We do nothing until the last trustee sends us this message.
 When this happens, we pack a transcript, and broadcast it to all the trustees who will sign it.
- */
+*/
 func (p *PriFiProtocol) Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS(msg TRU_REL_TELL_NEW_BASE_AND_EPH_PKS) error {
 
 	p.relayState.locks.state.Lock() // Lock on state

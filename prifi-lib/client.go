@@ -88,17 +88,17 @@ type ClientState struct {
 
 
 // Used to initialize the state of the client. Must be called before anything else.
-func NewClientState(clientId int, nTrustees int, nClients int, payloadLength int, latencyTest bool, useUDP bool, dataOutputEnabled bool) *ClientState {
+func NewClientState(clientId int, nTrustees int, nClients int, payloadLength int, latencyTest bool, useUDP bool, dataOutputEnabled bool, dataForDCNet chan []byte, dataFromDCNet chan []byte) *ClientState {
 
 	//set the defaults
 	params := new(ClientState)
 	params.Id = clientId
 	params.Name = "Client-" + strconv.Itoa(clientId)
 	params.CellCoder = config.Factory()
-	params.DataForDCNet = make(chan []byte)
-	params.DataFromDCNet = make(chan []byte)
-	params.DataOutputEnabled = true //dataOutputEnabled
-	params.LatencyTest = false      //latencyTest
+	params.DataForDCNet = dataForDCNet
+	params.DataFromDCNet = dataFromDCNet
+	params.DataOutputEnabled = dataOutputEnabled
+	params.LatencyTest = latencyTest
 	//params.MessageHistory =
 	params.MySlot = -1
 	params.nClients = nClients
@@ -125,23 +125,6 @@ func NewClientState(clientId int, nTrustees int, nClients int, payloadLength int
 
 	//sets the new state
 	params.currentState = CLIENT_STATE_INITIALIZING
-
-	//SOCKS STUFF
-	serverPort := ":"
-	if clientId == 1 {
-		log.Lvl1("Client 1 established")
-
-		// For stalling the handler
-		go socks.StallTester(30*time.Second, 10*time.Second, params.DataFromDCNet, params.PayloadLength)
-		go socks.StallTester(30*time.Second, 10*time.Second, params.DataForDCNet, params.PayloadLength)
-
-		serverPort += "6789"
-	} else if clientId == 2 {
-		log.Lvl1("Client 2 established")
-		serverPort += "2345"
-	}
-
-	go socks.ListenToBrowser(serverPort, params.PayloadLength, params.privateKey, params.DataForDCNet, params.DataFromDCNet)
 
 	return params
 }
@@ -181,7 +164,7 @@ func (p *PriFiProtocol) Received_ALL_CLI_PARAMETERS(msg ALL_ALL_PARAMETERS) erro
 		p.clientState.StartStopReceiveBroadcast <- false
 	}
 
-	p.clientState = *NewClientState(msg.NextFreeClientId, msg.NTrustees, msg.NClients, msg.UpCellSize, msg.DoLatencyTests, msg.UseUDP, msg.ClientDataOutputEnabled)
+	p.clientState = *NewClientState(msg.NextFreeClientId, msg.NTrustees, msg.NClients, msg.UpCellSize, msg.DoLatencyTests, msg.UseUDP, msg.ClientDataOutputEnabled, make(chan []byte), make(chan []byte))
 
 	//start the broadcast-listener goroutine
 	log.Lvl2("Client " + strconv.Itoa(p.clientState.Id) + " : starting the broadcast-listener goroutine")
@@ -360,7 +343,7 @@ func (p *PriFiProtocol) SendUpstreamData() error {
 
 		//or, if we have nothing to send, and we are doing Latency tests, embed a pre-crafted message that we will recognize later on
 		default:
-			emptyData := socks.NewDataWrap(socks.DummyData, 0, 0, uint16(p.clientState.PayloadLength), make([]byte, 0))
+			emptyData := socks.NewSocksPacket(socks.DummyData, 0, 0, uint16(p.clientState.PayloadLength), make([]byte, 0))
 			upstreamCellContent = emptyData.ToBytes()
 
 			if p.clientState.LatencyTest {
