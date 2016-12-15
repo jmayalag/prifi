@@ -1,4 +1,4 @@
-package prifi
+package protocols
 
 import (
 	"github.com/dedis/cothority/sda"

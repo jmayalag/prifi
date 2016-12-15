@@ -1,4 +1,4 @@
-package prifi
+package services
 
 import (
 	"github.com/BurntSushi/toml"

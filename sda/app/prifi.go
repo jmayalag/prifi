@@ -94,7 +94,7 @@ func trustee(c *cli.Context) error {
 	log.Info("Starting trustee")
 	host, err := cothorityd(c)
 	log.ErrFatal(err)
-	service := host.GetService(prifi.ServiceName).(*prifi.Service)
+	service := host.GetService(services.ServiceName).(*services.Service)
 
 	group := getGroup(c)
 	log.ErrFatal(service.StartTrustee(group))
@@ -108,7 +108,7 @@ func relay(c *cli.Context) error {
 	log.Info("Starting relay")
 	host, err := cothorityd(c)
 	log.ErrFatal(err)
-	service := host.GetService(prifi.ServiceName).(*prifi.Service)
+	service := host.GetService(services.ServiceName).(*services.Service)
 
 	group := getGroup(c)
 	log.ErrFatal(service.StartRelay(group))
@@ -122,7 +122,7 @@ func client(c *cli.Context) error {
 	log.Info("Starting client")
 	host, err := cothorityd(c)
 	log.ErrFatal(err)
-	service := host.GetService(prifi.ServiceName).(*prifi.Service)
+	service := host.GetService(services.ServiceName).(*services.Service)
 
 	group := getGroup(c)
 	log.ErrFatal(service.StartClient(group))
