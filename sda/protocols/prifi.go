@@ -67,6 +67,12 @@ func (p *PriFiSDAWrapper) Start() error {
 	return nil
 }
 
+// Stop aborts the current execution of the protocol.
+func (p *PriFiSDAWrapper) Stop() {
+	p.prifiProtocol.Received_ALL_REL_SHUTDOWN(prifi_lib.ALL_ALL_SHUTDOWN{})
+	//p.Shutdown()
+}
+
 /**
  * On initialization of the PriFi-SDA-Wrapper protocol, it need to register the PriFi-Lib messages to be able to marshall them.
  * If we forget some messages there, it will crash when PriFi-Lib will call SendToXXX() with this message !
@@ -161,6 +167,10 @@ func (p *PriFiSDAWrapper) buildMessageSender(identities map[network.Address]PriF
 	var relay *sda.TreeNode = nil
 
 	for i := 0; i < len(nodes); i++ {
+		// TODO: The protocol should be started only with online nodes instead
+		if !checkConnectivity(nodes[i]) {
+			continue
+		}
 		id, ok := identities[nodes[i].ServerIdentity.Address]
 		if !ok {
 			log.Fatal("Unknow node with address", nodes[i].ServerIdentity.Address)
@@ -190,6 +200,18 @@ func (p *PriFiSDAWrapper) buildMessageSender(identities map[network.Address]PriF
 	}
 
 	return MessageSender{p.TreeNodeInstance, relay, clients, trustees}
+}
+
+// checkConnectivity checks if a node is reachable.
+// TODO: This implementation is very bad for performance. The concept itself should  ideally be replaced !
+func checkConnectivity(node *sda.TreeNode) bool {
+	conn, err := network.NewTCPConn(node.ServerIdentity.Address)
+	if err != nil {
+		return false;
+	} else {
+		conn.Close()
+		return true;
+	}
 }
 
 // registerHandlers contains the verbose code

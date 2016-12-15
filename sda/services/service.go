@@ -50,6 +50,8 @@ type Service struct {
 	identityMap *map[network.Address]prifi.PriFiIdentity
 	relayIdentity *network.ServerIdentity
 	waitQueue *WaitQueue
+	prifiWrapper *prifi.PriFiSDAWrapper
+	isPrifiRunning bool
 }
 
 // This structure will be saved, on the contrary of the 'Service'-structure
@@ -66,10 +68,17 @@ type ConnectionResponse struct {
 	Status bool
 }
 
+/*
+func (s *Service) HandleISM(from *network.ServerIdentity, msg *sda.InterServiceMessage) (network.Body, error) {
+	log.Info(">>> Message received ! <<<")
+	return ConnectionResponse{true}, nil
+}
+*/
+
 // HandleConnection receives connection requests from other nodes.
 // It decides when another PriFi protocol should be started.
 func (s *Service) HandleConnection(from *network.ServerIdentity, req *ConnectionRequest) (network.Body, error) {
-	log.Lvl3("Received connection request")
+	log.Info(">>>Received connection request<<<")
 
 	if s.role != prifi.Relay {
 		return nil, errors.New("This host is not the relay.")
@@ -86,6 +95,10 @@ func (s *Service) HandleConnection(from *network.ServerIdentity, req *Connection
 	}
 
 	if s.waitQueue.nClient >= 2 && s.waitQueue.nTrustee >= 1 {
+		if s.isPrifiRunning {
+			s.stopPriFi()
+		}
+
 		s.startPriFi()
 	}
 
@@ -209,11 +222,12 @@ func newService(c *sda.Context, path string) sda.Service {
 	s := &Service{
 		ServiceProcessor: sda.NewServiceProcessor(c),
 		path:             path,
+		isPrifiRunning:   false,
 	}
 	if err := s.tryLoad(); err != nil {
 		log.Error(err)
 	}
-	if err:= s.RegisterMessages(s.HandleConnection, s.HandleDisconnection); err != nil {
+	if err:= s.RegisterMessage(/*s.HandleConnection, s.HandleDisconnection, */s.HandleISM); err != nil {
 		log.Fatal("Could not register handlers:", err)
 	}
 	return s
@@ -249,7 +263,7 @@ func parseDescription(description string) (*prifi.PriFiIdentity, error) {
 }
 
 // mapIdentities reads the group configuration to assign PriFi roles
-// to server identities and return them with the server
+// to server addresses and returns them with the server
 // identity of the relay.
 func mapIdentities(group *config.Group) (map[network.Address]prifi.PriFiIdentity, network.ServerIdentity) {
 	m := make(map[network.Address]prifi.PriFiIdentity)
@@ -301,21 +315,27 @@ func (s *Service) readGroup(group *config.Group) {
 // It is called by the client and trustee services at startup to
 // announce themselves to the relay.
 func (s *Service) sendConnectionRequest() error {
-	client := sda.NewClient(ServiceName)
-	reply, err := client.Send(s.relayIdentity, &ConnectionRequest{s.role})
-	if e := network.ErrMsg(reply, err); e != nil {
-		return e
-	} else {
-		res := reply.Msg.(ConnectionResponse)
-
-		if res.Status {
-			return nil
-		} else {
-			return errors.New("Connection request refused by the relay.")
-		}
-	}
-	return nil
+	// TODO: This should be modified to use ISM messages
+	msg := &ConnectionRequest{s.role}
+	err := s.SendISM(s.relayIdentity, msg)
+	return err
 }
+
+/*client := sda.NewClient(ServiceName)
+s.ServerIdentity()
+reply, err := client.Send(s.relayIdentity, &ConnectionRequest{s.role})
+if e := network.ErrMsg(reply, err); e != nil {
+	return e
+} else {
+	res := reply.Msg.(ConnectionResponse)
+
+	if res.Status {
+		return nil
+	} else {
+		return errors.New("Connection request refused by the relay.")
+	}
+}
+return err*/
 
 // startPriFi starts a PriFi protocol. It is called
 // by the relay as soon as enough participants are
@@ -338,10 +358,29 @@ func (s *Service) startPriFi() {
 
 	// Assert that pi has type PriFiSDAWrapper
 	wrapper = pi.(*prifi.PriFiSDAWrapper)
+	s.prifiWrapper = wrapper
 
 	wrapper.SetConfig(&prifi.PriFiSDAWrapperConfig{
 		Identities: *s.identityMap,
 		Role: prifi.Relay,
 	})
 	wrapper.Start()
+
+	s.isPrifiRunning = true;
+}
+
+func (s *Service) stopPriFi() {
+	if s.role != prifi.Relay {
+		log.Error("Trying to stop PriFi protocol from a non-relay node.")
+		return;
+	}
+
+	if !s.isPrifiRunning || s.prifiWrapper == nil {
+		log.Error("Trying to stop PriFi protocol but it has not started.")
+		return;
+	}
+
+	s.prifiWrapper.Stop()
+	s.prifiWrapper = nil
+	s.isPrifiRunning = false;
 }
