@@ -227,7 +227,7 @@ func newService(c *sda.Context, path string) sda.Service {
 	if err := s.tryLoad(); err != nil {
 		log.Error(err)
 	}
-	if err:= s.RegisterMessage(/*s.HandleConnection, s.HandleDisconnection, */s.HandleISM); err != nil {
+	if err:= s.RegisterMessages(s.HandleConnection, s.HandleDisconnection/*, s.HandleISM*/); err != nil {
 		log.Fatal("Could not register handlers:", err)
 	}
 	return s
