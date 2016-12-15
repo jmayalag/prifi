@@ -9,6 +9,9 @@ import (
 	"fmt"
 	"io"
 	"net"
+
+	"github.com/dedis/cothority/log"
+	"flag"
 )
 
 // Authentication methods
@@ -50,16 +53,26 @@ const (
 // and forwards all connections.
 func main() {
 
-	fmt.Println("Launching server...")
+	//manually parse debug flag, since there's only one
+	var debug = flag.Int("debug", 3, "debug-level")
+	flag.Parse()
+	log.SetDebugVisible(*debug)
+
+	//starts the SOCKS exit
+	port := ":8081"
+
+	log.Lvl2("Starting SOCKS exit...")
 
 	// listen on all interfaces
-	ln, _ := net.Listen("tcp", ":8081")
+	ln, _ := net.Listen("tcp", port)
+
+	log.Lvl1("Server listening on port "+port)
 
 	for {
 		// accept connection on port
 		conn, _ := ln.Accept()
 
-		fmt.Println("Accepted Client Connection")
+		log.Lvl1("Accepted new socks-client connection")
 
 		go HandleClient(conn)
 	}
