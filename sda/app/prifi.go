@@ -6,16 +6,18 @@ package main
 import (
 	"fmt"
 	"os"
-	"os/user"
-	"path"
-	"runtime"
 
-	"github.com/dedis/cothority/app/lib/config"
-	"github.com/dedis/cothority/app/lib/server"
 	"github.com/dedis/cothority/log"
-	"github.com/dedis/cothority/sda"
 	"github.com/lbarman/prifi_dev/sda/services"
 	"gopkg.in/urfave/cli.v1"
+	"github.com/dedis/cothority/app/lib/server"
+	"github.com/dedis/cothority/sda"
+	"path"
+	"runtime"
+	"io/ioutil"
+	"github.com/BurntSushi/toml"
+	"os/user"
+	"github.com/dedis/cothority/app/lib/config"
 )
 
 // DefaultName is the name of the binary we produce and is used to create a directory
@@ -23,10 +25,13 @@ import (
 const DefaultName = "prifi"
 
 // Default name of configuration file
-const DefaultServerConfig = "config.toml"
+const DefaultCothorityConfigFile = "config.toml"
 
 // Default name of group file
-const DefaultGroupConfig = "group.toml"
+const DefaultCothorityGroupConfigFile = "group.toml"
+
+// Default name of prifi's config file
+const DefaultPriFiConfigFile = "group.toml"
 
 // This app can launch the prifi service in either client, trustee or relay mode
 func main() {
@@ -39,32 +44,32 @@ func main() {
 			Name:    "setup",
 			Aliases: []string{"s"},
 			Usage:   "setup the configuration for the server",
-			Action:  setupCothorityd,
+			Action:  setupNewCothorityNode,
 		},
 		{
 			Name:    "trustee",
 			Usage:   "start in trustee mode",
 			Aliases: []string{"t"},
-			Action:  trustee,
+			Action:  startTrustee,
 		},
 		{
 			Name:      "relay",
 			Usage:     "start in relay mode",
 			ArgsUsage: "group [id-name]",
 			Aliases:   []string{"r"},
-			Action:    relay,
+			Action:    startRelay,
 		},
 		{
 			Name:    "client",
 			Usage:   "start in client mode",
 			Aliases: []string{"c"},
-			Action:  client,
+			Action:  startClient,
 		},
 		{
 			Name:    "sockstest",
 			Usage:   "only starts the socks server and the socks clients without prifi",
 			Aliases: []string{"socks"},
-			Action:  socks,
+			Action:  startSocksTunnelOnly,
 		},
 	}
 	app.Flags = []cli.Flag{
@@ -74,13 +79,23 @@ func main() {
 			Usage: "debug-level: 1 for terse, 5 for maximal",
 		},
 		cli.StringFlag{
-			Name:  "config, c",
-			Value: getDefaultFile(DefaultServerConfig),
+			Name:  "cothority_config, cc",
+			Value: getDefaultFilePathForName(DefaultCothorityConfigFile),
 			Usage: "configuration-file",
 		},
 		cli.StringFlag{
+			Name:  "prifi_config, pc",
+			Value: getDefaultFilePathForName(DefaultPriFiConfigFile),
+			Usage: "configuration-file",
+		},
+		cli.IntFlag{
+			Name:  "port, p",
+			Value: -1, // will depend on if we run a relay or client
+			Usage: "port for the socks handler",
+		},
+		cli.StringFlag{
 			Name:  "group, g",
-			Value: getDefaultFile(DefaultGroupConfig),
+			Value: getDefaultFilePathForName(DefaultCothorityGroupConfigFile),
 			Usage: "Group file",
 		},
 		cli.BoolFlag{
@@ -95,86 +110,170 @@ func main() {
 	app.Run(os.Args)
 }
 
-// trustee start the cothority in trustee-mode using the already stored configuration.
-func trustee(c *cli.Context) error {
-	log.Info("Starting trustee")
-	host, err := cothorityd(c)
-	log.ErrFatal(err)
+/**
+ * Every "app" require reading config files and starting cothority beforehand
+ */
+func readConfigAndStartCothority(c *cli.Context) (*sda.Conode, *config.Group, *services.Service) {
+	//parse PriFi parameters
+	prifiConfig, err := readPriFiConfigFile(c)
+	fmt.Println(prifiConfig)
+	if err != nil {
+		log.Error("Could not read prifi config:", err)
+		os.Exit(1)
+	}
+
+	//start cothority server
+	host, err := startCothorityNode(c)
+	if err != nil {
+		log.Error("Could not start Cothority server:", err)
+		os.Exit(1)
+	}
+
+	//finds the PriFi service
 	service := host.GetService(services.ServiceName).(*services.Service)
 
-	group := getGroup(c)
-	log.ErrFatal(service.StartTrustee(group))
+	//reads the group description
+	group := readCothorityGroupConfig(c)
+	if err != nil {
+		log.Error("Could not read the group description:", err)
+		os.Exit(1)
+	}
+
+	return host, group, service
+}
+
+// trustee start the cothority in trustee-mode using the already stored configuration.
+func startTrustee(c *cli.Context) error {
+	log.Info("Starting trustee")
+
+	host, group, service := readConfigAndStartCothority(c)
+
+	if err := service.StartTrustee(group); err != nil {
+		log.Error("Could not start the prifi service:", err)
+		os.Exit(1)
+	}
 
 	host.Start()
 	return nil
 }
 
 // relay starts the cothority in relay-mode using the already stored configuration.
-func relay(c *cli.Context) error {
+func startRelay(c *cli.Context) error {
 	log.Info("Starting relay")
-	host, err := cothorityd(c)
-	log.ErrFatal(err)
-	service := host.GetService(services.ServiceName).(*services.Service)
 
-	group := getGroup(c)
-	log.ErrFatal(service.StartRelay(group))
+	host, group, service := readConfigAndStartCothority(c)
+
+	if err := service.StartRelay(group); err != nil {
+		log.Error("Could not start the prifi service:", err)
+		os.Exit(1)
+	}
 
 	host.Start()
 	return nil
 }
 
 // client starts the cothority in client-mode using the already stored configuration.
-func client(c *cli.Context) error {
+func startClient(c *cli.Context) error {
 	log.Info("Starting client")
-	host, err := cothorityd(c)
-	log.ErrFatal(err)
-	service := host.GetService(services.ServiceName).(*services.Service)
 
-	group := getGroup(c)
-	log.ErrFatal(service.StartClient(group))
+	host, group, service := readConfigAndStartCothority(c)
+
+	if err := service.StartClient(group); err != nil {
+		log.Error("Could not start the prifi service:", err)
+		os.Exit(1)
+	}
 
 	host.Start()
 	return nil
 }
 
 // this is used to test the socks server and clients integrated to PriFi, without using DC-nets.
-func socks(c *cli.Context) error {
+func startSocksTunnelOnly(c *cli.Context) error {
 	log.Info("Starting socks tunnel (bypassing PriFi)")
-	host, err := cothorityd(c)
-	log.ErrFatal(err)
-	service := host.GetService(services.ServiceName).(*services.Service)
 
-	log.ErrFatal(service.StartSocksTunnelOnly())
+	host, _, service := readConfigAndStartCothority(c)
+
+	if err := service.StartSocksTunnelOnly(); err != nil {
+		log.Error("Could not start the prifi service:", err)
+		os.Exit(1)
+	}
 
 	host.Start()
 	return nil
 }
 
+/**
+ * COTHORITY
+ */
+
+
 // setupCothorityd sets up a new cothority node configuration (used by all prifi modes)
-func setupCothorityd(c *cli.Context) error {
+func setupNewCothorityNode(c *cli.Context) error {
 	server.InteractiveConfig("cothorityd")
 	return nil
 }
 
 // Starts the cothority node to enable communication with the prifi-service.
-// Returns the prifi-service.
-func cothorityd(c *cli.Context) (*sda.Conode, error) {
+func startCothorityNode(c *cli.Context) (*sda.Conode, error) {
 	// first check the options
-	cfile := c.GlobalString("config")
+	cfile := c.GlobalString("cothority_config")
 
 	if _, err := os.Stat(cfile); os.IsNotExist(err) {
+		log.Error("Could not open file \"", cfile, "\" (specified by flag cothority_config)")
 		return nil, err
 	}
 	// Let's read the config
 	_, host, err := config.ParseCothorityd(cfile)
 	if err != nil {
+		log.Error("Could not parse file", cfile)
 		return nil, err
 	}
 	return host, nil
 }
 
+/**
+ * CONFIG
+ */
+
+type PriFiToml struct {
+	CellSizeUp            int
+	CellSizeDown          int
+	RelayWindowSize       int
+	RelayUseDummyDataDown bool
+	RelayReportingLimit   int
+	UseUDP                bool
+	DoLatencyTests        bool
+}
+
+func readPriFiConfigFile(c *cli.Context) (*PriFiToml, error) {
+
+	cfile := c.GlobalString("prifi_config")
+
+	if _, err := os.Stat(cfile); os.IsNotExist(err) {
+		log.Error("Could not open file \"", cfile, "\" (specified by flag prifi_config)")
+		return nil, err
+	}
+
+	tomlRawData, err := ioutil.ReadFile(cfile)
+	if err != nil {
+		log.Error("Could not read file \"", cfile, "\" (specified by flag prifi_config)")
+	}
+
+	tomlConfig := &PriFiToml{}
+	_, err = toml.Decode(string(tomlRawData), tomlConfig)
+	if err != nil {
+		log.Error("Could not parse toml file", cfile)
+		return nil, err
+	}
+
+	fmt.Print(tomlConfig)
+
+	return tomlConfig, nil
+}
+
+
 // getDefaultFile creates a path to the default config folder and appends fileName to it.
-func getDefaultFile(fileName string) string {
+func getDefaultFilePathForName(fileName string) string {
 	u, err := user.Current()
 	// can't get the user dir, so fallback to current working dir
 	if err != nil {
@@ -191,20 +290,39 @@ func getDefaultFile(fileName string) string {
 		return path.Join(u.HomeDir, "Library", DefaultName, fileName)
 	default:
 		return path.Join(u.HomeDir, ".config", DefaultName, fileName)
-		// TODO WIndows ? FreeBSD ?
+	// TODO WIndows ? FreeBSD ?
 	}
 }
 
 // getGroup reads the group-file and returns it.
-func getGroup(c *cli.Context) *config.Group {
+func readCothorityGroupConfig(c *cli.Context) *config.Group {
+
 	gfile := c.GlobalString("group")
+
+	if _, err := os.Stat(gfile); os.IsNotExist(err) {
+		log.Error("Could not open file \"", gfile, "\" (specified by flag group)")
+		return nil
+	}
+
 	gr, err := os.Open(gfile)
-	log.ErrFatal(err)
+
+	if err != nil {
+		log.Error("Could not read file \"", gfile, "\"")
+		return nil
+	}
+
 	defer gr.Close()
+
 	groups, err := config.ReadGroupDescToml(gr)
-	log.ErrFatal(err)
+
+	if err != nil {
+		log.Error("Could not parse toml file \"", gfile, "\"")
+		return nil
+	}
+
 	if groups == nil || groups.Roster == nil || len(groups.Roster.List) == 0 {
-		log.Fatal("No servers found in roster from", gfile)
+		log.Error("No servers found in roster from", gfile)
+		return nil
 	}
 	return groups
 }
