@@ -14,11 +14,7 @@ okMsg="\e[32m[ok]\e[97m"
 print_usage() {
 	echo "Usage: run.sh <role> <id>"
 	echo "	Role: client, relay or trustee"
-<<<<<<< HEAD
-	echo "	Id: integer, only for client or trustee roles"
-=======
-	echo "	Id: integer, only for relay or trustee roles"
->>>>>>> PriFi-SDA
+	echo "	Id: integer (only for client or trustee roles)"
 }
 
 test_digit() {
