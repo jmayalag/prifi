@@ -30,6 +30,7 @@ var serviceID sda.ServiceID
 func init() {
 	sda.RegisterNewService(ServiceName, newService)
 	serviceID = sda.ServiceFactory.ServiceID(ServiceName)
+	network.RegisterPacketType(ConnectionResponse{})
 }
 
 // This struct contains the state of the service
@@ -49,12 +50,39 @@ type Storage struct {
 	TrusteeID string
 }
 
+type ConnectionRequest struct {}
+type DisconnectionRequest struct {}
+type ConnectionResponse struct {
+	Status bool
+}
+
+// HandleConnection receives connection requests from other nodes.
+// It decides when another PriFi protocol should be started.
+func (s *Service) HandleConnection(from *network.ServerIdentity, req *ConnectionRequest) (network.Body, error) {
+	log.Info(">>>> Received connection request ! <<<<<")
+	// TODO: Check that we are relay, store who wants to start the protocol and start if there are enough participants
+	return &ConnectionResponse{true}, nil
+}
+
+// HandleDisconnection receives disconnection requests.
+// It must stop the current PriFi protocol.
+func (s *Service) HandleDisconnection(from *network.ServerIdentity, req *DisconnectionRequest) (network.Body, error) {
+	// TODO: This one will be a bit more complicated
+	return &ConnectionResponse{true}, nil
+}
+
 // StartTrustee has to take a configuration and start the necessary
 // protocols to enable the trustee-mode.
 func (s *Service) StartTrustee(group *config.Group) error {
 	log.Info("Service", s, "running in trustee mode")
 	s.group = group
 	s.role = prifi.Trustee
+
+	// Inform the relay that we want to join the protocol
+	err := sendConnectionRequest(group)
+	if err != nil {
+		log.Error("Connection failed:", err)
+	}
 
 	return nil
 }
@@ -65,7 +93,7 @@ func (s *Service) StartRelay(group *config.Group) error {
 	log.Info("Service", s, "running in relay mode")
 	s.group = group
 	s.role = prifi.Relay
-
+	/*
 	var wrapper *prifi.PriFiSDAWrapper
 	ids, relayIdentity := mapIdentities(group)
 
@@ -85,7 +113,7 @@ func (s *Service) StartRelay(group *config.Group) error {
 		Role: prifi.Relay,
 	})
 	wrapper.Start()
-
+	*/
 	return nil
 }
 
@@ -95,6 +123,12 @@ func (s *Service) StartClient(group *config.Group) error {
 	log.Info("Service", s, "running in client mode")
 	s.group = group
 	s.role = prifi.Client
+
+	// Inform the relay that we want to join the protocol
+	err := sendConnectionRequest(group)
+	if err != nil {
+		log.Error("Connection failed:", err)
+	}
 
 	return nil
 }
@@ -164,13 +198,16 @@ func (s *Service) tryLoad() error {
 // configuration, if desired. As we don't know when the service will exit,
 // we need to save the configuration on our own from time to time.
 func newService(c *sda.Context, path string) sda.Service {
-	log.Info("Calling newService")
+	log.Lvl4("Calling newService")
 	s := &Service{
 		ServiceProcessor: sda.NewServiceProcessor(c),
 		path:             path,
 	}
 	if err := s.tryLoad(); err != nil {
 		log.Error(err)
+	}
+	if err:= s.RegisterMessages(s.HandleConnection, s.HandleDisconnection); err != nil {
+		log.Fatal("Could not register handlers:", err)
 	}
 	return s
 }
@@ -242,4 +279,21 @@ func mapIdentities(group *config.Group) (map[network.Address]prifi.PriFiIdentity
 	}
 
 	return m, relay
+}
+
+func sendConnectionRequest(group *config.Group) error {
+	client := sda.NewClient(ServiceName)
+	_, relayIdentity := mapIdentities(group)
+	reply, err := client.Send(&relayIdentity, &ConnectionRequest{})
+	if e := network.ErrMsg(reply, err); e != nil {
+		return e
+	} else {
+		res := reply.Msg.(ConnectionResponse)
+
+		if res.Status {
+			return nil
+		} else {
+			return errors.New("Connection request refused by the relay.")
+		}
+	}
 }
