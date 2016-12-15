@@ -22,6 +22,7 @@ import (
 	"github.com/dedis/cothority/sda"
 	"github.com/lbarman/prifi_dev/sda/protocols"
 	"sync"
+	"time"
 )
 
 // ServiceName is the name to refer to the Template service from another
@@ -161,11 +162,7 @@ func (s *Service) StartTrustee(group *config.Group) error {
 	s.role = prifi.Trustee
 	s.readGroup(group)
 
-	// Inform the relay that we want to join the protocol
-	err := s.sendConnectionRequest()
-	if err != nil {
-		log.Error("Connection failed:", err)
-	}
+	s.autoConnect()
 
 	return nil
 }
@@ -192,11 +189,7 @@ func (s *Service) StartClient(group *config.Group) error {
 	s.role = prifi.Client
 	s.readGroup(group)
 
-	// Inform the relay that we want to join the protocol
-	err := s.sendConnectionRequest()
-	if err != nil {
-		log.Error("Connection failed:", err)
-	}
+	s.autoConnect()
 
 	return nil
 }
@@ -218,6 +211,8 @@ func (s *Service) NewProtocol(tn *sda.TreeNodeInstance, conf *sda.GenericConfig)
 
 	// Assert that pi has type PriFiSDAWrapper
 	wrapper := pi.(*prifi.PriFiSDAWrapper)
+
+	s.isPrifiRunning = true
 
 	wrapper.SetConfig(&prifi.PriFiSDAWrapperConfig{
 		Identities: s.identityMap,
@@ -365,9 +360,27 @@ func (s *Service) readGroup(group *config.Group) {
 // sendConnectionRequest sends a connection request to the relay.
 // It is called by the client and trustee services at startup to
 // announce themselves to the relay.
-func (s *Service) sendConnectionRequest() error {
+func (s *Service) sendConnectionRequest() {
 	log.Lvl2("Sending connection request")
-	return s.SendRaw(s.relayIdentity, &ConnectionRequest{})
+	err := s.SendRaw(s.relayIdentity, &ConnectionRequest{})
+
+	if err != nil {
+		log.Error("Connection failed:", err)
+	}
+}
+
+// autoConnect sends a connection request to the relay
+// every 10 seconds if node is not participating to
+// a PriFi protocol.
+func (s *Service) autoConnect() {
+	s.sendConnectionRequest()
+
+	tick := time.Tick(10 * time.Second)
+	for range tick {
+		if !s.isPrifiRunning {
+			s.sendConnectionRequest()
+		}
+	}
 }
 
 // startPriFi starts a PriFi protocol. It is called

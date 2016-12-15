@@ -3,6 +3,7 @@ package prifi
 func (p *PriFiSDAWrapper) Received_ALL_ALL_SHUTDOWN(msg Struct_ALL_ALL_SHUTDOWN) error {
 	err := p.prifiProtocol.ReceivedMessage(msg.ALL_ALL_SHUTDOWN)
 	if err == nil {
+		*p.running = false
 		p.Shutdown()
 	}
 	return err
