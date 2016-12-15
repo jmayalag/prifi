@@ -39,7 +39,7 @@ func init() {
 }
 
 
-type PriFiconfig struct {
+type PriFiConfig struct {
 	CellSizeUp            int
 	CellSizeDown          int
 	RelayWindowSize       int
@@ -51,8 +51,10 @@ type PriFiconfig struct {
 	SocksClientPort		int
 }
 
-func (s *Service) SetConfig(config *PriFiconfig) {
+func (s *Service) SetConfig(config *PriFiConfig) {
+	log.Lvl3("Setting PriFi configuration...")
 	log.Lvlf3("%+v\n", config)
+	s.prifiConfig = config
 }
 
 // waitQueue contains the list of nodes that are currently willing
@@ -69,6 +71,7 @@ type Service struct {
 	// are correctly handled.
 	*sda.ServiceProcessor
 	group   *config.Group
+	prifiConfig *PriFiConfig
 	Storage *Storage
 	path    string
 	role protocols.PriFiRole
@@ -196,8 +199,8 @@ func (s *Service) StartRelay(group *config.Group) error {
 	}
 
 	socksServerConfig = &protocols.SOCKSConfig{
-		Port: "127.0.0.1:8081",
-		PayloadLength: 100, //todo : this is wrong
+		Port: "127.0.0.1:"+strconv.Itoa(s.prifiConfig.SocksClientPort),
+		PayloadLength: s.prifiConfig.CellSizeUp,
 		UpstreamChannel: make(chan []byte),
 		DownstreamChannel: make(chan []byte),
 	}
@@ -219,8 +222,8 @@ func (s *Service) StartClient(group *config.Group) error {
 
 
 	socksClientConfig = &protocols.SOCKSConfig{
-		Port: ":6789",
-		PayloadLength: 100, //todo : this is wrong
+		Port: ":"+strconv.Itoa(s.prifiConfig.SocksServerPort),
+		PayloadLength: s.prifiConfig.CellSizeUp,
 		UpstreamChannel: make(chan []byte),
 		DownstreamChannel: make(chan []byte),
 	}
@@ -239,15 +242,15 @@ func (s *Service) StartSocksTunnelOnly() error {
 	log.Info("Service", s, "running in socks-tunnel-only mode")
 
 	socksClientConfig = &protocols.SOCKSConfig{
-		Port: ":6789",
-		PayloadLength: 100,
+		Port: ":"+strconv.Itoa(s.prifiConfig.SocksServerPort),
+		PayloadLength: s.prifiConfig.CellSizeUp,
 		UpstreamChannel: make(chan []byte),
 		DownstreamChannel: make(chan []byte),
 	}
 
 	socksServerConfig = &protocols.SOCKSConfig{
-		Port: "127.0.0.1:8081",
-		PayloadLength: 100,
+		Port: "127.0.0.1:"+strconv.Itoa(s.prifiConfig.SocksClientPort),
+		PayloadLength: s.prifiConfig.CellSizeUp,
 		UpstreamChannel: socksClientConfig.UpstreamChannel,
 		DownstreamChannel: socksClientConfig.DownstreamChannel,
 	}

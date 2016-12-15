@@ -243,7 +243,7 @@ func startCothorityNode(c *cli.Context) (*sda.Conode, error) {
  * CONFIG
  */
 
-func readPriFiConfigFile(c *cli.Context) (*services.PriFiconfig, error) {
+func readPriFiConfigFile(c *cli.Context) (*services.PriFiConfig, error) {
 
 	cfile := c.GlobalString("prifi_config")
 
@@ -257,7 +257,7 @@ func readPriFiConfigFile(c *cli.Context) (*services.PriFiconfig, error) {
 		log.Error("Could not read file \"", cfile, "\" (specified by flag prifi_config)")
 	}
 
-	tomlConfig := &services.PriFiconfig{}
+	tomlConfig := &services.PriFiConfig{}
 	_, err = toml.Decode(string(tomlRawData), tomlConfig)
 	if err != nil {
 		log.Error("Could not parse toml file", cfile)

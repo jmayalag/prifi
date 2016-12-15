@@ -8,7 +8,8 @@ group_file="group.toml"
 prifi_file="prifi.toml"
 bin_file="$GOPATH/src/github.com/lbarman/prifi_dev/sda/app/prifi.go"
 colors="true"
-port=12345
+port=8080
+port_client=8090
 
 errorMsg="\e[31m\e[1m[error]\e[97m\e[0m"
 okMsg="\e[32m[ok]\e[97m"
@@ -62,4 +63,4 @@ fi
 
 # Run PriFi !
 
-DEBUG_COLOR=$colors go run $bin_file --cothority_config "$confdir/$conf_file" --group "$PWD/$group_file" -d "$dbg_lvl" --prifi_config "$PWD/$prifi_file" --port "$port" "$1"
+DEBUG_COLOR=$colors go run $bin_file --cothority_config "$confdir/$conf_file" --group "$PWD/$group_file" -d "$dbg_lvl" --prifi_config "$PWD/$prifi_file" --port "$port" --port_client "$port_client" "$1"
