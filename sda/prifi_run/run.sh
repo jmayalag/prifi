@@ -5,6 +5,7 @@
 dbg_lvl=2
 conf_file="config.toml"
 group_file="group.toml"
+prifi_file="prifi.toml"
 bin_file="$GOPATH/src/github.com/lbarman/prifi_dev/sda/app/prifi.go"
 colors="true"
 
@@ -60,5 +61,4 @@ fi
 
 # Run PriFi !
 
-DEBUG_COLOR=$colors go run $bin_file -c "$confdir/$conf_file" -g "$PWD/$group_file" -d "$dbg_lvl" "$1"
-
+DEBUG_COLOR=$colors go run $bin_file --cothority_config "$confdir/$conf_file" --group "$PWD/$group_file" -d "$dbg_lvl" --prifi_config "$PWD/$prifi_file" "$1"
