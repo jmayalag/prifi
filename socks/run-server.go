@@ -13,6 +13,7 @@ import (
 	"github.com/dedis/cothority/log"
 	"flag"
 	"encoding/hex"
+	"strconv"
 )
 
 // Authentication methods
@@ -55,12 +56,13 @@ const (
 func main() {
 
 	//manually parse debug flag, since there's only one
-	var debug = flag.Int("debug", 3, "debug-level")
+	var debugFlag = flag.Int("debug", 3, "debug-level")
+	var portFlag = flag.Int("port", 8081, "port")
 	flag.Parse()
-	log.SetDebugVisible(*debug)
+	log.SetDebugVisible(*debugFlag)
 
 	//starts the SOCKS exit
-	port := ":8081"
+	port := ":"+strconv.Itoa(*portFlag)
 
 	log.Lvl2("Starting SOCKS exit...")
 
