@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+<meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+<meta content="width=device-width, initial-scale=1" name="viewport">
+<meta content="#375EAB" name="theme-color">
+<title>daga - The PriFi Project</title>
+<link href="../../../../.goduckstyle/style.css" rel="stylesheet" type="text/css">
+<link href="../../../../.goduckstyle/jquery.treeview.css" rel="stylesheet">
+<script type="text/javascript">window.initFuncs = [];</script>
+</link></link></meta></meta></meta></head>
+<body>
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+<div class="wide" id="topbar"><div class="container">
+<div class="top-heading" id="heading-wide">The PriFi Project</div>
+<div class="top-heading" id="heading-narrow">The PriFi Project</div>
+<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>
+<form action="/search" method="GET">
+<div id="menu">
+
+
+
+
+
+</div>
+</form>
+</div></div>
+<div class="wide" id="page">
+<div class="container">
+<h1>Package daga</h1>
+<div id="nav"></div>
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+<script type="text/javascript">
+	document.ANALYSIS_DATA = null;
+	document.CALLGRAPH = null;
+	</script>
+<div id="short-nav">
+<dl>
+<dd><code>import "github.com/lbarman/prifi_dev/prifi-lib/auth/daga"</code></dd>
+</dl>
+<dl>
+<dd><a class="overviewLink" href="#pkg-overview">Overview</a></dd>
+<dd><a class="indexLink" href="#pkg-index">Index</a></dd>
+</dl>
+</div>
+<!-- The package's Name is printed as title by the top-level template -->
+<div class="toggleVisible" id="pkg-overview">
+<div class="collapsed">
+<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+</div>
+<div class="expanded">
+<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+<p>
+Package daga implements the Deniable Anonymous Group Authentication (DAGA)
+protocol
+</p>
+</div>
+</div>
+<div class="toggleVisible" id="pkg-index">
+<div class="collapsed">
+<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+</div>
+<div class="expanded">
+<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+<div id="manual-nav">
+<dl>
+<dd><a href="#pkg-constants">Constants</a></dd>
+<dd><a href="#ClientAuthentication">func ClientAuthentication(relayConn net.Conn, clientId int, privateKey abstract.Scalar) error</a></dd>
+<dd><a href="#Protocol">type Protocol</a></dd>
+<dd><a href="#RelayProtocol">type RelayProtocol</a></dd>
+<dd>    <a href="#RelayProtocol.AuthenticateClient">func (p *RelayProtocol) AuthenticateClient(clientConn net.Conn) (prifinet.NodeRepresentation, error)</a></dd>
+<dd>    <a href="#RelayProtocol.HandleMessage">func (p *RelayProtocol) HandleMessage(msg []byte, senderConn net.Conn) error</a></dd>
+<dd>    <a href="#RelayProtocol.Start">func (p *RelayProtocol) Start() error</a></dd>
+<dd><a href="#TrusteeProtocol">type TrusteeProtocol</a></dd>
+<dd>    <a href="#TrusteeProtocol.HandleMessage">func (p *TrusteeProtocol) HandleMessage(msg []byte, senderConn net.Conn) error</a></dd>
+</dl>
+</div><!-- #manual-nav -->
+<h4>Package files</h4>
+<p>
+<span style="font-size:90%">
+<a href="/src/github.com/lbarman/prifi_dev/prifi-lib/auth/daga/client.go">client.go</a>
+<a href="/src/github.com/lbarman/prifi_dev/prifi-lib/auth/daga/doc.go">doc.go</a>
+<a href="/src/github.com/lbarman/prifi_dev/prifi-lib/auth/daga/helpers.go">helpers.go</a>
+<a href="/src/github.com/lbarman/prifi_dev/prifi-lib/auth/daga/relay.go">relay.go</a>
+<a href="/src/github.com/lbarman/prifi_dev/prifi-lib/auth/daga/trustee.go">trustee.go</a>
+<a href="/src/github.com/lbarman/prifi_dev/prifi-lib/auth/daga/types.go">types.go</a>
+</span>
+</p>
+</div><!-- .expanded -->
+</div><!-- #pkg-index -->
+<div class="toggle" id="pkg-callgraph" style="display: none">
+<div class="collapsed">
+<h2 class="toggleButton" title="Click to show Internal Call Graph section">Internal call graph ▹</h2>
+</div> <!-- .expanded -->
+<div class="expanded">
+<h2 class="toggleButton" title="Click to hide Internal Call Graph section">Internal call graph ▾</h2>
+<p>
+			  In the call graph viewer below, each node
+			  is a function belonging to this package
+			  and its children are the functions it
+			  calls—perhaps dynamically.
+			</p>
+<p>
+			  The root nodes are the entry points of the
+			  package: functions that may be called from
+			  outside the package.
+			  There may be non-exported or anonymous
+			  functions among them if they are called
+			  dynamically from another package.
+			</p>
+<p>
+			  Click a node to visit that function's source code.
+			  From there you can visit its callers by
+			  clicking its declaring <code>func</code>
+			  token.
+			</p>
+<p>
+			  Functions may be omitted if they were
+			  determined to be unreachable in the
+			  particular programs or tests that were
+			  analyzed.
+			</p>
+<!-- Zero means show all package entry points. -->
+<ul class="treeview" id="callgraph-0" style="margin-left: 0.5in"></ul>
+</div>
+</div> <!-- #pkg-callgraph -->
+<h2 id="pkg-constants">Constants</h2>
+<pre>const (
+    <span id="TRUSTEE_SETUP">TRUSTEE_SETUP</span>          = <a href="https://golang.org/pkg/builtin/#iota">iota</a> <span class="comment">// Relay requesting DAGA setup (fresh authentication context)</span>
+    <span id="TRUSTEE_FINISHED_SETUP">TRUSTEE_FINISHED_SETUP</span>        <span class="comment">// Trustee finished DAGA setup</span>
+    <span id="CLIENT_JOINING">CLIENT_JOINING</span>                <span class="comment">// Client requests authentication from the relay</span>
+    <span id="CLIENT_CONTEXT_REQ">CLIENT_CONTEXT_REQ</span>            <span class="comment">// Client requesting authentication context from the first trustee</span>
+)</pre>
+<pre>const (
+    <span id="PROTOCOL_TYPE_DAGA">PROTOCOL_TYPE_DAGA</span> = <a href="https://golang.org/pkg/builtin/#iota">iota</a>
+)</pre>
+<p>
+TODO: Move these to a common package
+</p>
+<h2 id="ClientAuthentication">func <a href="/src/github.com/lbarman/prifi_dev/prifi-lib/auth/daga/client.go?s=234:327#L4">ClientAuthentication</a>
+<a class="permalink" href="#ClientAuthentication">¶</a>
+</h2>
+<pre>func ClientAuthentication(relayConn <a href="../../../../net/index.html">net</a>.<a href="../../../../net/index.html#Conn">Conn</a>, clientId <a href="https://golang.org/pkg/builtin/#int">int</a>, privateKey <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Scalar">Scalar</a>) <a href="https://golang.org/pkg/builtin/#error">error</a></pre>
+<p>
+Client participates in authentication process
+</p>
+<h2 id="Protocol">type <a href="/src/github.com/lbarman/prifi_dev/prifi-lib/auth/daga/types.go?s=188:284#L4">Protocol</a>
+<a class="permalink" href="#Protocol">¶</a>
+</h2>
+<pre>type Protocol interface {
+    Start() <a href="https://golang.org/pkg/builtin/#error">error</a>
+    HandleMessage(msg []<a href="https://golang.org/pkg/builtin/#byte">byte</a>, senderConn <a href="../../../../net/index.html">net</a>.<a href="../../../../net/index.html#Conn">Conn</a>) <a href="https://golang.org/pkg/builtin/#error">error</a>
+}</pre>
+<h2 id="RelayProtocol">type <a href="/src/github.com/lbarman/prifi_dev/prifi-lib/auth/daga/types.go?s=649:863#L18">RelayProtocol</a>
+<a class="permalink" href="#RelayProtocol">¶</a>
+</h2>
+<pre>type RelayProtocol struct {
+    Initialized       <a href="https://golang.org/pkg/builtin/#bool">bool</a>
+    TrusteeHosts      []<a href="https://golang.org/pkg/builtin/#string">string</a>
+    Trustees          []<a href="../../../../github.com/lbarman/prifi/net/index.html">prifinet</a>.<a href="../../../../github.com/lbarman/prifi/net/index.html#NodeRepresentation">NodeRepresentation</a>
+    ClientPublicKeys  map[<a href="https://golang.org/pkg/builtin/#int">int</a>]<a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Point">Point</a>
+    TrusteePublicKeys map[<a href="https://golang.org/pkg/builtin/#int">int</a>]<a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Point">Point</a>
+}</pre>
+<h3 id="RelayProtocol.AuthenticateClient">func (*RelayProtocol) <a href="/src/github.com/lbarman/prifi_dev/prifi-lib/auth/daga/relay.go?s=1762:1862#L55">AuthenticateClient</a>
+<a class="permalink" href="#RelayProtocol.AuthenticateClient">¶</a>
+</h3>
+<pre>func (p *<a href="#RelayProtocol">RelayProtocol</a>) AuthenticateClient(clientConn <a href="../../../../net/index.html">net</a>.<a href="../../../../net/index.html#Conn">Conn</a>) (<a href="../../../../github.com/lbarman/prifi/net/index.html">prifinet</a>.<a href="../../../../github.com/lbarman/prifi/net/index.html#NodeRepresentation">NodeRepresentation</a>, <a href="https://golang.org/pkg/builtin/#error">error</a>)</pre>
+<h3 id="RelayProtocol.HandleMessage">func (*RelayProtocol) <a href="/src/github.com/lbarman/prifi_dev/prifi-lib/auth/daga/relay.go?s=233:309#L8">HandleMessage</a>
+<a class="permalink" href="#RelayProtocol.HandleMessage">¶</a>
+</h3>
+<pre>func (p *<a href="#RelayProtocol">RelayProtocol</a>) HandleMessage(msg []<a href="https://golang.org/pkg/builtin/#byte">byte</a>, senderConn <a href="../../../../net/index.html">net</a>.<a href="../../../../net/index.html#Conn">Conn</a>) <a href="https://golang.org/pkg/builtin/#error">error</a></pre>
+<h3 id="RelayProtocol.Start">func (*RelayProtocol) <a href="/src/github.com/lbarman/prifi_dev/prifi-lib/auth/daga/relay.go?s=162:199#L3">Start</a>
+<a class="permalink" href="#RelayProtocol.Start">¶</a>
+</h3>
+<pre>func (p *<a href="#RelayProtocol">RelayProtocol</a>) Start() <a href="https://golang.org/pkg/builtin/#error">error</a></pre>
+<h2 id="TrusteeProtocol">type <a href="/src/github.com/lbarman/prifi_dev/prifi-lib/auth/daga/types.go?s=865:1263#L26">TrusteeProtocol</a>
+<a class="permalink" href="#TrusteeProtocol">¶</a>
+</h2>
+<pre>type TrusteeProtocol struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}</pre>
+<h3 id="TrusteeProtocol.HandleMessage">func (*TrusteeProtocol) <a href="/src/github.com/lbarman/prifi_dev/prifi-lib/auth/daga/trustee.go?s=166:244#L2">HandleMessage</a>
+<a class="permalink" href="#TrusteeProtocol.HandleMessage">¶</a>
+</h3>
+<pre>func (p *<a href="#TrusteeProtocol">TrusteeProtocol</a>) HandleMessage(msg []<a href="https://golang.org/pkg/builtin/#byte">byte</a>, senderConn <a href="../../../../net/index.html">net</a>.<a href="../../../../net/index.html#Conn">Conn</a>) <a href="https://golang.org/pkg/builtin/#error">error</a></pre>
+
+</div><!-- .container -->
+</div><!-- #page -->
+<!-- TODO(adonovan): load these from <head> using "defer" attribute? -->
+<script src="../../../../.goduckstyle/jquery.js" type="text/javascript"></script>
+<script src="../../../../.goduckstyle/jquery.treeview.js" type="text/javascript"></script>
+<script src="../../../../.goduckstyle/jquery.treeview.edit.js" type="text/javascript"></script>
+<script>var goVersion = "go1.7.1";</script>
+<script src="../../../../.goduckstyle/godocs.js" type="text/javascript"></script>
+</body>
+</html>

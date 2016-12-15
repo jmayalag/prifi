@@ -1,50 +1,73 @@
 package prifi
 
+/*
+This file provides SDA handler functions who simply call
+the PriFi library's ReceivedMessage handler. It thus
+"translates" SDA messages to PriFi messages.
+ */
+
+// Wrapper to be able to receive message from SDA.
 func (p *PriFiSDAWrapper) Received_ALL_ALL_SHUTDOWN(msg Struct_ALL_ALL_SHUTDOWN) error {
 	return p.prifiProtocol.ReceivedMessage(msg.ALL_ALL_SHUTDOWN)
 }
+// Wrapper to be able to receive message from SDA.
 func (p *PriFiSDAWrapper) Received_ALL_ALL_PARAMETERS(msg Struct_ALL_ALL_PARAMETERS) error {
 	return p.prifiProtocol.ReceivedMessage(msg.ALL_ALL_PARAMETERS)
 }
 
 //client handlers
+
+// Wrapper to be able to receive message from SDA.
 func (p *PriFiSDAWrapper) Received_REL_CLI_DOWNSTREAM_DATA(msg Struct_REL_CLI_DOWNSTREAM_DATA) error {
 	return p.prifiProtocol.ReceivedMessage(msg.REL_CLI_DOWNSTREAM_DATA)
 }
+// Wrapper to be able to receive message from SDA.
 func (p *PriFiSDAWrapper) Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(msg Struct_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG) error {
 	return p.prifiProtocol.ReceivedMessage(msg.REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG)
 }
+// Wrapper to be able to receive message from SDA.
 func (p *PriFiSDAWrapper) Received_REL_CLI_TELL_TRUSTEES_PK(msg Struct_REL_CLI_TELL_TRUSTEES_PK) error {
 	return p.prifiProtocol.ReceivedMessage(msg.REL_CLI_TELL_TRUSTEES_PK)
 }
 
 //relay handlers
+
+// Wrapper to be able to receive message from SDA.
 func (p *PriFiSDAWrapper) Received_CLI_REL_TELL_PK_AND_EPH_PK(msg Struct_CLI_REL_TELL_PK_AND_EPH_PK) error {
 	return p.prifiProtocol.ReceivedMessage(msg.CLI_REL_TELL_PK_AND_EPH_PK)
 }
+// Wrapper to be able to receive message from SDA.
 func (p *PriFiSDAWrapper) Received_CLI_REL_UPSTREAM_DATA(msg Struct_CLI_REL_UPSTREAM_DATA) error {
 	return p.prifiProtocol.ReceivedMessage(msg.CLI_REL_UPSTREAM_DATA)
 }
+// Wrapper to be able to receive message from SDA.
 func (p *PriFiSDAWrapper) Received_TRU_REL_DC_CIPHER(msg Struct_TRU_REL_DC_CIPHER) error {
 	return p.prifiProtocol.ReceivedMessage(msg.TRU_REL_DC_CIPHER)
 }
+// Wrapper to be able to receive message from SDA.
 func (p *PriFiSDAWrapper) Received_TRU_REL_SHUFFLE_SIG(msg Struct_TRU_REL_SHUFFLE_SIG) error {
 	return p.prifiProtocol.ReceivedMessage(msg.TRU_REL_SHUFFLE_SIG)
 }
+// Wrapper to be able to receive message from SDA.
 func (p *PriFiSDAWrapper) Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS(msg Struct_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS) error {
 	return p.prifiProtocol.ReceivedMessage(msg.TRU_REL_TELL_NEW_BASE_AND_EPH_PKS)
 }
+// Wrapper to be able to receive message from SDA.
 func (p *PriFiSDAWrapper) Received_TRU_REL_TELL_PK(msg Struct_TRU_REL_TELL_PK) error {
 	return p.prifiProtocol.ReceivedMessage(msg.TRU_REL_TELL_PK)
 }
 
 //trustees handlers
+
+// Wrapper to be able to receive message from SDA.
 func (p *PriFiSDAWrapper) Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE(msg Struct_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE) error {
 	return p.prifiProtocol.ReceivedMessage(msg.REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE)
 }
+// Wrapper to be able to receive message from SDA.
 func (p *PriFiSDAWrapper) Received_REL_TRU_TELL_TRANSCRIPT(msg Struct_REL_TRU_TELL_TRANSCRIPT) error {
 	return p.prifiProtocol.ReceivedMessage(msg.REL_TRU_TELL_TRANSCRIPT)
 }
+// Wrapper to be able to receive message from SDA.
 func (p *PriFiSDAWrapper) Received_REL_TRU_TELL_RATE_CHANGE(msg Struct_REL_TRU_TELL_RATE_CHANGE) error {
 	return p.prifiProtocol.ReceivedMessage(msg.REL_TRU_TELL_RATE_CHANGE)
 }

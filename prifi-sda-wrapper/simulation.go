@@ -12,9 +12,8 @@ import (
 )
 
 /*
-This is a simple ExampleHandlers-protocol with two steps:
-- announcement - which sends a message to all children
-- reply - used for counting the number of children
+This simulation runs the PriFi protocol with the SDA as
+a network provider, using the parameters from a config file.
 */
 
 func init() {
@@ -27,7 +26,7 @@ type Simulation struct {
 	SimulationConfig
 }
 
-// SimulationConfig is the config used by the simulation for byzcoin
+// SimulationConfig is the config used by the simulation for PriFi
 type SimulationConfig struct {
 	NClients              int
 	NTrustees             int
@@ -42,8 +41,7 @@ type SimulationConfig struct {
 
 var tomlConfig SimulationConfig
 
-// NewSimulation is used internally to register the simulation (see the init()
-// function above).
+// NewSimulation creates a new SDA simulation.
 func NewSimulation(config string) (sda.Simulation, error) {
 	es := &Simulation{}
 	_, err := toml.Decode(config, es)
@@ -60,7 +58,7 @@ func NewSimulation(config string) (sda.Simulation, error) {
 func (e *Simulation) Setup(dir string, hosts []string) (
 	*sda.SimulationConfig, error) {
 	sc := &sda.SimulationConfig{}
-	e.CreateEntityList(sc, hosts, 2000)
+	e.CreateRoster(sc, hosts, 2000)
 	err := e.CreateTree(sc)
 	if err != nil {
 		return nil, err
@@ -93,7 +91,7 @@ func (e *Simulation) Run(config *sda.SimulationConfig) error {
 	for roundId := 0; roundId < e.Rounds; roundId++ {
 		log.Lvl1("Starting round", roundId)
 		round := monitor.NewTimeMeasure("round")
-		p, err := config.Overlay.CreateProtocol(config.Tree, "PriFi-SDA-Wrapper")
+		p, err := config.Overlay.CreateProtocolSDA("PriFi-SDA-Wrapper", config.Tree)
 		p.(*PriFiSDAWrapper).SetConfig(*prifiConfig)
 		if err != nil {
 			return err
