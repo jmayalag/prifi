@@ -1,1 +1,0 @@
-here we must code the various PriFi protocols. but they are already coded in PriFi-lib ! so we just need to start the correct functions. That's (among other thing) what PriFi-SDA-Wrapper was doing. 
