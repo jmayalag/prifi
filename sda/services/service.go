@@ -25,9 +25,7 @@ import (
 	"time"
 )
 
-// ServiceName is the name to refer to the Template service from another
-// package.
-const ServiceName = "ExampleService"
+const ServiceName = "PriFiService"
 
 var serviceID sda.ServiceID
 
