@@ -184,15 +184,15 @@ type RelayState struct {
 NewRelayState initializes the state of this relay.
 It must be called before anything else.
 */
-func NewRelayState(nTrustees int, nClients int, upstreamCellSize int, downstreamCellSize int, windowSize int, useDummyDataDown bool, experimentRoundLimit int, experimentResultChan chan interface{}, useUDP bool, dataOutputEnabled bool) *RelayState {
+func NewRelayState(nTrustees int, nClients int, upstreamCellSize int, downstreamCellSize int, windowSize int, useDummyDataDown bool, experimentRoundLimit int, experimentResultChan chan interface{}, useUDP bool, dataOutputEnabled bool, dataForClients chan []byte, dataFromDCNet chan []byte) *RelayState {
 	params := new(RelayState)
 	params.Name = "Relay"
 	params.CellCoder = config.Factory()
 	params.clients = make([]NodeRepresentation, 0)
-	params.DataForClients = make(chan []byte, 10)
+	params.DataForClients = dataForClients
 	params.PriorityDataForClients = make(chan []byte, 10) // This is used for relay's control message (like latency-tests)
-	params.DataFromDCNet = make(chan []byte, 10)
-	params.DataOutputEnabled = true //dataOutputEnabled
+	params.DataFromDCNet = dataFromDCNet
+	params.DataOutputEnabled = dataOutputEnabled
 	params.DownstreamCellSize = downstreamCellSize
 	// params.MessageHistory =
 	params.nClients = nClients
@@ -217,8 +217,6 @@ func NewRelayState(nTrustees int, nClients int, upstreamCellSize int, downstream
 
 	// Sets the new state
 	params.currentState = RELAY_STATE_COLLECTING_TRUSTEES_PKS
-
-	go socks.StartSocksClient("127.0.0.1:8081", params.DataFromDCNet, params.PriorityDataForClients)
 
 	return params
 }
@@ -286,7 +284,7 @@ func (p *PriFiProtocol) Received_ALL_REL_PARAMETERS(msg ALL_ALL_PARAMETERS) erro
 	p.relayState.locks.state.Unlock() // Unlock state
 
 	oldExperimentResultChan := p.relayState.ExperimentResultChannel
-	p.relayState = *NewRelayState(msg.NTrustees, msg.NClients, msg.UpCellSize, msg.DownCellSize, msg.RelayWindowSize, msg.RelayUseDummyDataDown, msg.RelayReportingLimit, oldExperimentResultChan, msg.UseUDP, msg.RelayDataOutputEnabled)
+	p.relayState = *NewRelayState(msg.NTrustees, msg.NClients, msg.UpCellSize, msg.DownCellSize, msg.RelayWindowSize, msg.RelayUseDummyDataDown, msg.RelayReportingLimit, oldExperimentResultChan, msg.UseUDP, msg.RelayDataOutputEnabled, make(chan []byte), make(chan []byte))
 
 	log.Lvlf5("%+v\n", p.relayState)
 	log.Lvl1("Relay has been initialized by message. ")

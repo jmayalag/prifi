@@ -48,6 +48,7 @@ type PriFiSDAWrapperConfig struct {
 	Identities map[network.Address]PriFiIdentity
 	Role PriFiRole
 	ClientSideSocksConfig *SOCKSConfig
+	RelaySideSocksConfig *SOCKSConfig
 }
 
 //This is the PriFi-SDA-Wrapper protocol struct. It contains the SDA-tree, and a chanel that stops the simulation when it receives a "true"
@@ -148,7 +149,9 @@ func (p *PriFiSDAWrapper) SetConfig(config *PriFiSDAWrapperConfig) {
 			relayReportingLimit,
 			experimentResultChan,
 			useUDP,
-			sendDataOutOfDCNet)
+			sendDataOutOfDCNet,
+			config.RelaySideSocksConfig.DownstreamChannel,
+			config.RelaySideSocksConfig.UpstreamChannel)
 
 		p.prifiProtocol = prifi_lib.NewPriFiRelayWithState(ms, relayState)
 

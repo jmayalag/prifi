@@ -283,20 +283,25 @@ func (p *PriFiProtocol) ProcessDownStreamData(msg REL_CLI_DOWNSTREAM_DATA) error
 	 * HANDLE THE DOWNSTREAM DATA
 	 */
 
-	//pass the data to the VPN/SOCKS5 proxy, if enabled
-	if p.clientState.DataOutputEnabled /*Temporarily*/ && p.clientState.Id == 1 {
-		p.clientState.DataFromDCNet <- msg.Data //TODO : this should be encrypted, and we need to check if it's our data
-	}
-	//test if it is the answer from our ping (for latency test)
-	if p.clientState.LatencyTest && len(msg.Data) > 2 {
-		pattern := int(binary.BigEndian.Uint16(msg.Data[0:2]))
-		if pattern == 43690 { //1010101010101010
-			clientId := int(binary.BigEndian.Uint16(msg.Data[2:4]))
-			if clientId == p.clientState.Id {
-				timestamp := int64(binary.BigEndian.Uint64(msg.Data[4:12]))
-				diff := MsTimeStamp() - timestamp
+	//if it's just one byte, no data
+	if len(msg.Data) > 1 {
 
-				log.Lvl1("Client " + strconv.Itoa(p.clientState.Id) + " : New latency measured " + strconv.FormatInt(diff, 10))
+		//pass the data to the VPN/SOCKS5 proxy, if enabled
+		if p.clientState.DataOutputEnabled && p.clientState.Id == 0 {
+			p.clientState.DataFromDCNet <- msg.Data //TODO : this should be encrypted, and we need to check if it's our data
+		}
+		//test if it is the answer from our ping (for latency test)
+		if p.clientState.LatencyTest && len(msg.Data) > 2 {
+			pattern := int(binary.BigEndian.Uint16(msg.Data[0:2]))
+			if pattern == 43690 {
+				//1010101010101010
+				clientId := int(binary.BigEndian.Uint16(msg.Data[2:4]))
+				if clientId == p.clientState.Id {
+					timestamp := int64(binary.BigEndian.Uint64(msg.Data[4:12]))
+					diff := MsTimeStamp() - timestamp
+
+					log.Lvl1("Client " + strconv.Itoa(p.clientState.Id) + " : New latency measured " + strconv.FormatInt(diff, 10))
+				}
 			}
 		}
 	}

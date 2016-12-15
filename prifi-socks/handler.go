@@ -52,17 +52,24 @@ const (
  */
 func StartSocksClient(serverAddress string, upstreamChan chan []byte, downstreamChan chan []byte) {
 
+	log.Error("THIS HAS BEEN STARTED !")
+
 	socksConnections := make(map[uint32]net.Conn)     // Stores all live connections
 	controlChannels := make(map[uint32]chan uint16) // Stores the control channels for each live connection
 	currentSendingState := uint16(ResumeCommunication)     // Keeps track of current state (stalled or resumed)
 
 	for {
 		// Block on receiving a packet
+		for k, v := range socksConnections {
+			fmt.Printf("key[%v] value[%v]\n", k, v)
+		}
+		log.Lvl1("Waiting...")
 		data := <-upstreamChan
+		log.Lvl1("Got something.")
 
 		// Extract the data from the packet
 		packet := ParseSocksPacketFromBytes(data)
-		socksConnectionId := packet.Id
+		socksConnectionId := uint32(packet.Id)
 		packetPayload := packet.Data[:packet.MessageLength]
 
 		// Retrieve the requested connection if possible
@@ -72,11 +79,14 @@ func StartSocksClient(serverAddress string, upstreamChan chan []byte, downstream
 		switch packet.Type {
 		case SocksConnect: // Indicates a new connection established (this is important to identify if a connection ID overlap has occured)
 
+			log.Lvl2("SOCKS PriFi Client: Got a SOCKS connect message.")
+
 			// If no channel exists yet, create one and setup a channel handler (this means no connection ID overlap occured)
 			if socksConnection == nil {
 
 				// Create a new connection with the SOCKS server
 				newConn, err := net.Dial("tcp", serverAddress)
+				log.Error("dialed connection id "+strconv.Itoa(int(socksConnectionId)))
 
 				if err != nil {
 					log.Error("SOCKS PriFi Client: Could not connect to SOCKS server.", err)
@@ -132,9 +142,22 @@ func StartSocksClient(serverAddress string, upstreamChan chan []byte, downstream
 
 		case SocksData: // Indicates this is a normal packet that needs to be proxied to the SOCKS server
 
+			log.Lvl2("SOCKS PriFi Client: Got a SOCKS data message.")
+
 			// Check if the connection exist, and send the packet to the SOCKS server
-			if socksConnection != nil {
-				socksConnection.Write(packetPayload)
+			for k, v := range socksConnections {
+				fmt.Printf("key[%v] value[%v]\n", k, v)
+			}
+			log.Error("connection id is "+strconv.Itoa(int(socksConnectionId)))
+			log.Error(socksConnections[socksConnectionId])
+			log.Error(controlChannels[socksConnectionId])
+
+			for socksConnections[socksConnectionId] == nil && controlChannels[socksConnectionId] != nil {
+				log.Error("Dialing")
+			}
+
+			if socksConnections[socksConnectionId] != nil {
+				socksConnections[socksConnectionId].Write(packetPayload)
 			} else {
 				log.Error("SOCKS PriFi Client: Got data for an unexisting connection "+strconv.Itoa(int(socksConnectionId))+", dropping.")
 			}
