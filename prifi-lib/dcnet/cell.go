@@ -4,7 +4,7 @@ import (
 	"github.com/dedis/crypto/abstract"
 )
 
-// CellCoder is the cell encoding, decoding, and accountability interface.
+// Cell encoding, decoding, and accountability interface.
 // One instance per series.
 // Designed to support multiple alternative cell encoding methods,
 // some for single-owner cells (in which only one key-holder transmits),
@@ -57,5 +57,4 @@ type CellCoder interface {
 	DecodeCell() []byte
 }
 
-// CellFactory is the type of factories providing a CellCoder.
 type CellFactory func() CellCoder

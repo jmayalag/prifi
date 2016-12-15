@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/dedis/crypto/abstract"
+	"github.com/dedis/cothority/log"
 )
 
 // Authentication methods
@@ -45,9 +46,10 @@ const (
 	repAddressTypeNotSupported
 )
 
-/*
-ConnectToProxyServer connects the relay to the proxy server and proxies messages between the relay and the server.
+/**
+ * Connects the relay to the proxy server and proxies messages between the relay and the server
  */
+
 func ConnectToProxyServer(IP string, toServer chan []byte, fromServer chan []byte) {
 
 	allConnections := make(map[uint32]net.Conn)     // Stores all live connections
@@ -75,7 +77,12 @@ func ConnectToProxyServer(IP string, toServer chan []byte, fromServer chan []byt
 			if myConn == nil {
 
 				// Create a new connection with the SOCKS server
-				newConn, _ := net.Dial("tcp", IP)
+				newConn, err := net.Dial("tcp", IP)
+
+				if err != nil {
+					log.Fatal("Could not connect to SOCKS server:", err)
+				}
+
 				allConnections[connID] = newConn
 
 				// Create a control channel for this connection
@@ -139,14 +146,15 @@ func ConnectToProxyServer(IP string, toServer chan []byte, fromServer chan []byt
 
 }
 
-/*
-ListenToBrowser handles SOCKS5 connections with the browser.
+/**
+ * Handles SOCKS5 connections with the browser
  */
+
 func ListenToBrowser(port string, payloadLength int, key abstract.Scalar, toServer chan []byte, fromServer chan []byte) {
 
 	// Setup a thread to listen at the assigned port
 	socksConnections := make(chan net.Conn, 1)
-	go browserConnectionListener(port, socksConnections)
+	go browserConnectionListner(port, socksConnections)
 
 	socksProxyActiveConnections := make(map[uint32]net.Conn) // Stores all live connections (Reserve socksProxyActiveConnections[0])
 	controlChannels := make(map[uint32]chan uint16)          // Stores the control channels for each live connection
@@ -243,9 +251,10 @@ func ListenToBrowser(port string, payloadLength int, key abstract.Scalar, toServ
 	}
 }
 
-/*
-handleConnection handles reading data from a connection with a SOCKS entity (Browser, SOCKS Server) and forwarding it to a PriFi entity (Client, Relay).
+/**
+ * Handles reading data from a connection with a SOCKS entity (Browser, SOCKS Server) and forwarding it to a PriFi entity (Client, Relay)
  */
+
 func handleConnection(conn net.Conn, connID uint32, payloadLength int, control chan uint16, sendData chan []byte, closedChan chan []byte) {
 
 	dataChannel := make(chan []byte, 1) // Channel to communicate the data read from the connection with the SOCKS entity
@@ -340,10 +349,11 @@ func handleConnection(conn net.Conn, connID uint32, payloadLength int, control c
 	}
 }
 
-/*
-browserConnectionListener listens and accepts connections at a certain port
+/**
+ * Listens and accepts connections at a certain port
  */
-func browserConnectionListener(port string, newConnections chan<- net.Conn) {
+
+func browserConnectionListner(port string, newConnections chan<- net.Conn) {
 	lsock, err := net.Listen("tcp", port)
 
 	if err != nil {
@@ -363,8 +373,9 @@ func browserConnectionListener(port string, newConnections chan<- net.Conn) {
 }
 
 /**
-connectionReader reads data from a connection and forwards it into a data channel, maximum data read must be specified.
+Reads data from a connection and forwards it into a data channel, maximum data read must be specified
 */
+
 func connectionReader(conn net.Conn, readLength int, dataChannel chan []byte) {
 	for {
 		// Read data from the connection
@@ -381,9 +392,10 @@ func connectionReader(conn net.Conn, readLength int, dataChannel chan []byte) {
 	}
 }
 
-/*
-replaceData replaces the IP & PORT data in the SOCKS5 connect server reply
+/**
+Replaces the IP & PORT data in the SOCKS5 connect server reply
 */
+
 func replaceData(buf []byte, addr net.Addr) []byte {
 	buf = buf[:4]
 
@@ -428,9 +440,10 @@ func replaceData(buf []byte, addr net.Addr) []byte {
 	return buf
 }
 
-/*
-generateUniqueID generates a unique SOCK connection ID from a private key
+/**
+Generates a unique SOCK connection ID from a private key
 */
+
 func generateUniqueID(key abstract.Scalar, connections map[uint32]net.Conn) uint32 {
 
 	id := generateID(key)
@@ -441,9 +454,10 @@ func generateUniqueID(key abstract.Scalar, connections map[uint32]net.Conn) uint
 	return id
 }
 
-/*
-generateID generates an ID from a private key
+/**
+Generates an ID from a private key
 */
+
 func generateID(key abstract.Scalar) uint32 {
 	var n uint32
 	binary.Read(rand.Reader, binary.LittleEndian, &n)
@@ -451,9 +465,10 @@ func generateID(key abstract.Scalar) uint32 {
 	return n
 }
 
-/*
-StallTester sends a stall message after "timeBeforeStall" seconds, and a resume message after "stallFor" seconds.
+/**
+Function that sends a stall message after "timeBeforeStall" seconds, and a resume message after "stallFor" seconds
 */
+
 func StallTester(timeBeforeStall time.Duration, stallFor time.Duration, myChannel chan []byte, payload int) {
 
 	time.Sleep(timeBeforeStall)

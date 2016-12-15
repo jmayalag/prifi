@@ -45,7 +45,7 @@ const WAIT_FOR_PUBLICKEY_SLEEP_TIME = 100 * time.Millisecond
 const CLIENT_FAILED_CONNECTION_WAIT_BEFORE_RETRY = 1000 * time.Millisecond
 const UDP_DATAGRAM_WAIT_TIMEOUT = 5 * time.Second
 
-// Possible states of the clients. This restrict the kind of messages they can receive at a given point in time.
+// possible state the clients are in. This restrict the kind of messages they can receive at a given point
 const (
 	CLIENT_STATE_BEFORE_INIT int16 = iota
 	CLIENT_STATE_INITIALIZING
@@ -54,7 +54,7 @@ const (
 	CLIENT_STATE_SHUTDOWN
 )
 
-// ClientState contains the mutable state of the client.
+//the mutable variable held by the client
 type ClientState struct {
 	sync.RWMutex
 	CellCoder                 dcnet.CellCoder
@@ -86,8 +86,9 @@ type ClientState struct {
 	BufferedRoundData map[int32]REL_CLI_DOWNSTREAM_DATA
 }
 
-
-// Used to initialize the state of the client. Must be called before anything else.
+/**
+ * Used to initialize the state of this client. Must be called before anything else.
+ */
 func NewClientState(clientId int, nTrustees int, nClients int, payloadLength int, latencyTest bool, useUDP bool, dataOutputEnabled bool) *ClientState {
 
 	//set the defaults
@@ -146,8 +147,9 @@ func NewClientState(clientId int, nTrustees int, nClients int, payloadLength int
 	return params
 }
 
-// Received_ALL_CLI_SHUTDOWN handles ALL_CLI_SHUTDOWN messages.
-// When we receive this message, we should clean up resources.
+/**
+ * When we receive this message, we should clean resources
+ */
 func (p *PriFiProtocol) Received_ALL_CLI_SHUTDOWN(msg ALL_ALL_SHUTDOWN) error {
 	log.Lvl1("Client " + strconv.Itoa(p.clientState.Id) + " : Received a SHUTDOWN message. ")
 
@@ -159,8 +161,9 @@ func (p *PriFiProtocol) Received_ALL_CLI_SHUTDOWN(msg ALL_ALL_SHUTDOWN) error {
 	return nil
 }
 
-// Received_ALL_CLI_PARAMETERS handles ALL_CLI_PARAMETERS messages.
-// It uses the message's parameters to initialize the client.
+/**
+ * This is the "INIT" message that shares all the public parameters.
+ */
 func (p *PriFiProtocol) Received_ALL_CLI_PARAMETERS(msg ALL_ALL_PARAMETERS) error {
 
 	p.clientState.Lock()
@@ -196,15 +199,14 @@ func (p *PriFiProtocol) Received_ALL_CLI_PARAMETERS(msg ALL_ALL_PARAMETERS) erro
 	return nil
 }
 
-/*
-Received_REL_CLI_DOWNSTREAM_DATA handles REL_CLI_DOWNSTREAM_DATA messages which are part of PriFi's main loop.
-This is what happens in one round, for this client. We receive some downstream data.
-It should be encrypted, and we should test if this data is for us or not; if so, push it into the SOCKS/VPN chanel.
-For now, we do nothing with the downstream data.
-Once we received some data from the relay, we need to reply with a DC-net cell (that will get combined with other client's cell to produce some plaintext).
-If we're lucky (if this is our slot), we are allowed to embed some message (which will be the output produced by the relay). Either we send something from the
-SOCKS/VPN data, or if we're running latency tests, we send a "ping" message to compute the latency. If we have nothing to say, we send 0's.
-*/
+/**
+ * This is part of PriFi's main loop. This is what happens in one round, for this client.
+ * We receive some downstream data. It should be encrypted, and we should test if this data is for us or not; is so, push it into the SOCKS/VPN chanel.
+ * For now, we do nothing with the downstream data.
+ * Once we received some data from the relay, we need to reply with a DC-net cell (that will get combined with other client's cell to produce some plaintext).
+ * If we're lucky (if this is our slot), we are allowed to embed some message (which will be the output produced by the relay). Either we send something from the
+ * SOCKS/VPN data, or if we're running latency tests, we send a "ping" message to compute the latency. If we have nothing to say, we send 0's.
+ */
 func (p *PriFiProtocol) Received_REL_CLI_DOWNSTREAM_DATA(msg REL_CLI_DOWNSTREAM_DATA) error {
 
 	p.clientState.Lock()
@@ -243,15 +245,14 @@ func (p *PriFiProtocol) Received_REL_CLI_DOWNSTREAM_DATA(msg REL_CLI_DOWNSTREAM_
 	return nil
 }
 
-/*
-Received_REL_CLI_UDP_DOWNSTREAM_DATA handles REL_CLI_UDP_DOWNSTREAM_DATA messages which are part of PriFi's main loop.
-This is what happens in one round, for this client.
-We receive some downstream data. It should be encrypted, and we should test if this data is for us or not; is so, push it into the SOCKS/VPN chanel.
-For now, we do nothing with the downstream data.
-Once we received some data from the relay, we need to reply with a DC-net cell (that will get combined with other client's cell to produce some plaintext).
-If we're lucky (if this is our slot), we are allowed to embed some message (which will be the output produced by the relay). Either we send something from the
-SOCKS/VPN data, or if we're running latency tests, we send a "ping" message to compute the latency. If we have nothing to say, we send 0's.
-*/
+/**
+ * This is part of PriFi's main loop. This is what happens in one round, for this client.
+ * We receive some downstream data. It should be encrypted, and we should test if this data is for us or not; is so, push it into the SOCKS/VPN chanel.
+ * For now, we do nothing with the downstream data.
+ * Once we received some data from the relay, we need to reply with a DC-net cell (that will get combined with other client's cell to produce some plaintext).
+ * If we're lucky (if this is our slot), we are allowed to embed some message (which will be the output produced by the relay). Either we send something from the
+ * SOCKS/VPN data, or if we're running latency tests, we send a "ping" message to compute the latency. If we have nothing to say, we send 0's.
+ */
 func (p *PriFiProtocol) Received_REL_CLI_UDP_DOWNSTREAM_DATA(msg REL_CLI_DOWNSTREAM_DATA) error {
 
 	p.clientState.Lock()
@@ -289,11 +290,11 @@ func (p *PriFiProtocol) Received_REL_CLI_UDP_DOWNSTREAM_DATA(msg REL_CLI_DOWNSTR
 	return nil
 }
 
-/*
-ProcessDownStreamData handles the downstream data. After determining if the data is for us (this is not done yet), we test if it's a
-latency-test message, test if the resync flag is on (which triggers a re-setup).
-When this function ends, it calls SendUpstreamData() which continues the communication loop.
-*/
+/**
+ * This function handle the downstream data. After determining if the data is for us (this is not done yet), we test if it's a
+ * latency-test message, test if the resync flag is on (which triggers a re-setup).
+ * When this function ends, it calls SendUpstreamData() which continues the communication loop.
+ */
 func (p *PriFiProtocol) ProcessDownStreamData(msg REL_CLI_DOWNSTREAM_DATA) error {
 
 	/*
@@ -301,7 +302,7 @@ func (p *PriFiProtocol) ProcessDownStreamData(msg REL_CLI_DOWNSTREAM_DATA) error
 	 */
 
 	//pass the data to the VPN/SOCKS5 proxy, if enabled
-	if p.clientState.DataOutputEnabled /*Temporarily*/ && p.clientState.Id == 1 {
+	if p.clientState.DataOutputEnabled /*Temporarely*/ && p.clientState.Id == 1 {
 		p.clientState.DataFromDCNet <- msg.Data //TODO : this should be encrypted, and we need to check if it's our data
 	}
 	//test if it is the answer from our ping (for latency test)
@@ -335,11 +336,16 @@ func (p *PriFiProtocol) ProcessDownStreamData(msg REL_CLI_DOWNSTREAM_DATA) error
 	return p.SendUpstreamData()
 }
 
-/*
-SendUpstreamData determines if it's our round, embeds data (maybe latency-test message) in the payload if we can,
-creates the DC-net cipher and sends it to the relay.
+/**
+ * This function determines if it's our round, emebed data (maybe latency-test message) in the payload if we can, creates the
+ * DC-net cipher, and send it to the relay.
+ *
  */
 func (p *PriFiProtocol) SendUpstreamData() error {
+	/*
+	 * PRODUCE THE UPSTREAM DATA
+	 */
+
 	//TODO: maybe make this into a method func (p *PrifiProtocol) isMySlot() bool {}
 	//write the next upstream slice. First, determine if we can embed payload this round
 	currentRound := p.clientState.RoundNo % int32(p.clientState.nClients)
@@ -407,13 +413,13 @@ func (p *PriFiProtocol) SendUpstreamData() error {
 	return nil
 }
 
-/*
-Received_REL_CLI_TELL_TRUSTEES_PK handles REL_CLI_TELL_TRUSTEES_PK messages. These are sent when we connect.
-The relay sends us a pack of public key which correspond to the set of pre-agreed trustees.
-Of course, there should be check on those public keys (each client need to trust one), but for now we assume those public keys belong indeed to the trustees,
-and that clients have agreed on the set of trustees.
-Once we receive this message, we need to reply with our Public Key (Used to derive DC-net secrets), and our Ephemeral Public Key (used for the Shuffle protocol)
-*/
+/**
+ * This happens when we connect.
+ * The relay sends us a pack of public key which correspond to the set of pre-agreed trustees.
+ * Of course, there should be check on those public keys (each client need to trust one), but for now we assume those public keys belong indeed to the trustees,
+ * and that clients have agreed on the set of trustees.
+ * Once we receive this message, we need to reply with our Public Key (Used to derive DC-net secrets), and our Ephemeral Public Key (used for the Shuffle protocol)
+ */
 func (p *PriFiProtocol) Received_REL_CLI_TELL_TRUSTEES_PK(msg REL_CLI_TELL_TRUSTEES_PK) error {
 
 	p.clientState.Lock()
@@ -467,17 +473,15 @@ func (p *PriFiProtocol) Received_REL_CLI_TELL_TRUSTEES_PK(msg REL_CLI_TELL_TRUST
 	return nil
 }
 
-/*
-Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG handles REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG messages.
-These are sent after the Shuffle protocol has been done by the Trustees and the Relay.
-The relay is sending us the result, so we should check that the protocol went well :
-1) each trustee announced must have signed the shuffle
-2) we need to locate which is our slot <-- THIS IS BUGGY NOW
-When this is done, we are ready to communicate !
-As the client should send the first data, we do so; to keep this function simple, the first data is blank
-(the message has no content / this is a wasted message). The actual embedding of data happens only in the
-"round function", that is Received_REL_CLI_DOWNSTREAM_DATA().
-*/
+/**
+ * This happens after the Shuffle protocol has been done by the Trustees and the Relay.
+ * The relay is sending us the result, so we should check that the protocol went well :
+ * 1) each trustee announced must have signed the shuffle
+ * 2) we need to locate which is our slot <-- THIS IS BUGGY NOW
+ * When this is done, we are ready to communicate !
+ * As the client should send the first data, we do so; to keep this function simple, the first data is blank (the message has no content / this is a wasted message). The
+ * actual embedding of data happens only in the "round function", that is Received_REL_CLI_DOWNSTREAM_DATA()
+ */
 func (p *PriFiProtocol) Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(msg REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG) error {
 
 	p.clientState.Lock()
@@ -577,7 +581,9 @@ func (p *PriFiProtocol) Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(msg REL_C
 	return nil
 }
 
-// generateEphemeralKeys is an auxiliary function used by Received_REL_CLI_TELL_TRUSTEES_PK
+/**
+ * Auxiliary function used by Received_REL_CLI_TELL_TRUSTEES_PK
+ */
 func (clientState *ClientState) generateEphemeralKeys() {
 
 	//prepare the crypto parameters
@@ -593,7 +599,9 @@ func (clientState *ClientState) generateEphemeralKeys() {
 
 }
 
-// MsTimeStamp returns the current timestamp, in milliseconds.
+/**
+ * Auxiliary function that returns the current timestamp, in miliseconds
+ */
 func MsTimeStamp() int64 {
 	//http://stackoverflow.com/questions/24122821/go-golang-time-now-unixnano-convert-to-milliseconds
 	return time.Now().UnixNano() / int64(time.Millisecond)

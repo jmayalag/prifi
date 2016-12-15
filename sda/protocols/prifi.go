@@ -67,6 +67,16 @@ func (p *PriFiSDAWrapper) Start() error {
 	return nil
 }
 
+// Stop aborts the current execution of the protocol.
+func (p *PriFiSDAWrapper) Stop() {
+	err := p.prifiProtocol.Received_ALL_REL_SHUTDOWN(prifi_lib.ALL_ALL_SHUTDOWN{})
+	if err != nil {
+		log.Error("Could not stop PriFi:", err)
+	} else {
+		p.Shutdown()
+	}
+}
+
 /**
  * On initialization of the PriFi-SDA-Wrapper protocol, it need to register the PriFi-Lib messages to be able to marshall them.
  * If we forget some messages there, it will crash when PriFi-Lib will call SendToXXX() with this message !

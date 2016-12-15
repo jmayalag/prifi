@@ -1,13 +1,15 @@
 /*
-Prifi-app starts a cothority node in either trustee, relay or client mode.
-*/
+* Prifi-app starts a cothority node in either trustee, relay or client mode.
+ */
 package main
 
 import (
-	"fmt"
 	"os"
-	"os/user"
+
 	"path"
+
+	"fmt"
+	"os/user"
 	"runtime"
 
 	"github.com/dedis/cothority/app/lib/config"
@@ -22,13 +24,10 @@ import (
 // folder with this name
 const DefaultName = "prifi"
 
-// Default name of configuration file
+// DefaultServerConfig is the default name of a server configuration file
 const DefaultServerConfig = "config.toml"
-
-// Default name of group file
 const DefaultGroupConfig = "group.toml"
 
-// This app can launch the prifi service in either client, trustee or relay mode
 func main() {
 	app := cli.NewApp()
 	app.Name = "prifi"
@@ -87,9 +86,10 @@ func main() {
 		return nil
 	}
 	app.Run(os.Args)
+
 }
 
-// trustee start the cothority in trustee-mode using the already stored configuration.
+// Start the cothority in trustee-mode using the already stored configuration.
 func trustee(c *cli.Context) error {
 	log.Info("Starting trustee")
 	host, err := cothorityd(c)
@@ -103,7 +103,7 @@ func trustee(c *cli.Context) error {
 	return nil
 }
 
-// relay starts the cothority in relay-mode using the already stored configuration.
+// Start the cothority in relay-mode using the already stored configuration.
 func relay(c *cli.Context) error {
 	log.Info("Starting relay")
 	host, err := cothorityd(c)
@@ -117,7 +117,7 @@ func relay(c *cli.Context) error {
 	return nil
 }
 
-// client starts the cothority in client-mode using the already stored configuration.
+// Start the cothority in client-mode using the already stored configuration.
 func client(c *cli.Context) error {
 	log.Info("Starting client")
 	host, err := cothorityd(c)
@@ -131,13 +131,13 @@ func client(c *cli.Context) error {
 	return nil
 }
 
-// setupCothorityd sets up a new cothority node configuration (used by all prifi modes)
+// Sets up a new cothorityd which is used for every type of prifi-mode.
 func setupCothorityd(c *cli.Context) error {
 	server.InteractiveConfig("cothorityd")
 	return nil
 }
 
-// Starts the cothority node to enable communication with the prifi-service.
+// Starts the cothorityd to enable communication with the prifi-service.
 // Returns the prifi-service.
 func cothorityd(c *cli.Context) (*sda.Conode, error) {
 	// first check the options
@@ -154,7 +154,6 @@ func cothorityd(c *cli.Context) (*sda.Conode, error) {
 	return host, nil
 }
 
-// getDefaultFile creates a path to the default config folder and appends fileName to it.
 func getDefaultFile(fileName string) string {
 	u, err := user.Current()
 	// can't get the user dir, so fallback to current working dir
@@ -176,7 +175,7 @@ func getDefaultFile(fileName string) string {
 	}
 }
 
-// getGroup reads the group-file and returns it.
+// Reads the group-file and returns it
 func getGroup(c *cli.Context) *config.Group {
 	gfile := c.GlobalString("group")
 	gr, err := os.Open(gfile)

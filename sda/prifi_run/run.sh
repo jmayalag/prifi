@@ -6,15 +6,11 @@ dbg_lvl=3
 conf_file="config.toml"
 group_file="group.toml"
 bin_file="$GOPATH/src/github.com/lbarman/prifi_dev/sda/app/prifi.go"
-colors="true"
-
-errorMsg="\e[31m\e[1m[error]\e[97m\e[0m"
-okMsg="\e[32m[ok]\e[97m"
 
 print_usage() {
 	echo "Usage: run.sh <role> <id>"
 	echo "	Role: client, relay or trustee"
-	echo "	Id: integer (only for client or trustee roles)"
+	echo "	Id: integer, only for relay or trustee roles"
 }
 
 test_digit() {
@@ -44,15 +40,16 @@ fi
 confdir="$PWD/$1$2"
 
 if [ ! -f "$confdir/$conf_file" ]; then
-	echo -e "$errorMsg Config file does not exist: $confdir/$conf_file"
+	echo "Config file does not exist: $confdir/$conf_file"
 	exit
 fi
 
-if [ ! -f "$confdir/$group_file" ]; then
-	echo -e "$errorMsg Group file does not exist: $confdir/$group_file"
+if [ ! -f "$PWD/$group_file" ]; then
+	echo "Group file does not exist: $PWD/$group_file"
 	exit
 fi
 
 # Run PriFi !
-DEBUG_COLOR=$colors go run $bin_file -c "$confdir/$conf_file" -g "$PWD/$group_file" -d "$dbg_lvl" "$1"
-echo -e "$okMsg Script done."
+
+go run $bin_file -c "$confdir/$conf_file" -g "$PWD/$group_file" -d "$dbg_lvl" "$1"
+

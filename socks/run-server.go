@@ -1,5 +1,3 @@
-// Launches a SOCKS5 server that listens to PriFi traffic
-// and forwards all connections.
 package main
 
 import (
@@ -46,8 +44,6 @@ const (
 	repAddressTypeNotSupported
 )
 
-// Launches a SOCKS5 server that listens to PriFi traffic
-// and forwards all connections.
 func main() {
 
 	fmt.Println("Launching server...")
@@ -67,8 +63,9 @@ func main() {
 }
 
 /**
- * HandleClient is a channel handler assigned for a certain connection ID which handles the packets sent by the client with that ID
+ * Channel Handler assigned for a certain connection ID which handles the packets sent by the client with that ID
  */
+
 func HandleClient(conn net.Conn) {
 
 	// Create a channel reader
@@ -196,8 +193,8 @@ func proxyPackets(fromConn net.Conn, toConn net.Conn) {
 	}
 }
 
-/*
-readIP reads an IPv4 or IPv6 address from an io.Reader and return it as a string.
+/**
+ * Read an IPv4 or IPv6 address from an io.Reader and return it as a string
  */
 func readIP(r io.Reader, len int) (net.IP, error) {
 	errorIP := make(net.IP, net.IPv4len)
@@ -210,8 +207,8 @@ func readIP(r io.Reader, len int) (net.IP, error) {
 	return net.IP(addr), nil
 }
 
-/*
-readSocksAddr extracts the address content from a SOCKS message.
+/**
+ * Extracts the address content from a SOCKS message
  */
 func readSocksAddr(cr io.Reader, addrtype int) (net.IP, error) {
 
@@ -250,8 +247,8 @@ func readSocksAddr(cr io.Reader, addrtype int) (net.IP, error) {
 
 }
 
-/*
-createSocksReply creates a reply for the SOCKS5 client Request.
+/**
+ * Creates a reply for the SOCKS5 client Request
  */
 func createSocksReply(replyCode int, addr net.Addr) []byte {
 

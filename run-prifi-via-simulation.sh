@@ -1,9 +1,4 @@
 #!/bin/bash
-errorMsg="\e[31m\e[1m[error]\e[97m\e[0m"
-
-echo -e "$errorMsg not supported."
-exit
-
 lvl=3
 if [ $# -eq 1 ]
   then

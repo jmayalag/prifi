@@ -1,11 +1,5 @@
 package prifi
 
-/*
-This file contains the implementation of the MessageSender
-interface from the PriFi library. It is used by the library
-to send messages between participants.
- */
-
 import (
 	"errors"
 	"strconv"
@@ -16,10 +10,10 @@ import (
 	prifi_lib "github.com/lbarman/prifi_dev/prifi-lib"
 )
 
-/*
-MessageSender is the struct we need to give PriFi-Lib so it can send messages.
-It needs to implement the MessageSender interface defined in prifi_lib/prifi.go.
-*/
+/**
+ * This is the struct we need to give PriFi-Lib so it can send messages.
+ * It need to implement the "MessageSender interface" defined in prifi_lib/prifi.go
+ */
 type MessageSender struct {
 	tree     *sda.TreeNodeInstance
 	relay    *sda.TreeNode
@@ -27,7 +21,6 @@ type MessageSender struct {
 	trustees map[int]*sda.TreeNode
 }
 
-// Implements MessageSender interface.
 func (ms MessageSender) SendToClient(i int, msg interface{}) error {
 
 	if client, ok := ms.clients[i]; ok {
@@ -42,7 +35,6 @@ func (ms MessageSender) SendToClient(i int, msg interface{}) error {
 	return nil
 }
 
-// Implements MessageSender interface.
 func (ms MessageSender) SendToTrustee(i int, msg interface{}) error {
 
 	if trustee, ok := ms.trustees[i]; ok {
@@ -57,13 +49,11 @@ func (ms MessageSender) SendToTrustee(i int, msg interface{}) error {
 	return nil
 }
 
-// Implements MessageSender interface.
 func (ms MessageSender) SendToRelay(msg interface{}) error {
 	log.Lvl5("Sending a message to relay ", " - ", msg)
 	return ms.tree.SendTo(ms.relay, msg)
 }
 
-// Implements MessageSender interface.
 func (ms MessageSender) BroadcastToAllClients(msg interface{}) error {
 
 	castedMsg, canCast := msg.(*prifi_lib.REL_CLI_DOWNSTREAM_DATA_UDP)
@@ -75,7 +65,6 @@ func (ms MessageSender) BroadcastToAllClients(msg interface{}) error {
 	return nil
 }
 
-// Implements MessageSender interface.
 func (ms MessageSender) ClientSubscribeToBroadcast(clientName string, protocolInstance *prifi_lib.PriFiProtocol, startStopChan chan bool) error {
 
 	log.Lvl3(clientName, " started UDP-listener helper.")

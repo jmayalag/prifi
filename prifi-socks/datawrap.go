@@ -6,7 +6,6 @@ import (
 	"net"
 )
 
-// Possible message/packet types.
 const (
 	DummyData = iota
 	SocksConnect
@@ -17,14 +16,14 @@ const (
 	SocksError
 )
 
-// Size of the data wrapper header.
 const (
 	DataWrapHeaderSize = uint16(10)
 )
 
-/*
-dataWrap represents the packet communicated across the network. It contains the header components and the data.
+/**
+ * The "dataWrap" struct represents the packet communicated accross the network. With the header components and the data.
  */
+
 type dataWrap struct {
 	// Header
 	Type          uint16
@@ -36,9 +35,10 @@ type dataWrap struct {
 	Data []byte // The data segment of the packet (Always of size PacketLength-HeaderLength)
 }
 
-/*
-ToBytes converts the struct into bytes.
+/**
+ * Converts the struct into bytes
  */
+
 func (d *dataWrap) ToBytes() []byte {
 
 	// Make sure the data and messagelength are of appropriate length
@@ -55,9 +55,10 @@ func (d *dataWrap) ToBytes() []byte {
 	return append(buffer, d.Data...) // Append the data to the header
 }
 
-/*
-NewDataWrap creates a new datawrap packet.
+/**
+ * Creates a new datawrap packet
  */
+
 func NewDataWrap(Type uint16, ID uint32, MessageLength uint16, PacketLength uint16, Data []byte) dataWrap {
 	// Make sure the received data and messagelength are of appropriate length
 	Data, MessageLength = cleanData(Data, MessageLength, PacketLength)
@@ -65,13 +66,14 @@ func NewDataWrap(Type uint16, ID uint32, MessageLength uint16, PacketLength uint
 	return dataWrap{Type, ID, MessageLength, PacketLength, Data} //Create the new packet
 }
 
-/*
-cleanData checks for consistency withing the data in the packet and fixes any inconsistencies
-
-Properties:
-	- Actual message length cannot exceed the maximum possible length (which is PacketLength - HeaderLength)
-	- Data should always be at maximum possible length, padding is added if needed
+/**
+ * Checks for consistency withing the data in the packet and fixes any inconsistencies
+ *
+ * Properties:
+ *     - Actual message length cannot exceed the maximum possible length (which is PacketLength - HeaderLength)
+ *     - Data should always be at maximum possible length, padding is added if needed
  */
+
 func cleanData(data []byte, messageLength uint16, packetLength uint16) ([]byte, uint16) {
 
 	// Get the maximum possible length of the data
@@ -101,9 +103,10 @@ func trimBytes(data []byte) []byte {
 	return newData.ToBytes()
 }
 
-/*
-readFull reads the full datawarp packet: Header + Data.
+/**
+ * Reads the full datawarp packet: Header + Data
  */
+
 func readFull(connReader io.Reader) (dataWrap, error) {
 
 	// Read the header
@@ -121,9 +124,10 @@ func readFull(connReader io.Reader) (dataWrap, error) {
 	return NewDataWrap(packetType, connID, messageLength, packetLength, message), nil
 }
 
-/*
-readHeader reads only the Header of the datawarp packet.
+/**
+ * Reads only the Header of the datawarp packet
  */
+
 func readHeader(connReader io.Reader) (uint16, uint32, uint16, uint16, error) {
 
 	controlHeader := make([]byte, DataWrapHeaderSize) // Byte buffer to store the header
@@ -141,9 +145,10 @@ func readHeader(connReader io.Reader) (uint16, uint32, uint16, uint16, error) {
 
 }
 
-/*
-readMessage reads only the Data of the datawarp packet.
+/**
+ * Reads only the Data of the datawarp packet
  */
+
 func readMessage(connReader io.Reader, length uint16) ([]byte, error) {
 
 	message := make([]byte, length)            // Byte buffer to store the data
@@ -156,16 +161,18 @@ func readMessage(connReader io.Reader, length uint16) ([]byte, error) {
 	return message, nil
 }
 
-/*
-sendMessage sends a packet through an active connection.
+/**
+ * Sends a packet thjrough an active connection
  */
+
 func sendMessage(conn net.Conn, data dataWrap) {
 	conn.Write(data.ToBytes())
 }
 
-/*
-ExtractFull extracts the datawrap packet from an array of bytes.
+/**
+ * Extracts the datawrap packet from an array of bytes
  */
+
 func ExtractFull(buffer []byte) dataWrap {
 
 	if len(buffer) < int(DataWrapHeaderSize) {
@@ -182,8 +189,8 @@ func ExtractFull(buffer []byte) dataWrap {
 
 }
 
-/*
-ExtractHeader extracts the datawrap header from an array of bytes.
+/**
+ * Extracts the datawrap header from an array of bytes
  */
 func ExtractHeader(buffer []byte) (uint16, uint32, uint16, uint16) {
 

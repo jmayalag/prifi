@@ -8,7 +8,6 @@ type chanreader struct {
 	eof bool
 }
 
-// Read reads bytes into an array and returns the number of read bytes.
 func (cr *chanreader) Read(p []byte) (n int, err error) {
 	if cr.eof {
 		return 0, io.EOF

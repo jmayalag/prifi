@@ -1,42 +1,42 @@
 package prifi
 
-/*
-PriFi Relay
-************
-This regroups the behavior of the PriFi relay.
-Needs to be instantiated via the PriFiProtocol in prifi.go
-Then, this file simple handle the answer to the different message kind :
-Always make sure to use the locks in the lockPool in the order they appear:
-Locking Guideline: Assume lock A appears before lock B in the lockPool and you want to lock A and B, lock A before B. If B is locked and you want to lock A, unlock B then lock A and re-lock B.
-
-- ALL_ALL_SHUTDOWN - kill this relay
-- ALL_ALL_PARAMETERS (specialized into ALL_REL_PARAMETERS) - used to initialize the relay over the network / overwrite its configuration
-- TRU_REL_TELL_PK - when a trustee connects, he tells us his public key
-- CLI_REL_TELL_PK_AND_EPH_PK - when they receive the list of the trustees, each clients tells his identity. when we have all client's IDs,
-								  we send them to the trustees to shuffle (Schedule protocol)
-- TRU_REL_TELL_NEW_BASE_AND_EPH_PKS - when we receive the result of one shuffle, we forward it to the next trustee
-- TRU_REL_SHUFFLE_SIG - when the shuffle has been done by all trustee, we send the transcript, and they answer with a signature, which we
-						   broadcast to the clients
-- CLI_REL_UPSTREAM_DATA - data for the DC-net
-- REL_CLI_UDP_DOWNSTREAM_DATA - is NEVER received here, but casted to CLI_REL_UPSTREAM_DATA by messages.go
-- TRU_REL_DC_CIPHER - data for the DC-net
-
-local functions :
-
-ConnectToTrustees() - simple helper
-finalizeUpstreamData() - called after some Receive_CLI_REL_UPSTREAM_DATA, when we have all ciphers.
-sendDownstreamData() - called after a finalizeUpstreamData(), to continue the communication
-checkIfRoundHasEndedAfterTimeOut_Phase1() - called by sendDownstreamData(), which starts a new round. After some short time, if the round hasn't changed, and we used UDP,
-											   retransmit messages to client over TCP
-checkIfRoundHasEndedAfterTimeOut_Phase2() - called by checkIfRoundHasEndedAfterTimeOut_Phase1(). After some long time, entities that didn't send us data should be
-considered disconnected
-
-TODO : We should timeout if some client did not send anything after a while
-TODO : given the number of already-buffered Ciphers (per trustee), we need to tell him to slow down
-TODO : if something went wrong before, this flag should be used to warn the clients that the config has changed
-TODO : sanity check that we don't have twice the same client
-TODO : create a "send" function that takes as parameter the data we want and the message to print if an error occurs (since the sending block always looks the same)
-*/
+/**
+ * PriFi Relay
+ * ************
+ * This regroups the behavior of the PriFi relay.
+ * Needs to be instantiated via the PriFiProtocol in prifi.go
+ * Then, this file simple handle the answer to the different message kind :
+ * Always make sure to use the locks in the lockPool in the order they appear:
+ * Locking Guideline: Assume lock A appears before lock B in the lockPool and you want to lock A and B, lock A before B. If B is locked and you want to lock A, unlock B then lock A and re-lock B.
+ *
+ * - ALL_ALL_SHUTDOWN - kill this relay
+ * - ALL_ALL_PARAMETERS (specialized into ALL_REL_PARAMETERS) - used to initialize the relay over the network / overwrite its configuration
+ * - TRU_REL_TELL_PK - when a trustee connects, he tells us his public key
+ * - CLI_REL_TELL_PK_AND_EPH_PK - when they receive the list of the trustees, each clients tells his identity. when we have all client's IDs,
+ * 								  we send them to the trustees to shuffle (Schedule protocol)
+ * - TRU_REL_TELL_NEW_BASE_AND_EPH_PKS - when we receive the result of one shuffle, we forward it to the next trustee
+ * - TRU_REL_SHUFFLE_SIG - when the shuffle has been done by all trustee, we send the transcript, and they answer with a signature, which we
+ * 						   broadcast to the clients
+ * - CLI_REL_UPSTREAM_DATA - data for the DC-net
+ * - REL_CLI_UDP_DOWNSTREAM_DATA - is NEVER received here, but casted to CLI_REL_UPSTREAM_DATA by messages.go
+ * - TRU_REL_DC_CIPHER - data for the DC-net
+ *
+ * local functions :
+ *
+ * ConnectToTrustees() - simple helper
+ * finalizeUpstreamData() - called after some Receive_CLI_REL_UPSTREAM_DATA, when we have all ciphers.
+ * sendDownstreamData() - called after a finalizeUpstreamData(), to continue the communication
+ * checkIfRoundHasEndedAfterTimeOut_Phase1() - called by sendDownstreamData(), which starts a new round. After some short time, if the round hasn't changed, and we used UDP,
+ *											   retransmit messages to client over TCP
+ * checkIfRoundHasEndedAfterTimeOut_Phase2() - called by checkIfRoundHasEndedAfterTimeOut_Phase1(). After some long time, entities that didn't send us data should be
+ *											   considered disconnected
+ *
+ * TODO : We should timeout if some client did not send anything after a while
+ * TODO : given the number of already-buffered Ciphers (per trustee), we need to tell him to slow down
+ * TODO : if something went wrong before, this flag should be used to warn the clients that the config has changed
+ * TODO : sanity check that we don't have twice the same client
+ * TODO : create a "send" function that takes as parameter the data we want and the message to print if an error occurs (since the sending block always looks the same)
+ */
 
 import (
 	"encoding/binary"
@@ -60,14 +60,11 @@ const INBETWEEN_CONFIG_SLEEP_TIME = 0 * time.Second
 const NEWCLIENT_CHECK_SLEEP_TIME = 10 * time.Millisecond
 const CLIENT_READ_TIMEOUT = 5 * time.Second
 const RELAY_FAILED_CONNECTION_WAIT_BEFORE_RETRY = 10 * time.Second
-
-// Trustees stop sending when capacity <= lower limit
-const TRUSTEE_WINDOW_LOWER_LIMIT = 1
+const TRUSTEE_WINDOW_LOWER_LIMIT = 1 // Trustees stop sending when capacity <= lower limit
 const MAX_ALLOWED_TRUSTEE_CIPHERS_BUFFERED = 10
-// Trustees resume sending when capacity = lower limit + ratio*(max - lower limit)
-const RESUME_SENDING_CAPACITY_RATIO = 0.9
+const RESUME_SENDING_CAPACITY_RATIO = 0.9 // Trustees resume sending when capacity = lower limit + ratio*(max - lower limit)
 
-// Possible states the trustees are in. This restrict the kind of messages they can receive at a given point in time.
+// Possible state the trustees are in. This restrict the kind of messages they can receive at a given point
 const (
 	RELAY_STATE_BEFORE_INIT int16 = iota
 	RELAY_STATE_COLLECTING_TRUSTEES_PKS
@@ -78,7 +75,7 @@ const (
 	RELAY_STATE_SHUTDOWN
 )
 
-// NodeRepresentation regroups the information about one client or trustee.
+// This regroups the information about one client/trustee
 type NodeRepresentation struct {
 	Id                 int
 	Connected          bool
@@ -86,7 +83,7 @@ type NodeRepresentation struct {
 	EphemeralPublicKey abstract.Point
 }
 
-// NeffShuffleState is where the Neff Shuffles are accumulated during the Schedule protocol.
+// This is where the Neff Shuffles are accumulated during the Schedule protocol
 type NeffShuffleState struct {
 	ClientPublicKeys  []abstract.Point
 	G_s               []abstract.Point
@@ -97,7 +94,7 @@ type NeffShuffleState struct {
 	signature_count   int
 }
 
-// DCNetRound counts how many (upstream) messages we received for a given DC-net round.
+// Is counts how many (upstream) messages we received for a given DC-net round
 type DCNetRound struct {
 	currentRound       int32
 	trusteeCipherCount int
@@ -108,7 +105,7 @@ type DCNetRound struct {
 	startTime          time.Time
 }
 
-// hasAllCiphers tests if we received all DC-net ciphers (1 per client, 1 per trustee)
+// Test if we received all DC-net ciphers (1 per client, 1 per trustee)
 func (dcnet *DCNetRound) hasAllCiphers(p *PriFiProtocol) bool {
 	if p.relayState.nClients == dcnet.clientCipherCount && p.relayState.nTrustees == dcnet.trusteeCipherCount {
 		return true
@@ -116,13 +113,13 @@ func (dcnet *DCNetRound) hasAllCiphers(p *PriFiProtocol) bool {
 	return false
 }
 
-// BufferedCipher holds the ciphertexts received in advance from the trustees.
+// Holds the ciphertexts received in advance from the trustees
 type BufferedCipher struct {
 	RoundId int32
 	Data    map[int][]byte
 }
 
-// lockPool contains the locks used to ensure thread-safe concurrency
+// These are the locks used to ensure thread-safe concurrency
 // To avoid deadlocks, make sure to ALWAYS use the locks in the order they appear in the lockPool (this means an unlock and a re-lock of a variable is sometimes required in places where it seems redundant to unlock that variable)
 // DO NOT rearrange these locks, NEW locks should be appended to the lockPool
 type lockPool struct {
@@ -138,10 +135,10 @@ type lockPool struct {
 	trustees      sync.RWMutex
 	expData       sync.RWMutex
 
-	// add new locks here
+	// add new lock here
 }
 
-// RelayState contains the mutable state of the relay.
+// The mutable variable held by the client
 type RelayState struct {
 	// RelayPort				string
 	// PublicKey				abstract.Point
@@ -179,10 +176,9 @@ type RelayState struct {
 	locks                    lockPool
 }
 
-/*
-NewRelayState initializes the state of this relay.
-It must be called before anything else.
-*/
+/**
+ * Used to initialize the state of this relay. Must be called before anything else.
+ */
 func NewRelayState(nTrustees int, nClients int, upstreamCellSize int, downstreamCellSize int, windowSize int, useDummyDataDown bool, experimentRoundLimit int, experimentResultChan chan interface{}, useUDP bool, dataOutputEnabled bool) *RelayState {
 	params := new(RelayState)
 	params.Name = "Relay"
@@ -222,10 +218,9 @@ func NewRelayState(nTrustees int, nClients int, upstreamCellSize int, downstream
 	return params
 }
 
-/*
-Received_ALL_REL_SHUTDOWN handles ALL_REL_SHUTDOWN messages.
-When we receive this message, we should warn other protocol participants and clean resources.
-*/
+/**
+ * When we receive this message, we should 1) warn others and 2) clean resources
+ */
 func (p *PriFiProtocol) Received_ALL_REL_SHUTDOWN(msg ALL_ALL_SHUTDOWN) error {
 	log.Lvl1("Relay : Received a SHUTDOWN message. ")
 
@@ -264,10 +259,9 @@ func (p *PriFiProtocol) Received_ALL_REL_SHUTDOWN(msg ALL_ALL_SHUTDOWN) error {
 	return nil
 }
 
-/*
-Received_ALL_REL_PARAMETERS handles ALL_REL_PARAMETERS.
-It initializes the relay with the parameters contained in the message.
-*/
+/**
+ * This is the "INIT" message that shares all the public parameters.
+ */
 func (p *PriFiProtocol) Received_ALL_REL_PARAMETERS(msg ALL_ALL_PARAMETERS) error {
 
 	p.relayState.locks.state.Lock() // Lock on state
@@ -302,12 +296,13 @@ func (p *PriFiProtocol) Received_ALL_REL_PARAMETERS(msg ALL_ALL_PARAMETERS) erro
 	return nil
 }
 
-
-// ConnectToTrustees connects to the trustees and initializes them with default parameters.
+/**
+ * This initializes the trustees with default parameters.
+ * TODO : if they are not constants anymore, we need a way to change those fields. For now, trustees don't need much information
+ */
 func (p *PriFiProtocol) ConnectToTrustees() error {
 
 	// Craft default parameters
-	// TODO : if the parameters are not constants anymore, we need a way to change those fields. For now, trustees don't need much information
 	var msg = &ALL_ALL_PARAMETERS{
 		NClients:          p.relayState.nClients,
 		NextFreeTrusteeId: 0,
@@ -335,14 +330,14 @@ func (p *PriFiProtocol) ConnectToTrustees() error {
 	return nil
 }
 
-/*
-Received_CLI_REL_UPSTREAM_DATA handles CLI_REL_UPSTREAM_DATA messages and is part of PriFi's main loop.
-This is what happens in one round, for the relay. We receive some upstream data.
-If we have collected data from all entities for this round, we can call DecodeCell() and get the output.
-If we get data for another round (in the future) we should buffer it.
-If we finished a round (we had collected all data, and called DecodeCell()), we need to finish the round by sending some data down.
-Either we send something from the SOCKS/VPN buffer, or we answer the latency-test message if we received any, or we send 1 bit.
-*/
+/**
+ * This is part of PriFi's main loop. This is what happens in one round, for the relay.
+ * We receive some upstream data. If we have collected data from all entities for this round, we can call DecodeCell() and get the output.
+ * If we get data for another round (in the future) we should buffer it.
+ * TODO : We should timeout if some client did not send anything after a while
+ * If we finished a round (we had collected all data, and called DecodeCell()), we need to finish the round by sending some data down.
+ * Either we send something from the SOCKS/VPN buffer, or we answer the latency-test message if we received any, or we send 1 bit.
+ */
 func (p *PriFiProtocol) Received_CLI_REL_UPSTREAM_DATA(msg CLI_REL_UPSTREAM_DATA) error {
 	p.relayState.locks.state.Lock() // Lock on state
 	// This can only happens in the state RELAY_STATE_COMMUNICATING
@@ -357,7 +352,7 @@ func (p *PriFiProtocol) Received_CLI_REL_UPSTREAM_DATA(msg CLI_REL_UPSTREAM_DATA
 
 	}
 
-	// TODO : We should timeout if some client did not send anything after a while
+	// TODO : add a timeout somewhere here
 
 	p.relayState.locks.round.Lock() // Lock on DCRound
 
@@ -415,13 +410,13 @@ func (p *PriFiProtocol) Received_CLI_REL_UPSTREAM_DATA(msg CLI_REL_UPSTREAM_DATA
 	return nil
 }
 
-/*
-Received_TRU_REL_DC_CIPHER handles TRU_REL_DC_CIPHER messages. Those contain a DC-net cipher from a Trustee.
-If it's for this round, we call decode on it, and remember we received it.
-If for a future round we need to Buffer it.
-*/
+/**
+ * This message happens when we receive a DC-net cipher from a Trustee.
+ * If it's for this round, we call decode on it, and remember we received it.
+ * If for a round in the futur, we need to Buffer it.
+ * TODO : given the number of already-buffered Ciphers (per trustee), we need to tell him to slow down
+ */
 func (p *PriFiProtocol) Received_TRU_REL_DC_CIPHER(msg TRU_REL_DC_CIPHER) error {
-	// TODO : given the number of already-buffered Ciphers (per trustee), we need to tell him to slow down
 
 	p.relayState.locks.state.Lock() // Lock on state
 	// this can only happens in the state RELAY_STATE_COMMUNICATING
@@ -508,13 +503,12 @@ func (p *PriFiProtocol) Received_TRU_REL_DC_CIPHER(msg TRU_REL_DC_CIPHER) error 
 	return nil
 }
 
-/*
-finalizeUpstreamData is simply called when the Relay has received all ciphertexts (one per client, one per trustee),
-and is ready to finalize the
-DC-net round by XORing everything together.
-If it's a latency-test message, we send it back to the clients.
-If we use SOCKS/VPN, give them the data.
-*/
+/**
+ * This is simply called when the Relay has received all ciphertext (one per client, one per trustee), and is ready to finalize the
+ * DC-net round by XORing everything together.
+ * If it's a latency-test message, we send it back to the clients.
+ * If we use SOCKS/VPN, give them the data.
+ */
 func (p *PriFiProtocol) finalizeUpstreamData() error {
 
 	// we decode the DC-net cell
@@ -562,13 +556,13 @@ func (p *PriFiProtocol) finalizeUpstreamData() error {
 	return nil
 }
 
-/*
-sendDownstreamData is simply called when the Relay has processed the upstream cell from all clients, and is ready to finalize the round by sending the data down.
-If it's a latency-test message, we send it back to the clients.
-If we use SOCKS/VPN, give them the data.
-Since after this function, we'll start receiving data for the next round, if we have buffered data for this next round, tell the state that we
-have the data already (and we're not waiting on it). Clean the old data.
-*/
+/**
+ * This is simply called when the Relay has processed the upstream cell from all clients, and is ready to finalize the round by sending the data down.
+ * If it's a latency-test message, we send it back to the clients.
+ * If we use SOCKS/VPN, give them the data.
+ * Since after this function, we'll start receiving data for the next round, if we have buffered data for this next round, tell the state that we
+ * have the data already (and we're not waiting on it). Clean the old data.
+ */
 func (p *PriFiProtocol) sendDownstreamData() error {
 
 	var downstreamCellContent []byte
@@ -726,10 +720,10 @@ func (p *PriFiProtocol) sendDownstreamData() error {
 	return nil
 }
 
-/*
-Received_TRU_REL_TELL_PK handles TRU_REL_TELL_PK messages. Those are sent by the trustees message when we connect them.
-We do nothing, until we have received one per trustee; Then, we pack them in one message, and broadcast it to the clients.
-*/
+/**
+ * We receive this message when we connect to a Trustee.
+ * We do nothing, until we have received one per trustee; Then, we pack them in one message, and broadcast to the clients.
+ */
 func (p *PriFiProtocol) Received_TRU_REL_TELL_PK(msg TRU_REL_TELL_PK) error {
 
 	p.relayState.locks.state.Lock() // Lock on state
@@ -787,12 +781,11 @@ func (p *PriFiProtocol) Received_TRU_REL_TELL_PK(msg TRU_REL_TELL_PK) error {
 	return nil
 }
 
-/*
-Received_CLI_REL_TELL_PK_AND_EPH_PK handles CLI_REL_TELL_PK_AND_EPH_PK messages.
-Those are sent by the client to tell their identity.
-We do nothing until we have collected one per client; then, we pack them in one message
-and send them to the first trustee for it to Neff-Shuffle them.
-*/
+/**
+ * We received this message when the client tells their identity.
+ * We do nothing until we have collected one per client; then, we pack them in one message, and send them to the first trustee for
+ * him to Neff-Shuffle them.
+ */
 func (p *PriFiProtocol) Received_CLI_REL_TELL_PK_AND_EPH_PK(msg CLI_REL_TELL_PK_AND_EPH_PK) error {
 
 	p.relayState.locks.state.Lock() // Lock on state
@@ -868,12 +861,10 @@ func (p *PriFiProtocol) Received_CLI_REL_TELL_PK_AND_EPH_PK(msg CLI_REL_TELL_PK_
 	return nil
 }
 
-/*
-Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS handles TRU_REL_TELL_NEW_BASE_AND_EPH_PKS messages.
-Those are sent by the trustees once they finished a Neff-Shuffle.
-In that case, we forward the result to the next trustee.
-We do nothing until the last trustee sends us this message.
-When this happens, we pack a transcript, and broadcast it to all the trustees who will sign it.
+/**
+ * We receive this message once a trustee has finished a Neff-Shuffle.
+ * In that case, we forward the result to the next trustee.
+ * We do nothing until the last trustee sends us this message. When this happens, we pack a transcript, and broadcast to the trustees (they need to sign it)
  */
 func (p *PriFiProtocol) Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS(msg TRU_REL_TELL_NEW_BASE_AND_EPH_PKS) error {
 
@@ -976,13 +967,11 @@ func (p *PriFiProtocol) Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS(msg TRU_REL_T
 	return nil
 }
 
-/*
-Received_TRU_REL_SHUFFLE_SIG handles TRU_REL_SHUFFLE_SIG messages.
-Those contain the signature from the NeffShuffleS-transcript from one trustee.
-We do nothing until we have all signatures; when we do, we pack those
-in one message with the result of the Neff-Shuffle and send them to the clients.
-When this is done, we are finally ready to communicate. We wait for the client's messages.
-*/
+/**
+ * This happens when we receive the signature from the NeffShuffleS-transcript from one trustee.
+ * We do nothing until we have all signatures; when we do, we pack those in one message, as well as the result of the Neff-Shuffle, and send them to the clients.
+ * When this is done, we are finally ready to communicate. We wait for the client's messages.
+ */
 func (p *PriFiProtocol) Received_TRU_REL_SHUFFLE_SIG(msg TRU_REL_SHUFFLE_SIG) error {
 
 	p.relayState.locks.shuffle.Lock() // Lock on Shuffle
@@ -1046,12 +1035,12 @@ func (p *PriFiProtocol) Received_TRU_REL_SHUFFLE_SIG(msg TRU_REL_SHUFFLE_SIG) er
 	return nil
 }
 
-/*
-This first timeout happens after a short delay. Clients will not be considered disconnected yet,
-but if we use UDP, it can mean that a client missed a broadcast, and we re-sent the message.
-If the round was *not* done, we do another timeout (Phase 2), and then, clients/trustees will be considered
-online if they didn't answer by that time.
-*/
+/**
+ * This first timeout happens after a short delay. Clients will not be considered disconnected yet,
+ * but if we use UDP, it can mean that a client missed a broadcast, and we re-sent the message.
+ * If the round was *not* done, we do another timeout (Phase 2), and then, clients/trustees will be considered
+ * online if they didn't answer by that time.
+ */
 func (p *PriFiProtocol) checkIfRoundHasEndedAfterTimeOut_Phase1(roundId int32) {
 
 	time.Sleep(5 * time.Second)
@@ -1129,9 +1118,9 @@ func (p *PriFiProtocol) checkIfRoundHasEndedAfterTimeOut_Phase1(roundId int32) {
 	//this shouldn't happen frequently (it means that the timeout 1 was fired, but the round finished almost at the same time)
 }
 
-/*
-This second timeout happens after a longer delay. Clients and trustees will be considered offline if they haven't send data yet
-*/
+/**
+ * This second timeout happens after a longer delay. Clients and trustees will be considered offline if they haven't send data yet
+ */
 func (p *PriFiProtocol) checkIfRoundHasEndedAfterTimeOut_Phase2(roundId int32) {
 
 	time.Sleep(5 * time.Second)

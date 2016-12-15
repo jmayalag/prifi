@@ -6,8 +6,8 @@ import (
 )
 
 /*
-Defines the simulation for the service-template to be run with
-`cothority/simul`.
+ * Defines the simulation for the service-template to be run with
+ * `cothority/simul`.
  */
 
 func init() {
@@ -20,7 +20,7 @@ type simulation struct {
 }
 
 // NewSimulation returns the new simulation, where all fields are
-// initialised using the config-file.
+// initialised using the config-file
 func NewSimulation(config string) (sda.Simulation, error) {
 	es := &simulation{}
 	_, err := toml.Decode(config, es)
@@ -30,7 +30,7 @@ func NewSimulation(config string) (sda.Simulation, error) {
 	return es, nil
 }
 
-// Setup creates the tree used for the simulation.
+// Setup creates the tree used for that simulation
 func (e *simulation) Setup(dir string, hosts []string) (
 	*sda.SimulationConfig, error) {
 	sc := &sda.SimulationConfig{}
@@ -43,7 +43,7 @@ func (e *simulation) Setup(dir string, hosts []string) (
 }
 
 // Run is used on the destination machines and runs a number of
-// rounds.
+// rounds
 func (e *simulation) Run(config *sda.SimulationConfig) error {
 	return nil
 }
