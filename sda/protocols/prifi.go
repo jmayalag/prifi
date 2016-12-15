@@ -37,10 +37,10 @@ type PriFiIdentity struct {
 }
 
 type SOCKSConfig struct {
-	Port 		string
-	PayloadLength 	int
-	DataForDCNet 	chan []byte
-	DataFromDCNet 	chan []byte
+	Port              string
+	PayloadLength     int
+	UpstreamChannel   chan []byte
+	DownstreamChannel chan []byte
 }
 
 type PriFiSDAWrapperConfig struct {
@@ -166,8 +166,8 @@ func (p *PriFiSDAWrapper) SetConfig(config *PriFiSDAWrapperConfig) {
 			doLatencyTests,
 			useUDP,
 			sendDataOutOfDCNet,
-			config.ClientSideSocksConfig.DataForDCNet,
-			config.ClientSideSocksConfig.DataFromDCNet)
+			config.ClientSideSocksConfig.UpstreamChannel,
+			config.ClientSideSocksConfig.DownstreamChannel)
 		p.prifiProtocol = prifi_lib.NewPriFiClientWithState(ms, clientState)
 	}
 

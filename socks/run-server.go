@@ -12,6 +12,7 @@ import (
 
 	"github.com/dedis/cothority/log"
 	"flag"
+	"encoding/hex"
 )
 
 // Authentication methods
@@ -90,29 +91,33 @@ func HandleClient(conn net.Conn) {
 	/* SOCKS5 Method Selection Phase */
 
 	// Read SOCKS Version
-	socksVersion, err := readMessage(connReader, 1)
+	socksVersion, err := readBytes(connReader, 1)
 	if err != nil {
 		// handle error
-		fmt.Println("Version Error")
+		log.Error("Socks Server : Cannot read version.")
 		return
 	} else if int(socksVersion[0]) != 5 {
 		// handle socks version
-		fmt.Println("Version:", int(socksVersion[0]))
+		log.Error("Socks Server : Version is ", int(socksVersion[0]), " only 5 is supported.")
 		return
+	} else {
+		log.Lvl2("Socks Server : Version is ", int(socksVersion[0]))
 	}
 
 	// Read SOCKS Number of Methods
-	socksNumOfMethods, err := readMessage(connReader, 1)
+	socksNumOfMethods, err := readBytes(connReader, 1)
 	if err != nil {
 		//handle error
+		log.Error("Socks Server : Cannot read number of methods.")
 		return
 	}
 
 	// Read SOCKS Methods
 	numOfMethods := uint16(socksNumOfMethods[0])
-	socksMethods, err := readMessage(connReader, numOfMethods)
+	socksMethods, err := readBytes(connReader, numOfMethods)
 	if err != nil {
 		//handle error
+		log.Error("Socks Server : Cannot read methods.")
 		return
 	}
 
@@ -126,20 +131,23 @@ func HandleClient(conn net.Conn) {
 	}
 	if !foundMethod {
 		//handle not finding method
+		log.Error("Socks Server : No supported method found.")
 		return
 	}
 
 	//Construct Response Message
 	methodSelectionResponse := []byte{socksVersion[0], byte(methNoAuth)}
+	log.Lvl2("Socks Server : Writing negotiation response...")
+	log.Lvl2(hex.Dump(methodSelectionResponse))
 	conn.Write(methodSelectionResponse)
 
 	/* SOCKS5 Web Server Request Phase */
 
 	// Read SOCKS Request Header (Version, Command, Address Type)
-	requestHeader, err := readMessage(connReader, 4)
+	requestHeader, err := readBytes(connReader, 4)
 	if err != nil {
 		//handle error
-		fmt.Println("Request Header Error")
+		log.Error("Socks Server : cannot read header.")
 		return
 	}
 
@@ -147,15 +155,15 @@ func HandleClient(conn net.Conn) {
 	destinationIP, err := readSocksAddr(connReader, int(requestHeader[3]))
 	if err != nil {
 		//handle error
-		fmt.Println("IP Address Error")
+		log.Error("Socks Server : cannot read IP.")
 		return
 	}
 
 	// Read Web Server Port
-	destinationPortBytes, err := readMessage(connReader, 2)
+	destinationPortBytes, err := readBytes(connReader, 2)
 	if err != nil {
 		//handle error
-		fmt.Println("Destination Port Error")
+		log.Error("Socks Server : cannot read Port.")
 		return
 	}
 
@@ -168,10 +176,10 @@ func HandleClient(conn net.Conn) {
 	case cmdConnect: // Process "Connect" command
 
 		//Connect to the web server
-		fmt.Println("Connecting to Web Server @", destinationAddress)
+		log.Lvl2("Socks Server : contacting server ", destinationAddress)
 		webConn, err := net.Dial("tcp", destinationAddress)
 		if err != nil {
-			fmt.Println("Failed to connect to web server")
+			log.Error("Socks Server : error contacting server ", destinationAddress)
 			return
 		}
 
@@ -184,7 +192,7 @@ func HandleClient(conn net.Conn) {
 		go proxyPackets(conn, webConn)
 
 	default:
-		fmt.Println("Cannot Process Command")
+		log.Error("Socks Server : unknown command", int(requestHeader[1]))
 	}
 
 }
@@ -316,7 +324,7 @@ func createSocksReply(replyCode int, addr net.Addr) []byte {
 
 }
 
-func readMessage(connReader io.Reader, length uint16) ([]byte, error) {
+func readBytes(connReader io.Reader, length uint16) ([]byte, error) {
 
 	message := make([]byte, length)            // Byte buffer to store the data
 	_, err := io.ReadFull(connReader, message) // Read the data
