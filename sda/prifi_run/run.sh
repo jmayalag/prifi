@@ -2,12 +2,13 @@
 
 # Script variables
 
-dbg_lvl=2
+dbg_lvl=3
 conf_file="config.toml"
 group_file="group.toml"
 prifi_file="prifi.toml"
 bin_file="$GOPATH/src/github.com/lbarman/prifi_dev/sda/app/prifi.go"
 colors="true"
+port=12345
 
 errorMsg="\e[31m\e[1m[error]\e[97m\e[0m"
 okMsg="\e[32m[ok]\e[97m"
@@ -61,4 +62,4 @@ fi
 
 # Run PriFi !
 
-DEBUG_COLOR=$colors go run $bin_file --cothority_config "$confdir/$conf_file" --group "$PWD/$group_file" -d "$dbg_lvl" --prifi_config "$PWD/$prifi_file" "$1"
+DEBUG_COLOR=$colors go run $bin_file --cothority_config "$confdir/$conf_file" --group "$PWD/$group_file" -d "$dbg_lvl" --prifi_config "$PWD/$prifi_file" --port "$port" "$1"
