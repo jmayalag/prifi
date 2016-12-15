@@ -2,7 +2,7 @@
 
 # Script variables
 
-dbg_lvl=3
+dbg_lvl=2
 conf_file="config.toml"
 group_file="group.toml"
 bin_file="$GOPATH/src/github.com/lbarman/prifi_dev/sda/app/prifi.go"
