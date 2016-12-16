@@ -137,7 +137,7 @@ func StartSocksClient(serverAddress string, upstreamChan chan []byte, downstream
 			if socksConnections[socksConnectionId] != nil {
 				socksConnections[socksConnectionId].Write(packetPayload)
 			} else {
-				log.Error("SOCKS PriFi Client: Got data for an unexisting connection "+strconv.Itoa(int(socksConnectionId))+", dropping.")
+				//log.Error("SOCKS PriFi Client: Got data for an unexisting connection "+strconv.Itoa(int(socksConnectionId))+", dropping.")
 			}
 
 		case SocksClosed: // Indicates a connection has been closed
@@ -349,7 +349,7 @@ func handleSocksClientConnection(tcpConnection net.Conn, connectionId uint32, so
 
 				// Connection Close Indicator
 				if newData.MessageLength == 0 {
-					fmt.Println("Connection", connectionId, "Closed")
+					log.Lvl2("Connection", connectionId, "closed")
 					tcpConnection.Close() // Close the connection
 
 					// Create a connection closed message and send it back

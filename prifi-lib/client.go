@@ -287,8 +287,8 @@ func (p *PriFiProtocol) ProcessDownStreamData(msg REL_CLI_DOWNSTREAM_DATA) error
 	if len(msg.Data) > 1 {
 
 		//pass the data to the VPN/SOCKS5 proxy, if enabled
-		if p.clientState.DataOutputEnabled && p.clientState.Id == 0 {
-			p.clientState.DataFromDCNet <- msg.Data //TODO : this should be encrypted, and we need to check if it's our data
+		if p.clientState.DataOutputEnabled {
+			p.clientState.DataFromDCNet <- msg.Data
 		}
 		//test if it is the answer from our ping (for latency test)
 		if p.clientState.LatencyTest && len(msg.Data) > 2 {

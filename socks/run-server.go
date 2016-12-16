@@ -213,7 +213,7 @@ func proxyPackets(fromConn net.Conn, toConn net.Conn) {
 		messageLength, _ := fromConn.Read(buf)
 
 		if messageLength == 0 { // connection close indicator
-			fmt.Println("Connection Disconnected")
+			log.Lvl3("Connection ended.")
 			fromConn.Close()
 			toConn.Close()
 			return
