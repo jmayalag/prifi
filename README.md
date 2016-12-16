@@ -10,95 +10,93 @@ For more details about PriFi, please check our [WPES 2016 paper](http://www.cs.y
 
 **Warning: This software is experimental and still under development. Do not use it yet for security-critical purposes. Use at your own risk!**
 
+## Understanding the architecture
+
+### Structure
+
 The current code is organized in two main parts :
 
-1) *PriFi-Lib*, which is network-agnostic; it takes an interface "MessageSender" that give it functions like SendToRelay(), SendToTrustee, ... and ReceivedMessage()
+1) `PriFi-Lib`, which is network-agnostic; it takes an interface "MessageSender" that give it functions like SendToRelay(), SendToTrustee, ... and ReceivedMessage()
 
-This approach helps PriFi development, as without the network, the protocol becomes much simpler (at least 50% less line of codes); the goal is to develop new functionalities without knowing anything about the network layer, or SDA.
+This is the core of the protocol PriFi. 
 
+2) `PriFi-SDA-Wrapper` (what is in folder `sda`), that does the mapping between the tree entities of SDA and our roles (Relay, Trustee, Client), and provides the MessageSender interface discussed above.
 
-2) *PriFi-SDA-Wrapper*, that does the mapping between the tree entities of SDA and our roles (Relay, Trustee, Client), and provides the MessageSender interface discussed above.
+The SDA is a framework for Secure Distributed Algorithm, developped by DeDiS, EPFL. It help bootstrapping secure protocols. The "wrapper" is simply the link between this framework and our library `PriFi-lib` (which does not know at all about `sda`).
 
-This binder now uses SDA, which is convenient, but could use any library. In particular, it *could* use SDA *and* direct TCP/UDP streams in parallel for performance reasons.
+### SOCKS
 
-## Running the code
+PriFi anonymizes the traffic via SOCKS proxy. Once PriFi is running, you can configure your SOCKS client (e.g. browser, mail application) to connect to PriFi.
 
-To run the code configuration files and a helper script are provided in
-`sda/prifi_run`. From this folder, we can run
+The structure is a big convoluted : we have *two* socks servers. One is *in* the PriFi client code; that's the entry point of your upstream traffic, e.g. your browser connects to the socks server *in* PriFi on your local machine.
 
+Then, PriFi anonymizes the traffic with the help of the other clients and the relay. The anonymized traffic is outputted at the relay.
+
+This anonymized traffic is *SOCKS traffic*. Hence, the relay needs to connect to the second SOCKS server, which is not related to PriFi (but we provide the code for it in `socks/`). It could also be a remote, public SOCKS server.
+
+## Running PriFi
+
+### SOCKS Preamble
+
+As explained, you need a non-prifi SOCKS server running to handle the traffic from the relay. If you don't have one, run ours :
 ```
-./run.sh relay
-```
-
-to start the relay. We can now start a trustee and two clients to allow
-the protocol to start:
-
-```
-./run.sh trustee 0
-./run.sh client 0
-./run.sh client 1
-```
-
-We can finally start a third client to see the protocol restart:
-
-```
-./run.sh client 2
+./run-socks-proxy.sh 8090
 ```
 
-## Running PriFi standalone
+## Running PriFi
 
-Simply run
-
-`./run-prifi-standalone.sh <role> <id>`
-
-for each different entities. For now, start the relay last. The DebugLVL is specified in `sda/run_prifi/run.sh`.
-
-
-## Running PriFi as a simulation
-
-!!! START : BROKEN !!!
-
-Currently, the PriFi code can be run through a simulation. To run it first
-make sure that:
-
-- `$GOPATH/src/github.com/dedis/cothority` is on branch `master` and pulled to
-the latest version.
-- `$GOPATH/src/github.com/dedis/crypto` is on branch `master` and pulled to
-the latest version.
-- `$GOPATH/src/github.com/lbarman/prifi_dev` is on branch `PriFi-SDA` and
-pulled to the latest version and that you are in this directory.
-
-We can now run the simulation:
+There is one big startup script `run-prifi.sh`. 
 
 ```
-./run-prifi-via-simulation.sh <debug_lvl>
+./run-prifi.sh 
+Usage: run-prifi.sh role/operation [params]
+	role: client, relay, trustee
+	operation: sockstest, all, deploy-all
+	params for role relay: [socks_server_port] (optional, numeric)
+	params for role trustee: id (required, numeric)
+	params for role client: id (required, numeric), [prifi_socks_server_port] (optional, numeric)
+	params for operation all, deploy: none
+	params for operation sockstest, deploy: [socks_server_port] (optional, numeric), [prifi_socks_server_port] (optional, numeric)
+
 ```
 
-It is possible to browse through PriFi using the SOCKS5 integration. To use
-it launch the SOCKS5 server:
+For instance, you can start a relay like this : 
 
 ```
-go run socks/run-server.go
+./run-prifi.sh relay
 ```
 
-and configure your browser to use a SOCKS5 proxy on `localhost` on port `6789`.
+... or to specify the port of the second, non-prifi socks server, like this :
 
-### Simulation parameters
+```
+./run-prifi.sh relay 8090
+```
 
-The configuration for the simulation is located in the Cothority repository,
-in the file `simul/runfiles/prifi_simple.toml`. This file contains the following
-parameters:
+You can start a client like this :
 
-- `Servers (int)`: Number of logical cothority entities. There is a trick here,
-when using udp in local (with channels) we should specify ONE server so
-all entities are run on the same name space, and share the channels.
-Otherwise, this parameter does not have much effect.
+```
+./run-prifi.sh client 0
+```
 
-- `Bf (int)`: Branching factor of cothority's communication tree. Here we
-want a flat tree (1 layer with relay, all nodes directly below).
-- `Rounds (int)`: Numers of round to simulate (not PriFi).
-- `CloseWait (int)`: Wait that much (in milliseconds ?) before killing a
-cothority protocol and going to next simulation round.
+and to specify the port of the first socks proxy integrated in PriFi :
+
+```
+./run-prifi.sh client 0 8080
+```
+
+A typical deployement could be :
+
+```
+./run-prifi.sh relay 8090
+./run-prifi.sh trustee 0
+./run-prifi.sh client 0 8080
+./run-prifi.sh client 1 8081
+```
+
+## Configuration
+
+The PriFi configuration file is in `config.demo/prifi.toml`
+
 - `DataOutputEnbaled (bool)`: Enables the link from and to the socks proxy.
 - `NTrustees (int)`: Number of trustees.
 - `CellSizeUp (int)`: Size of upstream data sent in one PriFi round (?)
@@ -111,35 +109,6 @@ CellSizeDown bits down. When false, it may send only 1 bit.
 - `DoLatencyTests (bool)`: Enable or disable latency tests.
 - `ReportingLimit (int)`: PriFi shuts down after this number of rounds if
 not equal to `-1`.
-- `Hosts (int)`: When NOT in localhost (but in DeterLab), number of physical
-machines to deploy cothority (and PriFi) on.
-
-### Reference configuration file
-
-The following configuration should allow you to run the simulation and browse
-through the SOCKS5 proxy without problems (you can copy it in
-`simul/runfiles/prifi_simple.toml`):
-
-```
-Simulation = "PriFi"
-Servers=5
-Bf = 100
-Rounds = 10
-CloseWait = 6000
-DataOutputEnable = true
-NTrustees = 2
-CellSizeUp = 1000
-CellSizeDown = 10000
-RelayWindowSize = 10
-RelayUseDummyDataDown = false
-RelayReportingLimit = -10
-UseUDP = false
-DoLatencyTests = false
-ReportingLimit = 10
-
-Hosts
-5
-```
 
 ## API Documentation
 
