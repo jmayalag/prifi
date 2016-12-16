@@ -61,6 +61,14 @@ func main() {
 	flag.Parse()
 	log.SetDebugVisible(*debugFlag)
 
+	//check if the port is valid
+	if *portFlag <= 1024 {
+		log.Lvl1("Port number below 1024. Without super-admin privileges, this server will crash.")
+	}
+	if *portFlag > 65535 {
+		log.Fatal("Port number above 65535. Exiting.")
+	}
+
 	//starts the SOCKS exit
 	port := ":"+strconv.Itoa(*portFlag)
 
