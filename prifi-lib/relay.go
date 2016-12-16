@@ -49,6 +49,7 @@ import (
 	"github.com/dedis/crypto/abstract"
 	"github.com/lbarman/prifi_dev/prifi-lib/config"
 	"github.com/lbarman/prifi_dev/prifi-lib/dcnet"
+	prifilog "github.com/lbarman/prifi_dev/prifi-lib/log"
 
 	socks "github.com/lbarman/prifi_dev/prifi-socks"
 )
@@ -178,6 +179,7 @@ type RelayState struct {
 	ExperimentResultChannel  chan interface{}
 	ExperimentResultData     interface{}
 	locks                    lockPool
+	statistics		 *prifilog.Statistics
 }
 
 /*
@@ -206,6 +208,7 @@ func NewRelayState(nTrustees int, nClients int, upstreamCellSize int, downstream
 	params.UseDummyDataDown = useDummyDataDown
 	params.UseUDP = useUDP
 	params.WindowSize = windowSize
+	params.statistics = prifilog.EmptyStatistics(experimentRoundLimit)
 
 	// Prepare the crypto parameters
 	rand := config.CryptoSuite.Cipher([]byte(params.Name))
@@ -454,9 +457,6 @@ func (p *PriFiProtocol) Received_TRU_REL_DC_CIPHER(msg TRU_REL_DC_CIPHER) error 
 			log.Lvl3("Relay has collected all ciphers, decoding...")
 			p.finalizeUpstreamData()
 
-			// sleep so it does not go too fast for debug
-			//time.Sleep(1000 * time.Millisecond)
-
 			// send the data down (to finalize this round)
 			p.sendDownstreamData()
 		} else {
@@ -519,6 +519,8 @@ func (p *PriFiProtocol) finalizeUpstreamData() error {
 	p.relayState.locks.coder.Lock() // Lock on CellCoder
 	upstreamPlaintext := p.relayState.CellCoder.DecodeCell()
 	p.relayState.locks.coder.Unlock() // Unlock CellCoder
+
+	p.relayState.statistics.AddUpstreamCell(int64(len(upstreamPlaintext)))
 
 	// check if we have a latency test message
 	if len(upstreamPlaintext) >= 2 {
@@ -622,19 +624,22 @@ func (p *PriFiProtocol) sendDownstreamData() error {
 				log.Lvl3("Relay : sent REL_CLI_DOWNSTREAM_DATA to " + strconv.Itoa(i+1) + "-th client for round " + strconv.Itoa(int(p.relayState.currentDCNetRound.currentRound)))
 			}
 		}
+
+		p.relayState.statistics.AddDownstreamCell(int64(len(downstreamCellContent)))
 	} else {
 		toSend2 := &REL_CLI_DOWNSTREAM_DATA_UDP{*toSend, make([]byte, 0)} //TODO : this wrapping feels wierd
 		p.messageSender.BroadcastToAllClients(toSend2)
+
+		p.relayState.statistics.AddDownstreamUDPCell(int64(len(downstreamCellContent)), p.relayState.nClients)
 	}
 	log.Lvl3("Relay is done broadcasting messages for round " + strconv.Itoa(int(p.relayState.currentDCNetRound.currentRound)) + ".")
 
 	// prepare for the next round
 	p.relayState.locks.coder.Lock() // Lock on CellCoder
 
-	if false {
-		timeSpent := time.Since(p.relayState.currentDCNetRound.startTime)
-		log.Lvl2("Relay finished round " + strconv.Itoa(int(p.relayState.currentDCNetRound.currentRound)) + " (after", timeSpent, ").")
-	}
+	timeSpent := time.Since(p.relayState.currentDCNetRound.startTime)
+	log.Lvl4("Relay finished round " + strconv.Itoa(int(p.relayState.currentDCNetRound.currentRound)) + " (after", timeSpent, ").")
+	p.relayState.statistics.Report()
 
 	//prepare for the next round
 	nextRound := p.relayState.currentDCNetRound.currentRound + 1
