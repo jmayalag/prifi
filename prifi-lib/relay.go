@@ -91,7 +91,7 @@ type NodeRepresentation struct {
 // NeffShuffleState is where the Neff Shuffles are accumulated during the Schedule protocol.
 type NeffShuffleState struct {
 	ClientPublicKeys  []abstract.Point
-	G_s               []abstract.Point
+	G_s               []abstract.Scalar
 	ephPubKeys_s      [][]abstract.Point
 	proof_s           [][]byte
 	nextFreeId_Proofs int
@@ -837,11 +837,10 @@ func (p *PriFiProtocol) Received_CLI_REL_TELL_PK_AND_EPH_PK(msg CLI_REL_TELL_PK_
 			ephPks[i] = p.relayState.clients[i].EphemeralPublicKey
 		}
 
-		// G := config.CryptoSuite.Point().Base()
-		G := p.relayState.clients[0].PublicKey // TODO : Fix this
+		G := config.CryptoSuite.Scalar().One()
 
 		// prepare the empty shuffle
-		emptyG_s := make([]abstract.Point, p.relayState.nTrustees)
+		emptyG_s := make([]abstract.Scalar, p.relayState.nTrustees)
 		emptyEphPks_s := make([][]abstract.Point, p.relayState.nTrustees)
 		emptyProof_s := make([][]byte, p.relayState.nTrustees)
 		emptySignature_s := make([][]byte, p.relayState.nTrustees)

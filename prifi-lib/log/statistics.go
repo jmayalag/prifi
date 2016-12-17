@@ -5,7 +5,6 @@ import (
 "time"
 "math"
 	"github.com/dedis/cothority/log"
-	"bytes"
 	"net/http"
 )
 

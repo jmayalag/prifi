@@ -1,7 +1,7 @@
 #variables
 cothorityBranchRequired="master"
 colors="true"
-dbg_lvl=2
+dbg_lvl=3
 conf_file="config.toml"
 group_file="group.toml"
 prifi_file="prifi.toml"

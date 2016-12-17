@@ -29,6 +29,7 @@ import (
 	"github.com/lbarman/prifi_dev/prifi-lib/config"
 	"github.com/lbarman/prifi_dev/prifi-lib/crypto"
 	"github.com/lbarman/prifi_dev/prifi-lib/dcnet"
+	"math/rand"
 )
 
 // Possible states the trustees are in. This restrict the kind of messages they can receive at a given point in time.
@@ -72,7 +73,7 @@ type TrusteeState struct {
 // NeffShuffleResult holds the result of the NeffShuffle,
 // since it needs to be verified when we receive REL_TRU_TELL_TRANSCRIPT.
 type NeffShuffleResult struct {
-	base  abstract.Point
+	base  abstract.Scalar
 	pks   []abstract.Point
 	proof []byte
 }
@@ -279,7 +280,7 @@ func (p *PriFiProtocol) Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE(m
 	}
 
 	//begin parsing the message
-	rand := config.CryptoSuite.Cipher([]byte(p.trusteeState.Name)) //TODO: this should be random
+	randBytes := config.CryptoSuite.Cipher([]byte(p.trusteeState.Name)) //TODO: this should be random
 	clientsPks := msg.Pks
 	clientsEphemeralPks := msg.EphPks
 	base := msg.Base
@@ -297,8 +298,27 @@ func (p *PriFiProtocol) Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE(m
 		p.trusteeState.sharedSecrets[i] = config.CryptoSuite.Point().Mul(clientsPks[i], p.trusteeState.privateKey)
 	}
 
-	//TODO : THIS IS NOT SHUFFLING; THIS IS A PLACEHOLDER FOR THE ACTUAL SHUFFLE. NO SHUFFLE IS DONE
+	secretCoeff := config.CryptoSuite.Scalar().Pick(randBytes)
+	base2 := config.CryptoSuite.Scalar().Mul(base, secretCoeff)
 
+	ephPublicKeys2 := clientsEphemeralPks
+
+	//transform the public keys with the secret coeff
+	for i := 0; i < len(clientsEphemeralPks); i++ {
+		ephPublicKeys2[i] = config.CryptoSuite.Point().Mul(clientsEphemeralPks[i], base2)
+	}
+
+	//shuffle the array
+	ephPublicKeys3 := make([]abstract.Point, len(ephPublicKeys2))
+	perm := rand.Perm(len(ephPublicKeys2))
+	for i, v := range perm {
+		ephPublicKeys3[v] = ephPublicKeys2[i]
+	}
+	ephPublicKeys2 = ephPublicKeys3;
+
+	proof := make([]byte, 50)
+
+	/*
 	//perform the neff-shuffle
 	H := p.trusteeState.PublicKey
 	X := clientsEphemeralPks
@@ -316,10 +336,11 @@ func (p *PriFiProtocol) Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE(m
 	base2 := base
 	ephPublicKeys2 := clientsEphemeralPks
 	proof := make([]byte, 50)
+	*/
 
 	//send the answer
 	toSend := &TRU_REL_TELL_NEW_BASE_AND_EPH_PKS{base2, ephPublicKeys2, proof}
-	err = p.messageSender.SendToRelay(toSend) //TODO : this should be the root ! make sure of it
+	err := p.messageSender.SendToRelay(toSend) //TODO : this should be the root ! make sure of it
 	if err != nil {
 		e := "Could not send TRU_REL_TELL_NEW_BASE_AND_EPH_PKS, error is " + err.Error()
 		log.Error(e)
@@ -384,13 +405,12 @@ func (p *PriFiProtocol) Received_REL_TRU_TELL_TRANSCRIPT(msg REL_TRU_TELL_TRANSC
 
 		verify := true
 		if j > 0 {
-			H := G_s[j]
 			X := ephPublicKeys_s[j-1]
 			Y := ephPublicKeys_s[j-1]
 			Xbar := ephPublicKeys_s[j]
 			Ybar := ephPublicKeys_s[j]
 			if len(X) > 1 {
-				verifier := shuffle.Verifier(config.CryptoSuite, nil, H, X, Y, Xbar, Ybar)
+				verifier := shuffle.Verifier(config.CryptoSuite, nil, X[0], X, Y, Xbar, Ybar)
 				err = crypto_proof.HashVerify(config.CryptoSuite, "PairShuffle", verifier, proof_s[j])
 			}
 			if err != nil {
@@ -424,7 +444,7 @@ func (p *PriFiProtocol) Received_REL_TRU_TELL_TRANSCRIPT(msg REL_TRU_TELL_TRANSC
 			allKeyEqual := true
 			for k := 0; k < p.trusteeState.nClients; k++ {
 				if !p.trusteeState.neffShuffleToVerify.pks[k].Equal(ephPublicKeys_s[j][k]) {
-					log.Lvl1("Trustee " + strconv.Itoa(p.trusteeState.Id) + "; Transcript invalid for trustee " + strconv.Itoa(j) + ". Aborting.")
+					log.Error("Trustee " + strconv.Itoa(p.trusteeState.Id) + "; Transcript invalid for trustee " + strconv.Itoa(j) + ". Aborting.")
 					allKeyEqual = false
 					break
 				}

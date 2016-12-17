@@ -38,6 +38,7 @@ import (
 	"github.com/lbarman/prifi_dev/prifi-lib/dcnet"
 
 	socks "github.com/lbarman/prifi_dev/prifi-socks"
+	"os"
 )
 
 const MaxUint uint32 = uint32(4294967295)
@@ -171,7 +172,7 @@ func (p *PriFiProtocol) Received_ALL_CLI_PARAMETERS(msg ALL_ALL_PARAMETERS) erro
 	go p.messageSender.ClientSubscribeToBroadcast(p.clientState.Name, p, p.clientState.StartStopReceiveBroadcast)
 
 	//after receiving this message, we are done with the state CLIENT_STATE_BEFORE_INIT, and are ready for initializing
-	p.clientState.currentState = CLIENT_STATE_INITIALIZING //TODO: this is repetative of line 110
+	p.clientState.currentState = CLIENT_STATE_INITIALIZING
 
 	log.Lvlf5("%+v\n", p.clientState)
 	log.Lvl2("Client " + strconv.Itoa(p.clientState.Id) + " has been initialized by message. ")
@@ -471,13 +472,13 @@ func (p *PriFiProtocol) Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(msg REL_C
 	p.clientState.Lock()
 	defer p.clientState.Unlock()
 
-	//this can only happens in the state TRUSTEE_STATE_SHUFFLE_DONE
+	//this can only happens in the state CLIENT_STATE_EPH_KEYS_SENT
 	if p.clientState.currentState != CLIENT_STATE_EPH_KEYS_SENT {
 		e := "Client " + strconv.Itoa(p.clientState.Id) + " : Received a REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG, but not in state CLIENT_STATE_EPH_KEYS_SENT, in state " + strconv.Itoa(int(p.clientState.currentState))
 		log.Error(e)
 		return errors.New(e)
 	} else {
-		log.Lvl3("Trustee " + strconv.Itoa(p.clientState.Id) + " : REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG") //TODO: this should be client
+		log.Lvl3("Client " + strconv.Itoa(p.clientState.Id) + " : REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG") //TODO: this should be client
 	}
 
 	//verify the signature
@@ -507,11 +508,13 @@ func (p *PriFiProtocol) Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(msg REL_C
 
 	//now, using the ephemeral keys received (the output of the neff shuffle), identify our slot
 	myPrivKey := p.clientState.ephemeralPrivateKey
-	ephPubInBaseG := config.CryptoSuite.Point().Mul(G, myPrivKey)
+	base := config.CryptoSuite.Point().Base()
+	newBaseFromTrusteesG := config.CryptoSuite.Point().Mul(base, G)
+	ephPubInNewBase := config.CryptoSuite.Point().Mul(newBaseFromTrusteesG, myPrivKey)
 	mySlot := -1
 
 	for j := 0; j < len(ephPubKeys); j++ {
-		if ephPubKeys[j].Equal(ephPubInBaseG) {
+		if ephPubKeys[j].Equal(ephPubInNewBase) {
 			mySlot = j
 		}
 	}
