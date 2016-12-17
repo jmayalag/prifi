@@ -5,6 +5,8 @@ import (
 "time"
 "math"
 	"github.com/dedis/cothority/log"
+	"bytes"
+	"net/http"
 )
 
 const MAX_LATENCY_STORED = 100
@@ -197,7 +199,7 @@ func (stats *Statistics) ReportWithInfo(info string) {
 		}
 		*/
 
-			/*
+		/*
 		log.Lvlf1("%v @ %fs; cell %f (%f) /sec, up %f (%f) B/s, down %f (%f) B/s, udp down %f (%f) B/s, retransmit %v (%v), lat %s += %s over %s "+info,
 			stats.nReports, duration,
 			float64(stats.totalUpstreamCells)/duration, 	 float64(stats.instantUpstreamCells)/stats.period.Seconds(),
@@ -208,10 +210,20 @@ func (stats *Statistics) ReportWithInfo(info string) {
 			latm, latv, latn)
 			*/
 		log.Lvlf1("%0.1f round/sec, %0.1f kB/s up, %0.1f kB/s down, %0.1f kB/s down(udp)",
-			float64(stats.instantUpstreamCells)/stats.period.Seconds(),
-			float64(stats.instantUpstreamBytes)/1024/stats.period.Seconds(),
-			float64(stats.instantDownstreamBytes)/1024/stats.period.Seconds(),
-			float64(stats.instantDownstreamUDPBytes)/1024/stats.period.Seconds())
+			float64(stats.instantUpstreamCells) / stats.period.Seconds(),
+			float64(stats.instantUpstreamBytes) / 1024 / stats.period.Seconds(),
+			float64(stats.instantDownstreamBytes) / 1024 / stats.period.Seconds(),
+			float64(stats.instantDownstreamUDPBytes) / 1024 / stats.period.Seconds())
+
+		data := fmt.Sprintf("round=%0.1f&up=%0.1f&down=%0.1f&udp_down%0.1f",
+			float64(stats.instantUpstreamCells) / stats.period.Seconds(),
+			float64(stats.instantUpstreamBytes) / 1024 / stats.period.Seconds(),
+			float64(stats.instantDownstreamBytes) / 1024 / stats.period.Seconds(),
+			float64(stats.instantDownstreamUDPBytes) / 1024 / stats.period.Seconds())
+
+		go performGETRequest("http://lbarman.ch/prifi/?" + data)
+
+
 
 		// Next report time
 		stats.instantUpstreamCells = 0
@@ -224,4 +236,8 @@ func (stats *Statistics) ReportWithInfo(info string) {
 		stats.nextReport = now.Add(stats.period)
 		stats.nReports += 1
 	}
+}
+
+func performGETRequest(url string) {
+	_, _ = http.Get(url)
 }
