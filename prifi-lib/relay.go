@@ -175,6 +175,7 @@ type RelayState struct {
 	UpstreamCellSize         int
 	UseDummyDataDown         bool
 	UseUDP                   bool
+	currentWindow            int
 	WindowSize               int
 	ExperimentResultChannel  chan interface{}
 	ExperimentResultData     interface{}
@@ -208,6 +209,7 @@ func NewRelayState(nTrustees int, nClients int, upstreamCellSize int, downstream
 	params.UseDummyDataDown = useDummyDataDown
 	params.UseUDP = useUDP
 	params.WindowSize = windowSize
+	params.currentWindow = windowSize
 	params.statistics = prifilog.EmptyStatistics(experimentRoundLimit)
 
 	// Prepare the crypto parameters
@@ -556,8 +558,9 @@ func (p *PriFiProtocol) finalizeUpstreamData() error {
 	}
 
 	p.relayState.locks.round.Lock() // Lock on DCRound
-	log.Lvl3("Relay : Outputted upstream cell (finalized round " + strconv.Itoa(int(p.relayState.currentDCNetRound.currentRound)) + "), sending downstream data.")
 	p.relayState.locks.round.Unlock() // Unlock DCRound
+
+	p.roundFinished()
 
 	return nil
 }
@@ -609,6 +612,7 @@ func (p *PriFiProtocol) sendDownstreamData() error {
 	flagResync := false
 	log.Lvl3("Relay is gonna broadcast messages for round " + strconv.Itoa(int(p.relayState.currentDCNetRound.currentRound)) + ".")
 	toSend := &REL_CLI_DOWNSTREAM_DATA{p.relayState.currentDCNetRound.currentRound, downstreamCellContent, flagResync}
+	p.relayState.currentDCNetRound.dataAlreadySent = *toSend
 
 	if !p.relayState.UseUDP {
 		// broadcast to all clients
@@ -634,8 +638,15 @@ func (p *PriFiProtocol) sendDownstreamData() error {
 	}
 	log.Lvl3("Relay is done broadcasting messages for round " + strconv.Itoa(int(p.relayState.currentDCNetRound.currentRound)) + ".")
 
-	// prepare for the next round
+	p.relayState.locks.round.Unlock()        // Unlock DCRound
+
+	return nil
+}
+
+func (p *PriFiProtocol) roundFinished() error {
+
 	p.relayState.locks.coder.Lock() // Lock on CellCoder
+	p.relayState.locks.round.Lock() // Lock DCRound
 
 	timeSpent := time.Since(p.relayState.currentDCNetRound.startTime)
 	log.Lvl4("Relay finished round " + strconv.Itoa(int(p.relayState.currentDCNetRound.currentRound)) + " (after", timeSpent, ").")
@@ -643,7 +654,8 @@ func (p *PriFiProtocol) sendDownstreamData() error {
 
 	//prepare for the next round
 	nextRound := p.relayState.currentDCNetRound.currentRound + 1
-	p.relayState.currentDCNetRound = DCNetRound{nextRound, 0, 0, make(map[int]bool), make(map[int]bool), *toSend, time.Now()}
+	nilMessage := &REL_CLI_DOWNSTREAM_DATA{-1, make([]byte,0), false}
+	p.relayState.currentDCNetRound = DCNetRound{nextRound, 0, 0, make(map[int]bool), make(map[int]bool), *nilMessage, time.Now()}
 	p.relayState.CellCoder.DecodeStart(p.relayState.UpstreamCellSize, p.relayState.MessageHistory) //this empties the buffer, making them ready for a new round
 
 	//we just sent the data down, initiating a round. Let's prevent being blocked by a dead client
@@ -696,9 +708,9 @@ func (p *PriFiProtocol) sendDownstreamData() error {
 				if err != nil {
 					e := "Could not send REL_TRU_TELL_RATE_CHANGE to " + strconv.Itoa(trusteeId) + "-th trustee for round " + strconv.Itoa(int(p.relayState.currentDCNetRound.currentRound)) + ", error is " + err.Error()
 					log.Error(e)
+					p.relayState.locks.trusteeBuffer.Unlock() // Unlock trustee buffer
 					p.relayState.locks.round.Unlock()         // Unlock DCRound
 					p.relayState.locks.coder.Unlock()         // Unlock CellCoder
-					p.relayState.locks.trusteeBuffer.Unlock() // Unlock trustee buffer
 					return errors.New(e)
 				} else {
 					log.Lvl3("Relay : sent REL_TRU_TELL_RATE_CHANGE to " + strconv.Itoa(trusteeId) + "-th trustee for round " + strconv.Itoa(int(p.relayState.currentDCNetRound.currentRound)))
@@ -717,7 +729,7 @@ func (p *PriFiProtocol) sendDownstreamData() error {
 		for clientId, data := range p.relayState.bufferedClientCiphers[nextRound].Data {
 			// start decoding using this data
 			log.Lvl3("Relay : using pre-cached DC-net cipher from client " + strconv.Itoa(clientId) + " for round " + strconv.Itoa(int(nextRound)))
-			p.relayState.CellCoder.DecodeTrustee(data) // TODO: shouldn't this be DecodeClient?
+			p.relayState.CellCoder.DecodeClient(data)
 			p.relayState.currentDCNetRound.clientCipherCount++
 		}
 

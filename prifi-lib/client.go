@@ -38,7 +38,6 @@ import (
 	"github.com/lbarman/prifi_dev/prifi-lib/dcnet"
 
 	socks "github.com/lbarman/prifi_dev/prifi-socks"
-	"os"
 )
 
 const MaxUint uint32 = uint32(4294967295)
@@ -317,9 +316,6 @@ func (p *PriFiProtocol) ProcessDownStreamData(msg REL_CLI_DOWNSTREAM_DATA) error
 		return nil
 	}
 
-	//one round just passed
-	p.clientState.RoundNo++
-
 	//send upstream data for next round
 	return p.SendUpstreamData()
 }
@@ -387,6 +383,9 @@ func (p *PriFiProtocol) SendUpstreamData() error {
 
 	//clean old buffered messages
 	delete(p.clientState.BufferedRoundData, int32(p.clientState.RoundNo-1))
+
+	//one round just passed
+	p.clientState.RoundNo++
 
 	//now we will be expecting next message. Except if we already received and buffered it !
 	if msg, hasAMessage := p.clientState.BufferedRoundData[int32(p.clientState.RoundNo)]; hasAMessage {
@@ -564,6 +563,8 @@ func (p *PriFiProtocol) Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(msg REL_C
 	} else {
 		log.Lvl3("Client " + strconv.Itoa(p.clientState.Id) + " : sent CLI_REL_UPSTREAM_DATA for round " + strconv.Itoa(int(p.clientState.RoundNo)))
 	}
+
+	p.clientState.RoundNo += 1
 
 	return nil
 }
