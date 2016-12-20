@@ -229,7 +229,7 @@ func (s *Service) StartClient(group *config.Group) error {
 		DownstreamChannel: make(chan []byte),
 	}
 
-	go socks.StartSocksServer(socksClientConfig.Port, socksClientConfig.PayloadLength, socksClientConfig.UpstreamChannel, socksClientConfig.DownstreamChannel)
+	go socks.StartSocksServer(socksClientConfig.Port, socksClientConfig.PayloadLength, socksClientConfig.UpstreamChannel, socksClientConfig.DownstreamChannel, s.prifiConfig.DoLatencyTests)
 
 	s.autoConnect()
 
@@ -255,7 +255,7 @@ func (s *Service) StartSocksTunnelOnly() error {
 		UpstreamChannel: socksClientConfig.UpstreamChannel,
 		DownstreamChannel: socksClientConfig.DownstreamChannel,
 	}
-	go socks.StartSocksServer(socksClientConfig.Port, socksClientConfig.PayloadLength, socksClientConfig.UpstreamChannel, socksClientConfig.DownstreamChannel)
+	go socks.StartSocksServer(socksClientConfig.Port, socksClientConfig.PayloadLength, socksClientConfig.UpstreamChannel, socksClientConfig.DownstreamChannel, false)
 	go socks.StartSocksClient(socksServerConfig.Port, socksServerConfig.UpstreamChannel, socksServerConfig.DownstreamChannel)
 
 	return nil

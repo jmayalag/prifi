@@ -162,7 +162,7 @@ func StartSocksClient(serverAddress string, upstreamChan chan []byte, downstream
  * This is started by the PriFi clients, so the app on their computer can connect to this "fake" Socks server (fake in the sense that the
  * output is actually forwarded to prifi and anonymized).
  */
-func StartSocksServer(localListeningAddress string, payloadLength int, upstreamChan chan []byte, downstreamChan chan []byte) {
+func StartSocksServer(localListeningAddress string, payloadLength int, upstreamChan chan []byte, downstreamChan chan []byte, downStreamContainsLatencyMessages bool) {
 
 	// Setup a thread to listen at the assigned port
 	socksConnections := make(chan net.Conn, 1)
@@ -203,9 +203,11 @@ func StartSocksServer(localListeningAddress string, payloadLength int, upstreamC
 			data := myData.Data[:dataLength]
 
 			// Skip if the connection doesn't exist or the connection ID is 0, unless it's a control message (stall, resume)
-			if (packetType != StallCommunication && packetType != ResumeCommunication) && (socksConnId == 0 || socksProxyActiveConnections[socksConnId] == nil) {
-				log.Error("SOCKS PriFi Server: Got data for an unexisting connection "+strconv.Itoa(int(socksConnId))+", dropping.")
-				continue
+			if !downStreamContainsLatencyMessages { //of course, if the downstream contains latency messages, don't show error
+				if (packetType != StallCommunication && packetType != ResumeCommunication) && (socksConnId == 0 || socksProxyActiveConnections[socksConnId] == nil) {
+					log.Error("SOCKS PriFi Server: Got data for an unexisting connection " + strconv.Itoa(int(socksConnId)) + ", dropping.")
+					continue
+				}
 			}
 
 			// Check the type of message

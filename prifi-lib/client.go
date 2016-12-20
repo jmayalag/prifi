@@ -36,6 +36,7 @@ import (
 	"github.com/lbarman/prifi_dev/prifi-lib/config"
 	"github.com/lbarman/prifi_dev/prifi-lib/crypto"
 	"github.com/lbarman/prifi_dev/prifi-lib/dcnet"
+	prifilog "github.com/lbarman/prifi_dev/prifi-lib/log"
 
 	socks "github.com/lbarman/prifi_dev/prifi-socks"
 )
@@ -80,6 +81,7 @@ type ClientState struct {
 	UseUDP                    bool
 	MessageHistory            abstract.Cipher
 	StartStopReceiveBroadcast chan bool
+	statistics                        *prifilog.LatencyStatistics
 
 	//concurrent stuff
 	RoundNo           int32
@@ -103,7 +105,6 @@ func NewClientState(clientId int, nTrustees int, nClients int, payloadLength int
 	params.MySlot = -1
 	params.nClients = nClients
 	params.nTrustees = nTrustees
-	log.Error("Payloadlength assigned to", payloadLength)
 	params.PayloadLength = payloadLength
 	params.UsablePayloadLength = params.CellCoder.ClientCellSize(payloadLength)
 	params.UseSocksProxy = false //deprecated
@@ -111,6 +112,7 @@ func NewClientState(clientId int, nTrustees int, nClients int, payloadLength int
 	params.RoundNo = int32(0)
 	params.BufferedRoundData = make(map[int32]REL_CLI_DOWNSTREAM_DATA)
 	params.StartStopReceiveBroadcast = make(chan bool)
+	params.statistics = prifilog.NewLatencyStatistics()
 
 	//prepare the crypto parameters
 	rand := config.CryptoSuite.Cipher([]byte(params.Name))
@@ -301,7 +303,8 @@ func (p *PriFiProtocol) ProcessDownStreamData(msg REL_CLI_DOWNSTREAM_DATA) error
 					timestamp := int64(binary.BigEndian.Uint64(msg.Data[4:12]))
 					diff := MsTimeStamp() - timestamp
 
-					log.Lvl1("Client " + strconv.Itoa(p.clientState.Id) + " : New latency measured " + strconv.FormatInt(diff, 10))
+					p.clientState.statistics.AddLatency(diff)
+					p.clientState.statistics.Report()
 				}
 			}
 		}

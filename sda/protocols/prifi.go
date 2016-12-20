@@ -122,11 +122,6 @@ func (p *PriFiSDAWrapper) SetConfig(config *PriFiSDAWrapperConfig) {
 
 	ms := p.buildMessageSender(config.Identities)
 
-
-	log.Lvl1("SetConfig called")
-	log.Lvlf1("%+v\n", config)
-
-
 	nClients := len(ms.clients)
 	nTrustees := len(ms.trustees)
 	experimentResultChan := p.ResultChannel
