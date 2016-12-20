@@ -162,25 +162,26 @@ type RelayState struct {
 	PriorityDataForClients   chan []byte
 	DataFromDCNet            chan []byte // VPN / SOCKS should read data from there !
 	DataOutputEnabled        bool        // If FALSE, nothing will be written to DataFromDCNet
-	DownstreamCellSize       int
-	MessageHistory           abstract.Cipher
-	Name                     string
-	nClients                 int
-	nTrustees                int
-	nTrusteesPkCollected     int
-	privateKey               abstract.Scalar
-	PublicKey                abstract.Point
-	ExperimentRoundLimit     int
-	trustees                 []NodeRepresentation
-	UpstreamCellSize         int
-	UseDummyDataDown         bool
-	UseUDP                   bool
-	currentWindow            int
-	WindowSize               int
-	ExperimentResultChannel  chan interface{}
-	ExperimentResultData     interface{}
-	locks                    lockPool
-	statistics		 *prifilog.Statistics
+	DownstreamCellSize                int
+	MessageHistory                    abstract.Cipher
+	Name                              string
+	nClients                          int
+	nTrustees                         int
+	nTrusteesPkCollected              int
+	privateKey                        abstract.Scalar
+	PublicKey                         abstract.Point
+	ExperimentRoundLimit              int
+	trustees                          []NodeRepresentation
+	UpstreamCellSize                  int
+	UseDummyDataDown                  bool
+	UseUDP                            bool
+	numberOfNonAckedDownstreamPackets int
+	WindowSize                        int
+	nextDownStreamRoundToSend	  int32
+	ExperimentResultChannel           chan interface{}
+	ExperimentResultData              interface{}
+	locks                             lockPool
+	statistics                        *prifilog.Statistics
 }
 
 /*
@@ -209,7 +210,8 @@ func NewRelayState(nTrustees int, nClients int, upstreamCellSize int, downstream
 	params.UseDummyDataDown = useDummyDataDown
 	params.UseUDP = useUDP
 	params.WindowSize = windowSize
-	params.currentWindow = windowSize
+	params.nextDownStreamRoundToSend = int32(1) //since first round is half-round
+	params.numberOfNonAckedDownstreamPackets = 0
 	params.statistics = prifilog.EmptyStatistics(experimentRoundLimit)
 
 	// Prepare the crypto parameters
@@ -367,7 +369,7 @@ func (p *PriFiProtocol) Received_CLI_REL_UPSTREAM_DATA(msg CLI_REL_UPSTREAM_DATA
 	// if this is not the message destinated for this round, discard it ! (we are in lock-step)
 	if p.relayState.currentDCNetRound.currentRound != msg.RoundId {
 
-		e := "Relay : Client sent DC-net cipher for round , " + strconv.Itoa(int(msg.RoundId)) + " but current round is " + strconv.Itoa(int(p.relayState.currentDCNetRound.currentRound))
+		e := "Relay : Client sent DC-net cipher for round " + strconv.Itoa(int(msg.RoundId)) + " but current round is " + strconv.Itoa(int(p.relayState.currentDCNetRound.currentRound))
 		log.Error(e)
 
 		p.relayState.locks.clientBuffer.Lock() // Lock on client buffer
@@ -401,14 +403,20 @@ func (p *PriFiProtocol) Received_CLI_REL_UPSTREAM_DATA(msg CLI_REL_UPSTREAM_DATA
 		if p.relayState.currentDCNetRound.hasAllCiphers(p) {
 			p.relayState.locks.round.Unlock() // Unlock DCRound
 
-			log.Lvl3("Relay has collected all ciphers (2), decoding...")
+			log.Lvl2("Relay has collected all ciphers for round",p.relayState.currentDCNetRound.currentRound,", decoding...")
 			p.finalizeUpstreamData()
+
+			//one round has just passed !
 
 			// sleep so it does not go too fast for debug
 			time.Sleep(PROCESSING_LOOP_SLEEP_TIME)
 
-			// send the data down (to finalize this round)
-			p.sendDownstreamData()
+			// send the data down
+			for i := p.relayState.numberOfNonAckedDownstreamPackets; i < p.relayState.WindowSize; i++ {
+				log.Lvl3("Relay : Gonna send, non-acked packets is", p.relayState.numberOfNonAckedDownstreamPackets, "(window is", p.relayState.WindowSize, ")")
+				p.sendDownstreamData()
+			}
+
 		} else {
 			p.relayState.locks.round.Unlock() // Unlock DCRound
 		}
@@ -456,11 +464,14 @@ func (p *PriFiProtocol) Received_TRU_REL_DC_CIPHER(msg TRU_REL_DC_CIPHER) error 
 		if p.relayState.currentDCNetRound.hasAllCiphers(p) {
 			p.relayState.locks.round.Unlock() // Lock on DCRound
 
-			log.Lvl3("Relay has collected all ciphers, decoding...")
+			log.Lvl2("Relay has collected all ciphers for round",p.relayState.currentDCNetRound.currentRound,", decoding...")
 			p.finalizeUpstreamData()
 
-			// send the data down (to finalize this round)
-			p.sendDownstreamData()
+			// send the data down
+			for i := p.relayState.numberOfNonAckedDownstreamPackets; i < p.relayState.WindowSize; i++ {
+				log.Lvl3("Relay : Gonna send, non-acked packets is", p.relayState.numberOfNonAckedDownstreamPackets, "(window is", p.relayState.WindowSize, ")")
+				p.sendDownstreamData()
+			}
 		} else {
 			p.relayState.locks.round.Unlock() // Lock on DCRound
 		}
@@ -611,7 +622,7 @@ func (p *PriFiProtocol) sendDownstreamData() error {
 
 	flagResync := false
 	log.Lvl3("Relay is gonna broadcast messages for round " + strconv.Itoa(int(p.relayState.currentDCNetRound.currentRound)) + ".")
-	toSend := &REL_CLI_DOWNSTREAM_DATA{p.relayState.currentDCNetRound.currentRound, downstreamCellContent, flagResync}
+	toSend := &REL_CLI_DOWNSTREAM_DATA{p.relayState.nextDownStreamRoundToSend, downstreamCellContent, flagResync}
 	p.relayState.currentDCNetRound.dataAlreadySent = *toSend
 
 	if !p.relayState.UseUDP {
@@ -631,12 +642,15 @@ func (p *PriFiProtocol) sendDownstreamData() error {
 
 		p.relayState.statistics.AddDownstreamCell(int64(len(downstreamCellContent)))
 	} else {
-		toSend2 := &REL_CLI_DOWNSTREAM_DATA_UDP{*toSend, make([]byte, 0)} //TODO : this wrapping feels wierd
+		toSend2 := &REL_CLI_DOWNSTREAM_DATA_UDP{*toSend, make([]byte, 0)}
 		p.messageSender.BroadcastToAllClients(toSend2)
 
 		p.relayState.statistics.AddDownstreamUDPCell(int64(len(downstreamCellContent)), p.relayState.nClients)
 	}
-	log.Lvl3("Relay is done broadcasting messages for round " + strconv.Itoa(int(p.relayState.currentDCNetRound.currentRound)) + ".")
+	log.Lvl2("Relay is done broadcasting messages for round " + strconv.Itoa(int(p.relayState.nextDownStreamRoundToSend)) + ".")
+
+	p.relayState.nextDownStreamRoundToSend += 1
+	p.relayState.numberOfNonAckedDownstreamPackets += 1
 
 	p.relayState.locks.round.Unlock()        // Unlock DCRound
 
@@ -647,6 +661,8 @@ func (p *PriFiProtocol) roundFinished() error {
 
 	p.relayState.locks.coder.Lock() // Lock on CellCoder
 	p.relayState.locks.round.Lock() // Lock DCRound
+
+	p.relayState.numberOfNonAckedDownstreamPackets -= 1
 
 	timeSpent := time.Since(p.relayState.currentDCNetRound.startTime)
 	log.Lvl4("Relay finished round " + strconv.Itoa(int(p.relayState.currentDCNetRound.currentRound)) + " (after", timeSpent, ").")
@@ -1057,6 +1073,9 @@ func (p *PriFiProtocol) Received_TRU_REL_SHUFFLE_SIG(msg TRU_REL_SHUFFLE_SIG) er
 				log.Lvl3("Relay : sent REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG to " + strconv.Itoa(i+1) + "-th client")
 			}
 		}
+
+		//client will answer will CLI_REL_UPSTREAM_DATA. There is no data down on round 0. We set the following variable to 1 since the reception of CLI_REL_UPSTREAM_DATA decrements it.
+		p.relayState.numberOfNonAckedDownstreamPackets = 1
 	}
 
 	return nil

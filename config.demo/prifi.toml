@@ -1,9 +1,9 @@
 CellSizeUp = 1000
 CellSizeDown = 10000
-RelayWindowSize = 10
+RelayWindowSize = 1
 RelayUseDummyDataDown = false
-RelayReportingLimit = 10
-UseUDP = true
-DoLatencyTests = true
-SocksServerPort = 12345
-SocksClientPort = 8081
+RelayReportingLimit = -1
+UseUDP = false
+DoLatencyTests = false
+SocksServerPort = 8080
+SocksClientPort = 8090

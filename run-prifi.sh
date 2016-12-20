@@ -1,7 +1,7 @@
 #variables
 cothorityBranchRequired="master"
 colors="true"
-dbg_lvl=2
+dbg_lvl=1
 conf_file="config.toml"
 group_file="group.toml"
 prifi_file="prifi.toml"
@@ -154,6 +154,17 @@ case $1 in
 
 		thisScript="$0"
 
+		pkill prifi			
+
+		socks=$(netstat -tunpl 2>/dev/null | grep $port_client | wc -l)
+		
+		if [ "$socks" -ne 1 ]; then
+			echo -n "Socks proxy not running, starting it... "
+			./run-socks-proxy.sh "$port_client" > socks.log 2>&1 &
+			SOCKSPID=$!
+			echo -e "$okMsg"
+		fi
+
 		echo -n "Starting relay...	"
 		"$thisScript" relay > relay.log 2>&1 &
 		RELAYPID=$!
@@ -188,7 +199,9 @@ case $1 in
 		kill -9 -$TRUSTEE0PID 2>/dev/null
 		kill -9 -$CLIENT0PID 2>/dev/null
 		kill -9 -$CLIENT1PID 2>/dev/null
+		kill -9 -$SOCKSPID 2>/dev/null
 		pkill prifi		
+		pkill run-server		
 		;;
 
 	clean|Clean|CLEAN)

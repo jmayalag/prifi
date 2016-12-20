@@ -122,34 +122,28 @@ func (p *PriFiSDAWrapper) SetConfig(config *PriFiSDAWrapperConfig) {
 
 	ms := p.buildMessageSender(config.Identities)
 
-	// Prifi-lib parameters
-	// TODO: read them from a config file (or let relay broadcast them ?)
+
+	log.Lvl1("SetConfig called")
+	log.Lvlf1("%+v\n", config)
+
+
 	nClients := len(ms.clients)
 	nTrustees := len(ms.trustees)
-	upCellSize := 1000
-	downCellSize := 10000
-	relayWindowSize := 10
-	relayUseDummyDataDown := false
-	relayReportingLimit := -10
-	useUDP := false
-	doLatencyTests := false
-	sendDataOutOfDCNet := true
-
 	experimentResultChan := p.ResultChannel
-	// Instantiate prifi-lib with the correct role
+
 	switch config.Role {
 	case Relay:
 		relayState := prifi_lib.NewRelayState(
 			nTrustees,
 			nClients,
-			upCellSize,
-			downCellSize,
-			relayWindowSize,
-			relayUseDummyDataDown,
-			relayReportingLimit,
+			config.UpCellSize,
+			config.DownCellSize,
+			config.RelayWindowSize,
+			config.RelayUseDummyDataDown,
+			config.RelayReportingLimit,
 			experimentResultChan,
-			useUDP,
-			sendDataOutOfDCNet,
+			config.UseUDP,
+			config.RelayDataOutputEnabled,
 			config.RelaySideSocksConfig.DownstreamChannel,
 			config.RelaySideSocksConfig.UpstreamChannel)
 
@@ -157,7 +151,7 @@ func (p *PriFiSDAWrapper) SetConfig(config *PriFiSDAWrapperConfig) {
 
 	case Trustee:
 		id := config.Identities[p.ServerIdentity().Address].Id
-		trusteeState := prifi_lib.NewTrusteeState(id, nClients, nTrustees, upCellSize)
+		trusteeState := prifi_lib.NewTrusteeState(id, nClients, nTrustees, config.UpCellSize)
 		p.prifiProtocol = prifi_lib.NewPriFiTrusteeWithState(ms, trusteeState)
 
 	case Client:
@@ -165,10 +159,10 @@ func (p *PriFiSDAWrapper) SetConfig(config *PriFiSDAWrapperConfig) {
 		clientState := prifi_lib.NewClientState(id,
 			nTrustees,
 			nClients,
-			upCellSize,
-			doLatencyTests,
-			useUDP,
-			sendDataOutOfDCNet,
+			config.UpCellSize,
+			config.DoLatencyTests,
+			config.UseUDP,
+			config.ClientDataOutputEnabled,
 			config.ClientSideSocksConfig.UpstreamChannel,
 			config.ClientSideSocksConfig.DownstreamChannel)
 		p.prifiProtocol = prifi_lib.NewPriFiClientWithState(ms, clientState)

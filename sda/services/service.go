@@ -20,6 +20,7 @@ import (
 	"github.com/dedis/cothority/network"
 	"github.com/dedis/cothority/sda"
 	"github.com/lbarman/prifi_dev/sda/protocols"
+	"github.com/lbarman/prifi_dev/prifi-lib"
 	"sync"
 	"time"
 
@@ -260,6 +261,39 @@ func (s *Service) StartSocksTunnelOnly() error {
 	return nil
 }
 
+func (s *Service) setConfigToPriFiProtocol(wrapper *protocols.PriFiSDAWrapper){
+
+	log.Lvl1("setConfigToPriFiProtocol called")
+	log.Lvlf1("%+v\n", s.prifiConfig)
+
+	prifiParams := prifi.ALL_ALL_PARAMETERS{
+		ClientDataOutputEnabled: true,
+		DoLatencyTests: s.prifiConfig.DoLatencyTests,
+		DownCellSize: s.prifiConfig.CellSizeDown,
+		ForceParams: true,
+		NClients: -1, //computer later
+		NextFreeClientId: 0,
+		NextFreeTrusteeId: 0,
+		NTrustees: -1, //computer later
+		RelayDataOutputEnabled: true,
+		RelayReportingLimit: s.prifiConfig.RelayReportingLimit,
+		RelayUseDummyDataDown: s.prifiConfig.RelayUseDummyDataDown,
+		RelayWindowSize: s.prifiConfig.RelayWindowSize,
+		StartNow: false,
+		UpCellSize: s.prifiConfig.CellSizeUp,
+		UseUDP: s.prifiConfig.UseUDP,
+	}
+
+	wrapper.SetConfig(&protocols.PriFiSDAWrapperConfig{
+		ALL_ALL_PARAMETERS: prifiParams,
+		Identities: s.identityMap,
+		Role: s.role,
+		ClientSideSocksConfig: socksClientConfig,
+		RelaySideSocksConfig: socksServerConfig,
+	})
+
+}
+
 // NewProtocol is called on all nodes of a Tree (except the root, since it is
 // the one starting the protocol) so it's the Service that will be called to
 // generate the PI on all others node.
@@ -275,17 +309,9 @@ func (s *Service) NewProtocol(tn *sda.TreeNodeInstance, conf *sda.GenericConfig)
 		return nil, err
 	}
 
-	// Assert that pi has type PriFiSDAWrapper
 	wrapper := pi.(*protocols.PriFiSDAWrapper)
-
 	s.isPrifiRunning = true
-
-	wrapper.SetConfig(&protocols.PriFiSDAWrapperConfig{
-		Identities: s.identityMap,
-		Role: s.role,
-		ClientSideSocksConfig: socksClientConfig,
-		RelaySideSocksConfig: socksServerConfig,
-	})
+	s.setConfigToPriFiProtocol(wrapper)
 
 	return wrapper, nil
 }
@@ -486,17 +512,9 @@ func (s *Service) startPriFiCommunicateProtocol() {
 		log.Fatal("Unable to start Prifi protocol:", err)
 	}
 
-	// Assert that pi has type PriFiSDAWrapper
 	wrapper = pi.(*protocols.PriFiSDAWrapper)
-	s.prifiWrapper = wrapper
-
-
-	wrapper.SetConfig(&protocols.PriFiSDAWrapperConfig{
-		Identities: s.identityMap,
-		Role: s.role,
-		ClientSideSocksConfig: socksClientConfig, //this is nil, it's ok
-		RelaySideSocksConfig: socksServerConfig,
-	})
+	s.isPrifiRunning = true
+	s.setConfigToPriFiProtocol(wrapper) //TODO: This was not there in Matthieu's work. Maybe there is a reason
 	wrapper.Start()
 
 	s.isPrifiRunning = true;

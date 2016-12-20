@@ -103,6 +103,7 @@ func NewClientState(clientId int, nTrustees int, nClients int, payloadLength int
 	params.MySlot = -1
 	params.nClients = nClients
 	params.nTrustees = nTrustees
+	log.Error("Payloadlength assigned to", payloadLength)
 	params.PayloadLength = payloadLength
 	params.UsablePayloadLength = params.CellCoder.ClientCellSize(payloadLength)
 	params.UseSocksProxy = false //deprecated
