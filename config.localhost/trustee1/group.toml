@@ -1,17 +1,6 @@
-Description = "PriFi setup"
-
-[[servers]]
-  Address = "tcp://127.0.0.1:6000"
-  Public = "Bm9GJkRKLCkrhedl0sj1N3DAkluZK3VF2EnD4LczDkY="
-  Description = "relay"
-
-[[servers]]
-  Address = "tcp://127.0.0.1:6001"
-  Public = "tjrofZ4M8XwdhR1LT1X6Jxq1lcWaxdYwdb8Uum5cJ5s="
-  Description = "client 1"
+Description = "Prifi"
 
 [[servers]]
   Address = "tcp://127.0.0.1:6002"
-  Public = "CWvebqyvFlzp9ZAqpIaaYX7ZeeARajrlb1nVZXN3bEw="
-  Description = "trustee 1"
-
+  Public = "VYcxFJhJcfOLY/esG1Gr20Lnc+HkKm73v3YsEx7jRds="
+  Description = "relay"

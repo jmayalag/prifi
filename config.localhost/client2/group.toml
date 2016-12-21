@@ -1,6 +1,6 @@
-Description = "Description of your cothority roster"
+Description = "Prifi"
 
 [[servers]]
-  Addresses = ["127.0.0.1:6004"]
-  Public = "WrqywNxZtEznMC+mwK6HtbPb/RksVpDKIjVB9OF8at8="
-  Description = "Description of your server"
+  Address = "tcp://127.0.0.1:6002"
+  Public = "VYcxFJhJcfOLY/esG1Gr20Lnc+HkKm73v3YsEx7jRds="
+  Description = "relay"
