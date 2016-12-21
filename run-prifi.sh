@@ -9,7 +9,7 @@ bin_file="$GOPATH/src/github.com/lbarman/prifi_dev/sda/app/prifi.go"
 colors="true"
 port=8080
 port_client=8090
-configdir="config.demo"
+configdir="config.localhost"
 
 #pretty print
 shell="\e[35m[script]\e[97m"
@@ -20,12 +20,12 @@ print_usage() {
 	echo
 	echo -e "Usage: run-prifi.sh \e[33mrole/operation [params]\e[97m"
 	echo -e "	\e[33mrole\e[97m: client, relay, trustee"
-	echo -e "	\e[33moperation\e[97m: sockstest, all, deploy-all"
+	echo -e "	\e[33moperation\e[97m: sockstest, all-localhost"
 	echo -e "	\e[33mparams\e[97m for role \e[33mrelay\e[97m: [socks_server_port] (optional, numeric)"
 	echo -e "	\e[33mparams\e[97m for role \e[33mtrustee\e[97m: id (required, numeric)"
 	echo -e "	\e[33mparams\e[97m for role \e[33mclient\e[97m: id (required, numeric), [prifi_socks_server_port] (optional, numeric)"
-	echo -e "	\e[33mparams\e[97m for operation \e[33mall\e[97m, \e[33mdeploy\e[97m: none"
-	echo -e "	\e[33mparams\e[97m for operation \e[33msockstest\e[97m, \e[33mdeploy\e[97m: [socks_server_port] (optional, numeric), [prifi_socks_server_port] (optional, numeric)"
+	echo -e "	\e[33mparams\e[97m for operation \e[33mall-localhost\e[97m: none"
+	echo -e "	\e[33mparams\e[97m for operation \e[33msockstest\e[97m: [socks_server_port] (optional, numeric), [prifi_socks_server_port] (optional, numeric)"
 	echo
 }
 
@@ -150,7 +150,7 @@ case $1 in
 		DEBUG_COLOR=$colors go run $bin_file --cothority_config "$configdir/$conf_file" --group "$configdir/$group_file" -d "$dbg_lvl" --prifi_config "$configdir/$prifi_file" --port "$port" --port_client "$port_client" sockstest
 		;;
 
-	all|All|ALL|deploy|Deploy|DEPLOY|deploy-all|Deploy-All|DEPLOY-ALL)
+	localhost|Localhost|LOCALHOST|all-localhost|All-Localhost|ALL-LOCALHOST)
 
 		thisScript="$0"
 
