@@ -1,6 +1,6 @@
 CellSizeUp = 1000
 CellSizeDown = 10000
-RelayWindowSize = 10
+RelayWindowSize = 1
 RelayUseDummyDataDown = false
 RelayReportingLimit = -1
 UseUDP = false

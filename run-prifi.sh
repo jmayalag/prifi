@@ -1,7 +1,7 @@
 #variables
 cothorityBranchRequired="master"
 colors="true"
-dbg_lvl=1
+dbg_lvl=3
 conf_file="config.toml"
 group_file="group.toml"
 prifi_file="prifi.toml"
@@ -84,6 +84,7 @@ case $1 in
 
 		#specialize the config file, and test all files
 		conf_file="relay/$conf_file"
+		group_file="relay/$group_file"
 		test_files
 
 		#run PriFi in relay mode
@@ -100,6 +101,7 @@ case $1 in
 
 		#specialize the config file, and test all files
 		conf_file="trustee$2/$conf_file"
+		group_file="relay/$group_file"
 		test_files
 
 		#run PriFi in relay mode
@@ -122,6 +124,7 @@ case $1 in
 
 		#specialize the config file, and test all files
 		conf_file="client$2/$conf_file"
+		group_file="relay/$group_file"
 		test_files
 
 		#run PriFi in relay mode
