@@ -362,15 +362,13 @@ func (p *PriFiProtocol) Received_CLI_REL_UPSTREAM_DATA(msg CLI_REL_UPSTREAM_DATA
 
 	}
 
-	// TODO : We should timeout if some client did not send anything after a while
-
 	p.relayState.locks.round.Lock() // Lock on DCRound
 
 	// if this is not the message destinated for this round, discard it ! (we are in lock-step)
 	if p.relayState.currentDCNetRound.currentRound != msg.RoundId {
 
 		e := "Relay : Client sent DC-net cipher for round " + strconv.Itoa(int(msg.RoundId)) + " but current round is " + strconv.Itoa(int(p.relayState.currentDCNetRound.currentRound))
-		log.Error(e)
+		log.Lvl3(e)
 
 		p.relayState.locks.clientBuffer.Lock() // Lock on client buffer
 		// else, we need to buffer this message somewhere
@@ -385,8 +383,7 @@ func (p *PriFiProtocol) Received_CLI_REL_UPSTREAM_DATA(msg CLI_REL_UPSTREAM_DATA
 		}
 
 		p.relayState.locks.clientBuffer.Unlock() // Unlock client buffer
-
-		// return errors.New(e)
+		p.relayState.locks.round.Unlock() // Unlock DCRound
 
 	} else {
 		// else, if this is the message we need for this round
@@ -621,7 +618,7 @@ func (p *PriFiProtocol) sendDownstreamData() error {
 	p.relayState.locks.round.Lock() // Lock on DCRound
 
 	flagResync := false
-	log.Lvl3("Relay is gonna broadcast messages for round " + strconv.Itoa(int(p.relayState.currentDCNetRound.currentRound)) + ".")
+	log.Lvl3("Relay is gonna broadcast messages for round " + strconv.Itoa(int(p.relayState.nextDownStreamRoundToSend)) + ".")
 	toSend := &REL_CLI_DOWNSTREAM_DATA{p.relayState.nextDownStreamRoundToSend, downstreamCellContent, flagResync}
 	p.relayState.currentDCNetRound.dataAlreadySent = *toSend
 
@@ -631,12 +628,12 @@ func (p *PriFiProtocol) sendDownstreamData() error {
 			//send to the i-th client
 			err := p.messageSender.SendToClient(i, toSend)
 			if err != nil {
-				e := "Could not send REL_CLI_DOWNSTREAM_DATA to " + strconv.Itoa(i+1) + "-th client for round " + strconv.Itoa(int(p.relayState.currentDCNetRound.currentRound)) + ", error is " + err.Error()
+				e := "Could not send REL_CLI_DOWNSTREAM_DATA to client " + strconv.Itoa(i) + " for round " + strconv.Itoa(int(p.relayState.nextDownStreamRoundToSend)) + ", error is " + err.Error()
 				log.Error(e)
 				p.relayState.locks.round.Unlock() // Unlock DCRound
 				return errors.New(e)
 			} else {
-				log.Lvl3("Relay : sent REL_CLI_DOWNSTREAM_DATA to " + strconv.Itoa(i+1) + "-th client for round " + strconv.Itoa(int(p.relayState.currentDCNetRound.currentRound)))
+				log.Lvl3("Relay : sent REL_CLI_DOWNSTREAM_DATA to client " + strconv.Itoa(i) + " for round " + strconv.Itoa(int(p.relayState.nextDownStreamRoundToSend)))
 			}
 		}
 
