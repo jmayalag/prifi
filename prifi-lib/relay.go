@@ -178,6 +178,7 @@ type RelayState struct {
 	ExperimentResultChannel  chan interface{}
 	ExperimentResultData     interface{}
 	locks                    lockPool
+	timeoutHandler           func([]int, []int)
 }
 
 /*
@@ -234,13 +235,15 @@ func (p *PriFiProtocol) Received_ALL_REL_SHUTDOWN(msg ALL_ALL_SHUTDOWN) error {
 
 	msg2 := &ALL_ALL_SHUTDOWN{}
 
+	var err error = nil
+
 	// Send this shutdown to all trustees
 	for j := 0; j < p.relayState.nTrustees; j++ {
 		err := p.messageSender.SendToTrustee(j, msg2)
 		if err != nil {
 			e := "Could not send ALL_TRU_SHUTDOWN to Trustee " + strconv.Itoa(j) + ", error is " + err.Error()
 			log.Error(e)
-			return errors.New(e)
+			err = errors.New(e)
 		} else {
 			log.Lvl3("Relay : sent ALL_TRU_PARAMETERS to Trustee " + strconv.Itoa(j) + ".")
 		}
@@ -252,7 +255,7 @@ func (p *PriFiProtocol) Received_ALL_REL_SHUTDOWN(msg ALL_ALL_SHUTDOWN) error {
 		if err != nil {
 			e := "Could not send ALL_TRU_SHUTDOWN to Client " + strconv.Itoa(j) + ", error is " + err.Error()
 			log.Error(e)
-			return errors.New(e)
+			err = errors.New(e)
 		} else {
 			log.Lvl3("Relay : sent ALL_TRU_PARAMETERS to Client " + strconv.Itoa(j) + ".")
 		}
@@ -260,7 +263,7 @@ func (p *PriFiProtocol) Received_ALL_REL_SHUTDOWN(msg ALL_ALL_SHUTDOWN) error {
 
 	// TODO : stop all go-routines we created
 
-	return nil
+	return err
 }
 
 /*
@@ -617,6 +620,11 @@ func (p *PriFiProtocol) sendDownstreamData() error {
 				e := "Could not send REL_CLI_DOWNSTREAM_DATA to " + strconv.Itoa(i+1) + "-th client for round " + strconv.Itoa(int(p.relayState.currentDCNetRound.currentRound)) + ", error is " + err.Error()
 				log.Error(e)
 				p.relayState.locks.round.Unlock() // Unlock DCRound
+
+				arr := make([]int, 1)
+				arr[0] = i;
+				p.relayState.timeoutHandler(arr, make([]int, 0))
+
 				return errors.New(e)
 			} else {
 				log.Lvl3("Relay : sent REL_CLI_DOWNSTREAM_DATA to " + strconv.Itoa(i+1) + "-th client for round " + strconv.Itoa(int(p.relayState.currentDCNetRound.currentRound)))
@@ -1152,8 +1160,13 @@ func (p *PriFiProtocol) checkIfRoundHasEndedAfterTimeOut_Phase2(roundId int32) {
 	}
 	p.relayState.locks.state.Unlock() // Unlock state
 
+	clientsIds := make([]int, 0)
+	trusteesIds := make([]int, 0)
+	stuck := false
+
 	if p.relayState.currentDCNetRound.currentRound == roundId {
 		log.Error("waitAndCheckIfClientsSentData : We seem to be stuck in round", roundId, ". Phase 2 timeout.")
+		stuck = true
 
 		//check for the trustees
 		for j := 0; j < p.relayState.nTrustees; j++ {
@@ -1166,7 +1179,7 @@ func (p *PriFiProtocol) checkIfRoundHasEndedAfterTimeOut_Phase2(roundId int32) {
 				e := "Relay : Trustee " + strconv.Itoa(trusteeId) + " didn't sent us is cipher for round " + strconv.Itoa(int(roundId)) + ". Phase 2 timeout. This is unacceptable !"
 				log.Error(e)
 
-				//nothing we can do here, re-setup
+				trusteesIds = append(trusteesIds, trusteeId)
 			}
 		}
 
@@ -1181,9 +1194,17 @@ func (p *PriFiProtocol) checkIfRoundHasEndedAfterTimeOut_Phase2(roundId int32) {
 				e := "Relay : Client " + strconv.Itoa(clientId) + " didn't sent us is cipher for round " + strconv.Itoa(int(roundId)) + ". Phase 2 timeout. This is unacceptable !"
 				log.Error(e)
 
-				//TODO : Client should be considered disconnected, triggering re-setup.
+				clientsIds = append(clientsIds, clientId)
 			}
 		}
 	}
 	p.relayState.locks.round.Unlock() // Unlock round
+
+	if stuck {
+		p.relayState.timeoutHandler(clientsIds, trusteesIds)
+	}
+}
+
+func (p *PriFiProtocol) SetTimeoutHandler(handler func([]int, []int)) {
+	p.relayState.timeoutHandler = handler
 }
