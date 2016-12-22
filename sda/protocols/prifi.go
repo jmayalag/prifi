@@ -48,11 +48,13 @@ type PriFiSDAWrapper struct {
 	configSet     bool
 	config        PriFiSDAWrapperConfig
 	role          PriFiRole
+	ms            MessageSender
+	totHandler    func([]*network.ServerIdentity, []*network.ServerIdentity)
 	ResultChannel chan interface{}
 	// running is a pointer to the service's variable
 	// indicating if the protocol is running. It should
 	// be set to false when the protocol is stopped.
-	running	      *bool // TODO: We should use a lock before modifying it
+	Running	      *bool // TODO: We should use a lock before modifying it
 
 	//this is the actual "PriFi" (DC-net) protocol/library, defined in prifi-lib/prifi.go
 	prifiProtocol *prifi_lib.PriFiProtocol
@@ -73,12 +75,8 @@ func (p *PriFiSDAWrapper) Start() error {
 
 // Stop aborts the current execution of the protocol.
 func (p *PriFiSDAWrapper) Stop() {
-	err := p.prifiProtocol.Received_ALL_REL_SHUTDOWN(prifi_lib.ALL_ALL_SHUTDOWN{})
-	if err != nil {
-		log.Error("Could not stop PriFi:", err)
-	} else {
-		p.Shutdown()
-	}
+	p.prifiProtocol.Received_ALL_REL_SHUTDOWN(prifi_lib.ALL_ALL_SHUTDOWN{})
+	p.Close()
 }
 
 /**
@@ -112,6 +110,7 @@ func (p *PriFiSDAWrapper) SetConfig(config *PriFiSDAWrapperConfig) {
 	p.role = config.Role
 
 	ms := p.buildMessageSender(config.Identities)
+	p.ms = ms
 
 	// Prifi-lib parameters
 	// TODO: read them from a config file (or let relay broadcast them ?)
@@ -143,6 +142,7 @@ func (p *PriFiSDAWrapper) SetConfig(config *PriFiSDAWrapperConfig) {
 			sendDataOutOfDCNet)
 
 		p.prifiProtocol = prifi_lib.NewPriFiRelayWithState(ms, relayState)
+		p.prifiProtocol.SetTimeoutHandler(p.handleTimeout)
 
 	case Trustee:
 		id := config.Identities[p.ServerIdentity().Address].Id
@@ -166,6 +166,12 @@ func (p *PriFiSDAWrapper) SetConfig(config *PriFiSDAWrapperConfig) {
 	p.configSet = true
 }
 
+// SetTimeoutHandler sets the function that will be called on round timeout
+// if the protocol runs as the relay.
+func (p *PriFiSDAWrapper) SetTimeoutHandler(handler func([]*network.ServerIdentity, []*network.ServerIdentity)) {
+	p.totHandler = handler
+}
+
 // buildMessageSender creates a MessageSender struct
 // given a mep between server identities and PriFi identities.
 func (p *PriFiSDAWrapper) buildMessageSender(identities map[network.Address]PriFiIdentity) MessageSender {
@@ -182,8 +188,12 @@ func (p *PriFiSDAWrapper) buildMessageSender(identities map[network.Address]PriF
 			log.Fatal("Unknow node with address", nodes[i].ServerIdentity.Address)
 		}
 		switch id.Role {
-		case Client: clients[clientId] = nodes[i]; clientId++
-		case Trustee: trustees[trusteeId] = nodes[i]; trusteeId++
+		case Client:
+			clients[clientId] = nodes[i]
+			clientId++
+		case Trustee:
+			trustees[trusteeId] = nodes[i]
+			trusteeId++
 		case Relay:
 			if relay == nil {
 				relay = nodes[i]
@@ -206,6 +216,23 @@ func (p *PriFiSDAWrapper) buildMessageSender(identities map[network.Address]PriF
 	}
 
 	return MessageSender{p.TreeNodeInstance, relay, clients, trustees}
+}
+
+// handleTimeout translates ids int ServerIdentities
+// and calls the timeout handler.
+func (p *PriFiSDAWrapper) handleTimeout(clientsIds []int, trusteesIds []int) {
+	clients := make([]*network.ServerIdentity, len(clientsIds))
+	trustees := make([]*network.ServerIdentity, len(trusteesIds))
+
+	for i, v := range clientsIds {
+		clients[i] = p.ms.clients[v].ServerIdentity
+	}
+
+	for i, v := range trusteesIds {
+		trustees[i] = p.ms.trustees[v].ServerIdentity
+	}
+
+	p.totHandler(clients, trustees)
 }
 
 // registerHandlers contains the verbose code

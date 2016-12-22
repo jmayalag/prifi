@@ -104,8 +104,6 @@ func (s *Service) StartClient(group *config.Group) error {
 // instantiation of the protocol, use CreateProtocolService, and you can
 // give some extra-configuration to your protocol in here.
 func (s *Service) NewProtocol(tn *sda.TreeNodeInstance, conf *sda.GenericConfig) (sda.ProtocolInstance, error) {
-	log.Lvl5("Setting node configuration from service")
-
 	pi, err := prifi.NewPriFiSDAWrapperProtocol(tn)
 	if err != nil {
 		return nil, err
@@ -120,6 +118,7 @@ func (s *Service) NewProtocol(tn *sda.TreeNodeInstance, conf *sda.GenericConfig)
 		Identities: s.identityMap,
 		Role: s.role,
 	})
+	wrapper.Running = &s.isPrifiRunning
 
 	return wrapper, nil
 }

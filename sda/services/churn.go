@@ -35,7 +35,7 @@ type DisconnectionRequest struct {}
 // HandleConnection receives connection requests from other nodes.
 // It decides when another PriFi protocol should be started.
 func (s *Service) HandleConnection(msg *network.Packet) {
-	log.Lvl2("Received new connection request from ", msg.ServerIdentity.Address)
+	log.Info("Received new connection request from ", msg.ServerIdentity.Address)
 
 	// If we are not the relay, ignore the message
 	if s.role != prifi.Relay {
@@ -51,18 +51,29 @@ func (s *Service) HandleConnection(msg *network.Packet) {
 	s.waitQueue.mutex.Lock()
 	defer s.waitQueue.mutex.Unlock()
 
+	nodeAlreadyIn := false
+
 	// Add node to the waiting queue
 	switch id.Role {
 	case prifi.Client:
 		if _, ok := s.waitQueue.clients[msg.ServerIdentity]; !ok {
 			s.waitQueue.clients[msg.ServerIdentity] = true
+		} else {
+			nodeAlreadyIn  = true
 		}
 	case prifi.Trustee:
 		if _, ok := s.waitQueue.trustees[msg.ServerIdentity]; !ok {
 			s.waitQueue.trustees[msg.ServerIdentity] = true
+		} else {
+			nodeAlreadyIn = true
 		}
 	default:
 		log.Info("Ignoring connection request from node with invalid role.")
+	}
+
+	// If the nodes is already participating we do not need to restart
+	if nodeAlreadyIn && s.isPrifiRunning {
+		return
 	}
 
 	// Start (or restart) PriFi if there are enough participants
@@ -136,11 +147,33 @@ func (s *Service) autoConnect() {
 	}
 }
 
+// handleTimeout is a callback that should be called on the relay
+// when a round times out. It tries to restart PriFi with the nodes
+// that sent their ciphertext in time.
+func (s *Service) handleTimeout(lateClients []*network.ServerIdentity, lateTrustees []*network.ServerIdentity) {
+	s.waitQueue.mutex.Lock()
+	defer s.waitQueue.mutex.Unlock()
+
+	for _, v := range lateClients {
+		delete(s.waitQueue.clients, v)
+	}
+
+	for _, v := range lateTrustees {
+		delete(s.waitQueue.trustees, v)
+	}
+
+	s.stopPriFi()
+
+	if len(s.waitQueue.clients) >= 2 && len(s.waitQueue.trustees) >= 1 {
+		s.startPriFi()
+	}
+}
+
 // startPriFi starts a PriFi protocol. It is called
 // by the relay as soon as enough participants are
 // ready (one trustee and two clients).
 func (s *Service) startPriFi() {
-	log.Lvl1("Starting PriFi protocol")
+	log.Lvl1("startPriFi with nodes")
 
 	if s.role != prifi.Relay {
 		log.Error("Trying to start PriFi protocol from a non-relay node.")
@@ -179,6 +212,7 @@ func (s *Service) startPriFi() {
 		Identities: s.identityMap,
 		Role: prifi.Relay,
 	})
+	wrapper.SetTimeoutHandler(s.handleTimeout)
 	wrapper.Start()
 
 	s.isPrifiRunning = true;
@@ -201,4 +235,17 @@ func (s *Service) stopPriFi() {
 	s.prifiWrapper.Stop()
 	s.prifiWrapper = nil
 	s.isPrifiRunning = false;
+}
+
+func (s *Service) printWaitQueue() {
+	log.Info("Current state of the wait queue:")
+
+	log.Info("Clients:")
+	for k := range s.waitQueue.clients {
+		log.Info(k.Address)
+	}
+	log.Info("Trustees:")
+	for k := range s.waitQueue.trustees {
+		log.Info(k.Address)
+	}
 }
