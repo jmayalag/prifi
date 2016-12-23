@@ -1,5 +1,5 @@
 #variables
-cothorityBranchRequired="master"
+cothorityBranchRequired="test_ism_2_699"
 colors="true"
 dbg_lvl=3
 conf_file="config.toml"
@@ -20,13 +20,26 @@ print_usage() {
 	echo
 	echo -e "Usage: run-prifi.sh \e[33mrole/operation [params]\e[97m"
 	echo -e "	\e[33mrole\e[97m: client, relay, trustee"
-	echo -e "	\e[33moperation\e[97m: sockstest, all-localhost"
+	echo -e "	\e[33moperation\e[97m: install, sockstest, all-localhost"
 	echo -e "	\e[33mparams\e[97m for role \e[33mrelay\e[97m: [socks_server_port] (optional, numeric)"
 	echo -e "	\e[33mparams\e[97m for role \e[33mtrustee\e[97m: id (required, numeric)"
 	echo -e "	\e[33mparams\e[97m for role \e[33mclient\e[97m: id (required, numeric), [prifi_socks_server_port] (optional, numeric)"
+	echo -e "	\e[33mparams\e[97m for operation \e[33minstall\e[97m: none"
 	echo -e "	\e[33mparams\e[97m for operation \e[33mall-localhost\e[97m: none"
 	echo -e "	\e[33mparams\e[97m for operation \e[33msockstest\e[97m: [socks_server_port] (optional, numeric), [prifi_socks_server_port] (optional, numeric)"
 	echo
+}
+
+#tests if GOPATH is set and exists
+test_go(){
+	if [ -z "$GOPATH"  ]; then
+		echo -e "$errorMsg GOPATH is unset ! make sure you installed the Go language."
+		exit 1
+	fi
+	if [ ! -d "$GOPATH"  ]; then
+		echo -e "$errorMsg GOPATH ($GOPATH) is not a folder ! make sure you installed the Go language correctly."
+		exit 1
+	fi
 }
 
 # tests if the cothority exists and is on the correct branch
@@ -34,7 +47,7 @@ test_cothority() {
 	branchOk=$(cd $GOPATH/src/github.com/dedis/cothority; git status | grep "On branch $cothorityBranchRequired" | wc -l)
 
 	if [ $branchOk -ne 1 ]; then
-		echo -e "$errorMsg Make sure $GOPATH/src/github.com/dedis/cothority is a git repo, on branch $cothorityBranchRequired. Try to 'go get' the required packages !"
+		echo -e "$errorMsg Make sure \"$GOPATH/src/github.com/dedis/cothority\" is a git repo, on branch \"$cothorityBranchRequired\". Try running \"./prifi.sh install\""
 		exit 1
 	fi
 }
@@ -72,8 +85,30 @@ test_files() {
 	fi
 }
 
-#main switch, $1 is "operation" : "relay", "client", "trustee", "all"
+#main switch, $1 is operation : "install", "relay", "client", "trustee", "sockstest", "all-localhost", "clean"
 case $1 in
+
+	install|Install|INSTALL)
+
+		echo -n "Testing for GOPATH... "
+		test_go
+		echo -e "$okMsg"
+
+		echo -n "Getting all go packages... "
+		cd sda/app; go get 1>/dev/null 2>&1
+		echo -e "$okMsg"
+
+		echo -n "Switching cothority branch... "
+		cd $GOPATH/src/github.com/dedis/cothority; git checkout "$cothorityBranchRequired" 1>/dev/null 2>&1
+		echo -e "$okMsg"
+
+		echo -n "Testing cothority branch... "
+		test_cothority 
+		echo -e "$okMsg"
+
+		;;
+	
+
 	relay|Relay|RELAY)
 	
 		# the 2nd argument can replace the port number
