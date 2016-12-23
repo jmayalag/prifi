@@ -33,12 +33,12 @@ import (
 
 	"github.com/dedis/cothority/log"
 	"github.com/dedis/crypto/abstract"
-	"github.com/lbarman/prifi_dev/prifi-lib/config"
-	"github.com/lbarman/prifi_dev/prifi-lib/crypto"
-	"github.com/lbarman/prifi_dev/prifi-lib/dcnet"
-	prifilog "github.com/lbarman/prifi_dev/prifi-lib/log"
+	"github.com/lbarman/prifi/prifi-lib/config"
+	"github.com/lbarman/prifi/prifi-lib/crypto"
+	"github.com/lbarman/prifi/prifi-lib/dcnet"
+	prifilog "github.com/lbarman/prifi/prifi-lib/log"
 
-	socks "github.com/lbarman/prifi_dev/prifi-socks"
+	socks "github.com/lbarman/prifi/prifi-socks"
 )
 
 const MaxUint uint32 = uint32(4294967295)
@@ -81,13 +81,12 @@ type ClientState struct {
 	UseUDP                    bool
 	MessageHistory            abstract.Cipher
 	StartStopReceiveBroadcast chan bool
-	statistics                        *prifilog.LatencyStatistics
+	statistics                *prifilog.LatencyStatistics
 
 	//concurrent stuff
 	RoundNo           int32
 	BufferedRoundData map[int32]REL_CLI_DOWNSTREAM_DATA
 }
-
 
 // Used to initialize the state of the client. Must be called before anything else.
 func NewClientState(clientId int, nTrustees int, nClients int, payloadLength int, latencyTest bool, useUDP bool, dataOutputEnabled bool, dataForDCNet chan []byte, dataFromDCNet chan []byte) *ClientState {
@@ -326,7 +325,7 @@ func (p *PriFiProtocol) ProcessDownStreamData(msg REL_CLI_DOWNSTREAM_DATA) error
 /*
 SendUpstreamData determines if it's our round, embeds data (maybe latency-test message) in the payload if we can,
 creates the DC-net cipher and sends it to the relay.
- */
+*/
 func (p *PriFiProtocol) SendUpstreamData() error {
 	//TODO: maybe make this into a method func (p *PrifiProtocol) isMySlot() bool {}
 	//write the next upstream slice. First, determine if we can embed payload this round

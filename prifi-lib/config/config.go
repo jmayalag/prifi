@@ -7,7 +7,7 @@ import (
 	"github.com/dedis/crypto/config"
 	"github.com/dedis/crypto/ed25519"
 	"github.com/dedis/crypto/suites"
-	"github.com/lbarman/prifi_dev/prifi-lib/dcnet"
+	"github.com/lbarman/prifi/prifi-lib/dcnet"
 )
 
 // LLD_PROTOCOL_VERSION is used to make sure everybody has the same version of the software.

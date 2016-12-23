@@ -15,12 +15,12 @@ import (
 	"os"
 	"strconv"
 	"strings"
+
 	"github.com/dedis/cothority/app/lib/config"
 	"github.com/dedis/cothority/log"
 	"github.com/dedis/cothority/network"
 	"github.com/dedis/cothority/sda"
-	"github.com/lbarman/prifi_dev/sda/protocols"
-	"github.com/lbarman/prifi_dev/prifi-lib"
+	"github.com/lbarman/prifi/sda/protocols"
 
 	socks "github.com/lbarman/prifi_dev/prifi-socks"
 )
@@ -35,7 +35,6 @@ func init() {
 	serviceID = sda.ServiceFactory.ServiceID(ServiceName)
 }
 
-
 type PriFiConfig struct {
 	CellSizeUp            int
 	CellSizeDown          int
@@ -44,8 +43,8 @@ type PriFiConfig struct {
 	RelayReportingLimit   int
 	UseUDP                bool
 	DoLatencyTests        bool
-	SocksServerPort		int
-	SocksClientPort		int
+	SocksServerPort       int
+	SocksClientPort       int
 }
 
 func (s *Service) SetConfig(config *PriFiConfig) {
@@ -59,15 +58,15 @@ type Service struct {
 	// We need to embed the ServiceProcessor, so that incoming messages
 	// are correctly handled.
 	*sda.ServiceProcessor
-	group   *config.Group
-	prifiConfig *PriFiConfig
-	Storage *Storage
-	path    string
-	role protocols.PriFiRole
-	identityMap map[network.Address]protocols.PriFiIdentity
-	relayIdentity *network.ServerIdentity
-	waitQueue *waitQueue
-	prifiWrapper *protocols.PriFiSDAWrapper
+	group          *config.Group
+	prifiConfig    *PriFiConfig
+	Storage        *Storage
+	path           string
+	role           protocols.PriFiRole
+	identityMap    map[network.Address]protocols.PriFiIdentity
+	relayIdentity  *network.ServerIdentity
+	waitQueue      *waitQueue
+	prifiWrapper   *protocols.PriFiSDAWrapper
 	isPrifiRunning bool
 }
 
@@ -97,14 +96,14 @@ func (s *Service) StartRelay(group *config.Group) error {
 	s.role = protocols.Relay
 	s.readGroup(group)
 	s.waitQueue = &waitQueue{
-		clients: make(map[*network.ServerIdentity]bool),
+		clients:  make(map[*network.ServerIdentity]bool),
 		trustees: make(map[*network.ServerIdentity]bool),
 	}
 
 	socksServerConfig = &protocols.SOCKSConfig{
-		Port: "127.0.0.1:"+strconv.Itoa(s.prifiConfig.SocksClientPort),
-		PayloadLength: s.prifiConfig.CellSizeUp,
-		UpstreamChannel: make(chan []byte),
+		Port:              "127.0.0.1:" + strconv.Itoa(s.prifiConfig.SocksClientPort),
+		PayloadLength:     s.prifiConfig.CellSizeUp,
+		UpstreamChannel:   make(chan []byte),
 		DownstreamChannel: make(chan []byte),
 	}
 
@@ -123,11 +122,10 @@ func (s *Service) StartClient(group *config.Group) error {
 	s.role = protocols.Client
 	s.readGroup(group)
 
-
 	socksClientConfig = &protocols.SOCKSConfig{
-		Port: ":"+strconv.Itoa(s.prifiConfig.SocksServerPort),
-		PayloadLength: s.prifiConfig.CellSizeUp,
-		UpstreamChannel: make(chan []byte),
+		Port:              ":" + strconv.Itoa(s.prifiConfig.SocksServerPort),
+		PayloadLength:     s.prifiConfig.CellSizeUp,
+		UpstreamChannel:   make(chan []byte),
 		DownstreamChannel: make(chan []byte),
 	}
 
@@ -138,23 +136,22 @@ func (s *Service) StartClient(group *config.Group) error {
 	return nil
 }
 
-
 // StartClient starts the necessary
 // protocols to enable the client-mode.
 func (s *Service) StartSocksTunnelOnly() error {
 	log.Info("Service", s, "running in socks-tunnel-only mode")
 
 	socksClientConfig = &protocols.SOCKSConfig{
-		Port: ":"+strconv.Itoa(s.prifiConfig.SocksServerPort),
-		PayloadLength: s.prifiConfig.CellSizeUp,
-		UpstreamChannel: make(chan []byte),
+		Port:              ":" + strconv.Itoa(s.prifiConfig.SocksServerPort),
+		PayloadLength:     s.prifiConfig.CellSizeUp,
+		UpstreamChannel:   make(chan []byte),
 		DownstreamChannel: make(chan []byte),
 	}
 
 	socksServerConfig = &protocols.SOCKSConfig{
-		Port: "127.0.0.1:"+strconv.Itoa(s.prifiConfig.SocksClientPort),
-		PayloadLength: s.prifiConfig.CellSizeUp,
-		UpstreamChannel: socksClientConfig.UpstreamChannel,
+		Port:              "127.0.0.1:" + strconv.Itoa(s.prifiConfig.SocksClientPort),
+		PayloadLength:     s.prifiConfig.CellSizeUp,
+		UpstreamChannel:   socksClientConfig.UpstreamChannel,
 		DownstreamChannel: socksClientConfig.DownstreamChannel,
 	}
 	go socks.StartSocksServer(socksClientConfig.Port, socksClientConfig.PayloadLength, socksClientConfig.UpstreamChannel, socksClientConfig.DownstreamChannel, false)
@@ -163,35 +160,35 @@ func (s *Service) StartSocksTunnelOnly() error {
 	return nil
 }
 
-func (s *Service) setConfigToPriFiProtocol(wrapper *protocols.PriFiSDAWrapper){
+func (s *Service) setConfigToPriFiProtocol(wrapper *protocols.PriFiSDAWrapper) {
 
 	log.Lvl1("setConfigToPriFiProtocol called")
 	log.Lvlf1("%+v\n", s.prifiConfig)
 
 	prifiParams := prifi.ALL_ALL_PARAMETERS{
 		ClientDataOutputEnabled: true,
-		DoLatencyTests: s.prifiConfig.DoLatencyTests,
-		DownCellSize: s.prifiConfig.CellSizeDown,
-		ForceParams: true,
-		NClients: -1, //computer later
-		NextFreeClientId: 0,
-		NextFreeTrusteeId: 0,
-		NTrustees: -1, //computer later
-		RelayDataOutputEnabled: true,
-		RelayReportingLimit: s.prifiConfig.RelayReportingLimit,
-		RelayUseDummyDataDown: s.prifiConfig.RelayUseDummyDataDown,
-		RelayWindowSize: s.prifiConfig.RelayWindowSize,
-		StartNow: false,
-		UpCellSize: s.prifiConfig.CellSizeUp,
-		UseUDP: s.prifiConfig.UseUDP,
+		DoLatencyTests:          s.prifiConfig.DoLatencyTests,
+		DownCellSize:            s.prifiConfig.CellSizeDown,
+		ForceParams:             true,
+		NClients:                -1, //computer later
+		NextFreeClientId:        0,
+		NextFreeTrusteeId:       0,
+		NTrustees:               -1, //computer later
+		RelayDataOutputEnabled:  true,
+		RelayReportingLimit:     s.prifiConfig.RelayReportingLimit,
+		RelayUseDummyDataDown:   s.prifiConfig.RelayUseDummyDataDown,
+		RelayWindowSize:         s.prifiConfig.RelayWindowSize,
+		StartNow:                false,
+		UpCellSize:              s.prifiConfig.CellSizeUp,
+		UseUDP:                  s.prifiConfig.UseUDP,
 	}
 
 	wrapper.SetConfig(&protocols.PriFiSDAWrapperConfig{
 		ALL_ALL_PARAMETERS: prifiParams,
-		Identities: s.identityMap,
-		Role: s.role,
+		Identities:         s.identityMap,
+		Role:               s.role,
 		ClientSideSocksConfig: socksClientConfig,
-		RelaySideSocksConfig: socksServerConfig,
+		RelaySideSocksConfig:  socksServerConfig,
 	})
 
 }

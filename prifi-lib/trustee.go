@@ -22,14 +22,15 @@ import (
 	"bytes"
 	"strconv"
 
+	"math/rand"
+
 	"github.com/dedis/cothority/log"
 	"github.com/dedis/crypto/abstract"
 	crypto_proof "github.com/dedis/crypto/proof"
 	"github.com/dedis/crypto/shuffle"
-	"github.com/lbarman/prifi_dev/prifi-lib/config"
-	"github.com/lbarman/prifi_dev/prifi-lib/crypto"
-	"github.com/lbarman/prifi_dev/prifi-lib/dcnet"
-	"math/rand"
+	"github.com/lbarman/prifi/prifi-lib/config"
+	"github.com/lbarman/prifi/prifi-lib/crypto"
+	"github.com/lbarman/prifi/prifi-lib/dcnet"
 )
 
 // Possible states the trustees are in. This restrict the kind of messages they can receive at a given point in time.
@@ -314,28 +315,28 @@ func (p *PriFiProtocol) Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE(m
 	for i, v := range perm {
 		ephPublicKeys3[v] = ephPublicKeys2[i]
 	}
-	ephPublicKeys2 = ephPublicKeys3;
+	ephPublicKeys2 = ephPublicKeys3
 
 	proof := make([]byte, 50)
 
 	/*
-	//perform the neff-shuffle
-	H := p.trusteeState.PublicKey
-	X := clientsEphemeralPks
-	Y := X
+		//perform the neff-shuffle
+		H := p.trusteeState.PublicKey
+		X := clientsEphemeralPks
+		Y := X
 
-	_, _, prover := shuffle.Shuffle(config.CryptoSuite, nil, H, X, Y, rand)
-	_, err := crypto_proof.HashProve(config.CryptoSuite, "PairShuffle", rand, prover)
-	if err != nil {
-		e := "Could not neff-shuffle, error is " + err.Error()
-		log.Error(e)
-		return errors.New(e)
-	}
+		_, _, prover := shuffle.Shuffle(config.CryptoSuite, nil, H, X, Y, rand)
+		_, err := crypto_proof.HashProve(config.CryptoSuite, "PairShuffle", rand, prover)
+		if err != nil {
+			e := "Could not neff-shuffle, error is " + err.Error()
+			log.Error(e)
+			return errors.New(e)
+		}
 
-	//base2, ephPublicKeys2, proof := NeffShuffle(base, ephPublicKey)
-	base2 := base
-	ephPublicKeys2 := clientsEphemeralPks
-	proof := make([]byte, 50)
+		//base2, ephPublicKeys2, proof := NeffShuffle(base, ephPublicKey)
+		base2 := base
+		ephPublicKeys2 := clientsEphemeralPks
+		proof := make([]byte, 50)
 	*/
 
 	//send the answer

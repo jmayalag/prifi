@@ -2,7 +2,7 @@ package protocols
 
 import (
 	"github.com/dedis/cothority/sda"
-	prifi_lib "github.com/lbarman/prifi_dev/prifi-lib"
+	prifi_lib "github.com/lbarman/prifi/prifi-lib"
 )
 
 //wrappers

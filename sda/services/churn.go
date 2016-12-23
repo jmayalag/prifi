@@ -3,12 +3,13 @@ package services
 // This file contains the logic to handle churn.
 
 import (
+	"sync"
+	"time"
+
 	"github.com/dedis/cothority/log"
 	"github.com/dedis/cothority/network"
-	"github.com/lbarman/prifi_dev/sda/protocols"
-	"time"
 	"github.com/dedis/cothority/sda"
-	"sync"
+	"github.com/lbarman/prifi/sda/protocols"
 )
 
 func init() {
@@ -19,18 +20,18 @@ func init() {
 // waitQueue contains the list of nodes that are currently willing
 // to participate to the protocol.
 type waitQueue struct {
-	mutex sync.Mutex
+	mutex    sync.Mutex
 	trustees map[*network.ServerIdentity]bool
-	clients map[*network.ServerIdentity]bool
+	clients  map[*network.ServerIdentity]bool
 }
 
 // ConnectionRequest messages are sent to the relay
 // by nodes that want to join the protocol.
-type ConnectionRequest struct {}
+type ConnectionRequest struct{}
 
 // DisconnectionRequest messages are sent to the relay
 // by nodes that want to leave the protocol.
-type DisconnectionRequest struct {}
+type DisconnectionRequest struct{}
 
 // HandleConnection receives connection requests from other nodes.
 // It decides when another PriFi protocol should be started.
@@ -59,7 +60,7 @@ func (s *Service) HandleConnection(msg *network.Packet) {
 		if _, ok := s.waitQueue.clients[msg.ServerIdentity]; !ok {
 			s.waitQueue.clients[msg.ServerIdentity] = true
 		} else {
-			nodeAlreadyIn  = true
+			nodeAlreadyIn = true
 		}
 	case protocols.Trustee:
 		if _, ok := s.waitQueue.trustees[msg.ServerIdentity]; !ok {
@@ -89,7 +90,7 @@ func (s *Service) HandleConnection(msg *network.Packet) {
 
 // HandleDisconnection receives disconnection requests.
 // It must stop the current PriFi protocol.
-func (s *Service) HandleDisconnection(msg *network.Packet)  {
+func (s *Service) HandleDisconnection(msg *network.Packet) {
 	log.Lvl2("Received disconnection request from ", msg.ServerIdentity.Address)
 
 	// If we are not the relay, ignore the message
@@ -108,9 +109,12 @@ func (s *Service) HandleDisconnection(msg *network.Packet)  {
 
 	// Remove node to the waiting queue
 	switch id.Role {
-	case protocols.Client: delete(s.waitQueue.clients, msg.ServerIdentity)
-	case protocols.Trustee: delete(s.waitQueue.trustees, msg.ServerIdentity)
-	default: log.Info("Ignoring disconnection request from node with invalid role.")
+	case protocols.Client:
+		delete(s.waitQueue.clients, msg.ServerIdentity)
+	case protocols.Trustee:
+		delete(s.waitQueue.trustees, msg.ServerIdentity)
+	default:
+		log.Info("Ignoring disconnection request from node with invalid role.")
 	}
 
 	// Stop PriFi and restart if there are enough participants left.
@@ -184,9 +188,9 @@ func (s *Service) startPriFiCommunicateProtocol() {
 
 	var wrapper *protocols.PriFiSDAWrapper
 
-	participants := make([]*network.ServerIdentity, len(s.waitQueue.trustees) + len(s.waitQueue.clients) + 1)
+	participants := make([]*network.ServerIdentity, len(s.waitQueue.trustees)+len(s.waitQueue.clients)+1)
 	participants[0] = s.relayIdentity
-	i := 1;
+	i := 1
 	for k := range s.waitQueue.clients {
 		participants[i] = k
 		i++
@@ -210,14 +214,13 @@ func (s *Service) startPriFiCommunicateProtocol() {
 	wrapper = pi.(*protocols.PriFiSDAWrapper)
 	s.prifiWrapper = wrapper
 
-
 	s.isPrifiRunning = true
 	s.setConfigToPriFiProtocol(wrapper) //TODO: This was not there in Matthieu's work. Maybe there is a reason
 
 	wrapper.SetTimeoutHandler(s.handleTimeout)
 	wrapper.Start()
 
-	s.isPrifiRunning = true;
+	s.isPrifiRunning = true
 }
 
 // stopPriFi stops the PriFi protocol currently running.
@@ -236,7 +239,7 @@ func (s *Service) stopPriFiCommunicateProtocol() {
 
 	s.prifiWrapper.Stop()
 	s.prifiWrapper = nil
-	s.isPrifiRunning = false;
+	s.isPrifiRunning = false
 }
 
 func (s *Service) printWaitQueue() {

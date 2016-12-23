@@ -7,17 +7,18 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/dedis/cothority/log"
-	"github.com/lbarman/prifi_dev/sda/services"
-	"gopkg.in/urfave/cli.v1"
-	"github.com/dedis/cothority/app/lib/server"
-	"github.com/dedis/cothority/sda"
+	"io/ioutil"
+	"os/user"
 	"path"
 	"runtime"
-	"io/ioutil"
+
 	"github.com/BurntSushi/toml"
-	"os/user"
 	"github.com/dedis/cothority/app/lib/config"
+	"github.com/dedis/cothority/app/lib/server"
+	"github.com/dedis/cothority/log"
+	"github.com/dedis/cothority/sda"
+	"github.com/lbarman/prifi/sda/services"
+	"gopkg.in/urfave/cli.v1"
 )
 
 // DefaultName is the name of the binary we produce and is used to create a directory
@@ -214,7 +215,6 @@ func startSocksTunnelOnly(c *cli.Context) error {
  * COTHORITY
  */
 
-
 // setupCothorityd sets up a new cothority node configuration (used by all prifi modes)
 func setupNewCothorityNode(c *cli.Context) error {
 	server.InteractiveConfig("cothorityd")
@@ -275,7 +275,6 @@ func readPriFiConfigFile(c *cli.Context) (*services.PriFiConfig, error) {
 	return tomlConfig, nil
 }
 
-
 // getDefaultFile creates a path to the default config folder and appends fileName to it.
 func getDefaultFilePathForName(fileName string) string {
 	u, err := user.Current()
@@ -294,7 +293,7 @@ func getDefaultFilePathForName(fileName string) string {
 		return path.Join(u.HomeDir, "Library", DefaultName, fileName)
 	default:
 		return path.Join(u.HomeDir, ".config", DefaultName, fileName)
-	// TODO WIndows ? FreeBSD ?
+		// TODO WIndows ? FreeBSD ?
 	}
 }
 

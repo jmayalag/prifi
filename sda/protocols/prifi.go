@@ -14,14 +14,14 @@ import (
 	"github.com/dedis/cothority/log"
 	"github.com/dedis/cothority/network"
 	"github.com/dedis/cothority/sda"
-	prifi_lib "github.com/lbarman/prifi_dev/prifi-lib"
+	prifi_lib "github.com/lbarman/prifi/prifi-lib"
 )
 
 // ProtocolName is the name used to register the SDA wrapper protocol with SDA.
 const ProtocolName = "Prifi-SDA-Wrapper"
 
 //the UDP channel we provide to PriFi. check udp.go for more details.
-var udpChan UDPChannel = newRealUDPChannel()// Cannot use localhost channel anymore for real deployment
+var udpChan UDPChannel = newRealUDPChannel() // Cannot use localhost channel anymore for real deployment
 
 type PriFiRole int
 
@@ -33,7 +33,7 @@ const (
 
 type PriFiIdentity struct {
 	Role PriFiRole
-	Id int
+	Id   int
 }
 
 type SOCKSConfig struct {
@@ -45,10 +45,10 @@ type SOCKSConfig struct {
 
 type PriFiSDAWrapperConfig struct {
 	prifi_lib.ALL_ALL_PARAMETERS
-	Identities map[network.Address]PriFiIdentity
-	Role PriFiRole
+	Identities            map[network.Address]PriFiIdentity
+	Role                  PriFiRole
 	ClientSideSocksConfig *SOCKSConfig
-	RelaySideSocksConfig *SOCKSConfig
+	RelaySideSocksConfig  *SOCKSConfig
 }
 
 //This is the PriFi-SDA-Wrapper protocol struct. It contains the SDA-tree, and a chanel that stops the simulation when it receives a "true"
@@ -63,7 +63,7 @@ type PriFiSDAWrapper struct {
 	// running is a pointer to the service's variable
 	// indicating if the protocol is running. It should
 	// be set to false when the protocol is stopped.
-	Running       *bool // TODO: We should use a lock before modifying it
+	Running *bool // TODO: We should use a lock before modifying it
 
 	//this is the actual "PriFi" (DC-net) protocol/library, defined in prifi-lib/prifi.go
 	prifiProtocol *prifi_lib.PriFiProtocol
