@@ -49,7 +49,7 @@
 	</script>
 <div id="short-nav">
 <dl>
-<dd><code>import "github.com/lbarman/prifi_dev/prifi-lib/auth/daga"</code></dd>
+<dd><code>import "github.com/lbarman/prifi/prifi-lib/auth/daga"</code></dd>
 </dl>
 <dl>
 <dd><a class="overviewLink" href="#pkg-overview">Overview</a></dd>
@@ -92,12 +92,12 @@ protocol
 <h4>Package files</h4>
 <p>
 <span style="font-size:90%">
-<a href="/src/github.com/lbarman/prifi_dev/prifi-lib/auth/daga/client.go">client.go</a>
-<a href="/src/github.com/lbarman/prifi_dev/prifi-lib/auth/daga/doc.go">doc.go</a>
-<a href="/src/github.com/lbarman/prifi_dev/prifi-lib/auth/daga/helpers.go">helpers.go</a>
-<a href="/src/github.com/lbarman/prifi_dev/prifi-lib/auth/daga/relay.go">relay.go</a>
-<a href="/src/github.com/lbarman/prifi_dev/prifi-lib/auth/daga/trustee.go">trustee.go</a>
-<a href="/src/github.com/lbarman/prifi_dev/prifi-lib/auth/daga/types.go">types.go</a>
+<a href="/src/github.com/lbarman/prifi/prifi-lib/auth/daga/client.go">client.go</a>
+<a href="/src/github.com/lbarman/prifi/prifi-lib/auth/daga/doc.go">doc.go</a>
+<a href="/src/github.com/lbarman/prifi/prifi-lib/auth/daga/helpers.go">helpers.go</a>
+<a href="/src/github.com/lbarman/prifi/prifi-lib/auth/daga/relay.go">relay.go</a>
+<a href="/src/github.com/lbarman/prifi/prifi-lib/auth/daga/trustee.go">trustee.go</a>
+<a href="/src/github.com/lbarman/prifi/prifi-lib/auth/daga/types.go">types.go</a>
 </span>
 </p>
 </div><!-- .expanded -->
@@ -151,21 +151,21 @@ protocol
 <p>
 TODO: Move these to a common package
 </p>
-<h2 id="ClientAuthentication">func <a href="/src/github.com/lbarman/prifi_dev/prifi-lib/auth/daga/client.go?s=234:327#L4">ClientAuthentication</a>
+<h2 id="ClientAuthentication">func <a href="/src/github.com/lbarman/prifi/prifi-lib/auth/daga/client.go?s=234:327#L4">ClientAuthentication</a>
 <a class="permalink" href="#ClientAuthentication">¶</a>
 </h2>
 <pre>func ClientAuthentication(relayConn <a href="../../../../net/index.html">net</a>.<a href="../../../../net/index.html#Conn">Conn</a>, clientId <a href="https://golang.org/pkg/builtin/#int">int</a>, privateKey <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Scalar">Scalar</a>) <a href="https://golang.org/pkg/builtin/#error">error</a></pre>
 <p>
 Client participates in authentication process
 </p>
-<h2 id="Protocol">type <a href="/src/github.com/lbarman/prifi_dev/prifi-lib/auth/daga/types.go?s=188:284#L4">Protocol</a>
+<h2 id="Protocol">type <a href="/src/github.com/lbarman/prifi/prifi-lib/auth/daga/types.go?s=188:284#L4">Protocol</a>
 <a class="permalink" href="#Protocol">¶</a>
 </h2>
 <pre>type Protocol interface {
     Start() <a href="https://golang.org/pkg/builtin/#error">error</a>
     HandleMessage(msg []<a href="https://golang.org/pkg/builtin/#byte">byte</a>, senderConn <a href="../../../../net/index.html">net</a>.<a href="../../../../net/index.html#Conn">Conn</a>) <a href="https://golang.org/pkg/builtin/#error">error</a>
 }</pre>
-<h2 id="RelayProtocol">type <a href="/src/github.com/lbarman/prifi_dev/prifi-lib/auth/daga/types.go?s=649:863#L18">RelayProtocol</a>
+<h2 id="RelayProtocol">type <a href="/src/github.com/lbarman/prifi/prifi-lib/auth/daga/types.go?s=649:863#L18">RelayProtocol</a>
 <a class="permalink" href="#RelayProtocol">¶</a>
 </h2>
 <pre>type RelayProtocol struct {
@@ -175,25 +175,25 @@ Client participates in authentication process
     ClientPublicKeys  map[<a href="https://golang.org/pkg/builtin/#int">int</a>]<a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Point">Point</a>
     TrusteePublicKeys map[<a href="https://golang.org/pkg/builtin/#int">int</a>]<a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Point">Point</a>
 }</pre>
-<h3 id="RelayProtocol.AuthenticateClient">func (*RelayProtocol) <a href="/src/github.com/lbarman/prifi_dev/prifi-lib/auth/daga/relay.go?s=1762:1862#L55">AuthenticateClient</a>
+<h3 id="RelayProtocol.AuthenticateClient">func (*RelayProtocol) <a href="/src/github.com/lbarman/prifi/prifi-lib/auth/daga/relay.go?s=1762:1862#L55">AuthenticateClient</a>
 <a class="permalink" href="#RelayProtocol.AuthenticateClient">¶</a>
 </h3>
 <pre>func (p *<a href="#RelayProtocol">RelayProtocol</a>) AuthenticateClient(clientConn <a href="../../../../net/index.html">net</a>.<a href="../../../../net/index.html#Conn">Conn</a>) (<a href="../../../../github.com/lbarman/prifi/net/index.html">prifinet</a>.<a href="../../../../github.com/lbarman/prifi/net/index.html#NodeRepresentation">NodeRepresentation</a>, <a href="https://golang.org/pkg/builtin/#error">error</a>)</pre>
-<h3 id="RelayProtocol.HandleMessage">func (*RelayProtocol) <a href="/src/github.com/lbarman/prifi_dev/prifi-lib/auth/daga/relay.go?s=233:309#L8">HandleMessage</a>
+<h3 id="RelayProtocol.HandleMessage">func (*RelayProtocol) <a href="/src/github.com/lbarman/prifi/prifi-lib/auth/daga/relay.go?s=233:309#L8">HandleMessage</a>
 <a class="permalink" href="#RelayProtocol.HandleMessage">¶</a>
 </h3>
 <pre>func (p *<a href="#RelayProtocol">RelayProtocol</a>) HandleMessage(msg []<a href="https://golang.org/pkg/builtin/#byte">byte</a>, senderConn <a href="../../../../net/index.html">net</a>.<a href="../../../../net/index.html#Conn">Conn</a>) <a href="https://golang.org/pkg/builtin/#error">error</a></pre>
-<h3 id="RelayProtocol.Start">func (*RelayProtocol) <a href="/src/github.com/lbarman/prifi_dev/prifi-lib/auth/daga/relay.go?s=162:199#L3">Start</a>
+<h3 id="RelayProtocol.Start">func (*RelayProtocol) <a href="/src/github.com/lbarman/prifi/prifi-lib/auth/daga/relay.go?s=162:199#L3">Start</a>
 <a class="permalink" href="#RelayProtocol.Start">¶</a>
 </h3>
 <pre>func (p *<a href="#RelayProtocol">RelayProtocol</a>) Start() <a href="https://golang.org/pkg/builtin/#error">error</a></pre>
-<h2 id="TrusteeProtocol">type <a href="/src/github.com/lbarman/prifi_dev/prifi-lib/auth/daga/types.go?s=865:1263#L26">TrusteeProtocol</a>
+<h2 id="TrusteeProtocol">type <a href="/src/github.com/lbarman/prifi/prifi-lib/auth/daga/types.go?s=865:1263#L26">TrusteeProtocol</a>
 <a class="permalink" href="#TrusteeProtocol">¶</a>
 </h2>
 <pre>type TrusteeProtocol struct {
     <span class="comment">// contains filtered or unexported fields</span>
 }</pre>
-<h3 id="TrusteeProtocol.HandleMessage">func (*TrusteeProtocol) <a href="/src/github.com/lbarman/prifi_dev/prifi-lib/auth/daga/trustee.go?s=166:244#L2">HandleMessage</a>
+<h3 id="TrusteeProtocol.HandleMessage">func (*TrusteeProtocol) <a href="/src/github.com/lbarman/prifi/prifi-lib/auth/daga/trustee.go?s=166:244#L2">HandleMessage</a>
 <a class="permalink" href="#TrusteeProtocol.HandleMessage">¶</a>
 </h3>
 <pre>func (p *<a href="#TrusteeProtocol">TrusteeProtocol</a>) HandleMessage(msg []<a href="https://golang.org/pkg/builtin/#byte">byte</a>, senderConn <a href="../../../../net/index.html">net</a>.<a href="../../../../net/index.html#Conn">Conn</a>) <a href="https://golang.org/pkg/builtin/#error">error</a></pre>

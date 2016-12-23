@@ -49,7 +49,7 @@
 	</script>
 <div id="short-nav">
 <dl>
-<dd><code>import "github.com/lbarman/prifi_dev/sda/protocols"</code></dd>
+<dd><code>import "github.com/lbarman/prifi/sda/protocols"</code></dd>
 </dl>
 <dl>
 <dd><a class="overviewLink" href="#pkg-overview">Overview</a></dd>
@@ -90,7 +90,7 @@ As of now it only contains a dummy example protocol for demonstration purpose.
 <h4>Package files</h4>
 <p>
 <span style="font-size:90%">
-<a href="/src/github.com/lbarman/prifi_dev/sda/protocols/protocol.go">protocol.go</a>
+<a href="/src/github.com/lbarman/prifi/sda/protocols/protocol.go">protocol.go</a>
 </span>
 </p>
 </div><!-- .expanded -->
@@ -133,7 +133,7 @@ As of now it only contains a dummy example protocol for demonstration purpose.
 </div> <!-- #pkg-callgraph -->
 <h2 id="pkg-constants">Constants</h2>
 <pre>const <span id="ProtocolName">ProtocolName</span> = "Protocool"</pre>
-<h2 id="MyMsg">type <a href="/src/github.com/lbarman/prifi_dev/sda/protocols/protocol.go?s=405:439#L5">MyMsg</a>
+<h2 id="MyMsg">type <a href="/src/github.com/lbarman/prifi/sda/protocols/protocol.go?s=405:439#L5">MyMsg</a>
 <a class="permalink" href="#MyMsg">¶</a>
 </h2>
 <pre>type MyMsg struct {
@@ -142,7 +142,7 @@ As of now it only contains a dummy example protocol for demonstration purpose.
 <p>
 MyMsg contains a single message string
 </p>
-<h2 id="MyMsgStruct">type <a href="/src/github.com/lbarman/prifi_dev/sda/protocols/protocol.go?s=704:753#L13">MyMsgStruct</a>
+<h2 id="MyMsgStruct">type <a href="/src/github.com/lbarman/prifi/sda/protocols/protocol.go?s=704:753#L13">MyMsgStruct</a>
 <a class="permalink" href="#MyMsgStruct">¶</a>
 </h2>
 <pre>type MyMsgStruct struct {
@@ -155,7 +155,7 @@ The message handler functions must take a struct containing a
 network registered message struct (here MyMsg) and a *sda.TreeNode
 which will contain the TreeNode that sent the message.
 </p>
-<h2 id="MyProtocol">type <a href="/src/github.com/lbarman/prifi_dev/sda/protocols/protocol.go?s=968:1017#L21">MyProtocol</a>
+<h2 id="MyProtocol">type <a href="/src/github.com/lbarman/prifi/sda/protocols/protocol.go?s=968:1017#L21">MyProtocol</a>
 <a class="permalink" href="#MyProtocol">¶</a>
 </h2>
 <pre>type MyProtocol struct {
@@ -166,7 +166,7 @@ MyProtocol contains the protocol's state on one node and must implement
 the sda.ProtocolInstance interface (most of it is implemented by
 the contained TreeNodeInstance, we only have to implement Start())
 </p>
-<h3 id="MyProtocol.HandleMsg">func (*MyProtocol) <a href="/src/github.com/lbarman/prifi_dev/sda/protocols/protocol.go?s=1942:1995#L60">HandleMsg</a>
+<h3 id="MyProtocol.HandleMsg">func (*MyProtocol) <a href="/src/github.com/lbarman/prifi/sda/protocols/protocol.go?s=1942:1995#L60">HandleMsg</a>
 <a class="permalink" href="#MyProtocol.HandleMsg">¶</a>
 </h3>
 <pre>func (p *<a href="#MyProtocol">MyProtocol</a>) HandleMsg(msg <a href="#MyMsgStruct">MyMsgStruct</a>) <a href="https://golang.org/pkg/builtin/#error">error</a></pre>
@@ -175,7 +175,7 @@ HandleMsg handles a message of type MyMsg received by the SDA.
 It is automatically called by the SDA when a message of type MyMsg is received.
 See also MyMsgStruct comments.
 </p>
-<h3 id="MyProtocol.Start">func (*MyProtocol) <a href="/src/github.com/lbarman/prifi_dev/sda/protocols/protocol.go?s=1312:1346#L34">Start</a>
+<h3 id="MyProtocol.Start">func (*MyProtocol) <a href="/src/github.com/lbarman/prifi/sda/protocols/protocol.go?s=1312:1346#L34">Start</a>
 <a class="permalink" href="#MyProtocol.Start">¶</a>
 </h3>
 <pre>func (p *<a href="#MyProtocol">MyProtocol</a>) Start() <a href="https://golang.org/pkg/builtin/#error">error</a></pre>

@@ -49,7 +49,7 @@
 	</script>
 <div id="short-nav">
 <dl>
-<dd><code>import "github.com/lbarman/prifi_dev/prifi-lib/crypto"</code></dd>
+<dd><code>import "github.com/lbarman/prifi/prifi-lib/crypto"</code></dd>
 </dl>
 <dl>
 <dd><a class="overviewLink" href="#pkg-overview">Overview</a></dd>
@@ -87,9 +87,9 @@ used by the PriFi library.
 <h4>Package files</h4>
 <p>
 <span style="font-size:90%">
-<a href="/src/github.com/lbarman/prifi_dev/prifi-lib/crypto/doc.go">doc.go</a>
-<a href="/src/github.com/lbarman/prifi_dev/prifi-lib/crypto/neff.go">neff.go</a>
-<a href="/src/github.com/lbarman/prifi_dev/prifi-lib/crypto/schnorr.go">schnorr.go</a>
+<a href="/src/github.com/lbarman/prifi/prifi-lib/crypto/doc.go">doc.go</a>
+<a href="/src/github.com/lbarman/prifi/prifi-lib/crypto/neff.go">neff.go</a>
+<a href="/src/github.com/lbarman/prifi/prifi-lib/crypto/schnorr.go">schnorr.go</a>
 </span>
 </p>
 </div><!-- .expanded -->
@@ -130,7 +130,7 @@ used by the PriFi library.
 <ul class="treeview" id="callgraph-0" style="margin-left: 0.5in"></ul>
 </div>
 </div> <!-- #pkg-callgraph -->
-<h2 id="ExampleSchnorr">func <a href="/src/github.com/lbarman/prifi_dev/prifi-lib/crypto/schnorr.go?s=2406:2427#L79">ExampleSchnorr</a>
+<h2 id="ExampleSchnorr">func <a href="/src/github.com/lbarman/prifi/prifi-lib/crypto/schnorr.go?s=2406:2427#L79">ExampleSchnorr</a>
 <a class="permalink" href="#ExampleSchnorr">¶</a>
 </h2>
 <pre>func ExampleSchnorr()</pre>
@@ -138,7 +138,7 @@ used by the PriFi library.
 ExampleSchnorr's implementation is an example that demonstrates how
 to use Schnorr signatures.
 </p>
-<h2 id="NeffShuffle">func <a href="/src/github.com/lbarman/prifi_dev/prifi-lib/crypto/neff.go?s=419:533#L4">NeffShuffle</a>
+<h2 id="NeffShuffle">func <a href="/src/github.com/lbarman/prifi/prifi-lib/crypto/neff.go?s=419:533#L4">NeffShuffle</a>
 <a class="permalink" href="#NeffShuffle">¶</a>
 </h2>
 <pre>func NeffShuffle(x []<a href="../../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../../github.com/dedis/crypto/abstract/index.html#Point">Point</a>, base <a href="../../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../../github.com/dedis/crypto/abstract/index.html#Point">Point</a>, suite <a href="../../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../../github.com/dedis/crypto/abstract/index.html#Suite">Suite</a>) ([]<a href="../../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../../github.com/dedis/crypto/abstract/index.html#Point">Point</a>, <a href="../../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../../github.com/dedis/crypto/abstract/index.html#Point">Point</a>)</pre>
@@ -149,7 +149,7 @@ The function randomly shuffles and re-randomizes a set of ElGamal pairs,
 producing a correctness proof in the process.
 Returns (Xbar,Ybar), the shuffled and randomized pairs.
 </p>
-<h2 id="SchnorrSign">func <a href="/src/github.com/lbarman/prifi_dev/prifi-lib/crypto/schnorr.go?s=903:1014#L25">SchnorrSign</a>
+<h2 id="SchnorrSign">func <a href="/src/github.com/lbarman/prifi/prifi-lib/crypto/schnorr.go?s=903:1014#L25">SchnorrSign</a>
 <a class="permalink" href="#SchnorrSign">¶</a>
 </h2>
 <pre>func SchnorrSign(suite <a href="../../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../../github.com/dedis/crypto/abstract/index.html#Suite">Suite</a>, random <a href="../../../../../crypto/cipher/index.html">cipher</a>.<a href="../../../../../crypto/cipher/index.html#Stream">Stream</a>, message []<a href="https://golang.org/pkg/builtin/#byte">byte</a>,
@@ -163,7 +163,7 @@ This implementation is based on the paper:
 C.P. Schnorr, Efficient identification and signatures for smart cards,
 CRYPTO '89
 </p>
-<h2 id="SchnorrVerify">func <a href="/src/github.com/lbarman/prifi_dev/prifi-lib/crypto/schnorr.go?s=1660:1772#L50">SchnorrVerify</a>
+<h2 id="SchnorrVerify">func <a href="/src/github.com/lbarman/prifi/prifi-lib/crypto/schnorr.go?s=1660:1772#L50">SchnorrVerify</a>
 <a class="permalink" href="#SchnorrVerify">¶</a>
 </h2>
 <pre>func SchnorrVerify(suite <a href="../../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../../github.com/dedis/crypto/abstract/index.html#Suite">Suite</a>, message []<a href="https://golang.org/pkg/builtin/#byte">byte</a>, publicKey <a href="../../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../../github.com/dedis/crypto/abstract/index.html#Point">Point</a>,

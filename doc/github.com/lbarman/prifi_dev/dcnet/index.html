@@ -49,7 +49,7 @@
 	</script>
 <div id="short-nav">
 <dl>
-<dd><code>import "github.com/lbarman/prifi_dev/prifi-lib/dcnet"</code></dd>
+<dd><code>import "github.com/lbarman/prifi/prifi-lib/dcnet"</code></dd>
 </dl>
 <dl>
 <dd><a class="overviewLink" href="#pkg-overview">Overview</a></dd>
@@ -93,11 +93,11 @@ as well as implementations of multiple specific DC-nets coding schemes.
 <h4>Package files</h4>
 <p>
 <span style="font-size:90%">
-<a href="/src/github.com/lbarman/prifi_dev/prifi-lib/dcnet/cell.go">cell.go</a>
-<a href="/src/github.com/lbarman/prifi_dev/prifi-lib/dcnet/dcnet.go">dcnet.go</a>
-<a href="/src/github.com/lbarman/prifi_dev/prifi-lib/dcnet/owned.go">owned.go</a>
-<a href="/src/github.com/lbarman/prifi_dev/prifi-lib/dcnet/simple.go">simple.go</a>
-<a href="/src/github.com/lbarman/prifi_dev/prifi-lib/dcnet/test.go">test.go</a>
+<a href="/src/github.com/lbarman/prifi/prifi-lib/dcnet/cell.go">cell.go</a>
+<a href="/src/github.com/lbarman/prifi/prifi-lib/dcnet/dcnet.go">dcnet.go</a>
+<a href="/src/github.com/lbarman/prifi/prifi-lib/dcnet/owned.go">owned.go</a>
+<a href="/src/github.com/lbarman/prifi/prifi-lib/dcnet/simple.go">simple.go</a>
+<a href="/src/github.com/lbarman/prifi/prifi-lib/dcnet/test.go">test.go</a>
 </span>
 </p>
 </div><!-- .expanded -->
@@ -138,11 +138,11 @@ as well as implementations of multiple specific DC-nets coding schemes.
 <ul class="treeview" id="callgraph-0" style="margin-left: 0.5in"></ul>
 </div>
 </div> <!-- #pkg-callgraph -->
-<h2 id="TestCellCoder">func <a href="/src/github.com/lbarman/prifi_dev/prifi-lib/dcnet/test.go?s=3706:3781#L137">TestCellCoder</a>
+<h2 id="TestCellCoder">func <a href="/src/github.com/lbarman/prifi/prifi-lib/dcnet/test.go?s=3706:3781#L137">TestCellCoder</a>
 <a class="permalink" href="#TestCellCoder">¶</a>
 </h2>
 <pre>func TestCellCoder(t *<a href="../../../../testing/index.html">testing</a>.<a href="../../../../testing/index.html#T">T</a>, suite <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Suite">Suite</a>, factory <a href="#CellFactory">CellFactory</a>)</pre>
-<h2 id="CellCoder">type <a href="/src/github.com/lbarman/prifi_dev/prifi-lib/dcnet/cell.go?s=382:1990#L2">CellCoder</a>
+<h2 id="CellCoder">type <a href="/src/github.com/lbarman/prifi/prifi-lib/dcnet/cell.go?s=382:1990#L2">CellCoder</a>
 <a class="permalink" href="#CellCoder">¶</a>
 </h2>
 <pre>type CellCoder interface {
@@ -191,7 +191,7 @@ Designed to support multiple alternative cell encoding methods,
 some for single-owner cells (in which only one key-holder transmits),
 others for multi-owner cells (for transmit-request bitmaps for example).
 </p>
-<h3 id="OwnedCoderFactory">func <a href="/src/github.com/lbarman/prifi_dev/prifi-lib/dcnet/owned.go?s=1299:1333#L34">OwnedCoderFactory</a>
+<h3 id="OwnedCoderFactory">func <a href="/src/github.com/lbarman/prifi/prifi-lib/dcnet/owned.go?s=1299:1333#L34">OwnedCoderFactory</a>
 <a class="permalink" href="#OwnedCoderFactory">¶</a>
 </h3>
 <pre>func OwnedCoderFactory() <a href="#CellCoder">CellCoder</a></pre>
@@ -207,7 +207,7 @@ For larger payloads, we use one verifiable DC-net point
 to transmit a key and a MAC for the associated variable-length,
 symmetric-key crypto based part of the cell.
 </p>
-<h3 id="SimpleCoderFactory">func <a href="/src/github.com/lbarman/prifi_dev/prifi-lib/dcnet/simple.go?s=468:503#L10">SimpleCoderFactory</a>
+<h3 id="SimpleCoderFactory">func <a href="/src/github.com/lbarman/prifi/prifi-lib/dcnet/simple.go?s=468:503#L10">SimpleCoderFactory</a>
 <a class="permalink" href="#SimpleCoderFactory">¶</a>
 </h3>
 <pre>func SimpleCoderFactory() <a href="#CellCoder">CellCoder</a></pre>
@@ -215,14 +215,14 @@ symmetric-key crypto based part of the cell.
 Simple DC-net encoder providing no disruption or equivocation protection,
 for experimentation and baseline performance evaluations.
 </p>
-<h2 id="CellFactory">type <a href="/src/github.com/lbarman/prifi_dev/prifi-lib/dcnet/cell.go?s=2055:2088#L51">CellFactory</a>
+<h2 id="CellFactory">type <a href="/src/github.com/lbarman/prifi/prifi-lib/dcnet/cell.go?s=2055:2088#L51">CellFactory</a>
 <a class="permalink" href="#CellFactory">¶</a>
 </h2>
 <pre>type CellFactory func() <a href="#CellCoder">CellCoder</a></pre>
 <p>
 CellFactory is the type of factories providing a CellCoder.
 </p>
-<h2 id="TestGroup">type <a href="/src/github.com/lbarman/prifi_dev/prifi-lib/dcnet/test.go?s=824:913#L33">TestGroup</a>
+<h2 id="TestGroup">type <a href="/src/github.com/lbarman/prifi/prifi-lib/dcnet/test.go?s=824:913#L33">TestGroup</a>
 <a class="permalink" href="#TestGroup">¶</a>
 </h2>
 <pre>type TestGroup struct {
@@ -230,12 +230,12 @@ CellFactory is the type of factories providing a CellCoder.
     Clients  []*<a href="#TestNode">TestNode</a>
     Trustees []*<a href="#TestNode">TestNode</a>
 }</pre>
-<h3 id="TestSetup">func <a href="/src/github.com/lbarman/prifi_dev/prifi-lib/dcnet/test.go?s=1364:1472#L54">TestSetup</a>
+<h3 id="TestSetup">func <a href="/src/github.com/lbarman/prifi/prifi-lib/dcnet/test.go?s=1364:1472#L54">TestSetup</a>
 <a class="permalink" href="#TestSetup">¶</a>
 </h3>
 <pre>func TestSetup(t *<a href="../../../../testing/index.html">testing</a>.<a href="../../../../testing/index.html#T">T</a>, suite <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Suite">Suite</a>, factory <a href="#CellFactory">CellFactory</a>,
     nclients, ntrustees <a href="https://golang.org/pkg/builtin/#int">int</a>) *<a href="#TestGroup">TestGroup</a></pre>
-<h2 id="TestNode">type <a href="/src/github.com/lbarman/prifi_dev/prifi-lib/dcnet/test.go?s=105:686#L3">TestNode</a>
+<h2 id="TestNode">type <a href="/src/github.com/lbarman/prifi/prifi-lib/dcnet/test.go?s=105:686#L3">TestNode</a>
 <a class="permalink" href="#TestNode">¶</a>
 </h2>
 <pre>type TestNode struct {
@@ -245,7 +245,7 @@ CellFactory is the type of factories providing a CellCoder.
     History <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Cipher">Cipher</a>
     <span class="comment">// contains filtered or unexported fields</span>
 }</pre>
-<h3 id="TestNode.Dump">func (*TestNode) <a href="/src/github.com/lbarman/prifi_dev/prifi-lib/dcnet/test.go?s=688:720#L29">Dump</a>
+<h3 id="TestNode.Dump">func (*TestNode) <a href="/src/github.com/lbarman/prifi/prifi-lib/dcnet/test.go?s=688:720#L29">Dump</a>
 <a class="permalink" href="#TestNode.Dump">¶</a>
 </h3>
 <pre>func (n *<a href="#TestNode">TestNode</a>) Dump(tno <a href="https://golang.org/pkg/builtin/#int">int</a>)</pre>

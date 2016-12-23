@@ -49,7 +49,7 @@
 	</script>
 <div id="short-nav">
 <dl>
-<dd><code>import "github.com/lbarman/prifi_dev/prifi-lib/auth/basic"</code></dd>
+<dd><code>import "github.com/lbarman/prifi/prifi-lib/auth/basic"</code></dd>
 </dl>
 <dl>
 <dd><a class="overviewLink" href="#pkg-overview">Overview</a></dd>
@@ -85,8 +85,8 @@ mechanism similar to SSH authentication protocol
 <h4>Package files</h4>
 <p>
 <span style="font-size:90%">
-<a href="/src/github.com/lbarman/prifi_dev/prifi-lib/auth/basic/basic.go">basic.go</a>
-<a href="/src/github.com/lbarman/prifi_dev/prifi-lib/auth/basic/doc.go">doc.go</a>
+<a href="/src/github.com/lbarman/prifi/prifi-lib/auth/basic/basic.go">basic.go</a>
+<a href="/src/github.com/lbarman/prifi/prifi-lib/auth/basic/doc.go">doc.go</a>
 </span>
 </p>
 </div><!-- .expanded -->
@@ -127,14 +127,14 @@ mechanism similar to SSH authentication protocol
 <ul class="treeview" id="callgraph-0" style="margin-left: 0.5in"></ul>
 </div>
 </div> <!-- #pkg-callgraph -->
-<h2 id="ClientAuthentication">func <a href="/src/github.com/lbarman/prifi_dev/prifi-lib/auth/basic/basic.go?s=300:391#L5">ClientAuthentication</a>
+<h2 id="ClientAuthentication">func <a href="/src/github.com/lbarman/prifi/prifi-lib/auth/basic/basic.go?s=300:391#L5">ClientAuthentication</a>
 <a class="permalink" href="#ClientAuthentication">¶</a>
 </h2>
 <pre>func ClientAuthentication(relayConn <a href="../../../../../../net/index.html">net</a>.<a href="../../../../../../net/index.html#Conn">Conn</a>, nodeId <a href="https://golang.org/pkg/builtin/#int">int</a>, privateKey <a href="../../../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../../../github.com/dedis/crypto/abstract/index.html#Scalar">Scalar</a>) <a href="https://golang.org/pkg/builtin/#error">error</a></pre>
 <p>
 Called by a client who wants to be authenticated
 </p>
-<h2 id="RelayAuthentication">func <a href="/src/github.com/lbarman/prifi_dev/prifi-lib/auth/basic/basic.go?s=1746:1868#L51">RelayAuthentication</a>
+<h2 id="RelayAuthentication">func <a href="/src/github.com/lbarman/prifi/prifi-lib/auth/basic/basic.go?s=1746:1868#L51">RelayAuthentication</a>
 <a class="permalink" href="#RelayAuthentication">¶</a>
 </h2>
 <pre>func RelayAuthentication(clientConn <a href="../../../../../../net/index.html">net</a>.<a href="../../../../../../net/index.html#Conn">Conn</a>, publicKeyRoster map[<a href="https://golang.org/pkg/builtin/#int">int</a>]<a href="../../../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../../../github.com/dedis/crypto/abstract/index.html#Point">Point</a>) (<a href="../../../../../../github.com/lbarman/prifi/net/index.html">prifinet</a>.<a href="../../../../../../github.com/lbarman/prifi/net/index.html#NodeRepresentation">NodeRepresentation</a>, <a href="https://golang.org/pkg/builtin/#error">error</a>)</pre>

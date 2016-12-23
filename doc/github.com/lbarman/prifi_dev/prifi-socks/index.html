@@ -49,7 +49,7 @@
 	</script>
 <div id="short-nav">
 <dl>
-<dd><code>import "github.com/lbarman/prifi_dev/prifi-socks"</code></dd>
+<dd><code>import "github.com/lbarman/prifi/prifi-socks"</code></dd>
 </dl>
 <dl>
 <dd><a class="overviewLink" href="#pkg-overview">Overview</a></dd>
@@ -89,10 +89,10 @@ Package prifisocks implements a SOCKS5 interface for PriFi.
 <h4>Package files</h4>
 <p>
 <span style="font-size:90%">
-<a href="/src/github.com/lbarman/prifi_dev/prifi-socks/chanreader.go">chanreader.go</a>
-<a href="/src/github.com/lbarman/prifi_dev/prifi-socks/datawrap.go">datawrap.go</a>
-<a href="/src/github.com/lbarman/prifi_dev/prifi-socks/doc.go">doc.go</a>
-<a href="/src/github.com/lbarman/prifi_dev/prifi-socks/handler.go">handler.go</a>
+<a href="/src/github.com/lbarman/prifi/prifi-socks/chanreader.go">chanreader.go</a>
+<a href="/src/github.com/lbarman/prifi/prifi-socks/datawrap.go">datawrap.go</a>
+<a href="/src/github.com/lbarman/prifi/prifi-socks/doc.go">doc.go</a>
+<a href="/src/github.com/lbarman/prifi/prifi-socks/handler.go">handler.go</a>
 </span>
 </p>
 </div><!-- .expanded -->
@@ -152,42 +152,42 @@ Possible message/packet types.
 <p>
 Size of the data wrapper header.
 </p>
-<h2 id="ConnectToProxyServer">func <a href="/src/github.com/lbarman/prifi_dev/prifi-socks/handler.go?s=737:819#L41">ConnectToProxyServer</a>
+<h2 id="ConnectToProxyServer">func <a href="/src/github.com/lbarman/prifi/prifi-socks/handler.go?s=737:819#L41">ConnectToProxyServer</a>
 <a class="permalink" href="#ConnectToProxyServer">¶</a>
 </h2>
 <pre>func ConnectToProxyServer(IP <a href="https://golang.org/pkg/builtin/#string">string</a>, toServer chan []<a href="https://golang.org/pkg/builtin/#byte">byte</a>, fromServer chan []<a href="https://golang.org/pkg/builtin/#byte">byte</a>)</pre>
 <p>
 ConnectToProxyServer connects the relay to the proxy server and proxies messages between the relay and the server.
 </p>
-<h2 id="ExtractFull">func <a href="/src/github.com/lbarman/prifi_dev/prifi-socks/datawrap.go?s=4648:4688#L159">ExtractFull</a>
+<h2 id="ExtractFull">func <a href="/src/github.com/lbarman/prifi/prifi-socks/datawrap.go?s=4648:4688#L159">ExtractFull</a>
 <a class="permalink" href="#ExtractFull">¶</a>
 </h2>
 <pre>func ExtractFull(buffer []<a href="https://golang.org/pkg/builtin/#byte">byte</a>) dataWrap</pre>
 <p>
 ExtractFull extracts the datawrap packet from an array of bytes.
 </p>
-<h2 id="ExtractHeader">func <a href="/src/github.com/lbarman/prifi_dev/prifi-socks/datawrap.go?s=5312:5378#L178">ExtractHeader</a>
+<h2 id="ExtractHeader">func <a href="/src/github.com/lbarman/prifi/prifi-socks/datawrap.go?s=5312:5378#L178">ExtractHeader</a>
 <a class="permalink" href="#ExtractHeader">¶</a>
 </h2>
 <pre>func ExtractHeader(buffer []<a href="https://golang.org/pkg/builtin/#byte">byte</a>) (<a href="https://golang.org/pkg/builtin/#uint16">uint16</a>, <a href="https://golang.org/pkg/builtin/#uint32">uint32</a>, <a href="https://golang.org/pkg/builtin/#uint16">uint16</a>, <a href="https://golang.org/pkg/builtin/#uint16">uint16</a>)</pre>
 <p>
 ExtractHeader extracts the datawrap header from an array of bytes.
 </p>
-<h2 id="ListenToBrowser">func <a href="/src/github.com/lbarman/prifi_dev/prifi-socks/handler.go?s=3816:3935#L135">ListenToBrowser</a>
+<h2 id="ListenToBrowser">func <a href="/src/github.com/lbarman/prifi/prifi-socks/handler.go?s=3816:3935#L135">ListenToBrowser</a>
 <a class="permalink" href="#ListenToBrowser">¶</a>
 </h2>
 <pre>func ListenToBrowser(port <a href="https://golang.org/pkg/builtin/#string">string</a>, payloadLength <a href="https://golang.org/pkg/builtin/#int">int</a>, key <a href="../../../../github.com/dedis/crypto/abstract/index.html">abstract</a>.<a href="../../../../github.com/dedis/crypto/abstract/index.html#Scalar">Scalar</a>, toServer chan []<a href="https://golang.org/pkg/builtin/#byte">byte</a>, fromServer chan []<a href="https://golang.org/pkg/builtin/#byte">byte</a>)</pre>
 <p>
 ListenToBrowser handles SOCKS5 connections with the browser.
 </p>
-<h2 id="NewDataWrap">func <a href="/src/github.com/lbarman/prifi_dev/prifi-socks/datawrap.go?s=1434:1539#L51">NewDataWrap</a>
+<h2 id="NewDataWrap">func <a href="/src/github.com/lbarman/prifi/prifi-socks/datawrap.go?s=1434:1539#L51">NewDataWrap</a>
 <a class="permalink" href="#NewDataWrap">¶</a>
 </h2>
 <pre>func NewDataWrap(Type <a href="https://golang.org/pkg/builtin/#uint16">uint16</a>, ID <a href="https://golang.org/pkg/builtin/#uint32">uint32</a>, MessageLength <a href="https://golang.org/pkg/builtin/#uint16">uint16</a>, PacketLength <a href="https://golang.org/pkg/builtin/#uint16">uint16</a>, Data []<a href="https://golang.org/pkg/builtin/#byte">byte</a>) dataWrap</pre>
 <p>
 NewDataWrap creates a new datawrap packet.
 </p>
-<h2 id="StallTester">func <a href="/src/github.com/lbarman/prifi_dev/prifi-socks/handler.go?s=13535:13642#L447">StallTester</a>
+<h2 id="StallTester">func <a href="/src/github.com/lbarman/prifi/prifi-socks/handler.go?s=13535:13642#L447">StallTester</a>
 <a class="permalink" href="#StallTester">¶</a>
 </h2>
 <pre>func StallTester(timeBeforeStall <a href="../../../../time/index.html">time</a>.<a href="../../../../time/index.html#Duration">Duration</a>, stallFor <a href="../../../../time/index.html">time</a>.<a href="../../../../time/index.html#Duration">Duration</a>, myChannel chan []<a href="https://golang.org/pkg/builtin/#byte">byte</a>, payload <a href="https://golang.org/pkg/builtin/#int">int</a>)</pre>

@@ -49,7 +49,7 @@
 	</script>
 <div id="short-nav">
 <dl>
-<dd><code>import "github.com/lbarman/prifi_dev/sda/services"</code></dd>
+<dd><code>import "github.com/lbarman/prifi/sda/services"</code></dd>
 </dl>
 <dl>
 <dd><a class="overviewLink" href="#pkg-overview">Overview</a></dd>
@@ -92,9 +92,9 @@ communications.
 <h4>Package files</h4>
 <p>
 <span style="font-size:90%">
-<a href="/src/github.com/lbarman/prifi_dev/sda/services/service.go">service.go</a>
-<a href="/src/github.com/lbarman/prifi_dev/sda/services/simulation.go">simulation.go</a>
-<a href="/src/github.com/lbarman/prifi_dev/sda/services/struct.go">struct.go</a>
+<a href="/src/github.com/lbarman/prifi/sda/services/service.go">service.go</a>
+<a href="/src/github.com/lbarman/prifi/sda/services/simulation.go">simulation.go</a>
+<a href="/src/github.com/lbarman/prifi/sda/services/struct.go">struct.go</a>
 </span>
 </p>
 </div><!-- .expanded -->
@@ -141,7 +141,7 @@ communications.
 ServiceName is the name to refer to the Template service from another
 package.
 </p>
-<h2 id="NewSimulation">func <a href="/src/github.com/lbarman/prifi_dev/sda/services/simulation.go?s=457:514#L14">NewSimulation</a>
+<h2 id="NewSimulation">func <a href="/src/github.com/lbarman/prifi/sda/services/simulation.go?s=457:514#L14">NewSimulation</a>
 <a class="permalink" href="#NewSimulation">¶</a>
 </h2>
 <pre>func NewSimulation(config <a href="https://golang.org/pkg/builtin/#string">string</a>) (<a href="../../../../../github.com/dedis/cothority/sda/index.html">sda</a>.<a href="../../../../../github.com/dedis/cothority/sda/index.html#Simulation">Simulation</a>, <a href="https://golang.org/pkg/builtin/#error">error</a>)</pre>
@@ -149,7 +149,7 @@ package.
 NewSimulation returns the new simulation, where all fields are
 initialised using the config-file.
 </p>
-<h2 id="Service">type <a href="/src/github.com/lbarman/prifi_dev/sda/services/service.go?s=891:1067#L26">Service</a>
+<h2 id="Service">type <a href="/src/github.com/lbarman/prifi/sda/services/service.go?s=891:1067#L26">Service</a>
 <a class="permalink" href="#Service">¶</a>
 </h2>
 <pre>type Service struct {
@@ -162,7 +162,7 @@ initialised using the config-file.
 <p>
 Service contains the state of the service
 </p>
-<h3 id="Service.NewProtocol">func (*Service) <a href="/src/github.com/lbarman/prifi_dev/sda/services/service.go?s=3063:3173#L97">NewProtocol</a>
+<h3 id="Service.NewProtocol">func (*Service) <a href="/src/github.com/lbarman/prifi/sda/services/service.go?s=3063:3173#L97">NewProtocol</a>
 <a class="permalink" href="#Service.NewProtocol">¶</a>
 </h3>
 <pre>func (s *<a href="#Service">Service</a>) NewProtocol(tn *<a href="../../../../../github.com/dedis/cothority/sda/index.html">sda</a>.<a href="../../../../../github.com/dedis/cothority/sda/index.html#TreeNodeInstance">TreeNodeInstance</a>, conf *<a href="../../../../../github.com/dedis/cothority/sda/index.html">sda</a>.<a href="../../../../../github.com/dedis/cothority/sda/index.html#GenericConfig">GenericConfig</a>) (<a href="../../../../../github.com/dedis/cothority/sda/index.html">sda</a>.<a href="../../../../../github.com/dedis/cothority/sda/index.html#ProtocolInstance">ProtocolInstance</a>, <a href="https://golang.org/pkg/builtin/#error">error</a>)</pre>
@@ -175,7 +175,7 @@ instantiate the protocol on its own. If you need more control at the
 instantiation of the protocol, use CreateProtocolService, and you can
 give some extra-configuration to your protocol in here.
 </p>
-<h3 id="Service.StartClient">func (*Service) <a href="/src/github.com/lbarman/prifi_dev/sda/services/service.go?s=2457:2494#L84">StartClient</a>
+<h3 id="Service.StartClient">func (*Service) <a href="/src/github.com/lbarman/prifi/sda/services/service.go?s=2457:2494#L84">StartClient</a>
 <a class="permalink" href="#Service.StartClient">¶</a>
 </h3>
 <pre>func (s *<a href="#Service">Service</a>) StartClient() <a href="https://golang.org/pkg/builtin/#error">error</a></pre>
@@ -183,7 +183,7 @@ give some extra-configuration to your protocol in here.
 StartClient starts the necessary
 protocols to enable the client-mode.
 </p>
-<h3 id="Service.StartRelay">func (*Service) <a href="/src/github.com/lbarman/prifi_dev/sda/services/service.go?s=1568:1623#L51">StartRelay</a>
+<h3 id="Service.StartRelay">func (*Service) <a href="/src/github.com/lbarman/prifi/sda/services/service.go?s=1568:1623#L51">StartRelay</a>
 <a class="permalink" href="#Service.StartRelay">¶</a>
 </h3>
 <pre>func (s *<a href="#Service">Service</a>) StartRelay(group *<a href="../../../../../github.com/dedis/cothority/app/lib/config/index.html">config</a>.<a href="../../../../../github.com/dedis/cothority/app/lib/config/index.html#Group">Group</a>) <a href="https://golang.org/pkg/builtin/#error">error</a></pre>
@@ -192,7 +192,7 @@ StartRelay starts the necessary
 protocols to enable the relay-mode.
 In this example it simply starts the demo protocol
 </p>
-<h3 id="Service.StartTrustee">func (*Service) <a href="/src/github.com/lbarman/prifi_dev/sda/services/service.go?s=1304:1342#L42">StartTrustee</a>
+<h3 id="Service.StartTrustee">func (*Service) <a href="/src/github.com/lbarman/prifi/sda/services/service.go?s=1304:1342#L42">StartTrustee</a>
 <a class="permalink" href="#Service.StartTrustee">¶</a>
 </h3>
 <pre>func (s *<a href="#Service">Service</a>) StartTrustee() <a href="https://golang.org/pkg/builtin/#error">error</a></pre>
@@ -200,7 +200,7 @@ In this example it simply starts the demo protocol
 StartTrustee starts the necessary
 protocols to enable the trustee-mode.
 </p>
-<h2 id="Storage">type <a href="/src/github.com/lbarman/prifi_dev/sda/services/service.go?s=1183:1224#L36">Storage</a>
+<h2 id="Storage">type <a href="/src/github.com/lbarman/prifi/sda/services/service.go?s=1183:1224#L36">Storage</a>
 <a class="permalink" href="#Storage">¶</a>
 </h2>
 <pre>type Storage struct {
