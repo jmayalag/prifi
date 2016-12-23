@@ -121,6 +121,10 @@ case $1 in
 	
 
 	relay|Relay|RELAY)
+
+		#test for proper setup
+		test_go
+		test_cothority
 	
 		# the 2nd argument can replace the port number
 		if [ "$#" -eq 2 ]; then
@@ -139,6 +143,10 @@ case $1 in
 
 	trustee|Trustee|TRUSTEE)
 
+		#test for proper setup
+		test_go
+		test_cothority
+
 		if [ "$#" -lt 2 ]; then
 			echo -e "$errorMsg parameter 2 need to be the trustee id."
 			exit 1
@@ -155,6 +163,10 @@ case $1 in
 		;;
 
 	client|Client|CLIENT)
+
+		#test for proper setup
+		test_go
+		test_cothority
 	
 		if [ "$#" -lt 2 ]; then
 			echo -e "$errorMsg parameter 2 need to be the client id."
@@ -178,6 +190,10 @@ case $1 in
 		;;
 
 	sockstest|Sockstest|SOCKSTEST)
+
+		#test for proper setup
+		test_go
+		test_cothority
 	
 		# the 2rd argument can replace the port number
 		if [ "$#" -gt 1 ]; then
@@ -201,10 +217,11 @@ case $1 in
 
 	localhost|Localhost|LOCALHOST|all-localhost|All-Localhost|ALL-LOCALHOST)
 
-		thisScript="$0"
+		#test for proper setup
+		test_go
+		test_cothority
 
-		pkill prifi			
-
+		#test if a socks proxy is already running (needed for relay), or start ours
 		socks=$(netstat -tunpl 2>/dev/null | grep $port_client | wc -l)
 		
 		if [ "$socks" -ne 1 ]; then
@@ -213,6 +230,8 @@ case $1 in
 			SOCKSPID=$!
 			echo -e "$okMsg"
 		fi
+
+		thisScript="$0"	
 
 		echo -n "Starting relay...	"
 		"$thisScript" relay > relay.log 2>&1 &
@@ -258,7 +277,7 @@ case $1 in
 		kill -9 -$CLIENT2PID 2>/dev/null
 		kill -9 -$SOCKSPID 2>/dev/null
 		pkill prifi		
-		pkill run-server		
+		pkill run-server # this is to kill the non-prifi SOCKS server. I am sure we can do better
 		;;
 
 	clean|Clean|CLEAN)
