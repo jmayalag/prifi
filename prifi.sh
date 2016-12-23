@@ -209,7 +209,7 @@ case $1 in
 		
 		if [ "$socks" -ne 1 ]; then
 			echo -n "Socks proxy not running, starting it... "
-			./socks/run-socks-proxy.sh "$port_client" > socks.log 2>&1 &
+			./run-socks-proxy.sh "$port_client" > socks.log 2>&1 &
 			SOCKSPID=$!
 			echo -e "$okMsg"
 		fi

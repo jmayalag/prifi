@@ -10,5 +10,4 @@ fi
 
 echo -e "Running a socks server on port $port, debug level $dbg_lvl/5."
 
-cd socks;
 DEBUG_COLOR=$colors go run run-server.go -debug="$dbg_lvl" -port="$port"
