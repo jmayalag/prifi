@@ -196,12 +196,20 @@ case $1 in
 
 		sleep 3
 
+		echo -n "Starting client 2...	"
+		"$thisScript" client 2 8082 > client2.log 2>&1 &
+		CLIENT2PID=$!
+		echo -e "$okMsg"
+
+		sleep 3
+
 		read -p "PriFi deployed. Press [enter] to kill all..." key
 
 		kill -9 -$RELAYPID 2>/dev/null
 		kill -9 -$TRUSTEE0PID 2>/dev/null
 		kill -9 -$CLIENT0PID 2>/dev/null
 		kill -9 -$CLIENT1PID 2>/dev/null
+		kill -9 -$CLIENT2PID 2>/dev/null
 		kill -9 -$SOCKSPID 2>/dev/null
 		pkill prifi		
 		pkill run-server		
