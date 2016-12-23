@@ -34,6 +34,19 @@ Then, PriFi anonymizes the traffic with the help of the other clients and the re
 
 This anonymized traffic is *SOCKS traffic*. Hence, the relay needs to connect to the second SOCKS server, which is not related to PriFi (but we provide the code for it in `socks/`). It could also be a remote, public SOCKS server.
 
+## Getting PriFi
+
+Simply do
+```
+git clone https://github.com/lbarman/prifi_dev
+```
+
+WORK IN PROGRESS
+
+Fixed in cothority's test_ism_2_699 branch.
+But this branch will not be merged into anything, DeDiS working on a new version.
+So for the time being, we need to check out test_ism_2_699 on $GOPATH/src/github/dedis/cothority
+
 ## Running PriFi
 
 ### SOCKS Preamble
