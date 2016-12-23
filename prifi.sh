@@ -2,7 +2,7 @@
 cothorityBranchRequired="test_ism_2_699"
 colors="true"
 dbg_lvl=3
-conf_file="config.toml"
+identity_file="identity.toml"
 group_file="group.toml"
 prifi_file="prifi.toml"
 bin_file="$GOPATH/src/github.com/lbarman/prifi/sda/app/prifi.go"
@@ -80,8 +80,8 @@ test_files() {
 		exit
 	fi
 
-	if [ ! -f "$configdir/$conf_file" ]; then
-		echo -e "$errorMsg Cothority config file does not exist: $configdir/$conf_file"
+	if [ ! -f "$configdir/$identity_file" ]; then
+		echo -e "$errorMsg Cothority config file does not exist: $configdir/$identity_file"
 		exit
 	fi
 
@@ -133,12 +133,12 @@ case $1 in
 		fi
 
 		#specialize the config file, and test all files
-		conf_file="relay/$conf_file"
+		identity_file="relay/$identity_file"
 		group_file="relay/$group_file"
 		test_files
 
 		#run PriFi in relay mode
-		DEBUG_COLOR=$colors go run $bin_file --cothority_config "$configdir/$conf_file" --group "$configdir/$group_file" -d "$dbg_lvl" --prifi_config "$configdir/$prifi_file" --port "$port" --port_client "$port_client" relay
+		DEBUG_COLOR=$colors go run $bin_file --cothority_config "$configdir/$identity_file" --group "$configdir/$group_file" -d "$dbg_lvl" --prifi_config "$configdir/$prifi_file" --port "$port" --port_client "$port_client" relay
 		;;
 
 	trustee|Trustee|TRUSTEE)
@@ -154,12 +154,12 @@ case $1 in
 		test_digit $2 2
 
 		#specialize the config file, and test all files
-		conf_file="trustee$2/$conf_file"
+		identity_file="trustee$2/$identity_file"
 		group_file="relay/$group_file"
 		test_files
 
 		#run PriFi in relay mode
-		DEBUG_COLOR=$colors go run $bin_file --cothority_config "$configdir/$conf_file" --group "$configdir/$group_file" -d "$dbg_lvl" --prifi_config "$configdir/$prifi_file" --port "$port" --port_client "$port_client" trustee
+		DEBUG_COLOR=$colors go run $bin_file --cothority_config "$configdir/$identity_file" --group "$configdir/$group_file" -d "$dbg_lvl" --prifi_config "$configdir/$prifi_file" --port "$port" --port_client "$port_client" trustee
 		;;
 
 	client|Client|CLIENT)
@@ -181,12 +181,12 @@ case $1 in
 		fi
 
 		#specialize the config file, and test all files
-		conf_file="client$2/$conf_file"
+		identity_file="client$2/$identity_file"
 		group_file="relay/$group_file"
 		test_files
 
 		#run PriFi in relay mode
-		DEBUG_COLOR=$colors go run $bin_file --cothority_config "$configdir/$conf_file" --group "$configdir/$group_file" -d "$dbg_lvl" --prifi_config "$configdir/$prifi_file" --port "$port" --port_client "$port_client" client
+		DEBUG_COLOR=$colors go run $bin_file --cothority_config "$configdir/$identity_file" --group "$configdir/$group_file" -d "$dbg_lvl" --prifi_config "$configdir/$prifi_file" --port "$port" --port_client "$port_client" client
 		;;
 
 	sockstest|Sockstest|SOCKSTEST)
@@ -208,11 +208,11 @@ case $1 in
 		fi
 
 		#specialize the config file, and test all files
-		conf_file="client0/$conf_file"
+		identity_file="client0/$identity_file"
 		test_files
 
 		#run PriFi in relay mode
-		DEBUG_COLOR=$colors go run $bin_file --cothority_config "$configdir/$conf_file" --group "$configdir/$group_file" -d "$dbg_lvl" --prifi_config "$configdir/$prifi_file" --port "$port" --port_client "$port_client" sockstest
+		DEBUG_COLOR=$colors go run $bin_file --cothority_config "$configdir/$identity_file" --group "$configdir/$group_file" -d "$dbg_lvl" --prifi_config "$configdir/$prifi_file" --port "$port" --port_client "$port_client" sockstest
 		;;
 
 	localhost|Localhost|LOCALHOST|all-localhost|All-Localhost|ALL-LOCALHOST)

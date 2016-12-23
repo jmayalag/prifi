@@ -1,6 +1,6 @@
 Description = "Prifi"
 
 [[servers]]
-  Address = "tcp://127.0.0.1:6002"
+  Address = "tcp://127.0.0.1:7000"
   Public = "VYcxFJhJcfOLY/esG1Gr20Lnc+HkKm73v3YsEx7jRds="
   Description = "relay"
