@@ -22,7 +22,8 @@ import (
 	"github.com/dedis/cothority/sda"
 	"github.com/lbarman/prifi/sda/protocols"
 
-	socks "github.com/lbarman/prifi_dev/prifi-socks"
+	prifi "github.com/lbarman/prifi/prifi-lib"
+	socks "github.com/lbarman/prifi/prifi-socks"
 )
 
 const ServiceName = "PriFiService"
