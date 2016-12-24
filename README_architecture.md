@@ -87,7 +87,7 @@ Finally, using PriFi, the architecture is as follow :
 ._____________.
 | Browser     |           PriFi Client
 |             |         ._______________.
-| Socks-Client| <-------| SOCKS-Server 1| 
+| Socks-Client| <------>| SOCKS-Server 1| 
 |_____________|         |       ^       |
                         |       |       |              PriFi Relay
                         |       v       |            ._______________.
