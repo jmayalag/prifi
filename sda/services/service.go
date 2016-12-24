@@ -26,6 +26,7 @@ import (
 	socks "github.com/lbarman/prifi/prifi-socks"
 )
 
+//The name of the service, used by SDA's internals
 const ServiceName = "PriFiService"
 
 var serviceID sda.ServiceID
@@ -36,6 +37,7 @@ func init() {
 	serviceID = sda.ServiceFactory.ServiceID(ServiceName)
 }
 
+//The configuration read in prifi.toml
 type PriFiConfig struct {
 	CellSizeUp            int
 	CellSizeDown          int
@@ -48,6 +50,7 @@ type PriFiConfig struct {
 	SocksClientPort       int
 }
 
+//Set the config, from the prifi.toml. Is called by sda/app.
 func (s *Service) SetConfig(config *PriFiConfig) {
 	log.Lvl3("Setting PriFi configuration...")
 	log.Lvlf3("%+v\n", config)
@@ -282,22 +285,21 @@ func parseDescription(description string) (*protocols.PriFiIdentity, error) {
 	} else if len(desc) == 2 {
 		id, err := strconv.Atoi(desc[1])
 		if err != nil {
-			return nil, errors.New("Unable to parse id:")
-		} else {
-			pid := protocols.PriFiIdentity{
-				Id: id,
-			}
-			if desc[0] == "client" {
-				pid.Role = protocols.Client
-			} else if desc[0] == "trustee" {
-				pid.Role = protocols.Trustee
-			} else {
-				return nil, errors.New("Invalid role.")
-			}
-			return &pid, nil
+			return nil, errors.New("unable to parse id")
 		}
+		pid := protocols.PriFiIdentity{
+			Id: id,
+		}
+		if desc[0] == "client" {
+			pid.Role = protocols.Client
+		} else if desc[0] == "trustee" {
+			pid.Role = protocols.Trustee
+		} else {
+			return nil, errors.New("invalid role")
+		}
+		return &pid, nil
 	} else {
-		return nil, errors.New("Invalid description.")
+		return nil, errors.New("invalid description")
 	}
 }
 
@@ -347,8 +349,8 @@ func mapIdentities(group *config.Group) (map[network.Address]protocols.PriFiIden
 // readGroup reads the group description and sets up the Service struct fields
 // accordingly. It *MUST* be called first when the node is started.
 func (s *Service) readGroup(group *config.Group) {
-	ids, relayId := mapIdentities(group)
-	s.identityMap = ids
-	s.relayIdentity = &relayId
+	IDs, relayID := mapIdentities(group)
+	s.identityMap = IDs
+	s.relayIdentity = &relayID
 	s.group = group
 }

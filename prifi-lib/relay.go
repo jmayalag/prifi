@@ -60,10 +60,10 @@ const PROCESSING_LOOP_SLEEP_TIME = 0 * time.Second
 // Number of ciphertexts buffered by trustees
 const TRUSTEE_WINDOW_SIZE = 10
 
-// Trustees stop sending when capacity <= lower limit
+// Trustees stop sending when capacity <= TRUSTEE_WINDOW_LOWER_LIMIT
 const TRUSTEE_WINDOW_LOWER_LIMIT = 1
 
-// Trustees resume sending when capacity = lower limit + ratio*(max - lower limit)
+// Trustees resume sending when capacity = TRUSTEE_WINDOW_LOWER_LIMIT + TRUSTEE_RESUME_SENDING_RATIO*(TRUSTEE_WINDOW_SIZE - TRUSTEE_WINDOW_LOWER_LIMIT)
 const TRUSTEE_RESUME_SENDING_RATIO = 0.9
 
 // Possible states the trustees are in. This restrict the kind of messages they can receive at a given point in time.

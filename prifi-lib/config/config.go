@@ -12,7 +12,7 @@ import (
 // It must be updated manually.
 const LLD_PROTOCOL_VERSION = 3
 
-//sets the crypto suite used
+//CryptoSuite contains crypto suite used, here ED25519
 var CryptoSuite = ed25519.NewAES128SHA256Ed25519(false) //nist.NewAES128SHA256P256()
 
 //Factory contains the factory for the DC-net's cell encoder/decoder.
