@@ -52,7 +52,7 @@ This will create two files `config.real/{group|identity}.toml`. You can then run
 
 [README about ./prifi.sh startup script](README_prifi.sh.md)
 
-[README about contributing to this repo](README_contributing.md)
+[README about contributing to this repository](README_contributing.md)
 
 ## API Documentation
 
