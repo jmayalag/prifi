@@ -180,7 +180,7 @@ type RelayState struct {
 	nextDownStreamRoundToSend         int32
 	ExperimentResultChannel           chan interface{}
 	ExperimentResultData              interface{}
-	locks                             lockPool
+	locks                             *lockPool
 	timeoutHandler                    func([]int, []int)
 	statistics                        *prifilog.BitrateStatistics
 }
@@ -214,6 +214,7 @@ func NewRelayState(nTrustees int, nClients int, upstreamCellSize int, downstream
 	params.nextDownStreamRoundToSend = int32(1) //since first round is half-round
 	params.numberOfNonAckedDownstreamPackets = 0
 	params.statistics = prifilog.NewBitRateStatistics()
+	params.locks = &lockPool{}
 
 	// Prepare the crypto parameters
 	rand := config.CryptoSuite.Cipher([]byte(params.Name))

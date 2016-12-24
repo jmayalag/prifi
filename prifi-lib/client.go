@@ -57,7 +57,7 @@ const (
 
 // ClientState contains the mutable state of the client.
 type ClientState struct {
-	sync.RWMutex
+	mutex                     *sync.RWMutex
 	CellCoder                 dcnet.CellCoder
 	currentState              int16
 	DataForDCNet              chan []byte //Data to the relay : VPN / SOCKS should put data there !
@@ -112,6 +112,7 @@ func NewClientState(clientId int, nTrustees int, nClients int, payloadLength int
 	params.BufferedRoundData = make(map[int32]REL_CLI_DOWNSTREAM_DATA)
 	params.StartStopReceiveBroadcast = make(chan bool)
 	params.statistics = prifilog.NewLatencyStatistics()
+	params.mutex = &sync.RWMutex{}
 
 	//prepare the crypto parameters
 	rand := config.CryptoSuite.Cipher([]byte(params.Name))
@@ -136,8 +137,8 @@ func NewClientState(clientId int, nTrustees int, nClients int, payloadLength int
 func (p *PriFiProtocol) Received_ALL_CLI_SHUTDOWN(msg ALL_ALL_SHUTDOWN) error {
 	log.Lvl1("Client " + strconv.Itoa(p.clientState.Id) + " : Received a SHUTDOWN message. ")
 
-	p.clientState.Lock()
-	defer p.clientState.Unlock()
+	p.clientState.mutex.Lock()
+	defer p.clientState.mutex.Unlock()
 
 	p.clientState.currentState = CLIENT_STATE_SHUTDOWN
 
@@ -148,8 +149,8 @@ func (p *PriFiProtocol) Received_ALL_CLI_SHUTDOWN(msg ALL_ALL_SHUTDOWN) error {
 // It uses the message's parameters to initialize the client.
 func (p *PriFiProtocol) Received_ALL_CLI_PARAMETERS(msg ALL_ALL_PARAMETERS) error {
 
-	p.clientState.Lock()
-	defer p.clientState.Unlock()
+	p.clientState.mutex.Lock()
+	defer p.clientState.mutex.Unlock()
 
 	//this can only happens in the state RELAY_STATE_BEFORE_INIT
 	if p.clientState.currentState != CLIENT_STATE_BEFORE_INIT && !msg.ForceParams {
@@ -192,8 +193,8 @@ SOCKS/VPN data, or if we're running latency tests, we send a "ping" message to c
 */
 func (p *PriFiProtocol) Received_REL_CLI_DOWNSTREAM_DATA(msg REL_CLI_DOWNSTREAM_DATA) error {
 
-	p.clientState.Lock()
-	defer p.clientState.Unlock()
+	p.clientState.mutex.Lock()
+	defer p.clientState.mutex.Unlock()
 
 	/*
 		if msg.RoundId == 3 && p.clientState.Id == 1 {
@@ -238,8 +239,8 @@ SOCKS/VPN data, or if we're running latency tests, we send a "ping" message to c
 */
 func (p *PriFiProtocol) Received_REL_CLI_UDP_DOWNSTREAM_DATA(msg REL_CLI_DOWNSTREAM_DATA) error {
 
-	p.clientState.Lock()
-	defer p.clientState.Unlock()
+	p.clientState.mutex.Lock()
+	defer p.clientState.mutex.Unlock()
 
 	/*
 		if msg.RoundId == 3 && p.clientState.Id == 1 {
@@ -406,8 +407,8 @@ Once we receive this message, we need to reply with our Public Key (Used to deri
 */
 func (p *PriFiProtocol) Received_REL_CLI_TELL_TRUSTEES_PK(msg REL_CLI_TELL_TRUSTEES_PK) error {
 
-	p.clientState.Lock()
-	defer p.clientState.Unlock()
+	p.clientState.mutex.Lock()
+	defer p.clientState.mutex.Unlock()
 
 	//this can only happens in the state CLIENT_STATE_INITIALIZING
 	if p.clientState.currentState != CLIENT_STATE_INITIALIZING {
@@ -470,8 +471,8 @@ As the client should send the first data, we do so; to keep this function simple
 */
 func (p *PriFiProtocol) Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(msg REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG) error {
 
-	p.clientState.Lock()
-	defer p.clientState.Unlock()
+	p.clientState.mutex.Lock()
+	defer p.clientState.mutex.Unlock()
 
 	//this can only happens in the state CLIENT_STATE_EPH_KEYS_SENT
 	if p.clientState.currentState != CLIENT_STATE_EPH_KEYS_SENT {

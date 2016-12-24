@@ -144,30 +144,3 @@ func NewPriFiTrusteeWithState(msgSender MessageSender, state *TrusteeState) *Pri
 	log.Lvl1("Trustee has been initialized by function call. ")
 	return &prifi
 }
-
-// WhoAmI prints a description of the state of the PriFi entity
-// on which it is called.
-func (prifi *PriFiProtocol) WhoAmI() {
-
-	log.Print("###################### WHO AM I ######################")
-	if prifi.role == PRIFI_ROLE_RELAY {
-		log.Print("I' a relay, my name is ", prifi.relayState.Name)
-		log.Printf("%+v\n", prifi.relayState)
-		//log.Print("I'm not : ")
-		//log.Printf("%+v\n", prifi.clientState)
-		//log.Printf("%+v\n", prifi.trusteeState)
-	} else if prifi.role == PRIFI_ROLE_CLIENT {
-		log.Print("I' a client, my name is ", prifi.clientState.Name)
-		log.Printf("%+v\n", prifi.clientState)
-		//log.Print("I'm not : ")
-		//log.Printf("%+v\n", prifi.relayState)
-		//log.Printf("%+v\n", prifi.trusteeState)
-	} else if prifi.role == PRIFI_ROLE_TRUSTEE {
-		log.Print("I' a trustee, my name is ", prifi.trusteeState.Name)
-		log.Printf("%+v\n", prifi.trusteeState)
-		//log.Print("I'm not : ")
-		//log.Printf("%+v\n", prifi.clientState)
-		//log.Printf("%+v\n", prifi.relayState)
-	}
-	log.Print("###################### -------- ######################")
-}

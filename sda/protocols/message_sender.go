@@ -31,8 +31,6 @@ func (ms MessageSender) SendToClient(i int, msg interface{}) error {
 		log.Error(e)
 		return errors.New(e)
 	}
-
-	return nil
 }
 
 func (ms MessageSender) SendToTrustee(i int, msg interface{}) error {
@@ -45,8 +43,6 @@ func (ms MessageSender) SendToTrustee(i int, msg interface{}) error {
 		log.Error(e)
 		return errors.New(e)
 	}
-
-	return nil
 }
 
 func (ms MessageSender) SendToRelay(msg interface{}) error {
@@ -109,5 +105,4 @@ func (ms MessageSender) ClientSubscribeToBroadcast(clientName string, protocolIn
 
 		time.Sleep(time.Second)
 	}
-	return nil
 }
