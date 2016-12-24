@@ -138,12 +138,6 @@ func (p *Protocol) Received_ALL_TRU_PARAMETERS(msg ALL_ALL_PARAMETERS) error {
 	//this can only happens in the state RELAY_STATE_BEFORE_INIT
 	if p.trusteeState.currentState != TRUSTEE_STATE_BEFORE_INIT && !msg.ForceParams {
 		log.Lvl1("Trustee " + strconv.Itoa(p.trusteeState.ID) + " : Received a ALL_ALL_PARAMETERS, but not in state TRUSTEE_STATE_BEFORE_INIT, ignoring. ")
-
-		// Send public key if requested
-		if msg.StartNow {
-			p.Send_TRU_REL_PK()
-		}
-
 		return nil
 	} else if p.trusteeState.currentState != TRUSTEE_STATE_BEFORE_INIT && msg.ForceParams {
 		log.Lvl1("Trustee " + strconv.Itoa(p.trusteeState.ID) + " : Received a ALL_ALL_PARAMETERS && ForceParams = true, processing. ")
@@ -379,6 +373,8 @@ func (p *Protocol) Received_REL_TRU_TELL_TRANSCRIPT(msg REL_TRU_TELL_TRANSCRIPT)
 	log.Lvl3("Trustee " + strconv.Itoa(p.trusteeState.ID) + " : Received_REL_TRU_TELL_TRANSCRIPT")
 
 	// PROTOBUF FLATTENS MY 2-DIMENSIONAL ARRAY. THIS IS A PATCH
+	log.Lvl1("NTrustee :", p.trusteeState.nTrustees)
+	log.Lvl1("NClients :", p.trusteeState.nClients)
 	a := msg.EphPks
 	b := make([][]abstract.Point, p.trusteeState.nTrustees)
 	if len(a) > p.trusteeState.nTrustees {
@@ -444,6 +440,9 @@ func (p *Protocol) Received_REL_TRU_TELL_TRANSCRIPT(msg REL_TRU_TELL_TRANSCRIPT)
 
 			allKeyEqual := true
 			for k := 0; k < p.trusteeState.nClients; k++ {
+				log.Lvl1(p.trusteeState.neffShuffleToVerify.pks[k])
+				log.Lvl1(ephPublicKeys[j])
+				log.Lvl1(ephPublicKeys[j][k])
 				if !p.trusteeState.neffShuffleToVerify.pks[k].Equal(ephPublicKeys[j][k]) {
 					log.Error("Trustee " + strconv.Itoa(p.trusteeState.ID) + "; Transcript invalid for trustee " + strconv.Itoa(j) + ". Aborting.")
 					allKeyEqual = false

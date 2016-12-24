@@ -74,6 +74,19 @@ func (s *Service) HandleConnection(msg *network.Packet) {
 			nodeAlreadyIn = true
 		}
 	case protocols.Trustee:
+
+		//assign an ID to this trustee
+		if id.ID == -1 {
+			s.nodesAndIDs.mutex.Lock()
+			id.ID = s.nodesAndIDs.nextFreeTrusteeID
+			s.nodesAndIDs.identitiesMap[msg.ServerIdentity.Address] = protocols.PriFiIdentity{
+				ID:   s.nodesAndIDs.nextFreeTrusteeID,
+				Role: protocols.Trustee,
+			}
+			log.Lvl2("Trustee", msg.ServerIdentity.Address, "got assigned ID", id.ID)
+			s.nodesAndIDs.nextFreeTrusteeID++
+			s.nodesAndIDs.mutex.Unlock()
+		}
 		if _, ok := s.waitQueue.trustees[msg.ServerIdentity]; !ok {
 			s.waitQueue.trustees[msg.ServerIdentity] = true
 		} else {

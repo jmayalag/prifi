@@ -319,7 +319,7 @@ func (p *Protocol) ConnectToTrustees() error {
 		NextFreeTrusteeID: 0,
 		NTrustees:         p.relayState.nTrustees,
 		StartNow:          true,
-		ForceParams:       false,
+		ForceParams:       true,
 		UpCellSize:        p.relayState.UpstreamCellSize,
 	}
 

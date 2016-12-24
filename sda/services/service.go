@@ -51,11 +51,12 @@ type PriFiConfig struct {
 
 // contains the identity map, a direct link to the relay, and a mutex
 type SDANodesAndIDs struct {
-	mutex            sync.Mutex
-	identitiesMap    map[network.Address]protocols.PriFiIdentity
-	relayIdentity    *network.ServerIdentity
-	group            *config.Group
-	nextFreeClientID int
+	mutex             sync.Mutex
+	identitiesMap     map[network.Address]protocols.PriFiIdentity
+	relayIdentity     *network.ServerIdentity
+	group             *config.Group
+	nextFreeClientID  int
+	nextFreeTrusteeID int
 }
 
 //Set the config, from the prifi.toml. Is called by sda/app.
@@ -298,8 +299,6 @@ func mapIdentities(group *config.Group) (map[network.Address]protocols.PriFiIden
 	m := make(map[network.Address]protocols.PriFiIdentity)
 	var relay network.ServerIdentity
 
-	nextFreeTrusteeID := 0
-
 	// Read the description of the nodes in the config file to assign them PriFi roles.
 	nodeList := group.Roster.List
 	for i := 0; i < len(nodeList); i++ {
@@ -316,10 +315,8 @@ func mapIdentities(group *config.Group) (map[network.Address]protocols.PriFiIden
 		} else if nodeDescription == "trustee" {
 			id = &protocols.PriFiIdentity{
 				Role: protocols.Trustee,
-				ID:   nextFreeTrusteeID,
+				ID:   -1,
 			}
-			log.Lvl3("Node", nodeDescription+"@"+si.Address.String(), "assigned as Trustee #"+strconv.Itoa(id.ID))
-			nextFreeTrusteeID++
 		}
 
 		if id != nil {
