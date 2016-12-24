@@ -42,9 +42,9 @@ go test
 
 If any of those tool exit with status 1, the code will be qualified as "non-compliant" by Travis.
 
-*For `golint`, we add the following exceptions (i.e., we remove those rules) :
-- `ALL_CAPS_VARIABLES` are allowed
-- Variables with underscores (`G_s`) are allowed
+*For `golint`, we add the following exceptions (i.e., we remove the original constraints) :
+- `ALL_CAPS_VARIABLES` are now allowed
+- Variables with underscores (`G_s`) are now allowed
 - Comments for `FieldXYZ` do not need to start with `FieldXYZ...`
 Additionnally, we ignore all files 
 - finishing by `_test.go`
