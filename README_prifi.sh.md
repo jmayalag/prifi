@@ -74,3 +74,5 @@ CellSizeDown bits down. When false, it may send only 1 bit.
 - `DoLatencyTests (bool)`: Enable or disable latency tests.
 - `ReportingLimit (int)`: PriFi shuts down after this number of rounds if
 not equal to `-1`.
+
+[back to main README](README.md)
