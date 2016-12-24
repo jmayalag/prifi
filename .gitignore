@@ -15,7 +15,6 @@ log.txt
 *.swp
 *~
 moc_*
-Makefile
 ext/
 dissent/dissent
 docs/html
