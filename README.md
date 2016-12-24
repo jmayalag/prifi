@@ -14,12 +14,10 @@ For more details about PriFi, please check our [WPES 2016 paper](http://www.cs.y
 
 ## Getting PriFi
 
-### Prerequisite
-
-Simply [get the Go language](https://golang.org/dl/). They have `.tar.gz`, but I personally prefer to use my package manager :
+First, [get the Go language](https://golang.org/dl/). They have `.tar.gz`, but I personally prefer to use my package manager :
 `sudo apt-get install golang` for Ubuntu, or `sudo dnf install golang` for Fedora 24.
 
-### Get PriFi
+Then, get PriFi by doing:
 
 ```
 go get github.com/lbarman/prifi
@@ -37,7 +35,7 @@ Each component has a *SDA configuration* : an identity (`identity.toml`, contain
 
 You can test PriFi by running `./prifi.sh all-localhost`. This will run a SOCKS server, a PriFi relay, a Trustee, and three clients on your machine. They will use the identities in `config.localhost`. You can check what is going on by doing `tail -f {clientX|relay|trusteeX}.log`. You can test browsing through PriFi by setting your browser to use a SOCKS proxy on `localhost:8081`.
 
-### Using PriFi
+### Using PriFi in a real setup
 
 To test a real PriFi deployement, first, re-generates your identity (so your private key is really private) :
 ```
@@ -72,94 +70,10 @@ Then, PriFi anonymizes the traffic with the help of the other clients and the re
 
 This anonymized traffic is *SOCKS traffic*. Hence, the relay needs to connect to the second SOCKS server, which is not related to PriFi (but we provide the code for it in `socks/`). It could also be a remote, public SOCKS server.
 
-## Getting PriFi
+## More documentation :
 
-Simply do
-```
-git clone https://github.com/lbarman/prifi_dev
-```
-
-WORK IN PROGRESS
-
-Fixed in cothority's test_ism_2_699 branch.
-But this branch will not be merged into anything, DeDiS working on a new version.
-So for the time being, we need to check out test_ism_2_699 on $GOPATH/src/github/dedis/cothority
-
-## Running PriFi
-
-### SOCKS Preamble
-
-As explained, you need a non-prifi SOCKS server running to handle the traffic from the relay. If you don't have one, run ours :
-```
-./run-socks-proxy.sh 8090
-```
-
-## Running PriFi
-
-There is one big startup script `run-prifi.sh`. 
-
-```
-./run-prifi.sh 
-Usage: run-prifi.sh role/operation [params]
-	role: client, relay, trustee
-	operation: sockstest, all, deploy-all
-	params for role relay: [socks_server_port] (optional, numeric)
-	params for role trustee: id (required, numeric)
-	params for role client: id (required, numeric), [prifi_socks_server_port] (optional, numeric)
-	params for operation all, deploy: none
-	params for operation sockstest, deploy: [socks_server_port] (optional, numeric), [prifi_socks_server_port] (optional, numeric)
-
-```
-
-For instance, you can start a relay like this : 
-
-```
-./run-prifi.sh relay
-```
-
-... or to specify the port of the second, non-prifi socks server, like this :
-
-```
-./run-prifi.sh relay 8090
-```
-
-You can start a client like this :
-
-```
-./run-prifi.sh client 0
-```
-
-and to specify the port of the first socks proxy integrated in PriFi :
-
-```
-./run-prifi.sh client 0 8080
-```
-
-A typical deployement could be :
-
-```
-./run-prifi.sh relay 8090
-./run-prifi.sh trustee 0
-./run-prifi.sh client 0 8080
-./run-prifi.sh client 1 8081
-```
-
-## Configuration
-
-The PriFi configuration file is in `config.demo/prifi.toml`
-
-- `DataOutputEnbaled (bool)`: Enables the link from and to the socks proxy.
-- `NTrustees (int)`: Number of trustees.
-- `CellSizeUp (int)`: Size of upstream data sent in one PriFi round (?)
-- `CellSizeDown (int)`: Size of upstream data sent in one PriFi round (?)
-- `RelayWindowSize (int)`: Number of ciphers from each trustee to buffer
-- `RelayUseDummyDataDown (bool)`: When true, the relay always send
-CellSizeDown bits down. When false, it may send only 1 bit.
-- `RelayReportingLimit (int)`: Unused, was for the statistics.
-- `UseUDP (bool)`: Enable or disable UDP broadcast for downstream data (?)
-- `DoLatencyTests (bool)`: Enable or disable latency tests.
-- `ReportingLimit (int)`: PriFi shuts down after this number of rounds if
-not equal to `-1`.
+[README about the Architecture and SOCKS Proxies](README_architecture.md)
+[README about ./prifi.sh startup script](README_prifi.sh.md)
 
 ## API Documentation
 
