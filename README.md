@@ -16,12 +16,15 @@ PriFi is coded in Go. At some point, we will distribute binaries, but for now yo
 
 ### Prerequisite
 
-Simply [get the Go language](https://golang.org/dl/). They have `.tar.gz`, I personally even prefer to use my package manager :
+Simply [get the Go language](https://golang.org/dl/). They have `.tar.gz`, but I personally prefer to use my package manager :
 ```
 sudo add-apt-repository ppa:gophers/go
 sudo apt-get update
 sudo apt-get install golang
 ```
+... for Ubuntu, or 
+`sudo dnf install golang`
+... for Fedora 24.
 
 ### Get PriFi
 
@@ -29,7 +32,7 @@ sudo apt-get install golang
 go get github.com/lbarman/prifi
 ./prifi.sh install
 ```
-
+(ignore the `No buildable source` after the first step, that's OK.)
 
 
 ## Understanding the architecture
