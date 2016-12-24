@@ -54,20 +54,17 @@ import (
 	socks "github.com/lbarman/prifi/prifi-socks"
 )
 
-// Constants
-const CONTROL_LOOP_SLEEP_TIME = 1 * time.Second
+//The time slept between each round
 const PROCESSING_LOOP_SLEEP_TIME = 0 * time.Second
-const INBETWEEN_CONFIG_SLEEP_TIME = 0 * time.Second
-const NEWCLIENT_CHECK_SLEEP_TIME = 10 * time.Millisecond
-const CLIENT_READ_TIMEOUT = 5 * time.Second
-const RELAY_FAILED_CONNECTION_WAIT_BEFORE_RETRY = 10 * time.Second
+
+// Number of ciphertexts buffered by trustees
+const TRUSTEE_WINDOW_SIZE = 10
 
 // Trustees stop sending when capacity <= lower limit
 const TRUSTEE_WINDOW_LOWER_LIMIT = 1
-const MAX_ALLOWED_TRUSTEE_CIPHERS_BUFFERED = 10
 
 // Trustees resume sending when capacity = lower limit + ratio*(max - lower limit)
-const RESUME_SENDING_CAPACITY_RATIO = 0.9
+const TRUSTEE_RESUME_SENDING_RATIO = 0.9
 
 // Possible states the trustees are in. This restrict the kind of messages they can receive at a given point in time.
 const (
@@ -498,7 +495,7 @@ func (p *Protocol) Received_TRU_REL_DC_CIPHER(msg TRU_REL_DC_CIPHER) error {
 		// Here is the control to regulate the trustees ciphers in case they should stop sending
 		p.relayState.locks.cipherTracker.Lock()                                                                    // Lock on cipherTracker
 		p.relayState.trusteeCipherTracker[msg.TrusteeID]++                                                         // Increment the currently buffered ciphers for this trustee
-		currentCapacity := MAX_ALLOWED_TRUSTEE_CIPHERS_BUFFERED - p.relayState.trusteeCipherTracker[msg.TrusteeID] // Get our remaining allowed capacity
+		currentCapacity := TRUSTEE_WINDOW_SIZE - p.relayState.trusteeCipherTracker[msg.TrusteeID] // Get our remaining allowed capacity
 		p.relayState.locks.cipherTracker.Unlock()                                                                  // Unlock cipherTracker
 
 		if currentCapacity <= TRUSTEE_WINDOW_LOWER_LIMIT { // Check if the capacity is lower then allowed
@@ -706,7 +703,7 @@ func (p *Protocol) roundFinished() error {
 	// if we have buffered messages for next round, use them now, so whenever we receive a client message, the trustee's message are counted correctly
 	if _, ok := p.relayState.bufferedTrusteeCiphers[nextRound]; ok {
 
-		threshhold := (TRUSTEE_WINDOW_LOWER_LIMIT + 1) + RESUME_SENDING_CAPACITY_RATIO*(MAX_ALLOWED_TRUSTEE_CIPHERS_BUFFERED-(TRUSTEE_WINDOW_LOWER_LIMIT+1))
+		threshhold := (TRUSTEE_WINDOW_LOWER_LIMIT + 1) + TRUSTEE_RESUME_SENDING_RATIO *(TRUSTEE_WINDOW_SIZE -(TRUSTEE_WINDOW_LOWER_LIMIT+1))
 
 		for trusteeID, data := range p.relayState.bufferedTrusteeCiphers[nextRound].Data {
 			// start decoding using this data
@@ -717,7 +714,7 @@ func (p *Protocol) roundFinished() error {
 			// Here is the control to regulate the trustees ciphers incase they should continue sending
 			p.relayState.locks.cipherTracker.Lock() // Lock on cipherTracker
 			p.relayState.trusteeCipherTracker[trusteeID]--
-			currentCapacity := MAX_ALLOWED_TRUSTEE_CIPHERS_BUFFERED - p.relayState.trusteeCipherTracker[trusteeID] // Calculate the current capacity
+			currentCapacity := TRUSTEE_WINDOW_SIZE - p.relayState.trusteeCipherTracker[trusteeID] // Calculate the current capacity
 			p.relayState.locks.cipherTracker.Unlock()                                                              // Unlock cipherTracker
 
 			if currentCapacity >= int(threshhold) { // if the previous capacity was at the lower limit allowed
@@ -1223,6 +1220,7 @@ func (p *Protocol) checkIfRoundHasEndedAfterTimeOut_Phase2(roundID int32) {
 	}
 }
 
+// SetTimeoutHandler sets the timeout handler, which is called with the dead/unresponsive client/trustee ID when a timeout occurs in a round
 func (p *Protocol) SetTimeoutHandler(handler func([]int, []int)) {
 	p.relayState.timeoutHandler = handler
 }
