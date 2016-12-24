@@ -1,21 +1,26 @@
 test_fmt:
-	@echo Checking correct formatting of files
+	@echo Checking correct formatting of files...
 	@{ \
 		files=$$( go fmt ./... ); \
 		if [ -n "$$files" ]; then \
 		echo "Files not properly formatted: $$files"; \
 		exit 1; \
 		fi; \
+	}
+
+test_govet:
+	@echo Running go vet...
+	@{ \
 		if ! go vet ./...; then \
 		exit 1; \
 		fi \
 	}
 
 test_lint:
-	@echo Checking linting of files
+	@echo Checking linting of files ...
 	@{ \
 		go get -u github.com/golang/lint/golint; \
-		exclude="byzcoin|_test.go"; \
+		exclude="_test.go"; \
 		lintfiles=$$( golint ./... | egrep -v "($$exclude)" ); \
 		if [ -n "$$lintfiles" ]; then \
 		echo "Lint errors:"; \
