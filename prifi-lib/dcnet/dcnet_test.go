@@ -5,9 +5,10 @@ import (
 
 	"bytes"
 	"fmt"
-	"github.com/dedis/crypto/nist"
 	"os"
 	"time"
+
+	"github.com/dedis/crypto/nist"
 
 	"github.com/dedis/crypto/abstract"
 )

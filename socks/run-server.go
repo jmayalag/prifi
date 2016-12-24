@@ -12,8 +12,9 @@ import (
 
 	"encoding/hex"
 	"flag"
-	"github.com/dedis/cothority/log"
 	"strconv"
+
+	"github.com/dedis/cothority/log"
 )
 
 // Authentication methods

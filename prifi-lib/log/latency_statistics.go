@@ -2,8 +2,9 @@ package log
 
 import (
 	"fmt"
-	"github.com/dedis/cothority/log"
 	"time"
+
+	"github.com/dedis/cothority/log"
 )
 
 //This class hold latencies values, and performs the average/std distribution of it. That is the max number of value stored.

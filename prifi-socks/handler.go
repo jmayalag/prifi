@@ -7,8 +7,9 @@ import (
 	"net"
 	"time"
 
-	"github.com/dedis/cothority/log"
 	"strconv"
+
+	"github.com/dedis/cothority/log"
 )
 
 // Authentication methods

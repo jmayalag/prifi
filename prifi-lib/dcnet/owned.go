@@ -3,6 +3,7 @@ package dcnet
 import (
 	"bytes"
 	"crypto/rand"
+
 	"github.com/dedis/crypto/abstract"
 )
 

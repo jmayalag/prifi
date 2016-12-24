@@ -2,8 +2,9 @@ package log
 
 import (
 	"fmt"
-	"github.com/dedis/cothority/log"
 	"time"
+
+	"github.com/dedis/cothority/log"
 )
 
 //BitrateStatistics holds statistics about the bitrate, such as instant/total up/down/down (via udp)/retransmitted bits

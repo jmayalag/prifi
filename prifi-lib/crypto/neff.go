@@ -2,8 +2,9 @@ package crypto
 
 import (
 	"fmt"
-	"github.com/dedis/crypto/abstract"
 	"math/rand"
+
+	"github.com/dedis/crypto/abstract"
 )
 
 // NeffShuffle implements Andrew Neff's verifiable shuffle proof scheme as described in the
