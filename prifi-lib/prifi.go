@@ -19,9 +19,9 @@ type PriFiProtocol struct {
 	role          int16
 	messageSender MessageSender
 	// TODO: combine states into a single interface
-	clientState   ClientState  //only one of those will be set
-	relayState    RelayState   //only one of those will be set
-	trusteeState  TrusteeState //only one of those will be set
+	clientState  ClientState  //only one of those will be set
+	relayState   RelayState   //only one of those will be set
+	trusteeState TrusteeState //only one of those will be set
 }
 
 // Possible role of PriFi entities.
@@ -47,18 +47,18 @@ type MessageSender interface {
 	SendToRelay(msg interface{}) error
 
 	/*
-	BroadcastToAllClients tries to deliver the message "msg"
-	to every client, possibly using broadcast.
+		BroadcastToAllClients tries to deliver the message "msg"
+		to every client, possibly using broadcast.
 	*/
 	BroadcastToAllClients(msg interface{}) error
 
 	/*
-	ClientSubscribeToBroadcast should be called by the Clients
-	in order to receive the Broadcast messages.
-	Calling the function starts the handler but does not actually
-	listen for broadcast messages.
-	Sending true to startStopChan starts receiving the broadcasts.
-	Sending false to startStopChan stops receiving the broadcasts.
+		ClientSubscribeToBroadcast should be called by the Clients
+		in order to receive the Broadcast messages.
+		Calling the function starts the handler but does not actually
+		listen for broadcast messages.
+		Sending true to startStopChan starts receiving the broadcasts.
+		Sending false to startStopChan stops receiving the broadcasts.
 	*/
 	ClientSubscribeToBroadcast(clientName string, protocolInstance *PriFiProtocol, startStopChan chan bool) error
 }

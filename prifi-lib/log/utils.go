@@ -11,12 +11,12 @@ func Round(f float64) float64 {
 
 func RoundWithPrecision(f float64, places int) float64 {
 	shift := math.Pow(10, float64(places))
-	return Round(f * shift) / shift;
+	return Round(f*shift) / shift
 }
 
 func MeanInt64(data []int64) float64 {
 	sum := int64(0)
-	for i:=0; i<len(data); i++ {
+	for i := 0; i < len(data); i++ {
 		sum += data[i]
 	}
 
@@ -26,7 +26,7 @@ func MeanInt64(data []int64) float64 {
 
 func MeanFloat64(data []float64) float64 {
 	sum := float64(0)
-	for i:=0; i<len(data); i++ {
+	for i := 0; i < len(data); i++ {
 		sum += data[i]
 	}
 
@@ -36,13 +36,13 @@ func MeanFloat64(data []float64) float64 {
 
 func Confidence95Percentiles(data []int64) float64 {
 
-	if len(data) == 0{
+	if len(data) == 0 {
 		return 0
 	}
 	mean_val := MeanInt64(data)
 
 	deviations := make([]float64, 0)
-	for i:=0; i<len(data); i++ {
+	for i := 0; i < len(data); i++ {
 		diff := mean_val - float64(data[i])
 		deviations = append(deviations, diff*diff)
 	}

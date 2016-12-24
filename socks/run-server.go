@@ -10,9 +10,9 @@ import (
 	"io"
 	"net"
 
-	"github.com/dedis/cothority/log"
-	"flag"
 	"encoding/hex"
+	"flag"
+	"github.com/dedis/cothority/log"
 	"strconv"
 )
 
@@ -70,14 +70,14 @@ func main() {
 	}
 
 	//starts the SOCKS exit
-	port := ":"+strconv.Itoa(*portFlag)
+	port := ":" + strconv.Itoa(*portFlag)
 
 	log.Lvl2("Starting SOCKS exit...")
 
 	// listen on all interfaces
 	ln, _ := net.Listen("tcp", port)
 
-	log.Lvl1("Server listening on port "+port)
+	log.Lvl1("Server listening on port " + port)
 
 	for {
 		// accept connection on port
@@ -229,7 +229,7 @@ func proxyPackets(fromConn net.Conn, toConn net.Conn) {
 
 /*
 readIP reads an IPv4 or IPv6 address from an io.Reader and return it as a string.
- */
+*/
 func readIP(r io.Reader, len int) (net.IP, error) {
 	errorIP := make(net.IP, net.IPv4len)
 
@@ -243,7 +243,7 @@ func readIP(r io.Reader, len int) (net.IP, error) {
 
 /*
 readSocksAddr extracts the address content from a SOCKS message.
- */
+*/
 func readSocksAddr(cr io.Reader, addrtype int) (net.IP, error) {
 
 	errorIP := make(net.IP, net.IPv4len)
@@ -283,7 +283,7 @@ func readSocksAddr(cr io.Reader, addrtype int) (net.IP, error) {
 
 /*
 createSocksReply creates a reply for the SOCKS5 client Request.
- */
+*/
 func createSocksReply(replyCode int, addr net.Addr) []byte {
 
 	buf := make([]byte, 4)   // Create byte buffer to store reply message

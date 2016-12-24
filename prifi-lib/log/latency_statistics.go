@@ -2,40 +2,36 @@ package log
 
 import (
 	"fmt"
-	"time"
 	"github.com/dedis/cothority/log"
+	"time"
 )
-
 
 const MAX_LATENCY_STORED = 100
 
 //TODO : this file is so dirty it belongs to /r/programminghorror. I'm ashamed of having written this.
 
 type LatencyStatistics struct {
-	begin       time.Time
-	nextReport  time.Time
-	period      time.Duration
+	begin      time.Time
+	nextReport time.Time
+	period     time.Duration
 
-	latencies   []int64
+	latencies []int64
 }
 
-
-
 func NewLatencyStatistics() *LatencyStatistics {
-	fiveSec := time.Duration(5)*time.Second
+	fiveSec := time.Duration(5) * time.Second
 	now := time.Now()
 	stats := LatencyStatistics{
-		begin: now,
+		begin:      now,
 		nextReport: now,
-		period: fiveSec,
-		latencies: make([]int64, 0)}
+		period:     fiveSec,
+		latencies:  make([]int64, 0)}
 	return &stats
 }
 
-
 func (stats *LatencyStatistics) LatencyStatistics() (string, string, string) {
 
-	if len(stats.latencies) == 0{
+	if len(stats.latencies) == 0 {
 		return "-1", "-1", "-1"
 	}
 
@@ -55,11 +51,9 @@ func (stats *LatencyStatistics) AddLatency(latency int64) {
 	}
 }
 
-
 func (stats *LatencyStatistics) Report() {
 	stats.ReportWithInfo("")
 }
-
 
 func (stats *LatencyStatistics) ReportWithInfo(info string) {
 	now := time.Now()
@@ -72,7 +66,6 @@ func (stats *LatencyStatistics) ReportWithInfo(info string) {
 		data := fmt.Sprintf("mean=%s&var=%s&n=%s&info=%s", mean, variance, n, info)
 
 		go performGETRequest("http://lbarman.ch/prifi/?" + data)
-
 
 		stats.nextReport = now.Add(stats.period)
 	}

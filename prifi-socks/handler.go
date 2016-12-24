@@ -52,9 +52,9 @@ const (
  */
 func StartSocksClient(serverAddress string, upstreamChan chan []byte, downstreamChan chan []byte) {
 
-	socksConnections := make(map[uint32]net.Conn)     // Stores all live connections
-	controlChannels := make(map[uint32]chan uint16) // Stores the control channels for each live connection
-	currentSendingState := uint16(ResumeCommunication)     // Keeps track of current state (stalled or resumed)
+	socksConnections := make(map[uint32]net.Conn)      // Stores all live connections
+	controlChannels := make(map[uint32]chan uint16)    // Stores the control channels for each live connection
+	currentSendingState := uint16(ResumeCommunication) // Keeps track of current state (stalled or resumed)
 
 	for {
 		// Block on receiving a packet
@@ -146,7 +146,7 @@ func StartSocksClient(serverAddress string, upstreamChan chan []byte, downstream
 			delete(socksConnections, socksConnectionId)
 			delete(controlChannels, socksConnectionId)
 
-			log.Lvl2("SOCKS PriFi Client: Freeing ressources for connection "+strconv.Itoa(int(socksConnectionId))+".")
+			log.Lvl2("SOCKS PriFi Client: Freeing ressources for connection " + strconv.Itoa(int(socksConnectionId)) + ".")
 
 		default:
 			log.Error("SOCKS PriFi Client: Unrecognized message type.")
@@ -186,7 +186,7 @@ func StartSocksServer(localListeningAddress string, payloadLength int, upstreamC
 			controlChannels[newSocksProxyId] = make(chan uint16, 1)
 			counter[newSocksProxyId] = 1
 
-			log.Lvl2("SOCKS PriFi Server : got a new connection, assigned id "+strconv.Itoa(int(newSocksProxyId)))
+			log.Lvl2("SOCKS PriFi Server : got a new connection, assigned id " + strconv.Itoa(int(newSocksProxyId)))
 
 			// Instantiate a connection handler and pass it the current state
 			controlChannels[newSocksProxyId] <- currentState
@@ -213,7 +213,7 @@ func StartSocksServer(localListeningAddress string, payloadLength int, upstreamC
 			// Check the type of message
 			switch packetType {
 			case SocksError: // Indicates SOCKS connection error (usually happens if the connection ID being used is not globally unique)
-				log.Error("SOCKS PriFi Server: Got an error for connection "+strconv.Itoa(int(socksConnId))+", closing.")
+				log.Error("SOCKS PriFi Server: Got an error for connection " + strconv.Itoa(int(socksConnId)) + ", closing.")
 
 				// Close the connection and Delete the connection and it's corresponding control channel
 				socksProxyActiveConnections[socksConnId].Close()
@@ -231,7 +231,6 @@ func StartSocksServer(localListeningAddress string, payloadLength int, upstreamC
 				currentState = StallCommunication
 
 				log.Lvl2("SOCKS PriFi Server: All communications stalled.")
-
 
 			case ResumeCommunication: // Indicates that all connection handlers should resume sending data back to the relay
 
@@ -263,7 +262,7 @@ func StartSocksServer(localListeningAddress string, payloadLength int, upstreamC
 				delete(socksProxyActiveConnections, socksConnId)
 				delete(controlChannels, socksConnId)
 
-				log.Error("SOCKS PriFi Server: Connection "+strconv.Itoa(int(socksConnId))+" closed.")
+				log.Error("SOCKS PriFi Server: Connection " + strconv.Itoa(int(socksConnId)) + " closed.")
 
 			default:
 				break
@@ -274,18 +273,18 @@ func StartSocksServer(localListeningAddress string, payloadLength int, upstreamC
 
 /*
 handleConnection handles reading data from a connection with a SOCKS entity (Browser, SOCKS Server) and forwarding it to a PriFi entity (Client, Relay).
- */
+*/
 func handleSocksClientConnection(tcpConnection net.Conn, connectionId uint32, socksPacketLength int, controlChannel chan uint16, upstreamChan chan []byte, downstreamChan chan []byte) {
 
-	log.Lvl2("SOCKS started to handle connection "+strconv.Itoa(int(connectionId)))
+	log.Lvl2("SOCKS started to handle connection " + strconv.Itoa(int(connectionId)))
 
 	dataFromSocksClientToSocksServer := make(chan []byte, 1) // Channel to communicate the data read from the connection with the SOCKS entity
-	var dataBuffer [][]byte             // Buffer to store data to be sent later
-	sendingOK := true                   // Indicates if forwarding data to the PriFi entity is permitted
-	messageType := uint16(SocksConnect) // This variable is used to ensure that the first packet sent back to the PriFi entity is a SocksConnect packet (It is only useful for the client-side handler)
+	var dataBuffer [][]byte                                  // Buffer to store data to be sent later
+	sendingOK := true                                        // Indicates if forwarding data to the PriFi entity is permitted
+	messageType := uint16(SocksConnect)                      // This variable is used to ensure that the first packet sent back to the PriFi entity is a SocksConnect packet (It is only useful for the client-side handler)
 
 	// Create connection reader to read from the connection with the SOCKS entity
-	go connectionReader(tcpConnection, socksPacketLength -int(SocksPacketHeaderSize), dataFromSocksClientToSocksServer)
+	go connectionReader(tcpConnection, socksPacketLength-int(SocksPacketHeaderSize), dataFromSocksClientToSocksServer)
 
 	for {
 
@@ -298,11 +297,11 @@ func handleSocksClientConnection(tcpConnection net.Conn, connectionId uint32, so
 			switch controlMessage {
 
 			case StallCommunication:
-				log.Lvl2("SOCKS handler for connection "+strconv.Itoa(int(connectionId)) +" just got a Stall message.")
+				log.Lvl2("SOCKS handler for connection " + strconv.Itoa(int(connectionId)) + " just got a Stall message.")
 				sendingOK = false // Indicate that forwarding to the PriFi entity is not permitted
 
 			case ResumeCommunication:
-				log.Lvl2("SOCKS handler for connection "+strconv.Itoa(int(connectionId)) +" just got a Resume message.")
+				log.Lvl2("SOCKS handler for connection " + strconv.Itoa(int(connectionId)) + " just got a Resume message.")
 				sendingOK = true // Indicate that forwarding to the PriFi entity is permitted
 
 				// For all buffered data, send it to the PriFi entity
@@ -375,7 +374,7 @@ func handleSocksClientConnection(tcpConnection net.Conn, connectionId uint32, so
 
 /*
 browserConnectionListener listens and accepts connections at a certain port
- */
+*/
 func acceptSocksClients(port string, newConnections chan<- net.Conn) {
 
 	log.Lvl2("SOCKS listener is listening for connections on port " + port)

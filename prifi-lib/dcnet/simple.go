@@ -49,7 +49,7 @@ func (c *simpleCoder) ClientEncode(payload []byte, payloadlen int,
 	if payload == nil {
 		payload = make([]byte, payloadlen)
 	}
-	if len(payload) < payloadlen{
+	if len(payload) < payloadlen {
 		payload2 := make([]byte, payloadlen)
 		copy(payload2[0:len(payload)], payload)
 		payload = payload2

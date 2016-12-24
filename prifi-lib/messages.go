@@ -222,7 +222,6 @@ func (m *REL_CLI_DOWNSTREAM_DATA_UDP) FromBytes() (interface{}, error) {
 	return resultMessage, nil
 }
 
-
 // ReceivedMessage must be called when a PriFi host receives a message.
 // It takes care to call the correct message handler function.
 func (prifi *PriFiProtocol) ReceivedMessage(msg interface{}) error {
