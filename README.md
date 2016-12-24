@@ -1,6 +1,4 @@
-# PriFi: A Low-Latency and Tracking-Resistant Protocol for Local-Area Anonymous Communication
-
-Status : [![Build Status](https://travis-ci.org/lbarman/prifi.svg?branch=master)](https://travis-ci.org/lbarman/prifi)
+# PriFi: A Low-Latency, Tracking-Resistant Protocol for Local-Area Anonymity [![Build Status](https://travis-ci.org/lbarman/prifi.svg?branch=master)](https://travis-ci.org/lbarman/prifi)
 
 ## Introduction
 
@@ -11,6 +9,8 @@ For more details about PriFi, please check our [WPES 2016 paper](http://www.cs.y
 
 
 **Warning: This software is experimental and still under development. Do not use it yet for security-critical purposes. Use at your own risk!**
+
+## Getting and running PriFi
 
 ## Understanding the architecture
 
