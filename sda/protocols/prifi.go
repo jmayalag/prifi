@@ -21,21 +21,25 @@ import (
 const ProtocolName = "Prifi-SDA-Wrapper"
 
 //the UDP channel we provide to PriFi. check udp.go for more details.
-var udpChan UDPChannel = newRealUDPChannel() // Cannot use localhost channel anymore for real deployment
+var udpChan = newRealUDPChannel() // Cannot use localhost channel anymore for real deployment
 
+//PriFiRole is the type of the enum to qualify the role of a SDA node (Relay, Client, Trustee)
 type PriFiRole int
 
+//The possible states of a SDA node, of type PriFiRole
 const (
 	Relay PriFiRole = iota
 	Client
 	Trustee
 )
 
+//PriFiIdentity is the identity (role + ID)
 type PriFiIdentity struct {
 	Role PriFiRole
-	Id   int
+	ID   int
 }
 
+//SOCKSConfig contains the port, payload, and up/down channels for data
 type SOCKSConfig struct {
 	Port              string
 	PayloadLength     int
@@ -43,6 +47,7 @@ type SOCKSConfig struct {
 	DownstreamChannel chan []byte
 }
 
+//PriFiSDAWrapperConfig is all the information the SDA-Protocols needs. It contains the network map of identities, our role, and the socks parameters if we are the corresponding role
 type PriFiSDAWrapperConfig struct {
 	prifi_lib.ALL_ALL_PARAMETERS
 	Identities            map[network.Address]PriFiIdentity
@@ -51,7 +56,7 @@ type PriFiSDAWrapperConfig struct {
 	RelaySideSocksConfig  *SOCKSConfig
 }
 
-//This is the PriFi-SDA-Wrapper protocol struct. It contains the SDA-tree, and a chanel that stops the simulation when it receives a "true"
+//PriFiSDAWrapper is the SDA-protocol struct. It contains the SDA-tree, and a chanel that stops the simulation when it receives a "true"
 type PriFiSDAWrapper struct {
 	*sda.TreeNodeInstance
 	configSet     bool
@@ -69,7 +74,7 @@ type PriFiSDAWrapper struct {
 	prifiProtocol *prifi_lib.Protocol
 }
 
-// Start implements the sda.Protocol interface.
+//Start implements the sda.Protocol interface.
 func (p *PriFiSDAWrapper) Start() error {
 	if !p.configSet {
 		log.Fatal("Trying to start PriFi Library, but config not set !")
@@ -146,12 +151,12 @@ func (p *PriFiSDAWrapper) SetConfig(config *PriFiSDAWrapperConfig) {
 		p.prifiProtocol.SetTimeoutHandler(p.handleTimeout)
 
 	case Trustee:
-		id := config.Identities[p.ServerIdentity().Address].Id
+		id := config.Identities[p.ServerIdentity().Address].ID
 		trusteeState := prifi_lib.NewTrusteeState(id, nClients, nTrustees, config.UpCellSize)
 		p.prifiProtocol = prifi_lib.NewPriFiTrusteeWithState(ms, trusteeState)
 
 	case Client:
-		id := config.Identities[p.ServerIdentity().Address].Id
+		id := config.Identities[p.ServerIdentity().Address].ID
 		clientState := prifi_lib.NewClientState(id,
 			nTrustees,
 			nClients,
@@ -181,9 +186,9 @@ func (p *PriFiSDAWrapper) buildMessageSender(identities map[network.Address]PriF
 	nodes := p.List() // Has type []*sda.TreeNode
 	trustees := make(map[int]*sda.TreeNode)
 	clients := make(map[int]*sda.TreeNode)
-	trusteeId := 0
-	clientId := 0
-	var relay *sda.TreeNode = nil
+	trusteeID := 0
+	clientID := 0
+	var relay *sda.TreeNode
 
 	for i := 0; i < len(nodes); i++ {
 		id, ok := identities[nodes[i].ServerIdentity.Address]
@@ -192,11 +197,11 @@ func (p *PriFiSDAWrapper) buildMessageSender(identities map[network.Address]PriF
 		}
 		switch id.Role {
 		case Client:
-			clients[clientId] = nodes[i]
-			clientId++
+			clients[clientID] = nodes[i]
+			clientID++
 		case Trustee:
-			trustees[trusteeId] = nodes[i]
-			trusteeId++
+			trustees[trusteeID] = nodes[i]
+			trusteeID++
 		case Relay:
 			if relay == nil {
 				relay = nodes[i]

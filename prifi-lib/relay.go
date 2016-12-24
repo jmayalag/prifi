@@ -493,10 +493,10 @@ func (p *Protocol) Received_TRU_REL_DC_CIPHER(msg TRU_REL_DC_CIPHER) error {
 		p.relayState.locks.trusteeBuffer.Unlock() // Unlock trustee buffer
 
 		// Here is the control to regulate the trustees ciphers in case they should stop sending
-		p.relayState.locks.cipherTracker.Lock()                                                                    // Lock on cipherTracker
-		p.relayState.trusteeCipherTracker[msg.TrusteeID]++                                                         // Increment the currently buffered ciphers for this trustee
+		p.relayState.locks.cipherTracker.Lock()                                                   // Lock on cipherTracker
+		p.relayState.trusteeCipherTracker[msg.TrusteeID]++                                        // Increment the currently buffered ciphers for this trustee
 		currentCapacity := TRUSTEE_WINDOW_SIZE - p.relayState.trusteeCipherTracker[msg.TrusteeID] // Get our remaining allowed capacity
-		p.relayState.locks.cipherTracker.Unlock()                                                                  // Unlock cipherTracker
+		p.relayState.locks.cipherTracker.Unlock()                                                 // Unlock cipherTracker
 
 		if currentCapacity <= TRUSTEE_WINDOW_LOWER_LIMIT { // Check if the capacity is lower then allowed
 			toSend := &REL_TRU_TELL_RATE_CHANGE{currentCapacity}
@@ -703,7 +703,7 @@ func (p *Protocol) roundFinished() error {
 	// if we have buffered messages for next round, use them now, so whenever we receive a client message, the trustee's message are counted correctly
 	if _, ok := p.relayState.bufferedTrusteeCiphers[nextRound]; ok {
 
-		threshhold := (TRUSTEE_WINDOW_LOWER_LIMIT + 1) + TRUSTEE_RESUME_SENDING_RATIO *(TRUSTEE_WINDOW_SIZE -(TRUSTEE_WINDOW_LOWER_LIMIT+1))
+		threshhold := (TRUSTEE_WINDOW_LOWER_LIMIT + 1) + TRUSTEE_RESUME_SENDING_RATIO*(TRUSTEE_WINDOW_SIZE-(TRUSTEE_WINDOW_LOWER_LIMIT+1))
 
 		for trusteeID, data := range p.relayState.bufferedTrusteeCiphers[nextRound].Data {
 			// start decoding using this data
@@ -715,7 +715,7 @@ func (p *Protocol) roundFinished() error {
 			p.relayState.locks.cipherTracker.Lock() // Lock on cipherTracker
 			p.relayState.trusteeCipherTracker[trusteeID]--
 			currentCapacity := TRUSTEE_WINDOW_SIZE - p.relayState.trusteeCipherTracker[trusteeID] // Calculate the current capacity
-			p.relayState.locks.cipherTracker.Unlock()                                                              // Unlock cipherTracker
+			p.relayState.locks.cipherTracker.Unlock()                                             // Unlock cipherTracker
 
 			if currentCapacity >= int(threshhold) { // if the previous capacity was at the lower limit allowed
 				toSend := &REL_TRU_TELL_RATE_CHANGE{currentCapacity}

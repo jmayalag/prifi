@@ -10,10 +10,8 @@ import (
 	prifi_lib "github.com/lbarman/prifi/prifi-lib"
 )
 
-/**
- * This is the struct we need to give PriFi-Lib so it can send messages.
- * It need to implement the "MessageSender interface" defined in prifi_lib/prifi.go
- */
+//MessageSender is the struct we need to give PriFi-Lib so it can send messages.
+//It needs to implement the "MessageSender interface" defined in prifi_lib/prifi.go
 type MessageSender struct {
 	tree     *sda.TreeNodeInstance
 	relay    *sda.TreeNode
@@ -21,35 +19,39 @@ type MessageSender struct {
 	trustees map[int]*sda.TreeNode
 }
 
+//SendToClient sends a message to client i, or fails if it is unknown
 func (ms MessageSender) SendToClient(i int, msg interface{}) error {
 
 	if client, ok := ms.clients[i]; ok {
 		log.Lvl5("Sending a message to client ", i, " (", client.Name(), ") - ", msg)
 		return ms.tree.SendTo(client, msg)
-	} else {
-		e := "Client " + strconv.Itoa(i) + " is unknown !"
-		log.Error(e)
-		return errors.New(e)
 	}
+
+	e := "Client " + strconv.Itoa(i) + " is unknown !"
+	log.Error(e)
+	return errors.New(e)
 }
 
+//SendToTrustee sends a message to trustee i, or fails if it is unknown
 func (ms MessageSender) SendToTrustee(i int, msg interface{}) error {
 
 	if trustee, ok := ms.trustees[i]; ok {
 		log.Lvl5("Sending a message to trustee ", i, " (", trustee.Name(), ") - ", msg)
 		return ms.tree.SendTo(trustee, msg)
-	} else {
-		e := "Trustee " + strconv.Itoa(i) + " is unknown !"
-		log.Error(e)
-		return errors.New(e)
 	}
+
+	e := "Trustee " + strconv.Itoa(i) + " is unknown !"
+	log.Error(e)
+	return errors.New(e)
 }
 
+//SendToRelay sends a message to the unique relay
 func (ms MessageSender) SendToRelay(msg interface{}) error {
 	log.Lvl5("Sending a message to relay ", " - ", msg)
 	return ms.tree.SendTo(ms.relay, msg)
 }
 
+//BroadcastToAllClients broadcasts a message (must be a REL_CLI_DOWNSTREAM_DATA_UDP) to all clients using UDP
 func (ms MessageSender) BroadcastToAllClients(msg interface{}) error {
 
 	castedMsg, canCast := msg.(*prifi_lib.REL_CLI_DOWNSTREAM_DATA_UDP)
@@ -61,6 +63,7 @@ func (ms MessageSender) BroadcastToAllClients(msg interface{}) error {
 	return nil
 }
 
+//ClientSubscribeToBroadcast allows a client to subscribe to UDP broadcast
 func (ms MessageSender) ClientSubscribeToBroadcast(clientName string, protocolInstance *prifi_lib.Protocol, startStopChan chan bool) error {
 
 	log.Lvl3(clientName, " started UDP-listener helper.")

@@ -3,11 +3,11 @@ package dcnet
 import (
 	"testing"
 
-	"github.com/dedis/crypto/nist"
 	"bytes"
-	"time"
 	"fmt"
+	"github.com/dedis/crypto/nist"
 	"os"
+	"time"
 
 	"github.com/dedis/crypto/abstract"
 )
@@ -19,13 +19,14 @@ func TestSimple(t *testing.T) {
 func TestOwned(t *testing.T) {
 	TestCellCoder(t, nist.NewAES128SHA256P256(), OwnedCoderFactory)
 }
+
 type TestNode struct {
 
-					// General parameters
+	// General parameters
 	suite abstract.Suite
 	name  string
 
-					// Asymmetric keypair for this node
+	// Asymmetric keypair for this node
 	pub abstract.Point
 	pri abstract.Scalar
 
@@ -33,15 +34,15 @@ type TestNode struct {
 	peerkeys      []abstract.Point  // each peer's session public key
 	sharedsecrets []abstract.Cipher // shared secrets
 
-					// Owner keypair for this cell series.
-					// Public key is known by and common to all nodes.
-					// Private key is held only by owner client.
+	// Owner keypair for this cell series.
+	// Public key is known by and common to all nodes.
+	// Private key is held only by owner client.
 	opub abstract.Point
 	opri abstract.Scalar
 
 	Coder CellCoder
 
-					// Cipher representing history as seen by this node.
+	// Cipher representing history as seen by this node.
 	History abstract.Cipher
 }
 
@@ -71,7 +72,7 @@ func (n *TestNode) nodeSetup(name string, peerkeys []abstract.Point) {
 }
 
 func TestSetup(t *testing.T, suite abstract.Suite, factory CellFactory,
-nclients, ntrustees int) *TestGroup {
+	nclients, ntrustees int) *TestGroup {
 
 	// Use a pseudorandom stream from a well-known seed
 	// for all our setup randomness,

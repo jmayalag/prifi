@@ -52,35 +52,35 @@ const (
 
 // ClientState contains the mutable state of the client.
 type ClientState struct {
-	mutex               *sync.RWMutex
-	CellCoder           dcnet.CellCoder
-	currentState        int16
-	DataForDCNet        chan []byte //Data to the relay : VPN / SOCKS should put data there !
-	DataFromDCNet       chan []byte //Data from the relay : VPN / SOCKS should read data from there !
-	DataOutputEnabled   bool        //if FALSE, nothing will be written to DataFromDCNet
-	ephemeralPrivateKey abstract.Scalar
-	EphemeralPublicKey  abstract.Point
-	ID                  int
-	LatencyTest         bool
-	MySlot              int
-	Name                string
-	nClients            int
-	nTrustees           int
-	PayloadLength       int
-	privateKey          abstract.Scalar
-	PublicKey           abstract.Point
-	sharedSecrets       []abstract.Point
-	TrusteePublicKey    []abstract.Point
-	UsablePayloadLength int
-	UseSocksProxy       bool
-	UseUDP              bool
-	MessageHistory      abstract.Cipher
+	mutex                     *sync.RWMutex
+	CellCoder                 dcnet.CellCoder
+	currentState              int16
+	DataForDCNet              chan []byte //Data to the relay : VPN / SOCKS should put data there !
+	DataFromDCNet             chan []byte //Data from the relay : VPN / SOCKS should read data from there !
+	DataOutputEnabled         bool        //if FALSE, nothing will be written to DataFromDCNet
+	ephemeralPrivateKey       abstract.Scalar
+	EphemeralPublicKey        abstract.Point
+	ID                        int
+	LatencyTest               bool
+	MySlot                    int
+	Name                      string
+	nClients                  int
+	nTrustees                 int
+	PayloadLength             int
+	privateKey                abstract.Scalar
+	PublicKey                 abstract.Point
+	sharedSecrets             []abstract.Point
+	TrusteePublicKey          []abstract.Point
+	UsablePayloadLength       int
+	UseSocksProxy             bool
+	UseUDP                    bool
+	MessageHistory            abstract.Cipher
 	StartStopReceiveBroadcast chan bool
-	statistics          *prifilog.LatencyStatistics
+	statistics                *prifilog.LatencyStatistics
 
 	//concurrent stuff
-	RoundNo             int32
-	BufferedRoundData   map[int32]REL_CLI_DOWNSTREAM_DATA
+	RoundNo           int32
+	BufferedRoundData map[int32]REL_CLI_DOWNSTREAM_DATA
 }
 
 // NewClientState is used to initialize the state of the client. Must be called before anything else.
@@ -206,7 +206,6 @@ func (p *Protocol) Received_REL_CLI_DOWNSTREAM_DATA(msg REL_CLI_DOWNSTREAM_DATA)
 	}
 	log.Lvl3("Client " + strconv.Itoa(p.clientState.ID) + " : Received a REL_CLI_DOWNSTREAM_DATA for round " + strconv.Itoa(int(msg.RoundID)))
 
-
 	//check if it is in-order
 	if msg.RoundID == p.clientState.RoundNo {
 		//process downstream data
@@ -251,7 +250,6 @@ func (p *Protocol) Received_REL_CLI_UDP_DOWNSTREAM_DATA(msg REL_CLI_DOWNSTREAM_D
 		return errors.New(e)
 	}
 	log.Lvl3("Client " + strconv.Itoa(p.clientState.ID) + " : Received a REL_CLI_UDP_DOWNSTREAM_DATA for round " + strconv.Itoa(int(msg.RoundID)))
-
 
 	//check if it is in-order
 	if msg.RoundID == p.clientState.RoundNo {
@@ -378,7 +376,6 @@ func (p *Protocol) SendUpstreamData() error {
 	}
 	log.Lvl3("Client " + strconv.Itoa(p.clientState.ID) + " : sent CLI_REL_UPSTREAM_DATA for round " + strconv.Itoa(int(p.clientState.RoundNo)))
 
-
 	//clean old buffered messages
 	delete(p.clientState.BufferedRoundData, int32(p.clientState.RoundNo-1))
 
@@ -413,7 +410,6 @@ func (p *Protocol) Received_REL_CLI_TELL_TRUSTEES_PK(msg REL_CLI_TELL_TRUSTEES_P
 	}
 	log.Lvl3("Client " + strconv.Itoa(p.clientState.ID) + " : Received a REL_CLI_TELL_TRUSTEES_PK")
 
-
 	//sanity check
 	if len(msg.Pks) < 1 {
 		e := "Client " + strconv.Itoa(p.clientState.ID) + " : len(msg.Pks) must be >= 1"
@@ -446,7 +442,6 @@ func (p *Protocol) Received_REL_CLI_TELL_TRUSTEES_PK(msg REL_CLI_TELL_TRUSTEES_P
 	}
 	log.Lvl3("Client " + strconv.Itoa(p.clientState.ID) + " : sent CLI_REL_TELL_PK_AND_EPH_PK")
 
-
 	//change state
 	p.clientState.currentState = CLIENT_STATE_EPH_KEYS_SENT
 
@@ -476,7 +471,6 @@ func (p *Protocol) Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(msg REL_CLI_TE
 		return errors.New(e)
 	}
 	log.Lvl3("Client " + strconv.Itoa(p.clientState.ID) + " : REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG") //TODO: this should be client
-
 
 	//verify the signature
 	G := msg.Base

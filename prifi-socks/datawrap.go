@@ -20,17 +20,16 @@ const (
 	SocksPacketHeaderSize = uint16(10)
 )
 
-
 //SocksPacket represents the packet communicated across the network. It contains the header components and the data.
 type SocksPacket struct {
-			     // Header
+	// Header
 	Type          uint16
 	ID            uint32 // SOCKS5 Connection ID
 	MessageLength uint16 // The length of useful data
 	PacketLength  uint16 // The length of the packet including the header
 
-			     // Data
-	Data          []byte // The data segment of the packet (Always of size PacketLength-HeaderLength)
+	// Data
+	Data []byte // The data segment of the packet (Always of size PacketLength-HeaderLength)
 }
 
 //ToBytes converts the SocksPacket to a byte array
@@ -84,7 +83,6 @@ func socksTrimAndPadPayload(data []byte, messageLength uint16, packetLength uint
 	// Return the modified data and message length
 	return data, messageLength
 }
-
 
 //ParseSocksPacketFromBytes extracts the SocksPacket packet from an array of bytes.
 func ParseSocksPacketFromBytes(buffer []byte) SocksPacket {

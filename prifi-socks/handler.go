@@ -472,7 +472,6 @@ func generateRandomUniqueID(connections map[uint32]net.Conn) uint32 {
 	return id
 }
 
-
 //generateID generates an ID from a private key
 func generateRandomID() uint32 {
 	var n uint32
