@@ -103,3 +103,33 @@ Finally, using PriFi, the architecture is as follow :
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
      On your machine (localhost)        |            |           On the PriFi relay
 ```
+
+You could also decide not to use the SOCKS server we provide in `socks/`, and connect to a remote, public server :
+
+
+```
+
+Finally, using PriFi, the architecture is as follow :
+
+```
+
+._____________.
+| Browser     |           PriFi Client
+|             |         ._______________.
+| Socks-Client| <------>| SOCKS-Server 1| 
+|_____________|         |       ^       |
+                        |       |       |              PriFi Relay
+                        |       v       |            ._______________.
+                        | Anonymization | <--------> | Anonymization | 
+                        |_______________|            |       ^       |
+                                                     |       |       |
+                                                     |       v       |
+                                                     |  SOCKS-Client | <--------------->  Public SOCKS Server
+                                                     |_______________|                             ^
+                                                                                                   |
+                                                                                                   v
+                                                                                                Internet
+
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^            ^^^^^^^^^^^^^^^^^^^^^^^^^            ^^^^^^^^^^^^^^^^^^^^
+     On your machine (localhost)        |            |   On the PriFi relay  |            |    Any machine  
+```
