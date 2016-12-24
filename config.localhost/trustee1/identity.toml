@@ -1,15 +1,4 @@
-
-[[servers]]
-  Address = "tcp://127.0.0.1:7000"
-  Public = "VYcxFJhJcfOLY/esG1Gr20Lnc+HkKm73v3YsEx7jRds="
-  Description = "relay"
-
-[[servers]]
-  Address = "tcp://127.0.0.1:7001"
-  Public = "iwjdlBd0kAlOviatMvTuN95cB0am9mY8+DmeK86c3Fg="
-  Description = "trustee"
-
-[[servers]]
-  Address = "tcp://127.0.0.1:7002"
-  Public = "fte323V5gLtAzZRrwgzEIBQBDbrTlpeqk02A69Mgr3g="
-  Description = "trustee"
+Public = "2a6e9a1e0d0c7a7427187ee026db7ac1bdbc15b51013d1fb8bd73c203dde966f"
+Private = "85c333c80ffd7c7097d2968feededf05c7fe7f5702b9b05961f63e7f47cc580f"
+Address = "tcp://127.0.0.1:7002"
+# Public (base64) = Km6aHg0MenQnGH7gJtt6wb28FbUQE9H7i9c8ID3elm8=
