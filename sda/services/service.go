@@ -9,12 +9,10 @@ package services
  */
 
 import (
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"strconv"
-	"strings"
 
 	"github.com/dedis/cothority/app/lib/config"
 	"github.com/dedis/cothority/log"
