@@ -318,7 +318,7 @@ func mapIdentities(group *config.Group) (map[network.Address]protocols.PriFiIden
 				Role: protocols.Trustee,
 				ID:   nextFreeTrusteeID,
 			}
-			log.Info("Node", nodeDescription+"@"+si.Address.String(), "assigned as Trustee #"+strconv.Itoa(id.ID))
+			log.Lvl3("Node", nodeDescription+"@"+si.Address.String(), "assigned as Trustee #"+strconv.Itoa(id.ID))
 			nextFreeTrusteeID++
 		}
 
