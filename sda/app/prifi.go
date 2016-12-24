@@ -7,18 +7,31 @@ import (
 	"fmt"
 	"os"
 
+	"errors"
 	"io/ioutil"
 	"os/user"
 	"path"
 	"runtime"
 
+	"net/http"
+	"net/url"
+
+	"bytes"
 	"github.com/BurntSushi/toml"
 	"github.com/dedis/cothority/app/lib/config"
 	"github.com/dedis/cothority/app/lib/server"
+	"github.com/dedis/cothority/crypto"
 	"github.com/dedis/cothority/log"
+	"github.com/dedis/cothority/network"
 	"github.com/dedis/cothority/sda"
+	"github.com/dedis/crypto/abstract"
+	crypconf "github.com/dedis/crypto/config"
 	"github.com/lbarman/prifi/sda/services"
 	"gopkg.in/urfave/cli.v1"
+	"net"
+	"strconv"
+	"strings"
+	"time"
 )
 
 // DefaultName is the name of the binary we produce and is used to create a directory
@@ -26,13 +39,26 @@ import (
 const DefaultName = "prifi"
 
 // Default name of configuration file
-const DefaultCothorityConfigFile = "config.toml"
+const DefaultCothorityConfigFile = "identity.toml"
 
 // Default name of group file
 const DefaultCothorityGroupConfigFile = "group.toml"
 
 // Default name of prifi's config file
-const DefaultPriFiConfigFile = "group.toml"
+const DefaultPriFiConfigFile = "prifi.toml"
+
+// DefaultPort to listen and connect to. As of this writing, this port is not listed in
+// /etc/services
+const DefaultPort = 6879
+
+// DefaultAddress where to be contacted by other servers.
+const DefaultAddress = "127.0.0.1"
+
+// Service used to get the public IP-address.
+const whatsMyIP = "http://www.whatsmyip.org/"
+
+// RequestTimeOut is how long we're willing to wait for a signature.
+var RequestTimeOut = time.Second * 1
 
 // This app can launch the prifi service in either client, trustee or relay mode
 func main() {
@@ -46,6 +72,12 @@ func main() {
 			Aliases: []string{"s"},
 			Usage:   "setup the configuration for the server",
 			Action:  setupNewCothorityNode,
+		},
+		{
+			Name:    "gen-id",
+			Aliases: []string{"gen"},
+			Usage:   "creates a new identity.toml",
+			Action:  createNewIdentityToml,
 		},
 		{
 			Name:    "trustee",
@@ -221,6 +253,86 @@ func setupNewCothorityNode(c *cli.Context) error {
 	return nil
 }
 
+// Returns true if file exists and user confirms overwriting, or if file doesn't exist.
+// Returns false if file exists and user doesn't confirm overwriting.
+func checkOverwrite(file string) bool {
+	// check if the file exists and ask for override
+	if _, err := os.Stat(file); err == nil {
+		return config.InputYN(true, "Configuration file "+file+" already exists. Override?")
+	}
+	return true
+}
+
+func createNewIdentityToml(c *cli.Context) error {
+
+	log.Print("Generating public/private keys...")
+
+	privStr, pubStr := createKeyPair()
+
+	addrPort := config.Inputf(":"+strconv.Itoa(DefaultPort)+"", "Which port do you want PriFi to use locally ?")
+
+	//parse IP + Port
+	var hostStr string
+	var portStr string
+
+	host, port, err := net.SplitHostPort(addrPort)
+	log.ErrFatal(err, "Couldn't interpret", addrPort)
+
+	if addrPort == "" {
+		portStr = strconv.Itoa(DefaultPort)
+		hostStr = "127.0.0.1"
+	} else if host == "" {
+		hostStr = "127.0.0.1"
+		portStr = port
+	} else {
+		hostStr = host
+		portStr = port
+	}
+
+	serverBinding := network.NewTCPAddress(hostStr + ":" + portStr)
+
+	identity := &config.CothoritydConfig{
+		Public:  pubStr,
+		Private: privStr,
+		Address: serverBinding,
+	}
+
+	var configDone bool
+	var folderPath string
+	var identityFilePath string
+
+	for !configDone {
+		// get name of config file and write to config file
+		folderPath = config.Inputf(".", "Please enter the path for the new identity.toml file:")
+		identityFilePath = path.Join(folderPath, DefaultCothorityConfigFile)
+
+		// check if the directory exists
+		if _, err := os.Stat(folderPath); os.IsNotExist(err) {
+			log.Info("Creating inexistant directories for ", folderPath)
+			if err = os.MkdirAll(folderPath, 0744); err != nil {
+				log.Fatalf("Could not create directory %s %v", folderPath, err)
+			}
+		}
+
+		if checkOverwrite(identityFilePath) {
+			break
+		}
+	}
+
+	_, err = crypto.ReadPubHex(network.Suite, pubStr)
+	if err != nil {
+		log.Fatal("Impossible to parse public key:", err)
+	}
+
+	if err := identity.Save(identityFilePath); err != nil {
+		log.Fatal("Unable to write the config to file:", err)
+	}
+
+	log.Info("All configurations saved, ready to serve signatures now.")
+
+	return nil
+}
+
 // Starts the cothority node to enable communication with the prifi-service.
 func startCothorityNode(c *cli.Context) (*sda.Conode, error) {
 	// first check the options
@@ -328,4 +440,23 @@ func readCothorityGroupConfig(c *cli.Context) *config.Group {
 		return nil
 	}
 	return groups
+}
+
+// createKeyPair returns the private and public key in hexadecimal representation.
+func createKeyPair() (string, string) {
+	kp := crypconf.NewKeyPair(network.Suite)
+	privStr, err := crypto.ScalarHex(network.Suite, kp.Secret)
+	if err != nil {
+		log.Fatal("Error formating private key to hexadecimal. Abort.")
+	}
+	var point abstract.Point
+	// use the transformation for EdDSA signatures
+	//point = cosi.Ed25519Public(network.Suite, kp.Secret)
+	point = kp.Public
+	pubStr, err := crypto.PubHex(network.Suite, point)
+	if err != nil {
+		log.Fatal("Could not parse public key. Abort.")
+	}
+
+	return privStr, pubStr
 }
