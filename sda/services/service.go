@@ -9,12 +9,10 @@ package services
  */
 
 import (
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"strconv"
-	"strings"
 
 	"github.com/dedis/cothority/app/lib/config"
 	"github.com/dedis/cothority/log"
@@ -24,6 +22,7 @@ import (
 
 	prifi "github.com/lbarman/prifi/prifi-lib"
 	socks "github.com/lbarman/prifi/prifi-socks"
+	"sync"
 )
 
 //The name of the service, used by SDA's internals
@@ -50,6 +49,16 @@ type PriFiConfig struct {
 	SocksClientPort       int
 }
 
+// contains the identity map, a direct link to the relay, and a mutex
+type SDANodesAndIDs struct {
+	mutex             sync.Mutex
+	identitiesMap     map[network.Address]protocols.PriFiIdentity
+	relayIdentity     *network.ServerIdentity
+	group             *config.Group
+	nextFreeClientID  int
+	nextFreeTrusteeID int
+}
+
 //Set the config, from the prifi.toml. Is called by sda/app.
 func (s *Service) SetConfig(config *PriFiConfig) {
 	log.Lvl3("Setting PriFi configuration...")
@@ -57,18 +66,16 @@ func (s *Service) SetConfig(config *PriFiConfig) {
 	s.prifiConfig = config
 }
 
-// Service contains the state of the service
+//Service contains the state of the service
 type Service struct {
 	// We need to embed the ServiceProcessor, so that incoming messages
 	// are correctly handled.
 	*sda.ServiceProcessor
-	group          *config.Group
 	prifiConfig    *PriFiConfig
 	Storage        *Storage
 	path           string
 	role           protocols.PriFiRole
-	identityMap    map[network.Address]protocols.PriFiIdentity
-	relayIdentity  *network.ServerIdentity
+	nodesAndIDs    *SDANodesAndIDs
 	waitQueue      *waitQueue
 	prifiWrapper   *protocols.PriFiSDAWrapper
 	isPrifiRunning bool
@@ -187,9 +194,20 @@ func (s *Service) setConfigToPriFiProtocol(wrapper *protocols.PriFiSDAWrapper) {
 		UseUDP:                  s.prifiConfig.UseUDP,
 	}
 
+	//deep-clone the identityMap
+	s.nodesAndIDs.mutex.Lock()
+	idMapCopy := make(map[network.Address]protocols.PriFiIdentity)
+	for k, v := range s.nodesAndIDs.identitiesMap {
+		idMapCopy[k] = protocols.PriFiIdentity{
+			ID:   v.ID,
+			Role: v.Role,
+		}
+	}
+	s.nodesAndIDs.mutex.Unlock()
+
 	wrapper.SetConfig(&protocols.PriFiSDAWrapperConfig{
 		ALL_ALL_PARAMETERS: prifiParams,
-		Identities:         s.identityMap,
+		Identities:         idMapCopy,
 		Role:               s.role,
 		ClientSideSocksConfig: socksClientConfig,
 		RelaySideSocksConfig:  socksServerConfig,
@@ -274,35 +292,6 @@ func newService(c *sda.Context, path string) sda.Service {
 	return s
 }
 
-// parseDescription extracts a PriFiIdentity from a string
-func parseDescription(description string) (*protocols.PriFiIdentity, error) {
-	desc := strings.Split(description, " ")
-	if len(desc) == 1 && desc[0] == "relay" {
-		return &protocols.PriFiIdentity{
-			Role: protocols.Relay,
-			ID:   0,
-		}, nil
-	} else if len(desc) == 2 {
-		id, err := strconv.Atoi(desc[1])
-		if err != nil {
-			return nil, errors.New("unable to parse id")
-		}
-		pid := protocols.PriFiIdentity{
-			ID: id,
-		}
-		if desc[0] == "client" {
-			pid.Role = protocols.Client
-		} else if desc[0] == "trustee" {
-			pid.Role = protocols.Trustee
-		} else {
-			return nil, errors.New("invalid role")
-		}
-		return &pid, nil
-	} else {
-		return nil, errors.New("invalid description")
-	}
-}
-
 // mapIdentities reads the group configuration to assign PriFi roles
 // to server addresses and returns them with the server
 // identity of the relay.
@@ -314,33 +303,47 @@ func mapIdentities(group *config.Group) (map[network.Address]protocols.PriFiIden
 	nodeList := group.Roster.List
 	for i := 0; i < len(nodeList); i++ {
 		si := nodeList[i]
-		id, err := parseDescription(group.GetDescription(si))
-		if err != nil {
-			log.Info("Cannot parse node description, skipping:", err)
-		} else {
+		nodeDescription := group.GetDescription(si)
+
+		var id *protocols.PriFiIdentity
+
+		if nodeDescription == "relay" {
+			id = &protocols.PriFiIdentity{
+				Role: protocols.Relay,
+				ID:   0,
+			}
+		} else if nodeDescription == "trustee" {
+			id = &protocols.PriFiIdentity{
+				Role: protocols.Trustee,
+				ID:   -1,
+			}
+		}
+
+		if id != nil {
 			m[si.Address] = *id
 			if id.Role == protocols.Relay {
 				relay = *si
 			}
+		} else {
+			log.Error("Cannot parse node description, skipping:", si)
 		}
+
 	}
 
 	// Check that there is exactly one relay and at least one trustee and client
-	t, c, r := 0, 0, 0
+	t, r := 0, 0
 
 	for _, v := range m {
 		switch v.Role {
 		case protocols.Relay:
 			r++
-		case protocols.Client:
-			c++
 		case protocols.Trustee:
 			t++
 		}
 	}
 
-	if !(t > 0 && c > 0 && r == 1) {
-		log.Fatal("Config file does not contain exactly one relay and at least one trustee and client.")
+	if !(t > 0 && r == 1) {
+		log.Fatal("Config file does not contain exactly one relay, and at least one trustee.")
 	}
 
 	return m, relay
@@ -350,7 +353,9 @@ func mapIdentities(group *config.Group) (map[network.Address]protocols.PriFiIden
 // accordingly. It *MUST* be called first when the node is started.
 func (s *Service) readGroup(group *config.Group) {
 	IDs, relayID := mapIdentities(group)
-	s.identityMap = IDs
-	s.relayIdentity = &relayID
-	s.group = group
+	s.nodesAndIDs = &SDANodesAndIDs{
+		identitiesMap: IDs,
+		relayIdentity: &relayID,
+		group:         group,
+	}
 }

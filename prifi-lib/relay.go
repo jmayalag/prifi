@@ -319,7 +319,7 @@ func (p *Protocol) ConnectToTrustees() error {
 		NextFreeTrusteeID: 0,
 		NTrustees:         p.relayState.nTrustees,
 		StartNow:          true,
-		ForceParams:       false,
+		ForceParams:       true,
 		UpCellSize:        p.relayState.UpstreamCellSize,
 	}
 
@@ -437,11 +437,10 @@ func (p *Protocol) Received_TRU_REL_DC_CIPHER(msg TRU_REL_DC_CIPHER) error {
 		e := "Relay : Received a TRU_REL_DC_CIPHER, but not in state RELAY_STATE_COMMUNICATING, in state " + strconv.Itoa(int(p.relayState.currentState))
 		log.Error(e)
 		p.relayState.locks.state.Unlock()
-		// return errors.New(e)
-	} else {
-		p.relayState.locks.state.Unlock()
-		log.Lvl3("Relay : received TRU_REL_DC_CIPHER for round " + strconv.Itoa(int(msg.RoundID)) + " from trustee " + strconv.Itoa(msg.TrusteeID))
+		return errors.New(e)
 	}
+	p.relayState.locks.state.Unlock()
+	log.Lvl3("Relay : received TRU_REL_DC_CIPHER for round " + strconv.Itoa(int(msg.RoundID)) + " from trustee " + strconv.Itoa(msg.TrusteeID))
 
 	p.relayState.locks.round.Lock()
 

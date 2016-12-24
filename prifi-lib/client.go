@@ -472,6 +472,9 @@ func (p *Protocol) Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(msg REL_CLI_TE
 	}
 	log.Lvl3("Client " + strconv.Itoa(p.clientState.ID) + " : REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG") //TODO: this should be client
 
+	//only at this moment we really learn the number of clients
+	p.clientState.nClients = len(msg.EphPks)
+
 	//verify the signature
 	G := msg.Base
 	ephPubKeys := msg.EphPks

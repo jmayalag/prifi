@@ -193,7 +193,8 @@ func (p *PriFiSDAWrapper) buildMessageSender(identities map[network.Address]PriF
 	for i := 0; i < len(nodes); i++ {
 		id, ok := identities[nodes[i].ServerIdentity.Address]
 		if !ok {
-			log.Fatal("Unknow node with address", nodes[i].ServerIdentity.Address)
+			log.Lvl3("Skipping unknow node with address", nodes[i].ServerIdentity.Address)
+			continue
 		}
 		switch id.Role {
 		case Client:
@@ -217,10 +218,6 @@ func (p *PriFiSDAWrapper) buildMessageSender(identities map[network.Address]PriF
 
 	if len(trustees) < 1 {
 		log.Fatal("No trustee is reachable !")
-	}
-
-	if len(clients) < 2 {
-		log.Fatal("At least two clients must be reachable !")
 	}
 
 	return MessageSender{p.TreeNodeInstance, relay, clients, trustees}
