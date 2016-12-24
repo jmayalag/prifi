@@ -14,8 +14,8 @@ and call ReceivedMessage(msg) with the received messages.
 Then, it runs the PriFi anonymous communication network among those entities.
 */
 
-// PriFiProtocol contains the mutable state of a PriFi entity.
-type PriFiProtocol struct {
+// Protocol contains the mutable state of a PriFi entity.
+type Protocol struct {
 	role          int16
 	messageSender MessageSender
 	// TODO: combine states into a single interface
@@ -60,7 +60,7 @@ type MessageSender interface {
 		Sending true to startStopChan starts receiving the broadcasts.
 		Sending false to startStopChan stops receiving the broadcasts.
 	*/
-	ClientSubscribeToBroadcast(clientName string, protocolInstance *PriFiProtocol, startStopChan chan bool) error
+	ClientSubscribeToBroadcast(clientName string, protocolInstance *Protocol, startStopChan chan bool) error
 }
 
 /*
@@ -74,8 +74,8 @@ Otherwise, the 3 last methods fully initialize the entity.
 // Note: the returned state is not sufficient for the PrFi protocol
 // to start; this entity will expect a ALL_ALL_PARAMETERS message as
 // first received message to complete it's state.
-func NewPriFiRelay(msgSender MessageSender) *PriFiProtocol {
-	prifi := PriFiProtocol{
+func NewPriFiRelay(msgSender MessageSender) *Protocol {
+	prifi := Protocol{
 		role:          PRIFI_ROLE_RELAY,
 		messageSender: msgSender,
 	}
@@ -87,8 +87,8 @@ func NewPriFiRelay(msgSender MessageSender) *PriFiProtocol {
 // Note: the returned state is not sufficient for the PrFi protocol
 // to start; this entity will expect a ALL_ALL_PARAMETERS message as
 // first received message to complete it's state.
-func NewPriFiClient(msgSender MessageSender) *PriFiProtocol {
-	prifi := PriFiProtocol{
+func NewPriFiClient(msgSender MessageSender) *Protocol {
+	prifi := Protocol{
 		role:          PRIFI_ROLE_CLIENT,
 		messageSender: msgSender,
 	}
@@ -99,8 +99,8 @@ func NewPriFiClient(msgSender MessageSender) *PriFiProtocol {
 // Note: the returned state is not sufficient for the PrFi protocol
 // to start; this entity will expect a ALL_ALL_PARAMETERS message as
 // first received message to complete it's state.
-func NewPriFiTrustee(msgSender MessageSender) *PriFiProtocol {
-	prifi := PriFiProtocol{
+func NewPriFiTrustee(msgSender MessageSender) *Protocol {
+	prifi := Protocol{
 		role:          PRIFI_ROLE_TRUSTEE,
 		messageSender: msgSender,
 	}
@@ -108,8 +108,8 @@ func NewPriFiTrustee(msgSender MessageSender) *PriFiProtocol {
 }
 
 // NewPriFiRelayWithState creates a new PriFi relay entity state.
-func NewPriFiRelayWithState(msgSender MessageSender, state *RelayState) *PriFiProtocol {
-	prifi := PriFiProtocol{
+func NewPriFiRelayWithState(msgSender MessageSender, state *RelayState) *Protocol {
+	prifi := Protocol{
 		role:          PRIFI_ROLE_RELAY,
 		messageSender: msgSender,
 		relayState:    *state,
@@ -120,22 +120,22 @@ func NewPriFiRelayWithState(msgSender MessageSender, state *RelayState) *PriFiPr
 }
 
 // NewPriFiClientWithState creates a new PriFi client entity state.
-func NewPriFiClientWithState(msgSender MessageSender, state *ClientState) *PriFiProtocol {
-	prifi := PriFiProtocol{
+func NewPriFiClientWithState(msgSender MessageSender, state *ClientState) *Protocol {
+	prifi := Protocol{
 		role:          PRIFI_ROLE_CLIENT,
 		messageSender: msgSender,
 		clientState:   *state,
 	}
 	log.Lvl1("Client has been initialized by function call. ")
 
-	log.Lvl2("Client " + strconv.Itoa(prifi.clientState.Id) + " : starting the broadcast-listener goroutine")
+	log.Lvl2("Client " + strconv.Itoa(prifi.clientState.ID) + " : starting the broadcast-listener goroutine")
 	go prifi.messageSender.ClientSubscribeToBroadcast(prifi.clientState.Name, &prifi, prifi.clientState.StartStopReceiveBroadcast)
 	return &prifi
 }
 
 // NewPriFiTrusteeWithState creates a new PriFi trustee entity state.
-func NewPriFiTrusteeWithState(msgSender MessageSender, state *TrusteeState) *PriFiProtocol {
-	prifi := PriFiProtocol{
+func NewPriFiTrusteeWithState(msgSender MessageSender, state *TrusteeState) *Protocol {
+	prifi := Protocol{
 		role:          PRIFI_ROLE_TRUSTEE,
 		messageSender: msgSender,
 		trusteeState:  *state,

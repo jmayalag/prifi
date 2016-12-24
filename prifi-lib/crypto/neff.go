@@ -6,7 +6,7 @@ import (
 	"math/rand"
 )
 
-// Implements Andrew Neff's verifiable shuffle proof scheme as described in the
+// NeffShuffle implements Andrew Neff's verifiable shuffle proof scheme as described in the
 // paper "Verifiable Mixing (Shuffling) of ElGamal Pairs", April 2004.
 // The function randomly shuffles and re-randomizes a set of ElGamal pairs,
 // producing a correctness proof in the process.
@@ -22,7 +22,7 @@ func NeffShuffle(x []abstract.Point, base abstract.Point, suite abstract.Suite) 
 
 	shuffledIndices := rand.Perm(len(x))
 	i := 0
-	for j, _ := range shuffledIndices {
+	for j := range shuffledIndices {
 		x2[j] = x[i]
 		i++
 	}

@@ -66,7 +66,7 @@ type PriFiSDAWrapper struct {
 	Running *bool // TODO: We should use a lock before modifying it
 
 	//this is the actual "PriFi" (DC-net) protocol/library, defined in prifi-lib/prifi.go
-	prifiProtocol *prifi_lib.PriFiProtocol
+	prifiProtocol *prifi_lib.Protocol
 }
 
 // Start implements the sda.Protocol interface.

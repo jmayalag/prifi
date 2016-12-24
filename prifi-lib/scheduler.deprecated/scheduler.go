@@ -30,7 +30,7 @@ type Scheduler interface {
 
 	RelayValidateSchedule()
 
-	ClientPayloadEmbeddable(roundId int32) (int64, int64)
+	ClientPayloadEmbeddable(roundID int32) (int64, int64)
 }
 
-type SchedulerFactory func() Scheduler
+type Factory func() Scheduler

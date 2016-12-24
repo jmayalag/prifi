@@ -172,8 +172,8 @@ func (s *Service) setConfigToPriFiProtocol(wrapper *protocols.PriFiSDAWrapper) {
 		DownCellSize:            s.prifiConfig.CellSizeDown,
 		ForceParams:             true,
 		NClients:                -1, //computer later
-		NextFreeClientId:        0,
-		NextFreeTrusteeId:       0,
+		NextFreeClientID:        0,
+		NextFreeTrusteeID:       0,
 		NTrustees:               -1, //computer later
 		RelayDataOutputEnabled:  true,
 		RelayReportingLimit:     s.prifiConfig.RelayReportingLimit,

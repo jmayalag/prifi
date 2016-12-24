@@ -41,7 +41,7 @@ func Confidence95Percentiles(data []int64) float64 {
 	}
 	mean_val := MeanInt64(data)
 
-	deviations := make([]float64, 0)
+	var deviations float64
 	for i := 0; i < len(data); i++ {
 		diff := mean_val - float64(data[i])
 		deviations = append(deviations, diff*diff)

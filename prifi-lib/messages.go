@@ -47,8 +47,8 @@ type ALL_ALL_PARAMETERS struct {
 	DownCellSize            int
 	ForceParams             bool
 	NClients                int
-	NextFreeClientId        int
-	NextFreeTrusteeId       int
+	NextFreeClientID        int
+	NextFreeTrusteeID       int
 	NTrustees               int
 	RelayDataOutputEnabled  bool
 	RelayReportingLimit     int
@@ -69,15 +69,15 @@ type CLI_REL_TELL_PK_AND_EPH_PK struct {
 // CLI_REL_UPSTREAM_DATA message contains the upstream data of a client for a given round
 // and is sent to the relay.
 type CLI_REL_UPSTREAM_DATA struct {
-	ClientId int
-	RoundId  int32
+	ClientID int
+	RoundID  int32
 	Data     []byte
 }
 
 // REL_CLI_DOWNSTREAM_DATA message contains the downstream data for a client for a given round
 // and is sent by the relay to the clients.
 type REL_CLI_DOWNSTREAM_DATA struct {
-	RoundId    int32
+	RoundID    int32
 	Data       []byte
 	FlagResync bool
 }
@@ -107,21 +107,21 @@ type REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE struct {
 // REL_TRU_TELL_TRANSCRIPT message contains all the shuffles perfomrmed in a Neff shuffle round.
 // It is sent by the relay to the trustees to be verified.
 type REL_TRU_TELL_TRANSCRIPT struct {
-	G_s    []abstract.Scalar
+	Gs     []abstract.Scalar
 	EphPks [][]abstract.Point
 	Proofs [][]byte
 }
 
 // TRU_REL_DC_CIPHER message contains the DC-net cipher of a trustee for a given round and is sent to the relay.
 type TRU_REL_DC_CIPHER struct {
-	RoundId   int32
-	TrusteeId int
+	RoundID   int32
+	TrusteeID int
 	Data      []byte
 }
 
 // TRU_REL_SHUFFLE_SIG contains the signatures shuffled by a trustee and is sent to the relay.
 type TRU_REL_SHUFFLE_SIG struct {
-	TrusteeId int
+	TrusteeID int
 	Sig       []byte
 }
 
@@ -141,7 +141,7 @@ type TRU_REL_TELL_NEW_BASE_AND_EPH_PKS struct {
 
 // TRU_REL_TELL_PK message contains the public key of a trustee and is sent to the relay.
 type TRU_REL_TELL_PK struct {
-	TrusteeId int
+	TrusteeID int
 	Pk        abstract.Point
 }
 
@@ -179,7 +179,7 @@ func (m *REL_CLI_DOWNSTREAM_DATA_UDP) ToBytes() ([]byte, error) {
 	}
 
 	binary.BigEndian.PutUint32(buf[0:4], uint32(len(buf)))
-	binary.BigEndian.PutUint32(buf[4:8], uint32(m.REL_CLI_DOWNSTREAM_DATA.RoundId))
+	binary.BigEndian.PutUint32(buf[4:8], uint32(m.REL_CLI_DOWNSTREAM_DATA.RoundID))
 	binary.BigEndian.PutUint32(buf[len(buf)-4:], uint32(resyncInt)) //todo : to be coded on one byte
 	copy(buf[8:len(buf)-4], m.REL_CLI_DOWNSTREAM_DATA.Data)
 
@@ -207,7 +207,7 @@ func (m *REL_CLI_DOWNSTREAM_DATA_UDP) FromBytes() (interface{}, error) {
 		return REL_CLI_DOWNSTREAM_DATA_UDP{}, errors.New(e)
 	}
 
-	roundId := int32(binary.BigEndian.Uint32(buffer[4:8]))
+	roundID := int32(binary.BigEndian.Uint32(buffer[4:8]))
 	flagResyncInt := int(binary.BigEndian.Uint32(buffer[len(buffer)-4:]))
 	data := buffer[8 : len(buffer)-4]
 
@@ -216,7 +216,7 @@ func (m *REL_CLI_DOWNSTREAM_DATA_UDP) FromBytes() (interface{}, error) {
 		flagResync = true
 	}
 
-	innerMessage := REL_CLI_DOWNSTREAM_DATA{roundId, data, flagResync} //This wrapping feels wierd
+	innerMessage := REL_CLI_DOWNSTREAM_DATA{roundID, data, flagResync} //This wrapping feels wierd
 	resultMessage := REL_CLI_DOWNSTREAM_DATA_UDP{innerMessage, make([]byte, 0)}
 
 	return resultMessage, nil
@@ -224,7 +224,7 @@ func (m *REL_CLI_DOWNSTREAM_DATA_UDP) FromBytes() (interface{}, error) {
 
 // ReceivedMessage must be called when a PriFi host receives a message.
 // It takes care to call the correct message handler function.
-func (prifi *PriFiProtocol) ReceivedMessage(msg interface{}) error {
+func (prifi *Protocol) ReceivedMessage(msg interface{}) error {
 
 	if prifi == nil {
 		log.Print("Received a message ", msg)

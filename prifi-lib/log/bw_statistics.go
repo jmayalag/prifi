@@ -49,13 +49,13 @@ func (stats *BitrateStatistics) Dump() {
 }
 
 func (stats *BitrateStatistics) AddDownstreamCell(nBytes int64) {
-	stats.totalDownstreamCells += 1
+	stats.totalDownstreamCells++
 	stats.totalDownstreamBytes += nBytes
 	stats.instantDownstreamBytes += nBytes
 }
 
 func (stats *BitrateStatistics) AddDownstreamUDPCell(nBytes int64, nclients int) {
-	stats.totalDownstreamUDPCells += 1
+	stats.totalDownstreamUDPCells++
 	stats.totalDownstreamUDPBytes += nBytes
 	stats.instantDownstreamRetransmitBytes += nBytes
 
@@ -64,15 +64,15 @@ func (stats *BitrateStatistics) AddDownstreamUDPCell(nBytes int64, nclients int)
 }
 
 func (stats *BitrateStatistics) AddDownstreamRetransmitCell(nBytes int64) {
-	stats.totalDownstreamRetransmitCells += 1
+	stats.totalDownstreamRetransmitCells++
 	stats.totalDownstreamRetransmitBytes += nBytes
 	stats.instantDownstreamUDPBytes += nBytes
 }
 
 func (stats *BitrateStatistics) AddUpstreamCell(nBytes int64) {
-	stats.totalUpstreamCells += 1
+	stats.totalUpstreamCells++
 	stats.totalUpstreamBytes += nBytes
-	stats.instantUpstreamCells += 1
+	stats.instantUpstreamCells++
 	stats.instantUpstreamBytes += nBytes
 }
 

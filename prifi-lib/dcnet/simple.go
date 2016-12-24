@@ -15,7 +15,7 @@ type simpleCoder struct {
 	xorbuf []byte
 }
 
-// Simple DC-net encoder providing no disruption or equivocation protection,
+// SimpleCoderFactory is a simple DC-net encoder providing no disruption or equivocation protection,
 // for experimentation and baseline performance evaluations.
 func SimpleCoderFactory() CellCoder {
 	return new(simpleCoder)

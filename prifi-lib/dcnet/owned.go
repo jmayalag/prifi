@@ -325,9 +325,9 @@ func (c *ownedCoder) DecodeCell() []byte {
 
 	if c.xorbuf == nil { // short inline cell
 		return c.inlineDecode(hdr)
-	} else { // long payload cell
-		return c.ownerDecode(hdr)
 	}
+	// long payload cell
+	return c.ownerDecode(hdr)
 }
 
 func (c *ownedCoder) inlineDecode(hdr []byte) []byte {
