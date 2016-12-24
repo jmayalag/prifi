@@ -12,6 +12,14 @@ For more details about PriFi, please check our [WPES 2016 paper](http://www.cs.y
 
 ## Getting and running PriFi
 
+PriFi is coded in Go. At some point, we will distribute binaries, but for now you will have to compile it. It's easy :
+
+### Prerequisite
+
+Only one : the Go language. Install it by following [those instructions](https://golang.org/doc/install).
+
+
+
 ## Understanding the architecture
 
 ### Structure
