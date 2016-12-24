@@ -106,7 +106,7 @@ case $1 in
 		echo -e "$okMsg"
 
 		echo -n "Getting all go packages... "
-		cd sda/app; go get 1>/dev/null 2>&1
+		cd sda/app; go get ./... 1>/dev/null 2>&1
 		echo -e "$okMsg"
 
 		echo -n "Switching cothority branch... "
@@ -114,7 +114,8 @@ case $1 in
 		echo -e "$okMsg"
 
 		echo -n "Re-getting all go packages (since we switched branch)... "
-		cd sda/app; go get 1>/dev/null 2>&1
+		cd sda/app; go get ./... 1>/dev/null 2>&1
+		cd $GOPATH/src/github.com/dedis/cothority; go get ./... 1>/dev/null 2>&1
 		echo -e "$okMsg"
 
 		echo -n "Testing cothority branch... "
