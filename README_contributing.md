@@ -29,3 +29,5 @@ git push -u origin my-branch
 You can now check in [https://github.com/lbarman/prifi/commits/my-branch](https://github.com/lbarman/prifi/commits/my-branch) that integration tests passed (green check). A yellow dot means that the tests are still running.
 
 Regardless of the result, you can create a new pull request (base: `master`, compare: `my-branch`), and continue commiting changes. When all integration tests passes, you will be able to merge the pull request into master.
+
+[back to main README](README.md)
