@@ -14,11 +14,11 @@ import (
 )
 
 func TestSimple(t *testing.T) {
-	TestCellCoder(t, nist.NewAES128SHA256P256(), SimpleCoderFactory)
+	CellCoderTest(t, nist.NewAES128SHA256P256(), SimpleCoderFactory)
 }
 
 func TestOwned(t *testing.T) {
-	TestCellCoder(t, nist.NewAES128SHA256P256(), OwnedCoderFactory)
+	CellCoderTest(t, nist.NewAES128SHA256P256(), OwnedCoderFactory)
 }
 
 type TestNode struct {
@@ -72,7 +72,7 @@ func (n *TestNode) nodeSetup(name string, peerkeys []abstract.Point) {
 	}
 }
 
-func TestSetup(t *testing.T, suite abstract.Suite, factory CellFactory,
+func SetupTest(t *testing.T, suite abstract.Suite, factory CellFactory,
 	nclients, ntrustees int) *TestGroup {
 
 	// Use a pseudorandom stream from a well-known seed
@@ -155,12 +155,12 @@ func TestSetup(t *testing.T, suite abstract.Suite, factory CellFactory,
 	return tg
 }
 
-func TestCellCoder(t *testing.T, suite abstract.Suite, factory CellFactory) {
+func CellCoderTest(t *testing.T, suite abstract.Suite, factory CellFactory) {
 
 	nclients := 1
 	ntrustees := 3
 
-	tg := TestSetup(t, suite, factory, nclients, ntrustees)
+	tg := SetupTest(t, suite, factory, nclients, ntrustees)
 	relay := tg.Relay
 	clients := tg.Clients
 	trustees := tg.Trustees

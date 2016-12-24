@@ -280,7 +280,7 @@ func parseDescription(description string) (*protocols.PriFiIdentity, error) {
 	if len(desc) == 1 && desc[0] == "relay" {
 		return &protocols.PriFiIdentity{
 			Role: protocols.Relay,
-			Id:   0,
+			ID:   0,
 		}, nil
 	} else if len(desc) == 2 {
 		id, err := strconv.Atoi(desc[1])
@@ -288,7 +288,7 @@ func parseDescription(description string) (*protocols.PriFiIdentity, error) {
 			return nil, errors.New("unable to parse id")
 		}
 		pid := protocols.PriFiIdentity{
-			Id: id,
+			ID: id,
 		}
 		if desc[0] == "client" {
 			pid.Role = protocols.Client
