@@ -20,7 +20,7 @@ To sum up, the architecture is as follow :
 
 ```
 ######################                                                          ######################
-#      PriFi-Lib     # <--- this can be instanciated as client, relay, etc.     #      PriFi-Lib
+# PriFi-Lib (client) # <--- this can be instanciated as client, relay, etc.     #  PriFi-Lib (relay)
 ######################                                                          ######################
          ^                                                                                ^
          |                                                                                |
@@ -33,7 +33,7 @@ To sum up, the architecture is as follow :
 #    SDA-Service     #                                                          #    SDA-Service 
 #         ^          #                                                          #         ^  
 #         |          #                                                          #         |  
-#      SDA-App       # <--- started by the CLI                                  #      SDA-App 
+#      SDA-App       # <--- started by ./prifi.sh                               #      SDA-App 
 ######################                                                          #######################
 
 ^^^^^^^^^^^^^^^^^^^^^^                                                          ^^^^^^^^^^^^^^^^^^^^^
