@@ -21,7 +21,7 @@ const (
 )
 
 //SocksPacket represents the packet communicated across the network. It contains the header components and the data.
-type SocksPacket struct {
+type SocksPacket() struct {
 	// Header
 	Type          uint16
 	ID            uint32 // SOCKS5 Connection ID
