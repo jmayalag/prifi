@@ -109,10 +109,6 @@ You could also decide not to use the SOCKS server we provide in `socks/`, and co
 
 ```
 
-Finally, using PriFi, the architecture is as follow :
-
-```
-
 ._____________.
 | Browser     |           PriFi Client
 |             |         ._______________.
