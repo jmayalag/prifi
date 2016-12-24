@@ -129,3 +129,5 @@ You could also decide not to use the SOCKS server we provide in `socks/`, and co
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^            ^^^^^^^^^^^^^^^^^^^^^^^^^            ^^^^^^^^^^^^^^^^^^^^
      On your machine (localhost)        |            |   On the PriFi relay  |            |    Any machine  
 ```
+
+This setting is decided globally by the relay, not on a per-client basis.
