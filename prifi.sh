@@ -113,6 +113,10 @@ case $1 in
 		cd $GOPATH/src/github.com/dedis/cothority; git checkout "$cothorityBranchRequired" 1>/dev/null 2>&1
 		echo -e "$okMsg"
 
+		echo -n "Re-getting all go packages (since we switched branch)... "
+		cd sda/app; go get 1>/dev/null 2>&1
+		echo -e "$okMsg"
+
 		echo -n "Testing cothority branch... "
 		test_cothority 
 		echo -e "$okMsg"
