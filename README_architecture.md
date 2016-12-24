@@ -51,3 +51,54 @@ The structure is a big convoluted : we have *two* socks servers. One is *in* the
 Then, PriFi anonymizes the traffic with the help of the other clients and the relay. The anonymized traffic is outputted at the relay.
 
 This anonymized traffic is *SOCKS traffic*. Hence, the relay needs to connect to the second SOCKS server, which is not related to PriFi (but we provide the code for it in `socks/`). It could also be a remote, public SOCKS server.
+
+To sum up, without SOCKS proxy, your browser does not use its SOCKS-client, and connects directly to the internet :
+
+```
+.______________.
+| Browser      |<--------------------------------------------------> Internet
+|              | 
+| Socks-Client | <- (unused)
+|______________|
+
+```
+
+You can set up your browser to connect to a SOCKS server, in that case it will use its SOCKS client :
+
+
+```
+
+.______________.
+| Browser      |
+|              | 
+| Socks-Client | <--------------------------------------------------> SOCKS-Server
+|______________|                                                           ^
+                                                                           |
+                                                                           v
+                                                                        Internet
+
+
+```
+
+Finally, using PriFi, the architecture is as follow :
+
+```
+
+._____________.
+| Browser     |           PriFi Client
+|             |         ._______________.
+| Socks-Client| <-------| SOCKS-Server 1| 
+|_____________|         |       ^       |
+                        |       |       |              PriFi Relay
+                        |       v       |            ._______________.
+                        | Anonymization | <--------> | Anonymization | 
+                        |_______________|            |       ^       |
+                                                     |       |       |
+                                                     |       v       |
+                                                     |  SOCKS-Client | <--->  SOCKS-Server 2
+                                                     |_______________|             ^
+                                                                                   |
+                                                                                   v
+                                                                                Internet
+
+```
