@@ -4,12 +4,9 @@ go:
   - 1.7
 
 install:
-  - go get -t ./...
+  - ./prifi.sh install
   - go get golang.org/x/tools/cmd/cover
   - go get github.com/mattn/goveralls
-
-before_script:
-  - ./prifi.sh install
 
 script:
   - make test
