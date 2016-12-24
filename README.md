@@ -6,14 +6,13 @@
 This repository implements PriFi, an anonymous communication protocol with provable traffic-analysis resistance and small latency suitable for wireless networks. PriFi provides a network access mechanism for protecting members of an organization who access the Internet while on-site (via privacy-preserving WiFi networking) and while off-site (via privacy-preserving virtual private networking or VPN). The small latency cost is achieved by leveraging the client-relay-server topology common in WiFi networks. The main entities of PriFi are: relay, trustee server (or Trustees), and clients. These collaborate to implement a Dining Cryptographer's network ([DC-nets](https://en.wikipedia.org/wiki/Dining_cryptographers_problem)) that can anonymize the client upstream traffic. The relay is a WiFi router that can process normal TCP/IP traffic in addition to running our protocol.
 
 For an extended introduction, please check our [website](https://lbarman.ch/prifi/).
+
 For more details about PriFi, please check our [WPES 2016 paper](http://www.cs.yale.edu/homes/jf/PriFi-WPES2016.pdf).
 
 
 **Warning: This software is experimental and still under development. Do not use it yet for security-critical purposes. Use at your own risk!**
 
 ## Getting PriFi
-
-PriFi is coded in Go. At some point, we will distribute binaries, but for now you will have to compile it. 
 
 ### Prerequisite
 
@@ -26,14 +25,17 @@ Simply [get the Go language](https://golang.org/dl/). They have `.tar.gz`, but I
 go get github.com/lbarman/prifi
 ./prifi.sh install
 ```
-(ignore the `No buildable source` after the first step, that's OK.)
-This script gets all the dependencies (via `go get`), and make sure everything is correctly set.
+Ignore the `No buildable source` after the first step, that's OK. This script gets all the dependencies (via `go get`), and make sure everything is correctly set.
 
 ## Running PriFi
 
 PriFi uses [SDA](https://github.com/dedis/cothority) as a network framework. It is easy to run all components (trustees, relay, clients) on one machine for testing purposes, or on different machines for the real setup.
 
-Each component has a *SDA configuration* : an identity (`identity.toml`), and some knowledge of the others participants via `group.toml`.
+Each component has a *SDA configuration* : an identity (`identity.toml`, containing a private and public key), and some knowledge of the others participants via `group.toml`. For your convenience, we pre-generated some identities in `config.localhost`.
+
+### Testing PriFi, all components in localhost
+
+You can test PriFi by running `./prifi.sh all-localhost`. This will run a SOCKS server, a PriFi relay, a Trustee, and three clients. You can check what is going on by doing `tail -f {clientX|relay|trusteeX}.log`.
 
 
 ## Understanding the architecture
