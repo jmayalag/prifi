@@ -7,19 +7,14 @@ import (
 	"fmt"
 	"os"
 
-	"errors"
 	"io/ioutil"
 	"os/user"
 	"path"
 	"runtime"
 
-	"net/http"
-	"net/url"
-
 	"bytes"
 	"github.com/BurntSushi/toml"
 	"github.com/dedis/cothority/app/lib/config"
-	"github.com/dedis/cothority/app/lib/server"
 	"github.com/dedis/cothority/crypto"
 	"github.com/dedis/cothority/log"
 	"github.com/dedis/cothority/network"
@@ -30,7 +25,6 @@ import (
 	"gopkg.in/urfave/cli.v1"
 	"net"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -67,12 +61,6 @@ func main() {
 	app.Usage = "Starts PriFi in either Trustee, Relay or Client mode."
 	app.Version = "0.1"
 	app.Commands = []cli.Command{
-		{
-			Name:    "setup",
-			Aliases: []string{"s"},
-			Usage:   "setup the configuration for the server",
-			Action:  setupNewCothorityNode,
-		},
 		{
 			Name:    "gen-id",
 			Aliases: []string{"gen"},
@@ -247,12 +235,6 @@ func startSocksTunnelOnly(c *cli.Context) error {
  * COTHORITY
  */
 
-// setupCothorityd sets up a new cothority node configuration (used by all prifi modes)
-func setupNewCothorityNode(c *cli.Context) error {
-	server.InteractiveConfig("cothorityd")
-	return nil
-}
-
 // Returns true if file exists and user confirms overwriting, or if file doesn't exist.
 // Returns false if file exists and user doesn't confirm overwriting.
 func checkOverwrite(file string) bool {
@@ -319,14 +301,30 @@ func createNewIdentityToml(c *cli.Context) error {
 		}
 	}
 
-	_, err = crypto.ReadPubHex(network.Suite, pubStr)
-	if err != nil {
-		log.Fatal("Impossible to parse public key:", err)
-	}
-
 	if err := identity.Save(identityFilePath); err != nil {
 		log.Fatal("Unable to write the config to file:", err)
 	}
+
+	//now since cothority is smart enough to write only the decimal format of the key, AND require the base64 format for group.toml, let's add it as a comment
+
+	public, err := crypto.ReadPubHex(network.Suite, pubStr)
+	if err != nil {
+		log.Fatal("Impossible to parse public key:", err)
+	}
+	var buff bytes.Buffer
+	if err := crypto.WritePub64(network.Suite, &buff, public); err != nil {
+		log.Error("Can't convert public key to base 64")
+		return nil
+	}
+
+	f, err := os.OpenFile(identityFilePath, os.O_RDWR|os.O_APPEND, 0660)
+
+	if err != nil {
+		log.Fatal("Unable to write the config to file (2):", err)
+	}
+	publicKeyBase64String := string(buff.Bytes())
+	f.WriteString("# Public (base64) = " + publicKeyBase64String + "\n")
+	f.Close()
 
 	log.Info("All configurations saved, ready to serve signatures now.")
 
