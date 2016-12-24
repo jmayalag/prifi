@@ -100,4 +100,6 @@ Finally, using PriFi, the architecture is as follow :
                                                                                    v
                                                                                 Internet
 
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     On your machine (localhost)        |            |           On the PriFi relay
 ```
