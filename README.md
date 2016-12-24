@@ -35,8 +35,18 @@ Each component has a *SDA configuration* : an identity (`identity.toml`, contain
 
 ### Testing PriFi, all components in localhost
 
-You can test PriFi by running `./prifi.sh all-localhost`. This will run a SOCKS server, a PriFi relay, a Trustee, and three clients. You can check what is going on by doing `tail -f {clientX|relay|trusteeX}.log`.
+You can test PriFi by running `./prifi.sh all-localhost`. This will run a SOCKS server, a PriFi relay, a Trustee, and three clients on your machine. They will use the identities in `config.localhost`. You can check what is going on by doing `tail -f {clientX|relay|trusteeX}.log`. You can test browsing through PriFi by setting your browser to use a SOCKS proxy on `localhost:8081`.
 
+### Using PriFi
+
+To test a real PriFi deployement, first, re-generates your identity (so your private key is really private) :
+```
+./prifi.sh gen
+```
+This will create two files `config.real/{group|identity}.toml`. You can then run a PriFi client with this identity :
+```
+./prifi.sh client real
+```
 
 ## Understanding the architecture
 
