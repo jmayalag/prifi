@@ -19,22 +19,27 @@ The [SDA](https://github.com/dedis/cothority) is a framework for Secure Distribu
 To sum up, the architecture is as follow :
 
 ```
-######################
-#      PriFi-Lib     # <--- this can be instanciated as client, relay, etc.
-######################
-         ^
-         |
-         v
-###################### <--- this box is the SDA, provided by DeDiS
-#    SDA-Protocol    # <--- (also called PriFi-SDA-Wrapper)
-#         ^          #
-#         |          #
-#         v          #
-#    SDA-Service     #
-#         ^          #
-#         |          #
-#      SDA-App       # <--- started by the CLI
-######################
+######################                                                          ######################
+#      PriFi-Lib     # <--- this can be instanciated as client, relay, etc.     #      PriFi-Lib
+######################                                                          ######################
+         ^                                                                                ^
+         |                                                                                |
+         v                                                                                v
+###################### <--- this box is the SDA, provided by DeDiS              ######################
+#    SDA-Protocol    # <--- (also called PriFi-SDA-Wrapper)                     #    SDA-Protocol
+#         ^          #                                                          #         ^      
+#         |          #                                                          #         |  
+#         v          #                                                          #         v    
+#    SDA-Service     #                                                          #    SDA-Service 
+#         ^          #                                                          #         ^  
+#         |          #                                                          #         |  
+#      SDA-App       # <--- started by the CLI                                  #      SDA-App 
+######################                                                          #######################
+
+^^^^^^^^^^^^^^^^^^^^^^                                                          ^^^^^^^^^^^^^^^^^^^^^
+	    HOST 1           <============= COMMUNICATES WITH  ===============>             HOST 2
+vvvvvvvvvvvvvvvvvvvvvv                                                          vvvvvvvvvvvvvvvvvvv
+
 ```
 
 ### SOCKS
