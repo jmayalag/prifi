@@ -32,12 +32,13 @@ test_lint:
 		exit 1; \
 		fi \
 	}
+	
+test_go:
+	./coveralls.sh
 
 test_verbose:
 	go test -v -race -short ./...
 
-test_go:
-	./coveralls.sh
 
 test: test_fmt test_govet test_lint test_go
 
