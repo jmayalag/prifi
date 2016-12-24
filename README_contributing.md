@@ -46,6 +46,7 @@ If any of those tool exit with status 1, the code will be qualified as "non-comp
 - Variables with underscores (`G_s`) are now allowed
 - `ALL_CAPS_VARIABLES` are now allowed
 - Comments for `FieldXYZ` do not need to start with `FieldXYZ...`
+
 Additionnally, we ignore all files 
 - finishing by `_test.go`
 - in `.deprecated` folders
