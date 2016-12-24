@@ -3,17 +3,17 @@ Description = "Prifi"
 [[servers]]
   Address = "tcp://127.0.0.1:6000"
   Public = "tn9jVNLOkkzbECbpGJC0Gl0q94Gl3XF62eBleBrovic="
-  Description = "client 0"
+  Description = "client"
 
 [[servers]]
   Address = "tcp://127.0.0.1:6001"
   Public = "jcH+mPRM6V66I/YHZ2L6ejIGWrD1OtGB7v7K3Js7aqs="
-  Description = "client 1"
+  Description = "client"
 
 [[servers]]
   Address = "tcp://127.0.0.1:6002"
   Public = "WrqywNxZtEznMC+mwK6HtbPb/RksVpDKIjVB9OF8at8="
-  Description = "client 2"
+  Description = "client"
 
 [[servers]]
   Address = "tcp://127.0.0.1:7000"
@@ -23,9 +23,9 @@ Description = "Prifi"
 [[servers]]
   Address = "tcp://127.0.0.1:7001"
   Public = "iwjdlBd0kAlOviatMvTuN95cB0am9mY8+DmeK86c3Fg="
-  Description = "trustee 0"
+  Description = "trustee"
 
 [[servers]]
   Address = "tcp://127.0.0.1:7002"
   Public = "fte323V5gLtAzZRrwgzEIBQBDbrTlpeqk02A69Mgr3g="
-  Description = "trustee 1"
+  Description = "trustee"

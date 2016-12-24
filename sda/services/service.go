@@ -274,35 +274,6 @@ func newService(c *sda.Context, path string) sda.Service {
 	return s
 }
 
-// parseDescription extracts a PriFiIdentity from a string
-func parseDescription(description string) (*protocols.PriFiIdentity, error) {
-	desc := strings.Split(description, " ")
-	if len(desc) == 1 && desc[0] == "relay" {
-		return &protocols.PriFiIdentity{
-			Role: protocols.Relay,
-			ID:   0,
-		}, nil
-	} else if len(desc) == 2 {
-		id, err := strconv.Atoi(desc[1])
-		if err != nil {
-			return nil, errors.New("unable to parse id")
-		}
-		pid := protocols.PriFiIdentity{
-			ID: id,
-		}
-		if desc[0] == "client" {
-			pid.Role = protocols.Client
-		} else if desc[0] == "trustee" {
-			pid.Role = protocols.Trustee
-		} else {
-			return nil, errors.New("invalid role")
-		}
-		return &pid, nil
-	} else {
-		return nil, errors.New("invalid description")
-	}
-}
-
 // mapIdentities reads the group configuration to assign PriFi roles
 // to server addresses and returns them with the server
 // identity of the relay.
@@ -310,37 +281,62 @@ func mapIdentities(group *config.Group) (map[network.Address]protocols.PriFiIden
 	m := make(map[network.Address]protocols.PriFiIdentity)
 	var relay network.ServerIdentity
 
+	nextFreeClientID, nextFreeTrusteeID := 0, 0
+
 	// Read the description of the nodes in the config file to assign them PriFi roles.
 	nodeList := group.Roster.List
 	for i := 0; i < len(nodeList); i++ {
 		si := nodeList[i]
-		id, err := parseDescription(group.GetDescription(si))
-		if err != nil {
-			log.Info("Cannot parse node description, skipping:", err)
-		} else {
+		nodeDescription := group.GetDescription(si)
+
+		var id *protocols.PriFiIdentity
+
+		if nodeDescription == "relay" {
+			id = &protocols.PriFiIdentity{
+				Role: protocols.Relay,
+				ID:   0,
+			}
+		} else if nodeDescription == "trustee" {
+			id = &protocols.PriFiIdentity{
+				Role: protocols.Trustee,
+				ID:   nextFreeTrusteeID,
+			}
+			log.Info("Node", nodeDescription+"@"+si.Address.String(), "assigned as Trustee #"+strconv.Itoa(id.ID))
+			nextFreeTrusteeID++
+		} else if nodeDescription == "client" {
+			id = &protocols.PriFiIdentity{
+				Role: protocols.Client,
+				ID:   nextFreeClientID,
+			}
+			log.Info("Node", nodeDescription+"@"+si.Address.String(), "assigned as Client #"+strconv.Itoa(id.ID))
+			nextFreeClientID++
+		}
+
+		if id != nil {
 			m[si.Address] = *id
 			if id.Role == protocols.Relay {
 				relay = *si
 			}
+		} else {
+			log.Error("Cannot parse node description, skipping:", si)
 		}
+
 	}
 
 	// Check that there is exactly one relay and at least one trustee and client
-	t, c, r := 0, 0, 0
+	t, r := 0, 0
 
 	for _, v := range m {
 		switch v.Role {
 		case protocols.Relay:
 			r++
-		case protocols.Client:
-			c++
 		case protocols.Trustee:
 			t++
 		}
 	}
 
-	if !(t > 0 && c > 0 && r == 1) {
-		log.Fatal("Config file does not contain exactly one relay and at least one trustee and client.")
+	if !(t > 0 && r == 1) {
+		log.Fatal("Config file does not contain exactly one relay, and at least one trustee.")
 	}
 
 	return m, relay
