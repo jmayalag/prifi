@@ -145,7 +145,7 @@ func (p *Protocol) Received_ALL_TRU_PARAMETERS(msg ALL_ALL_PARAMETERS) error {
 		log.Lvl3("Trustee : received ALL_ALL_PARAMETERS")
 	}
 
-	p.trusteeState = *NewTrusteeState(msg.NextFreeTrusteeID, msg.NTrustees, msg.NClients, msg.UpCellSize)
+	p.trusteeState = *NewTrusteeState(msg.NextFreeTrusteeID, msg.NClients, msg.NTrustees, msg.UpCellSize)
 
 	if msg.StartNow {
 		// send our public key to the relay
