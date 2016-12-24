@@ -4,3 +4,13 @@ Description = "Prifi"
   Address = "tcp://127.0.0.1:7000"
   Public = "VYcxFJhJcfOLY/esG1Gr20Lnc+HkKm73v3YsEx7jRds="
   Description = "relay"
+
+[[servers]]
+  Address = "tcp://127.0.0.1:7001"
+  Public = "iwjdlBd0kAlOviatMvTuN95cB0am9mY8+DmeK86c3Fg="
+  Description = "trustee"
+
+[[servers]]
+  Address = "tcp://127.0.0.1:7002"
+  Public = "fte323V5gLtAzZRrwgzEIBQBDbrTlpeqk02A69Mgr3g="
+  Description = "trustee"
