@@ -43,10 +43,21 @@ func (s *Service) HandleConnection(msg *network.Packet) {
 		return
 	}
 
-	id, ok := s.identityMap[msg.ServerIdentity.Address]
-	if !ok {
-		log.Lvl2("Ignoring connection from unknown node:", msg.ServerIdentity.Address)
-		return
+	s.nodesAndIDs.mutex.Lock()
+	id, found := s.nodesAndIDs.identitiesMap[msg.ServerIdentity.Address]
+	s.nodesAndIDs.mutex.Unlock()
+	if !found {
+		log.Lvl2("New previously-unknown client :", msg.ServerIdentity.Address)
+
+		s.nodesAndIDs.mutex.Lock()
+		newID := &protocols.PriFiIdentity{
+			ID:   s.nodesAndIDs.nextFreeClientID,
+			Role: protocols.Client,
+		}
+		s.nodesAndIDs.nextFreeClientID++
+		s.nodesAndIDs.identitiesMap[msg.ServerIdentity.Address] = *newID
+		id = *newID
+		s.nodesAndIDs.mutex.Unlock()
 	}
 
 	s.waitQueue.mutex.Lock()
@@ -98,9 +109,12 @@ func (s *Service) HandleDisconnection(msg *network.Packet) {
 		return
 	}
 
-	id, ok := s.identityMap[msg.ServerIdentity.Address]
+	s.nodesAndIDs.mutex.Lock()
+	id, ok := s.nodesAndIDs.identitiesMap[msg.ServerIdentity.Address]
+	s.nodesAndIDs.mutex.Unlock()
+
 	if !ok {
-		log.Info("Ignoring connection from unknown node:", msg.ServerIdentity.Address)
+		log.Info("Ignoring disconnection from unknown node:", msg.ServerIdentity.Address)
 		return
 	}
 
@@ -132,7 +146,7 @@ func (s *Service) HandleDisconnection(msg *network.Packet) {
 // announce themselves to the relay.
 func (s *Service) sendConnectionRequest() {
 	log.Lvl2("Sending connection request")
-	err := s.SendRaw(s.relayIdentity, &ConnectionRequest{})
+	err := s.SendRaw(s.nodesAndIDs.relayIdentity, &ConnectionRequest{})
 
 	if err != nil {
 		log.Error("Connection failed:", err)
@@ -189,7 +203,7 @@ func (s *Service) startPriFiCommunicateProtocol() {
 	var wrapper *protocols.PriFiSDAWrapper
 
 	participants := make([]*network.ServerIdentity, len(s.waitQueue.trustees)+len(s.waitQueue.clients)+1)
-	participants[0] = s.relayIdentity
+	participants[0] = s.nodesAndIDs.relayIdentity
 	i := 1
 	for k := range s.waitQueue.clients {
 		participants[i] = k
@@ -203,7 +217,7 @@ func (s *Service) startPriFiCommunicateProtocol() {
 	roster := sda.NewRoster(participants)
 
 	// Start the PriFi protocol on a flat tree with the relay as root
-	tree := roster.GenerateNaryTreeWithRoot(100, s.relayIdentity)
+	tree := roster.GenerateNaryTreeWithRoot(100, s.nodesAndIDs.relayIdentity)
 	pi, err := s.CreateProtocolService(protocols.ProtocolName, tree)
 
 	if err != nil {
@@ -214,8 +228,8 @@ func (s *Service) startPriFiCommunicateProtocol() {
 	wrapper = pi.(*protocols.PriFiSDAWrapper)
 	s.prifiWrapper = wrapper
 
-	s.isPrifiRunning = true
-	s.setConfigToPriFiProtocol(wrapper) //TODO: This was not there in Matthieu's work. Maybe there is a reason
+	s.isPrifiRunning = true //TODO: This was not there in Matthieu's work. Maybe there is a reason
+	s.setConfigToPriFiProtocol(wrapper)
 
 	wrapper.SetTimeoutHandler(s.handleTimeout)
 	wrapper.Start()

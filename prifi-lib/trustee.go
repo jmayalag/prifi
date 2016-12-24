@@ -290,6 +290,12 @@ func (p *Protocol) Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE(msg RE
 		return errors.New(e)
 	}
 
+	//only at this moment we really learn the number of clients
+	nClients := len(clientsPks)
+	p.trusteeState.nClients = nClients
+	p.trusteeState.ClientPublicKeys = make([]abstract.Point, nClients)
+	p.trusteeState.sharedSecrets = make([]abstract.Point, nClients)
+
 	//fill in the clients keys
 	for i := 0; i < len(clientsPks); i++ {
 		p.trusteeState.ClientPublicKeys[i] = clientsPks[i]

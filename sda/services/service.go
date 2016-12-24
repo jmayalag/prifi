@@ -22,6 +22,7 @@ import (
 
 	prifi "github.com/lbarman/prifi/prifi-lib"
 	socks "github.com/lbarman/prifi/prifi-socks"
+	"sync"
 )
 
 //The name of the service, used by SDA's internals
@@ -48,6 +49,15 @@ type PriFiConfig struct {
 	SocksClientPort       int
 }
 
+// contains the identity map, a direct link to the relay, and a mutex
+type SDANodesAndIDs struct {
+	mutex            sync.Mutex
+	identitiesMap    map[network.Address]protocols.PriFiIdentity
+	relayIdentity    *network.ServerIdentity
+	group            *config.Group
+	nextFreeClientID int
+}
+
 //Set the config, from the prifi.toml. Is called by sda/app.
 func (s *Service) SetConfig(config *PriFiConfig) {
 	log.Lvl3("Setting PriFi configuration...")
@@ -55,18 +65,16 @@ func (s *Service) SetConfig(config *PriFiConfig) {
 	s.prifiConfig = config
 }
 
-// Service contains the state of the service
+//Service contains the state of the service
 type Service struct {
 	// We need to embed the ServiceProcessor, so that incoming messages
 	// are correctly handled.
 	*sda.ServiceProcessor
-	group          *config.Group
 	prifiConfig    *PriFiConfig
 	Storage        *Storage
 	path           string
 	role           protocols.PriFiRole
-	identityMap    map[network.Address]protocols.PriFiIdentity
-	relayIdentity  *network.ServerIdentity
+	nodesAndIDs    *SDANodesAndIDs
 	waitQueue      *waitQueue
 	prifiWrapper   *protocols.PriFiSDAWrapper
 	isPrifiRunning bool
@@ -185,9 +193,20 @@ func (s *Service) setConfigToPriFiProtocol(wrapper *protocols.PriFiSDAWrapper) {
 		UseUDP:                  s.prifiConfig.UseUDP,
 	}
 
+	//deep-clone the identityMap
+	s.nodesAndIDs.mutex.Lock()
+	idMapCopy := make(map[network.Address]protocols.PriFiIdentity)
+	for k, v := range s.nodesAndIDs.identitiesMap {
+		idMapCopy[k] = protocols.PriFiIdentity{
+			ID:   v.ID,
+			Role: v.Role,
+		}
+	}
+	s.nodesAndIDs.mutex.Unlock()
+
 	wrapper.SetConfig(&protocols.PriFiSDAWrapperConfig{
 		ALL_ALL_PARAMETERS: prifiParams,
-		Identities:         s.identityMap,
+		Identities:         idMapCopy,
 		Role:               s.role,
 		ClientSideSocksConfig: socksClientConfig,
 		RelaySideSocksConfig:  socksServerConfig,
@@ -279,7 +298,7 @@ func mapIdentities(group *config.Group) (map[network.Address]protocols.PriFiIden
 	m := make(map[network.Address]protocols.PriFiIdentity)
 	var relay network.ServerIdentity
 
-	nextFreeClientID, nextFreeTrusteeID := 0, 0
+	nextFreeTrusteeID := 0
 
 	// Read the description of the nodes in the config file to assign them PriFi roles.
 	nodeList := group.Roster.List
@@ -301,13 +320,6 @@ func mapIdentities(group *config.Group) (map[network.Address]protocols.PriFiIden
 			}
 			log.Info("Node", nodeDescription+"@"+si.Address.String(), "assigned as Trustee #"+strconv.Itoa(id.ID))
 			nextFreeTrusteeID++
-		} else if nodeDescription == "client" {
-			id = &protocols.PriFiIdentity{
-				Role: protocols.Client,
-				ID:   nextFreeClientID,
-			}
-			log.Info("Node", nodeDescription+"@"+si.Address.String(), "assigned as Client #"+strconv.Itoa(id.ID))
-			nextFreeClientID++
 		}
 
 		if id != nil {
@@ -344,7 +356,9 @@ func mapIdentities(group *config.Group) (map[network.Address]protocols.PriFiIden
 // accordingly. It *MUST* be called first when the node is started.
 func (s *Service) readGroup(group *config.Group) {
 	IDs, relayID := mapIdentities(group)
-	s.identityMap = IDs
-	s.relayIdentity = &relayID
-	s.group = group
+	s.nodesAndIDs = &SDANodesAndIDs{
+		identitiesMap: IDs,
+		relayIdentity: &relayID,
+		group:         group,
+	}
 }
