@@ -6,8 +6,7 @@ import (
 	"time"
 )
 
-//TODO : this file is so dirty it belongs to /r/programminghorror. I'm ashamed of having written this.
-
+//BitrateStatistics holds statistics about the bitrate, such as instant/total up/down/down (via udp)/retransmitted bits
 type BitrateStatistics struct {
 	begin      time.Time
 	nextReport time.Time
@@ -34,6 +33,7 @@ type BitrateStatistics struct {
 	instantDownstreamRetransmitBytes int64
 }
 
+//NewBitRateStatistics create a new BitrateStatistics struct, with a period (for reporting) of 5 second
 func NewBitRateStatistics() *BitrateStatistics {
 	fiveSec := time.Duration(5) * time.Second
 	now := time.Now()
@@ -44,16 +44,19 @@ func NewBitRateStatistics() *BitrateStatistics {
 	return &stats
 }
 
+// Dump prints all the contents of the BitrateStatistics
 func (stats *BitrateStatistics) Dump() {
 	log.Lvlf1("%+v\n", stats)
 }
 
+//AddDownstreamCell adds N bytes to the count of downstream bits
 func (stats *BitrateStatistics) AddDownstreamCell(nBytes int64) {
 	stats.totalDownstreamCells++
 	stats.totalDownstreamBytes += nBytes
 	stats.instantDownstreamBytes += nBytes
 }
 
+//AddDownstreamUDPCell adds N bytes to the count of downstream (via udp) bits
 func (stats *BitrateStatistics) AddDownstreamUDPCell(nBytes int64, nclients int) {
 	stats.totalDownstreamUDPCells++
 	stats.totalDownstreamUDPBytes += nBytes
@@ -63,12 +66,14 @@ func (stats *BitrateStatistics) AddDownstreamUDPCell(nBytes int64, nclients int)
 	stats.instantDownstreamUDPBytesTimesClients += (nBytes * int64(nclients))
 }
 
+//AddDownstreamRetransmitCell adds N bytes to the count of retransmitted bits
 func (stats *BitrateStatistics) AddDownstreamRetransmitCell(nBytes int64) {
 	stats.totalDownstreamRetransmitCells++
 	stats.totalDownstreamRetransmitBytes += nBytes
 	stats.instantDownstreamUDPBytes += nBytes
 }
 
+//AddUpstreamCell adds N bytes to the count of upstream bits
 func (stats *BitrateStatistics) AddUpstreamCell(nBytes int64) {
 	stats.totalUpstreamCells++
 	stats.totalUpstreamBytes += nBytes
@@ -76,10 +81,12 @@ func (stats *BitrateStatistics) AddUpstreamCell(nBytes int64) {
 	stats.instantUpstreamBytes += nBytes
 }
 
+//Report prints (if t>period=5 seconds have passed since the last report) all the information, without extra data
 func (stats *BitrateStatistics) Report() {
 	stats.ReportWithInfo("")
 }
 
+//ReportWithInfo prints (if t>period=5 seconds have passed since the last report) all the information, with extra data "info"
 func (stats *BitrateStatistics) ReportWithInfo(info string) {
 	now := time.Now()
 	if now.After(stats.nextReport) {

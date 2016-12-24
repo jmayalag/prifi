@@ -20,20 +20,20 @@ const (
 	SocksPacketHeaderSize = uint16(10)
 )
 
-/*
-dataWrap represents the packet communicated across the network. It contains the header components and the data.
-*/
+
+//SocksPacket represents the packet communicated across the network. It contains the header components and the data.
 type SocksPacket struct {
-	// Header
+			     // Header
 	Type          uint16
-	Id            uint32 // SOCKS5 Connection ID
+	ID            uint32 // SOCKS5 Connection ID
 	MessageLength uint16 // The length of useful data
 	PacketLength  uint16 // The length of the packet including the header
 
-	// Data
-	Data []byte // The data segment of the packet (Always of size PacketLength-HeaderLength)
+			     // Data
+	Data          []byte // The data segment of the packet (Always of size PacketLength-HeaderLength)
 }
 
+//ToBytes converts the SocksPacket to a byte array
 func (d *SocksPacket) ToBytes() []byte {
 
 	// Make sure the data and messagelength are of appropriate length
@@ -43,16 +43,14 @@ func (d *SocksPacket) ToBytes() []byte {
 
 	// Fill up the header buffer
 	binary.BigEndian.PutUint16(buffer[0:2], d.Type)
-	binary.BigEndian.PutUint32(buffer[2:6], d.Id)
+	binary.BigEndian.PutUint32(buffer[2:6], d.ID)
 	binary.BigEndian.PutUint16(buffer[6:8], d.MessageLength)
 	binary.BigEndian.PutUint16(buffer[8:10], d.PacketLength)
 
 	return append(buffer, d.Data...) // Append the data to the header
 }
 
-/*
-NewDataWrap creates a new datawrap
-*/
+//NewSocksPacket creates a new socks packet
 func NewSocksPacket(Type uint16, ID uint32, MessageLength uint16, PacketLength uint16, Data []byte) SocksPacket {
 
 	// Make sure the received data and messagelength are of appropriate length
@@ -62,7 +60,7 @@ func NewSocksPacket(Type uint16, ID uint32, MessageLength uint16, PacketLength u
 }
 
 /*
-cleanData checks for consistency withing the data in the packet and fixes any inconsistencies
+socksTrimAndPadPayload checks for consistency withing the data in the packet and fixes any inconsistencies
 
 Properties:
 	- Actual message length cannot exceed the maximum possible length (which is PacketLength - HeaderLength)
@@ -87,9 +85,8 @@ func socksTrimAndPadPayload(data []byte, messageLength uint16, packetLength uint
 	return data, messageLength
 }
 
-/*
-ExtractFull extracts the datawrap packet from an array of bytes.
-*/
+
+//ParseSocksPacketFromBytes extracts the SocksPacket packet from an array of bytes.
 func ParseSocksPacketFromBytes(buffer []byte) SocksPacket {
 
 	if len(buffer) < int(SocksPacketHeaderSize) {
@@ -106,9 +103,7 @@ func ParseSocksPacketFromBytes(buffer []byte) SocksPacket {
 
 }
 
-/*
-ExtractHeader extracts the datawrap header from an array of bytes.
-*/
+//ParseSocksHeaderFromBytes extracts the SocksPacket header from an array of bytes.
 func ParseSocksHeaderFromBytes(buffer []byte) (uint16, uint32, uint16, uint16) {
 
 	//Extract the content of the header from the buffer

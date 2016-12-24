@@ -5,15 +5,18 @@ import (
 	"net/http"
 )
 
+//Round rounds up a float64, without digits after the comma
 func Round(f float64) float64 {
 	return math.Floor(f + .5)
 }
 
+//RoundWithPrecision rounds up a float64, with a specified amount of digits after the comma
 func RoundWithPrecision(f float64, places int) float64 {
 	shift := math.Pow(10, float64(places))
 	return Round(f*shift) / shift
 }
 
+//MeanInt64 returns the mean for a []int64
 func MeanInt64(data []int64) float64 {
 	sum := int64(0)
 	for i := 0; i < len(data); i++ {
@@ -24,6 +27,7 @@ func MeanInt64(data []int64) float64 {
 	return mean
 }
 
+//MeanFloat64 returns the mean for a []float64
 func MeanFloat64(data []float64) float64 {
 	sum := float64(0)
 	for i := 0; i < len(data); i++ {
@@ -34,8 +38,8 @@ func MeanFloat64(data []float64) float64 {
 	return mean
 }
 
+//Confidence95Percentiles returns the confidence interval for 95 percentile
 func Confidence95Percentiles(data []int64) float64 {
-
 	if len(data) == 0 {
 		return 0
 	}
@@ -55,6 +59,7 @@ func Confidence95Percentiles(data []int64) float64 {
 	return margin_error
 }
 
+//performGETRequest performs a GET request and ignores all errors
 func performGETRequest(url string) {
 	_, _ = http.Get(url)
 }

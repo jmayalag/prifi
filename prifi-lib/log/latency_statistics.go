@@ -6,10 +6,10 @@ import (
 	"time"
 )
 
+//This class hold latencies values, and performs the average/std distribution of it. That is the max number of value stored.
 const MAX_LATENCY_STORED = 100
 
-//TODO : this file is so dirty it belongs to /r/programminghorror. I'm ashamed of having written this.
-
+//LatencyStatistics holds the latencies reported
 type LatencyStatistics struct {
 	begin      time.Time
 	nextReport time.Time
@@ -18,6 +18,7 @@ type LatencyStatistics struct {
 	latencies []int64
 }
 
+//NewLatencyStatistics create a new LatencyStatistics struct, with a period (for reporting) of 5 second
 func NewLatencyStatistics() *LatencyStatistics {
 	fiveSec := time.Duration(5) * time.Second
 	now := time.Now()
@@ -29,6 +30,7 @@ func NewLatencyStatistics() *LatencyStatistics {
 	return &stats
 }
 
+//LatencyStatistics returns a triplet (mean, variance, number of samples) as formatted strings (2-digit precision)
 func (stats *LatencyStatistics) LatencyStatistics() (string, string, string) {
 
 	if len(stats.latencies) == 0 {
@@ -41,6 +43,7 @@ func (stats *LatencyStatistics) LatencyStatistics() (string, string, string) {
 	return fmt.Sprintf("%v", m), fmt.Sprintf("%v", v), fmt.Sprintf("%v", len(stats.latencies))
 }
 
+//AddLatency adds a latency to the stored latency array, and removes the oldest one if there are more than MAX_LATENCY_STORED
 func (stats *LatencyStatistics) AddLatency(latency int64) {
 	stats.latencies = append(stats.latencies, latency)
 
@@ -51,10 +54,12 @@ func (stats *LatencyStatistics) AddLatency(latency int64) {
 	}
 }
 
+//Report prints (if t>period=5 seconds have passed since the last report) all the information, without extra data
 func (stats *LatencyStatistics) Report() {
 	stats.ReportWithInfo("")
 }
 
+//ReportWithInfo prints (if t>period=5 seconds have passed since the last report) all the information, without extra data
 func (stats *LatencyStatistics) ReportWithInfo(info string) {
 	now := time.Now()
 	if now.After(stats.nextReport) {
