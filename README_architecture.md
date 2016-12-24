@@ -35,9 +35,8 @@ To sum up, the architecture is as follow :
 #         |          #                                                          #         |  
 #      SDA-App       # <--- started by ./prifi.sh                               #      SDA-App 
 ######################                                                          #######################
-
 ^^^^^^^^^^^^^^^^^^^^^^                                                          ^^^^^^^^^^^^^^^^^^^^^
-	    HOST 1           <============= COMMUNICATES WITH  ===============>             HOST 2
+	    HOST 1        <================ COMMUNICATES WITH  ====================>       HOST 2
 vvvvvvvvvvvvvvvvvvvvvv                                                          vvvvvvvvvvvvvvvvvvv
 
 ```
