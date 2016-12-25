@@ -87,6 +87,14 @@ type Storage struct {
 	TrusteeID string
 }
 
+// This is a handler passed to the SDA when starting a host. The SDA usually handle all the network by itself,
+// but in our case it is useful to know when a network RESET occured, so we can kill protocols (otherwise they
+// remain in some weird state)
+func (s *Service) NetworkErrorHappened(e error) {
+	log.Error("Error occurred, killing PriFi protocol")
+	return
+}
+
 // StartTrustee starts the necessary
 // protocols to enable the trustee-mode.
 func (s *Service) StartTrustee(group *config.Group) error {
@@ -94,7 +102,7 @@ func (s *Service) StartTrustee(group *config.Group) error {
 	s.role = protocols.Trustee
 	s.readGroup(group)
 
-	s.autoConnect()
+	go s.autoConnect()
 
 	return nil
 }
@@ -142,7 +150,7 @@ func (s *Service) StartClient(group *config.Group) error {
 
 	go socks.StartSocksServer(socksClientConfig.Port, socksClientConfig.PayloadLength, socksClientConfig.UpstreamChannel, socksClientConfig.DownstreamChannel, s.prifiConfig.DoLatencyTests)
 
-	s.autoConnect()
+	go s.autoConnect()
 
 	return nil
 }
