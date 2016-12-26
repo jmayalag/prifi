@@ -433,10 +433,10 @@ func (p *PriFiLibInstance) Received_TRU_REL_DC_CIPHER(msg TRU_REL_DC_CIPHER) err
 
 	p.relayState.locks.state.Lock()
 	// this can only happens in the state RELAY_STATE_COMMUNICATING
-	if p.relayState.currentState != RELAY_STATE_COMMUNICATING {
+	if p.relayState.currentState != RELAY_STATE_COMMUNICATING && p.relayState.currentState != RELAY_STATE_COLLECTING_SHUFFLE_SIGNATURES {
 		e := "Relay : Received a TRU_REL_DC_CIPHER, but not in state RELAY_STATE_COMMUNICATING, in state " + strconv.Itoa(int(p.relayState.currentState))
 		log.Error(e)
-		//return errors.New(e)
+		return errors.New(e)
 	}
 	p.relayState.locks.state.Unlock()
 	log.Lvl3("Relay : received TRU_REL_DC_CIPHER for round " + strconv.Itoa(int(msg.RoundID)) + " from trustee " + strconv.Itoa(msg.TrusteeID))

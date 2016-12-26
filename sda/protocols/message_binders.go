@@ -3,10 +3,6 @@ package protocols
 //Received_ALL_ALL_SHUTDOWN shuts down the PriFi-lib if it is running
 func (p *PriFiSDAProtocol) Received_ALL_ALL_SHUTDOWN(msg Struct_ALL_ALL_SHUTDOWN) error {
 	err := p.prifiLibInstance.ReceivedMessage(msg.ALL_ALL_SHUTDOWN)
-	if p.IsRunning != nil {
-		*p.IsRunning = false
-	}
-	p.Shutdown()
 	return err
 }
 

@@ -68,7 +68,7 @@ type PriFiSDAProtocol struct {
 	// running is a pointer to the service's variable
 	// indicating if the protocol is running. It should
 	// be set to false when the protocol is stopped.
-	IsRunning *bool // TODO: We should use a lock before modifying it
+	//IsRunning bool // TODO: We should use a lock before modifying it
 
 	//this is the actual "PriFi" (DC-net) protocol/library, defined in prifi-lib/prifi.go
 	prifiLibInstance *prifi_lib.PriFiLibInstance
@@ -89,7 +89,17 @@ func (p *PriFiSDAProtocol) Start() error {
 
 // Stop aborts the current execution of the protocol.
 func (p *PriFiSDAProtocol) Stop() {
-	p.prifiLibInstance.Received_ALL_REL_SHUTDOWN(prifi_lib.ALL_ALL_SHUTDOWN{})
+
+	switch p.role {
+	case Relay:
+		p.prifiLibInstance.Received_ALL_REL_SHUTDOWN(prifi_lib.ALL_ALL_SHUTDOWN{})
+	case Trustee:
+		p.prifiLibInstance.Received_ALL_TRU_SHUTDOWN(prifi_lib.ALL_ALL_SHUTDOWN{})
+	case Client:
+		p.prifiLibInstance.Received_ALL_CLI_SHUTDOWN(prifi_lib.ALL_ALL_SHUTDOWN{})
+
+	}
+
 	p.Shutdown()
 	//TODO : sureley we're missing some allocated resources here...
 }

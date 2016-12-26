@@ -97,13 +97,13 @@ func (s *ServiceState) HandleConnection(msg *network.Packet) {
 	}
 
 	// If the nodes is already participating we do not need to restart
-	if nodeAlreadyIn && s.isPriFiProtocolRunning {
+	if nodeAlreadyIn && s.IsPriFiProtocolRunning() {
 		return
 	}
 
 	// Start (or restart) PriFi if there are enough participants
 	if len(s.waitQueue.clients) >= 2 && len(s.waitQueue.trustees) >= 1 {
-		if s.isPriFiProtocolRunning {
+		if s.IsPriFiProtocolRunning() {
 			s.stopPriFiCommunicateProtocol()
 		}
 		s.startPriFiCommunicateProtocol()
@@ -145,7 +145,7 @@ func (s *ServiceState) HandleDisconnection(msg *network.Packet) {
 	}
 
 	// Stop PriFi and restart if there are enough participants left.
-	if s.isPriFiProtocolRunning {
+	if s.IsPriFiProtocolRunning() {
 		s.stopPriFiCommunicateProtocol()
 	}
 
@@ -174,7 +174,7 @@ func (s *ServiceState) autoConnect() {
 
 	tick := time.Tick(10 * time.Second)
 	for range tick {
-		if !s.isPriFiProtocolRunning {
+		if !s.IsPriFiProtocolRunning() {
 			s.sendConnectionRequest()
 		}
 	}
@@ -239,15 +239,14 @@ func (s *ServiceState) startPriFiCommunicateProtocol() {
 
 	// Assert that pi has type PriFiSDAWrapper
 	wrapper = pi.(*protocols.PriFiSDAProtocol)
+
+	//assign and start the protocol
 	s.priFiSDAProtocol = wrapper
 
-	s.isPriFiProtocolRunning = true //TODO: This was not there in Matthieu's work. Maybe there is a reason
 	s.setConfigToPriFiProtocol(wrapper)
 
 	wrapper.SetTimeoutHandler(s.handleTimeout)
 	wrapper.Start()
-
-	s.isPriFiProtocolRunning = true
 }
 
 // stopPriFi stops the PriFi protocol currently running.
@@ -259,14 +258,15 @@ func (s *ServiceState) stopPriFiCommunicateProtocol() {
 		return
 	}
 
-	if !s.isPriFiProtocolRunning || s.priFiSDAProtocol == nil {
+	if !s.IsPriFiProtocolRunning() {
 		log.Error("Trying to stop PriFi protocol but it has not started.")
 		return
 	}
 
-	s.priFiSDAProtocol.Stop()
+	if s.priFiSDAProtocol != nil {
+		s.priFiSDAProtocol.Stop()
+	}
 	s.priFiSDAProtocol = nil
-	s.isPriFiProtocolRunning = false
 }
 
 func (s *ServiceState) printWaitQueue() {

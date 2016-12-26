@@ -70,14 +70,18 @@ type ServiceState struct {
 	// We need to embed the ServiceProcessor, so that incoming messages
 	// are correctly handled.
 	*sda.ServiceProcessor
-	prifiTomlConfig        *PrifiTomlConfig
-	Storage                *Storage
-	path                   string
-	role                   prifi_protocol.PriFiRole
-	nodesAndIDs            *SDANodesAndIDs
-	waitQueue              *waitQueue
-	priFiSDAProtocol       *prifi_protocol.PriFiSDAProtocol
-	isPriFiProtocolRunning bool
+	prifiTomlConfig  *PrifiTomlConfig
+	Storage          *Storage
+	path             string
+	role             prifi_protocol.PriFiRole
+	nodesAndIDs      *SDANodesAndIDs
+	waitQueue        *waitQueue
+	priFiSDAProtocol *prifi_protocol.PriFiSDAProtocol
+}
+
+// returns true if the PriFi SDA protocol is running (in any state : init, communicate, etc)
+func (s *ServiceState) IsPriFiProtocolRunning() bool {
+	return (s.priFiSDAProtocol != nil)
 }
 
 // Storage will be saved, on the contrary of the 'Service'-structure
@@ -90,20 +94,19 @@ type Storage struct {
 // but in our case it is useful to know when a network RESET occured, so we can kill protocols (otherwise they
 // remain in some weird state)
 func (s *ServiceState) NetworkErrorHappened(e error) {
-	if s.priFiSDAProtocol != nil {
-		if s.isPriFiProtocolRunning {
-			log.Error("A network error occurred, killing PriFi protocol (was running).")
-		} else {
-			log.Lvl3("A network error occurred, killing PriFi protocol (was not running).")
-		}
 
-		s.priFiSDAProtocol.Stop()
+	if s.IsPriFiProtocolRunning() {
+
+		log.Lvl3("A network error occurred, killing the PriFi protocol.")
+
+		if s.priFiSDAProtocol != nil {
+			s.priFiSDAProtocol.Stop()
+		}
 		s.priFiSDAProtocol = nil
-	} else {
-		s.isPriFiProtocolRunning = false
-		log.Lvl3("A network error occurred, killing PriFi protocol (was not running) (2).")
+		return
 	}
-	return
+
+	log.Lvl3("A network error occurred, would kill PriFi protocol, but it's not running.")
 }
 
 // StartTrustee starts the necessary
@@ -243,14 +246,15 @@ func (s *ServiceState) setConfigToPriFiProtocol(wrapper *prifi_protocol.PriFiSDA
 // give some extra-configuration to your protocol in here.
 func (s *ServiceState) NewProtocol(tn *sda.TreeNodeInstance, conf *sda.GenericConfig) (sda.ProtocolInstance, error) {
 
+	log.Lvl1("New protocol called...")
+
 	pi, err := prifi_protocol.NewPriFiSDAWrapperProtocol(tn)
 	if err != nil {
 		return nil, err
 	}
 
 	wrapper := pi.(*prifi_protocol.PriFiSDAProtocol)
-	s.isPriFiProtocolRunning = true
-	wrapper.IsRunning = &s.isPriFiProtocolRunning
+	s.priFiSDAProtocol = wrapper
 	s.setConfigToPriFiProtocol(wrapper)
 
 	return wrapper, nil
@@ -297,7 +301,6 @@ func newService(c *sda.Context, path string) sda.Service {
 	s := &ServiceState{
 		ServiceProcessor: sda.NewServiceProcessor(c),
 		path:             path,
-		isPriFiProtocolRunning: false,
 	}
 
 	c.RegisterProcessorFunc(network.TypeFromData(ConnectionRequest{}), s.HandleConnection)
