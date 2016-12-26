@@ -1,4 +1,4 @@
-package prifi
+package prifi_lib
 
 import (
 	"encoding/binary"
@@ -224,7 +224,7 @@ func (m *REL_CLI_DOWNSTREAM_DATA_UDP) FromBytes() (interface{}, error) {
 
 // ReceivedMessage must be called when a PriFi host receives a message.
 // It takes care to call the correct message handler function.
-func (prifi *Protocol) ReceivedMessage(msg interface{}) error {
+func (prifi *PriFiLibInstance) ReceivedMessage(msg interface{}) error {
 
 	if prifi == nil {
 		log.Print("Received a message ", msg)

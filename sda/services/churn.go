@@ -35,7 +35,7 @@ type DisconnectionRequest struct{}
 
 // HandleConnection receives connection requests from other nodes.
 // It decides when another PriFi protocol should be started.
-func (s *Service) HandleConnection(msg *network.Packet) {
+func (s *ServiceState) HandleConnection(msg *network.Packet) {
 	log.Lvl3("Received new connection request from ", msg.ServerIdentity.Address)
 
 	// If we are not the relay, ignore the message
@@ -97,13 +97,13 @@ func (s *Service) HandleConnection(msg *network.Packet) {
 	}
 
 	// If the nodes is already participating we do not need to restart
-	if nodeAlreadyIn && s.isPrifiRunning {
+	if nodeAlreadyIn && s.isPriFiProtocolRunning {
 		return
 	}
 
 	// Start (or restart) PriFi if there are enough participants
 	if len(s.waitQueue.clients) >= 2 && len(s.waitQueue.trustees) >= 1 {
-		if s.isPrifiRunning {
+		if s.isPriFiProtocolRunning {
 			s.stopPriFiCommunicateProtocol()
 		}
 		s.startPriFiCommunicateProtocol()
@@ -114,7 +114,7 @@ func (s *Service) HandleConnection(msg *network.Packet) {
 
 // HandleDisconnection receives disconnection requests.
 // It must stop the current PriFi protocol.
-func (s *Service) HandleDisconnection(msg *network.Packet) {
+func (s *ServiceState) HandleDisconnection(msg *network.Packet) {
 	log.Lvl2("Received disconnection request from ", msg.ServerIdentity.Address)
 
 	// If we are not the relay, ignore the message
@@ -145,7 +145,7 @@ func (s *Service) HandleDisconnection(msg *network.Packet) {
 	}
 
 	// Stop PriFi and restart if there are enough participants left.
-	if s.isPrifiRunning {
+	if s.isPriFiProtocolRunning {
 		s.stopPriFiCommunicateProtocol()
 	}
 
@@ -157,7 +157,7 @@ func (s *Service) HandleDisconnection(msg *network.Packet) {
 // sendConnectionRequest sends a connection request to the relay.
 // It is called by the client and trustee services at startup to
 // announce themselves to the relay.
-func (s *Service) sendConnectionRequest() {
+func (s *ServiceState) sendConnectionRequest() {
 	log.Lvl2("Sending connection request")
 	err := s.SendRaw(s.nodesAndIDs.relayIdentity, &ConnectionRequest{})
 
@@ -169,12 +169,12 @@ func (s *Service) sendConnectionRequest() {
 // autoConnect sends a connection request to the relay
 // every 10 seconds if the node is not participating to
 // a PriFi protocol.
-func (s *Service) autoConnect() {
+func (s *ServiceState) autoConnect() {
 	s.sendConnectionRequest()
 
 	tick := time.Tick(10 * time.Second)
 	for range tick {
-		if !s.isPrifiRunning {
+		if !s.isPriFiProtocolRunning {
 			s.sendConnectionRequest()
 		}
 	}
@@ -183,7 +183,7 @@ func (s *Service) autoConnect() {
 // handleTimeout is a callback that should be called on the relay
 // when a round times out. It tries to restart PriFi with the nodes
 // that sent their ciphertext in time.
-func (s *Service) handleTimeout(lateClients []*network.ServerIdentity, lateTrustees []*network.ServerIdentity) {
+func (s *ServiceState) handleTimeout(lateClients []*network.ServerIdentity, lateTrustees []*network.ServerIdentity) {
 	s.waitQueue.mutex.Lock()
 	defer s.waitQueue.mutex.Unlock()
 
@@ -205,7 +205,7 @@ func (s *Service) handleTimeout(lateClients []*network.ServerIdentity, lateTrust
 // startPriFi starts a PriFi protocol. It is called
 // by the relay as soon as enough participants are
 // ready (one trustee and two clients).
-func (s *Service) startPriFiCommunicateProtocol() {
+func (s *ServiceState) startPriFiCommunicateProtocol() {
 	log.Lvl1("Starting PriFi protocol")
 
 	if s.role != protocols.Relay {
@@ -213,7 +213,7 @@ func (s *Service) startPriFiCommunicateProtocol() {
 		return
 	}
 
-	var wrapper *protocols.PriFiSDAWrapper
+	var wrapper *protocols.PriFiSDAProtocol
 
 	participants := make([]*network.ServerIdentity, len(s.waitQueue.trustees)+len(s.waitQueue.clients)+1)
 	participants[0] = s.nodesAndIDs.relayIdentity
@@ -238,20 +238,20 @@ func (s *Service) startPriFiCommunicateProtocol() {
 	}
 
 	// Assert that pi has type PriFiSDAWrapper
-	wrapper = pi.(*protocols.PriFiSDAWrapper)
-	s.prifiWrapper = wrapper
+	wrapper = pi.(*protocols.PriFiSDAProtocol)
+	s.priFiSDAProtocol = wrapper
 
-	s.isPrifiRunning = true //TODO: This was not there in Matthieu's work. Maybe there is a reason
+	s.isPriFiProtocolRunning = true //TODO: This was not there in Matthieu's work. Maybe there is a reason
 	s.setConfigToPriFiProtocol(wrapper)
 
 	wrapper.SetTimeoutHandler(s.handleTimeout)
 	wrapper.Start()
 
-	s.isPrifiRunning = true
+	s.isPriFiProtocolRunning = true
 }
 
 // stopPriFi stops the PriFi protocol currently running.
-func (s *Service) stopPriFiCommunicateProtocol() {
+func (s *ServiceState) stopPriFiCommunicateProtocol() {
 	log.Lvl1("Stopping PriFi protocol")
 
 	if s.role != protocols.Relay {
@@ -259,17 +259,17 @@ func (s *Service) stopPriFiCommunicateProtocol() {
 		return
 	}
 
-	if !s.isPrifiRunning || s.prifiWrapper == nil {
+	if !s.isPriFiProtocolRunning || s.priFiSDAProtocol == nil {
 		log.Error("Trying to stop PriFi protocol but it has not started.")
 		return
 	}
 
-	s.prifiWrapper.Stop()
-	s.prifiWrapper = nil
-	s.isPrifiRunning = false
+	s.priFiSDAProtocol.Stop()
+	s.priFiSDAProtocol = nil
+	s.isPriFiProtocolRunning = false
 }
 
-func (s *Service) printWaitQueue() {
+func (s *ServiceState) printWaitQueue() {
 	log.Info("Current state of the wait queue:")
 
 	log.Info("Clients:")

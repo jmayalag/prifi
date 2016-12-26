@@ -18,10 +18,9 @@ import (
 	"github.com/dedis/cothority/log"
 	"github.com/dedis/cothority/network"
 	"github.com/dedis/cothority/sda"
-	"github.com/lbarman/prifi/sda/protocols"
-
-	prifi "github.com/lbarman/prifi/prifi-lib"
-	socks "github.com/lbarman/prifi/prifi-socks"
+	prifi_lib "github.com/lbarman/prifi/prifi-lib"
+	prifi_socks "github.com/lbarman/prifi/prifi-socks"
+	prifi_protocol "github.com/lbarman/prifi/sda/protocols"
 	"sync"
 )
 
@@ -37,7 +36,7 @@ func init() {
 }
 
 //The configuration read in prifi.toml
-type PriFiConfig struct {
+type PrifiTomlConfig struct {
 	CellSizeUp            int
 	CellSizeDown          int
 	RelayWindowSize       int
@@ -52,7 +51,7 @@ type PriFiConfig struct {
 // contains the identity map, a direct link to the relay, and a mutex
 type SDANodesAndIDs struct {
 	mutex             sync.Mutex
-	identitiesMap     map[network.Address]protocols.PriFiIdentity
+	identitiesMap     map[network.Address]prifi_protocol.PriFiIdentity
 	relayIdentity     *network.ServerIdentity
 	group             *config.Group
 	nextFreeClientID  int
@@ -60,46 +59,58 @@ type SDANodesAndIDs struct {
 }
 
 //Set the config, from the prifi.toml. Is called by sda/app.
-func (s *Service) SetConfig(config *PriFiConfig) {
+func (s *ServiceState) SetConfigFromToml(config *PrifiTomlConfig) {
 	log.Lvl3("Setting PriFi configuration...")
 	log.Lvlf3("%+v\n", config)
-	s.prifiConfig = config
+	s.prifiTomlConfig = config
 }
 
 //Service contains the state of the service
-type Service struct {
+type ServiceState struct {
 	// We need to embed the ServiceProcessor, so that incoming messages
 	// are correctly handled.
 	*sda.ServiceProcessor
-	prifiConfig    *PriFiConfig
-	Storage        *Storage
-	path           string
-	role           protocols.PriFiRole
-	nodesAndIDs    *SDANodesAndIDs
-	waitQueue      *waitQueue
-	prifiWrapper   *protocols.PriFiSDAWrapper
-	isPrifiRunning bool
+	prifiTomlConfig        *PrifiTomlConfig
+	Storage                *Storage
+	path                   string
+	role                   prifi_protocol.PriFiRole
+	nodesAndIDs            *SDANodesAndIDs
+	waitQueue              *waitQueue
+	priFiSDAProtocol       *prifi_protocol.PriFiSDAProtocol
+	isPriFiProtocolRunning bool
 }
 
 // Storage will be saved, on the contrary of the 'Service'-structure
 // which has per-service information stored.
 type Storage struct {
-	TrusteeID string
+	//our service has no state to be saved
 }
 
 // This is a handler passed to the SDA when starting a host. The SDA usually handle all the network by itself,
 // but in our case it is useful to know when a network RESET occured, so we can kill protocols (otherwise they
 // remain in some weird state)
-func (s *Service) NetworkErrorHappened(e error) {
-	log.Error("Error occurred, killing PriFi protocol")
+func (s *ServiceState) NetworkErrorHappened(e error) {
+	if s.priFiSDAProtocol != nil {
+		if s.isPriFiProtocolRunning {
+			log.Error("A network error occurred, killing PriFi protocol (was running).")
+		} else {
+			log.Lvl3("A network error occurred, killing PriFi protocol (was not running).")
+		}
+
+		s.priFiSDAProtocol.Stop()
+		s.priFiSDAProtocol = nil
+	} else {
+		s.isPriFiProtocolRunning = false
+		log.Lvl3("A network error occurred, killing PriFi protocol (was not running) (2).")
+	}
 	return
 }
 
 // StartTrustee starts the necessary
 // protocols to enable the trustee-mode.
-func (s *Service) StartTrustee(group *config.Group) error {
+func (s *ServiceState) StartTrustee(group *config.Group) error {
 	log.Info("Service", s, "running in trustee mode")
-	s.role = protocols.Trustee
+	s.role = prifi_protocol.Trustee
 	s.readGroup(group)
 
 	go s.autoConnect()
@@ -110,45 +121,45 @@ func (s *Service) StartTrustee(group *config.Group) error {
 // StartRelay starts the necessary
 // protocols to enable the relay-mode.
 // In this example it simply starts the demo protocol
-func (s *Service) StartRelay(group *config.Group) error {
+func (s *ServiceState) StartRelay(group *config.Group) error {
 	log.Info("Service", s, "running in relay mode")
-	s.role = protocols.Relay
+	s.role = prifi_protocol.Relay
 	s.readGroup(group)
 	s.waitQueue = &waitQueue{
 		clients:  make(map[*network.ServerIdentity]bool),
 		trustees: make(map[*network.ServerIdentity]bool),
 	}
 
-	socksServerConfig = &protocols.SOCKSConfig{
-		Port:              "127.0.0.1:" + strconv.Itoa(s.prifiConfig.SocksClientPort),
-		PayloadLength:     s.prifiConfig.CellSizeUp,
+	socksServerConfig = &prifi_protocol.SOCKSConfig{
+		Port:              "127.0.0.1:" + strconv.Itoa(s.prifiTomlConfig.SocksClientPort),
+		PayloadLength:     s.prifiTomlConfig.CellSizeUp,
 		UpstreamChannel:   make(chan []byte),
 		DownstreamChannel: make(chan []byte),
 	}
 
-	go socks.StartSocksClient(socksServerConfig.Port, socksServerConfig.UpstreamChannel, socksServerConfig.DownstreamChannel)
+	go prifi_socks.StartSocksClient(socksServerConfig.Port, socksServerConfig.UpstreamChannel, socksServerConfig.DownstreamChannel)
 
 	return nil
 }
 
-var socksClientConfig *protocols.SOCKSConfig
-var socksServerConfig *protocols.SOCKSConfig
+var socksClientConfig *prifi_protocol.SOCKSConfig
+var socksServerConfig *prifi_protocol.SOCKSConfig
 
 // StartClient starts the necessary
 // protocols to enable the client-mode.
-func (s *Service) StartClient(group *config.Group) error {
+func (s *ServiceState) StartClient(group *config.Group) error {
 	log.Info("Service", s, "running in client mode")
-	s.role = protocols.Client
+	s.role = prifi_protocol.Client
 	s.readGroup(group)
 
-	socksClientConfig = &protocols.SOCKSConfig{
-		Port:              ":" + strconv.Itoa(s.prifiConfig.SocksServerPort),
-		PayloadLength:     s.prifiConfig.CellSizeUp,
+	socksClientConfig = &prifi_protocol.SOCKSConfig{
+		Port:              ":" + strconv.Itoa(s.prifiTomlConfig.SocksServerPort),
+		PayloadLength:     s.prifiTomlConfig.CellSizeUp,
 		UpstreamChannel:   make(chan []byte),
 		DownstreamChannel: make(chan []byte),
 	}
 
-	go socks.StartSocksServer(socksClientConfig.Port, socksClientConfig.PayloadLength, socksClientConfig.UpstreamChannel, socksClientConfig.DownstreamChannel, s.prifiConfig.DoLatencyTests)
+	go prifi_socks.StartSocksServer(socksClientConfig.Port, socksClientConfig.PayloadLength, socksClientConfig.UpstreamChannel, socksClientConfig.DownstreamChannel, s.prifiTomlConfig.DoLatencyTests)
 
 	go s.autoConnect()
 
@@ -157,63 +168,63 @@ func (s *Service) StartClient(group *config.Group) error {
 
 // StartClient starts the necessary
 // protocols to enable the client-mode.
-func (s *Service) StartSocksTunnelOnly() error {
+func (s *ServiceState) StartSocksTunnelOnly() error {
 	log.Info("Service", s, "running in socks-tunnel-only mode")
 
-	socksClientConfig = &protocols.SOCKSConfig{
-		Port:              ":" + strconv.Itoa(s.prifiConfig.SocksServerPort),
-		PayloadLength:     s.prifiConfig.CellSizeUp,
+	socksClientConfig = &prifi_protocol.SOCKSConfig{
+		Port:              ":" + strconv.Itoa(s.prifiTomlConfig.SocksServerPort),
+		PayloadLength:     s.prifiTomlConfig.CellSizeUp,
 		UpstreamChannel:   make(chan []byte),
 		DownstreamChannel: make(chan []byte),
 	}
 
-	socksServerConfig = &protocols.SOCKSConfig{
-		Port:              "127.0.0.1:" + strconv.Itoa(s.prifiConfig.SocksClientPort),
-		PayloadLength:     s.prifiConfig.CellSizeUp,
+	socksServerConfig = &prifi_protocol.SOCKSConfig{
+		Port:              "127.0.0.1:" + strconv.Itoa(s.prifiTomlConfig.SocksClientPort),
+		PayloadLength:     s.prifiTomlConfig.CellSizeUp,
 		UpstreamChannel:   socksClientConfig.UpstreamChannel,
 		DownstreamChannel: socksClientConfig.DownstreamChannel,
 	}
-	go socks.StartSocksServer(socksClientConfig.Port, socksClientConfig.PayloadLength, socksClientConfig.UpstreamChannel, socksClientConfig.DownstreamChannel, false)
-	go socks.StartSocksClient(socksServerConfig.Port, socksServerConfig.UpstreamChannel, socksServerConfig.DownstreamChannel)
+	go prifi_socks.StartSocksServer(socksClientConfig.Port, socksClientConfig.PayloadLength, socksClientConfig.UpstreamChannel, socksClientConfig.DownstreamChannel, false)
+	go prifi_socks.StartSocksClient(socksServerConfig.Port, socksServerConfig.UpstreamChannel, socksServerConfig.DownstreamChannel)
 
 	return nil
 }
 
-func (s *Service) setConfigToPriFiProtocol(wrapper *protocols.PriFiSDAWrapper) {
+func (s *ServiceState) setConfigToPriFiProtocol(wrapper *prifi_protocol.PriFiSDAProtocol) {
 
 	log.Lvl1("setConfigToPriFiProtocol called")
-	log.Lvlf1("%+v\n", s.prifiConfig)
+	log.Lvlf1("%+v\n", s.prifiTomlConfig)
 
-	prifiParams := prifi.ALL_ALL_PARAMETERS{
+	prifiParams := prifi_lib.ALL_ALL_PARAMETERS{
 		ClientDataOutputEnabled: true,
-		DoLatencyTests:          s.prifiConfig.DoLatencyTests,
-		DownCellSize:            s.prifiConfig.CellSizeDown,
+		DoLatencyTests:          s.prifiTomlConfig.DoLatencyTests,
+		DownCellSize:            s.prifiTomlConfig.CellSizeDown,
 		ForceParams:             true,
 		NClients:                -1, //computer later
 		NextFreeClientID:        0,
 		NextFreeTrusteeID:       0,
 		NTrustees:               -1, //computer later
 		RelayDataOutputEnabled:  true,
-		RelayReportingLimit:     s.prifiConfig.RelayReportingLimit,
-		RelayUseDummyDataDown:   s.prifiConfig.RelayUseDummyDataDown,
-		RelayWindowSize:         s.prifiConfig.RelayWindowSize,
+		RelayReportingLimit:     s.prifiTomlConfig.RelayReportingLimit,
+		RelayUseDummyDataDown:   s.prifiTomlConfig.RelayUseDummyDataDown,
+		RelayWindowSize:         s.prifiTomlConfig.RelayWindowSize,
 		StartNow:                false,
-		UpCellSize:              s.prifiConfig.CellSizeUp,
-		UseUDP:                  s.prifiConfig.UseUDP,
+		UpCellSize:              s.prifiTomlConfig.CellSizeUp,
+		UseUDP:                  s.prifiTomlConfig.UseUDP,
 	}
 
 	//deep-clone the identityMap
 	s.nodesAndIDs.mutex.Lock()
-	idMapCopy := make(map[network.Address]protocols.PriFiIdentity)
+	idMapCopy := make(map[network.Address]prifi_protocol.PriFiIdentity)
 	for k, v := range s.nodesAndIDs.identitiesMap {
-		idMapCopy[k] = protocols.PriFiIdentity{
+		idMapCopy[k] = prifi_protocol.PriFiIdentity{
 			ID:   v.ID,
 			Role: v.Role,
 		}
 	}
 	s.nodesAndIDs.mutex.Unlock()
 
-	wrapper.SetConfig(&protocols.PriFiSDAWrapperConfig{
+	wrapper.SetConfig(&prifi_protocol.PriFiSDAWrapperConfig{
 		ALL_ALL_PARAMETERS: prifiParams,
 		Identities:         idMapCopy,
 		Role:               s.role,
@@ -230,25 +241,23 @@ func (s *Service) setConfigToPriFiProtocol(wrapper *protocols.PriFiSDAWrapper) {
 // instantiate the protocol on its own. If you need more control at the
 // instantiation of the protocol, use CreateProtocolService, and you can
 // give some extra-configuration to your protocol in here.
-func (s *Service) NewProtocol(tn *sda.TreeNodeInstance, conf *sda.GenericConfig) (sda.ProtocolInstance, error) {
-	log.Lvl5("Setting node configuration from service")
+func (s *ServiceState) NewProtocol(tn *sda.TreeNodeInstance, conf *sda.GenericConfig) (sda.ProtocolInstance, error) {
 
-	pi, err := protocols.NewPriFiSDAWrapperProtocol(tn)
+	pi, err := prifi_protocol.NewPriFiSDAWrapperProtocol(tn)
 	if err != nil {
 		return nil, err
 	}
 
-	wrapper := pi.(*protocols.PriFiSDAWrapper)
-	s.isPrifiRunning = true
+	wrapper := pi.(*prifi_protocol.PriFiSDAProtocol)
+	s.isPriFiProtocolRunning = true
+	wrapper.IsRunning = &s.isPriFiProtocolRunning
 	s.setConfigToPriFiProtocol(wrapper)
-
-	wrapper.Running = &s.isPrifiRunning
 
 	return wrapper, nil
 }
 
 // save saves the actual identity
-func (s *Service) save() {
+func (s *ServiceState) save() {
 	log.Lvl3("Saving service")
 	b, err := network.MarshalRegisteredType(s.Storage)
 	if err != nil {
@@ -263,7 +272,7 @@ func (s *Service) save() {
 
 // tryLoad tries to load the configuration and updates if a configuration
 // is found, else it returns an error.
-func (s *Service) tryLoad() error {
+func (s *ServiceState) tryLoad() error {
 	configFile := s.path + "/identity.bin"
 	b, err := ioutil.ReadFile(configFile)
 	if err != nil && !os.IsNotExist(err) {
@@ -285,10 +294,10 @@ func (s *Service) tryLoad() error {
 // we need to save the configuration on our own from time to time.
 func newService(c *sda.Context, path string) sda.Service {
 	log.Lvl4("Calling newService")
-	s := &Service{
+	s := &ServiceState{
 		ServiceProcessor: sda.NewServiceProcessor(c),
 		path:             path,
-		isPrifiRunning:   false,
+		isPriFiProtocolRunning: false,
 	}
 
 	c.RegisterProcessorFunc(network.TypeFromData(ConnectionRequest{}), s.HandleConnection)
@@ -303,8 +312,8 @@ func newService(c *sda.Context, path string) sda.Service {
 // mapIdentities reads the group configuration to assign PriFi roles
 // to server addresses and returns them with the server
 // identity of the relay.
-func mapIdentities(group *config.Group) (map[network.Address]protocols.PriFiIdentity, network.ServerIdentity) {
-	m := make(map[network.Address]protocols.PriFiIdentity)
+func mapIdentities(group *config.Group) (map[network.Address]prifi_protocol.PriFiIdentity, network.ServerIdentity) {
+	m := make(map[network.Address]prifi_protocol.PriFiIdentity)
 	var relay network.ServerIdentity
 
 	// Read the description of the nodes in the config file to assign them PriFi roles.
@@ -313,23 +322,23 @@ func mapIdentities(group *config.Group) (map[network.Address]protocols.PriFiIden
 		si := nodeList[i]
 		nodeDescription := group.GetDescription(si)
 
-		var id *protocols.PriFiIdentity
+		var id *prifi_protocol.PriFiIdentity
 
 		if nodeDescription == "relay" {
-			id = &protocols.PriFiIdentity{
-				Role: protocols.Relay,
+			id = &prifi_protocol.PriFiIdentity{
+				Role: prifi_protocol.Relay,
 				ID:   0,
 			}
 		} else if nodeDescription == "trustee" {
-			id = &protocols.PriFiIdentity{
-				Role: protocols.Trustee,
+			id = &prifi_protocol.PriFiIdentity{
+				Role: prifi_protocol.Trustee,
 				ID:   -1,
 			}
 		}
 
 		if id != nil {
 			m[si.Address] = *id
-			if id.Role == protocols.Relay {
+			if id.Role == prifi_protocol.Relay {
 				relay = *si
 			}
 		} else {
@@ -343,9 +352,9 @@ func mapIdentities(group *config.Group) (map[network.Address]protocols.PriFiIden
 
 	for _, v := range m {
 		switch v.Role {
-		case protocols.Relay:
+		case prifi_protocol.Relay:
 			r++
-		case protocols.Trustee:
+		case prifi_protocol.Trustee:
 			t++
 		}
 	}
@@ -359,7 +368,7 @@ func mapIdentities(group *config.Group) (map[network.Address]protocols.PriFiIden
 
 // readGroup reads the group description and sets up the Service struct fields
 // accordingly. It *MUST* be called first when the node is started.
-func (s *Service) readGroup(group *config.Group) {
+func (s *ServiceState) readGroup(group *config.Group) {
 	IDs, relayID := mapIdentities(group)
 	s.nodesAndIDs = &SDANodesAndIDs{
 		identitiesMap: IDs,

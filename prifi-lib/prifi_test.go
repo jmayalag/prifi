@@ -1,4 +1,4 @@
-package prifi
+package prifi_lib
 
 //TODO : BIG, BIG todo here. we should automate some tests !
 

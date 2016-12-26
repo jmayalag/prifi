@@ -64,7 +64,7 @@ func (ms MessageSender) BroadcastToAllClients(msg interface{}) error {
 }
 
 //ClientSubscribeToBroadcast allows a client to subscribe to UDP broadcast
-func (ms MessageSender) ClientSubscribeToBroadcast(clientName string, protocolInstance *prifi_lib.Protocol, startStopChan chan bool) error {
+func (ms MessageSender) ClientSubscribeToBroadcast(clientName string, prifiLibInstance *prifi_lib.PriFiLibInstance, startStopChan chan bool) error {
 
 	log.Lvl3(clientName, " started UDP-listener helper.")
 	listening := false
@@ -102,7 +102,7 @@ func (ms MessageSender) ClientSubscribeToBroadcast(clientName string, protocolIn
 			}
 
 			//forward to PriFi
-			protocolInstance.ReceivedMessage(msg)
+			prifiLibInstance.ReceivedMessage(msg)
 
 		}
 

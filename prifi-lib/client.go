@@ -1,4 +1,4 @@
-package prifi
+package prifi_lib
 
 /**
  * PriFi Client
@@ -129,7 +129,7 @@ func NewClientState(clientID int, nTrustees int, nClients int, payloadLength int
 
 // Received_ALL_CLI_SHUTDOWN handles ALL_CLI_SHUTDOWN messages.
 // When we receive this message, we should clean up resources.
-func (p *Protocol) Received_ALL_CLI_SHUTDOWN(msg ALL_ALL_SHUTDOWN) error {
+func (p *PriFiLibInstance) Received_ALL_CLI_SHUTDOWN(msg ALL_ALL_SHUTDOWN) error {
 	log.Lvl1("Client " + strconv.Itoa(p.clientState.ID) + " : Received a SHUTDOWN message. ")
 
 	p.clientState.mutex.Lock()
@@ -142,7 +142,7 @@ func (p *Protocol) Received_ALL_CLI_SHUTDOWN(msg ALL_ALL_SHUTDOWN) error {
 
 // Received_ALL_CLI_PARAMETERS handles ALL_CLI_PARAMETERS messages.
 // It uses the message's parameters to initialize the client.
-func (p *Protocol) Received_ALL_CLI_PARAMETERS(msg ALL_ALL_PARAMETERS) error {
+func (p *PriFiLibInstance) Received_ALL_CLI_PARAMETERS(msg ALL_ALL_PARAMETERS) error {
 
 	p.clientState.mutex.Lock()
 	defer p.clientState.mutex.Unlock()
@@ -186,7 +186,7 @@ Once we received some data from the relay, we need to reply with a DC-net cell (
 If we're lucky (if this is our slot), we are allowed to embed some message (which will be the output produced by the relay). Either we send something from the
 SOCKS/VPN data, or if we're running latency tests, we send a "ping" message to compute the latency. If we have nothing to say, we send 0's.
 */
-func (p *Protocol) Received_REL_CLI_DOWNSTREAM_DATA(msg REL_CLI_DOWNSTREAM_DATA) error {
+func (p *PriFiLibInstance) Received_REL_CLI_DOWNSTREAM_DATA(msg REL_CLI_DOWNSTREAM_DATA) error {
 
 	p.clientState.mutex.Lock()
 	defer p.clientState.mutex.Unlock()
@@ -231,7 +231,7 @@ Once we received some data from the relay, we need to reply with a DC-net cell (
 If we're lucky (if this is our slot), we are allowed to embed some message (which will be the output produced by the relay). Either we send something from the
 SOCKS/VPN data, or if we're running latency tests, we send a "ping" message to compute the latency. If we have nothing to say, we send 0's.
 */
-func (p *Protocol) Received_REL_CLI_UDP_DOWNSTREAM_DATA(msg REL_CLI_DOWNSTREAM_DATA) error {
+func (p *PriFiLibInstance) Received_REL_CLI_UDP_DOWNSTREAM_DATA(msg REL_CLI_DOWNSTREAM_DATA) error {
 
 	p.clientState.mutex.Lock()
 	defer p.clientState.mutex.Unlock()
@@ -272,7 +272,7 @@ ProcessDownStreamData handles the downstream data. After determining if the data
 latency-test message, test if the resync flag is on (which triggers a re-setup).
 When this function ends, it calls SendUpstreamData() which continues the communication loop.
 */
-func (p *Protocol) ProcessDownStreamData(msg REL_CLI_DOWNSTREAM_DATA) error {
+func (p *PriFiLibInstance) ProcessDownStreamData(msg REL_CLI_DOWNSTREAM_DATA) error {
 
 	/*
 	 * HANDLE THE DOWNSTREAM DATA
@@ -320,7 +320,7 @@ func (p *Protocol) ProcessDownStreamData(msg REL_CLI_DOWNSTREAM_DATA) error {
 SendUpstreamData determines if it's our round, embeds data (maybe latency-test message) in the payload if we can,
 creates the DC-net cipher and sends it to the relay.
 */
-func (p *Protocol) SendUpstreamData() error {
+func (p *PriFiLibInstance) SendUpstreamData() error {
 	//TODO: maybe make this into a method func (p *PrifiProtocol) isMySlot() bool {}
 	//write the next upstream slice. First, determine if we can embed payload this round
 	currentRound := p.clientState.RoundNo % int32(p.clientState.nClients)
@@ -397,7 +397,7 @@ Of course, there should be check on those public keys (each client need to trust
 and that clients have agreed on the set of trustees.
 Once we receive this message, we need to reply with our Public Key (Used to derive DC-net secrets), and our Ephemeral Public Key (used for the Shuffle protocol)
 */
-func (p *Protocol) Received_REL_CLI_TELL_TRUSTEES_PK(msg REL_CLI_TELL_TRUSTEES_PK) error {
+func (p *PriFiLibInstance) Received_REL_CLI_TELL_TRUSTEES_PK(msg REL_CLI_TELL_TRUSTEES_PK) error {
 
 	p.clientState.mutex.Lock()
 	defer p.clientState.mutex.Unlock()
@@ -459,7 +459,7 @@ As the client should send the first data, we do so; to keep this function simple
 (the message has no content / this is a wasted message). The actual embedding of data happens only in the
 "round function", that is Received_REL_CLI_DOWNSTREAM_DATA().
 */
-func (p *Protocol) Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(msg REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG) error {
+func (p *PriFiLibInstance) Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(msg REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG) error {
 
 	p.clientState.mutex.Lock()
 	defer p.clientState.mutex.Unlock()
