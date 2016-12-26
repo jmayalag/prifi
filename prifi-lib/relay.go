@@ -436,7 +436,6 @@ func (p *PriFiLibInstance) Received_TRU_REL_DC_CIPHER(msg TRU_REL_DC_CIPHER) err
 	if p.relayState.currentState != RELAY_STATE_COMMUNICATING {
 		e := "Relay : Received a TRU_REL_DC_CIPHER, but not in state RELAY_STATE_COMMUNICATING, in state " + strconv.Itoa(int(p.relayState.currentState))
 		log.Error(e)
-		p.relayState.locks.state.Unlock()
 		//return errors.New(e)
 	}
 	p.relayState.locks.state.Unlock()
