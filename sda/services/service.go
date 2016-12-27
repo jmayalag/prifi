@@ -95,6 +95,15 @@ type Storage struct {
 // remain in some weird state)
 func (s *ServiceState) NetworkErrorHappened(e error) {
 
+	//we clear the map
+	s.nodesAndIDs.mutex.Lock()
+	s.nodesAndIDs.identitiesMap = make(map[network.Address]prifi_protocol.PriFiIdentity)
+	s.nodesAndIDs.identitiesMap[s.nodesAndIDs.relayIdentity.Address] = prifi_protocol.PriFiIdentity{
+		Role: prifi_protocol.Relay,
+		ID:   0,
+	}
+	s.nodesAndIDs.mutex.Unlock()
+
 	if s.IsPriFiProtocolRunning() {
 
 		log.Lvl3("A network error occurred, killing the PriFi protocol.")
@@ -227,13 +236,22 @@ func (s *ServiceState) setConfigToPriFiProtocol(wrapper *prifi_protocol.PriFiSDA
 	}
 	s.nodesAndIDs.mutex.Unlock()
 
-	wrapper.SetConfig(&prifi_protocol.PriFiSDAWrapperConfig{
+	configMsg := &prifi_protocol.PriFiSDAWrapperConfig{
 		ALL_ALL_PARAMETERS: prifiParams,
 		Identities:         idMapCopy,
 		Role:               s.role,
 		ClientSideSocksConfig: socksClientConfig,
 		RelaySideSocksConfig:  socksServerConfig,
-	})
+	}
+
+	log.Error("Setting config to PriFi-SDA-Protocol")
+	log.Lvlf1("%+v\n", configMsg)
+	log.Lvlf1("%+v\n", configMsg.Identities)
+
+	wrapper.SetConfig(configMsg)
+
+	//when PriFi-protocol (via PriFi-lib) detects a slow client, call "handleTimeout"
+	wrapper.SetTimeoutHandler(s.handleTimeout)
 
 }
 

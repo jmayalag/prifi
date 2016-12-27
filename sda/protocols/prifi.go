@@ -134,8 +134,30 @@ func (p *PriFiSDAProtocol) SetConfig(config *PriFiSDAWrapperConfig) {
 	p.config = *config
 	p.role = config.Role
 
+	log.Lvl1("Printing identities")
+	log.Lvlf1("%+v\n", config.Identities)
+
 	ms := p.buildMessageSender(config.Identities)
 	p.ms = ms
+
+	//sanity check
+	switch config.Role{
+	case Trustee:
+		if ms.relay == nil {
+			log.Fatal("Relay is not reachable !")
+		}
+	case Client:
+		if ms.relay == nil {
+			log.Fatal("Relay is not reachable !")
+		}
+	case Relay:
+		if len(ms.clients) < 2 {
+			log.Fatal("Less than two clients reachable !")
+		}
+		if len(ms.trustees) < 1 {
+			log.Fatal("No trustee reachable !")
+		}
+	}
 
 	nClients := len(ms.clients)
 	nTrustees := len(ms.trustees)
@@ -221,14 +243,6 @@ func (p *PriFiSDAProtocol) buildMessageSender(identities map[network.Address]Pri
 				log.Fatal("Multiple relays")
 			}
 		}
-	}
-
-	if relay == nil {
-		log.Fatal("Relay is not reachable !")
-	}
-
-	if len(trustees) < 1 {
-		log.Fatal("No trustee is reachable !")
 	}
 
 	return MessageSender{p.TreeNodeInstance, relay, clients, trustees}

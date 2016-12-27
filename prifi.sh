@@ -216,6 +216,7 @@ case $1 in
 
 		#specialize the config file, and test all files
 		identity_file="client0/$identity_file"
+		group_file="client0/$group_file"
 		test_files
 
 		#run PriFi in relay mode

@@ -245,7 +245,6 @@ func (s *ServiceState) startPriFiCommunicateProtocol() {
 
 	s.setConfigToPriFiProtocol(wrapper)
 
-	wrapper.SetTimeoutHandler(s.handleTimeout)
 	wrapper.Start()
 }
 

@@ -142,10 +142,10 @@ type lockPool struct {
 
 // RelayState contains the mutable state of the relay.
 type RelayState struct {
-	// RelayPort				string
-	// PublicKey				abstract.Point
-	// privateKey			abstract.Scalar
-	// trusteesHosts			[]string
+						      // RelayPort				string
+						      // PublicKey				abstract.Point
+						      // privateKey			abstract.Scalar
+						      // trusteesHosts			[]string
 
 	bufferedTrusteeCiphers            map[int32]BufferedCipher
 	bufferedClientCiphers             map[int32]BufferedCipher
@@ -323,6 +323,9 @@ func (p *PriFiLibInstance) ConnectToTrustees() error {
 		UpCellSize:        p.relayState.UpstreamCellSize,
 	}
 
+	log.Lvl1("Sending ALL_TRU_PARAMETERS")
+	log.Lvlf1("%+v\n", msg)
+
 	// Send those parameters to all trustees
 	for j := 0; j < p.relayState.nTrustees; j++ {
 
@@ -352,7 +355,7 @@ func (p *PriFiLibInstance) Received_CLI_REL_UPSTREAM_DATA(msg CLI_REL_UPSTREAM_D
 	p.relayState.locks.state.Lock()
 	// This can only happens in the state RELAY_STATE_COMMUNICATING
 	if p.relayState.currentState != RELAY_STATE_COMMUNICATING {
-		e := "Relay : Received a CLI_REL_UPSTREAM_DATA, but not in state RELAY_STATE_COMMUNICATING, in state " + strconv.Itoa(int(p.relayState.currentState))
+		e := "Relay : Received a CLI_REL_UPSTREAM_DATA, but not in state RELAY_STATE_COMMUNICATING, in state " + relayStateStr(p.relayState.currentState)
 		log.Error(e)
 		p.relayState.locks.state.Unlock()
 		// return errors.New(e)
@@ -434,7 +437,7 @@ func (p *PriFiLibInstance) Received_TRU_REL_DC_CIPHER(msg TRU_REL_DC_CIPHER) err
 	p.relayState.locks.state.Lock()
 	// this can only happens in the state RELAY_STATE_COMMUNICATING
 	if p.relayState.currentState != RELAY_STATE_COMMUNICATING && p.relayState.currentState != RELAY_STATE_COLLECTING_SHUFFLE_SIGNATURES {
-		e := "Relay : Received a TRU_REL_DC_CIPHER, but not in state RELAY_STATE_COMMUNICATING, in state " + strconv.Itoa(int(p.relayState.currentState))
+		e := "Relay : Received a TRU_REL_DC_CIPHER, but not in state RELAY_STATE_COMMUNICATING, in state " + relayStateStr(p.relayState.currentState)
 		log.Error(e)
 		return errors.New(e)
 	}
@@ -580,7 +583,7 @@ func (p *PriFiLibInstance) sendDownstreamData() error {
 	select {
 	case downstreamCellContent = <-p.relayState.PriorityDataForClients:
 		log.Lvl3("Relay : We have some priority data for the clients")
-		// TODO : maybe we can pack more than one message here ?
+	// TODO : maybe we can pack more than one message here ?
 
 	default:
 
@@ -761,7 +764,7 @@ func (p *PriFiLibInstance) Received_TRU_REL_TELL_PK(msg TRU_REL_TELL_PK) error {
 	p.relayState.locks.state.Lock()
 	// this can only happens in the state RELAY_STATE_COLLECTING_TRUSTEES_PKS
 	if p.relayState.currentState != RELAY_STATE_COLLECTING_TRUSTEES_PKS {
-		e := "Relay : Received a TRU_REL_TELL_PK, but not in state RELAY_STATE_COLLECTING_TRUSTEES_PKS, in state " + strconv.Itoa(int(p.relayState.currentState))
+		e := "Relay : Received a TRU_REL_TELL_PK, but not in state RELAY_STATE_COLLECTING_TRUSTEES_PKS, in state " + relayStateStr(p.relayState.currentState)
 		log.Error(e)
 		p.relayState.locks.state.Unlock()
 		return errors.New(e)
@@ -822,7 +825,7 @@ func (p *PriFiLibInstance) Received_CLI_REL_TELL_PK_AND_EPH_PK(msg CLI_REL_TELL_
 	p.relayState.locks.state.Lock()
 	// this can only happens in the state RELAY_STATE_COLLECTING_CLIENT_PKS
 	if p.relayState.currentState != RELAY_STATE_COLLECTING_CLIENT_PKS {
-		e := "Relay : Received a CLI_REL_TELL_PK_AND_EPH_PK, but not in state RELAY_STATE_COLLECTING_CLIENT_PKS, in state " + strconv.Itoa(int(p.relayState.currentState))
+		e := "Relay : Received a CLI_REL_TELL_PK_AND_EPH_PK, but not in state RELAY_STATE_COLLECTING_CLIENT_PKS, in state " + relayStateStr(p.relayState.currentState)
 		log.Error(e)
 		p.relayState.locks.state.Unlock()
 		return errors.New(e)
@@ -869,6 +872,7 @@ func (p *PriFiLibInstance) Received_CLI_REL_TELL_PK_AND_EPH_PK(msg CLI_REL_TELL_
 
 		// send to the 1st trustee
 		toSend := &REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE{pks, ephPks, G}
+		time.Sleep(time.Second * 2)
 		err := p.messageSender.SendToTrustee(0, toSend)
 		if err != nil {
 			e := "Could not send REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE (0-th iteration), error is " + err.Error()
@@ -901,7 +905,7 @@ func (p *PriFiLibInstance) Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS(msg TRU_RE
 	p.relayState.locks.state.Lock()
 	// this can only happens in the state RELAY_STATE_COLLECTING_SHUFFLES
 	if p.relayState.currentState != RELAY_STATE_COLLECTING_SHUFFLES {
-		e := "Relay : Received a L_NEW_BASE_AND_EPH_PKS, but not in state RELAY_STATE_COLLECTING_SHUFFLES, in state " + strconv.Itoa(int(p.relayState.currentState))
+		e := "Relay : Received a TRU_REL_TELL_NEW_BASE_AND_EPH_PKS, but not in state RELAY_STATE_COLLECTING_SHUFFLES, in state " + relayStateStr(p.relayState.currentState)
 		log.Error(e)
 		p.relayState.locks.state.Unlock()
 		return errors.New(e)
@@ -1011,7 +1015,7 @@ func (p *PriFiLibInstance) Received_TRU_REL_SHUFFLE_SIG(msg TRU_REL_SHUFFLE_SIG)
 
 	// this can only happens in the state RELAY_STATE_COLLECTING_SHUFFLE_SIGNATURES
 	if p.relayState.currentState != RELAY_STATE_COLLECTING_SHUFFLE_SIGNATURES {
-		e := "Relay : Received a TRU_REL_SHUFFLE_SIG, but not in state RELAY_STATE_COLLECTING_SHUFFLE_SIGNATURES, in state " + strconv.Itoa(int(p.relayState.currentState))
+		e := "Relay : Received a TRU_REL_SHUFFLE_SIG, but not in state RELAY_STATE_COLLECTING_SHUFFLE_SIGNATURES, in state " + relayStateStr(p.relayState.currentState)
 		log.Error(e)
 		return errors.New(e)
 	}
@@ -1218,4 +1222,26 @@ func (p *PriFiLibInstance) checkIfRoundHasEndedAfterTimeOut_Phase2(roundID int32
 // SetTimeoutHandler sets the timeout handler, which is called with the dead/unresponsive client/trustee ID when a timeout occurs in a round
 func (p *PriFiLibInstance) SetTimeoutHandler(handler func([]int, []int)) {
 	p.relayState.timeoutHandler = handler
+}
+
+
+func relayStateStr(state int16) string{
+	switch(state) {
+	case RELAY_STATE_BEFORE_INIT:
+		return "RELAY_STATE_BEFORE_INIT"
+	case RELAY_STATE_COLLECTING_TRUSTEES_PKS:
+		return "RELAY_STATE_COLLECTING_TRUSTEES_PKS"
+	case RELAY_STATE_COLLECTING_CLIENT_PKS:
+		return "RELAY_STATE_COLLECTING_CLIENT_PKS"
+	case RELAY_STATE_COLLECTING_SHUFFLES:
+		return "RELAY_STATE_COLLECTING_SHUFFLES"
+	case RELAY_STATE_COLLECTING_SHUFFLE_SIGNATURES:
+		return "RELAY_STATE_COLLECTING_SHUFFLE_SIGNATURES"
+	case RELAY_STATE_COMMUNICATING:
+		return "RELAY_STATE_COMMUNICATING"
+	case RELAY_STATE_SHUTDOWN:
+		return "RELAY_STATE_SHUTDOWN"
+	default:
+		return "unknown state ("+strconv.Itoa(int(state))+")"
+	}
 }
