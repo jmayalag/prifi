@@ -17,9 +17,10 @@ func init() {
 	network.RegisterPacketType(DisconnectionRequest{})
 }
 
+//A wait queue entry is en identity(=address), and a flag IsWaiting (if false, we know about this host, but he didn't try to connect)
 type WaitQueueEntry struct {
 	IsWaiting bool
-	Address *network.ServerIdentity
+	Address   *network.ServerIdentity
 }
 
 // waitQueue contains the list of nodes that are currently willing
@@ -77,7 +78,7 @@ func (s *ServiceState) HandleConnection(msg *network.Packet) {
 		if _, ok := s.waitQueue.clients[addr]; !ok {
 			s.waitQueue.clients[addr] = &WaitQueueEntry{
 				IsWaiting: true,
-				Address: msg.ServerIdentity,
+				Address:   msg.ServerIdentity,
 			}
 		} else {
 			nodeAlreadyIn = true
@@ -99,7 +100,7 @@ func (s *ServiceState) HandleConnection(msg *network.Packet) {
 		if _, ok := s.waitQueue.trustees[addr]; !ok {
 			s.waitQueue.trustees[addr] = &WaitQueueEntry{
 				IsWaiting: true,
-				Address: msg.ServerIdentity,
+				Address:   msg.ServerIdentity,
 			}
 		} else {
 			nodeAlreadyIn = true
@@ -294,14 +295,14 @@ func (s *ServiceState) printWaitQueue() {
 	}
 }
 
-func (s *ServiceState) printIdMap() {
+func (s *ServiceState) printIdentifiersMap() {
 	s.nodesAndIDs.mutex.Lock()
 	defer s.nodesAndIDs.mutex.Unlock()
 
 	log.Info("Current state of the identity map:")
 
-	for k,v := range s.nodesAndIDs.identitiesMap {
-		switch v.Role{
+	for k, v := range s.nodesAndIDs.identitiesMap {
+		switch v.Role {
 
 		case protocols.Relay:
 			log.Info(k, " -> Relay ", v.ID)

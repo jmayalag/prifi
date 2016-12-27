@@ -35,8 +35,8 @@ const (
 
 //PriFiIdentity is the identity (role + ID)
 type PriFiIdentity struct {
-	Role PriFiRole
-	ID   int
+	Role    PriFiRole
+	ID      int
 	Address network.Address
 }
 
@@ -142,7 +142,7 @@ func (p *PriFiSDAProtocol) SetConfig(config *PriFiSDAWrapperConfig) {
 	p.ms = ms
 
 	//sanity check
-	switch config.Role{
+	switch config.Role {
 	case Trustee:
 		if ms.relay == nil {
 			log.Fatal("Relay is not reachable !")

@@ -142,10 +142,10 @@ type lockPool struct {
 
 // RelayState contains the mutable state of the relay.
 type RelayState struct {
-						      // RelayPort				string
-						      // PublicKey				abstract.Point
-						      // privateKey			abstract.Scalar
-						      // trusteesHosts			[]string
+	// RelayPort				string
+	// PublicKey				abstract.Point
+	// privateKey			abstract.Scalar
+	// trusteesHosts			[]string
 
 	bufferedTrusteeCiphers            map[int32]BufferedCipher
 	bufferedClientCiphers             map[int32]BufferedCipher
@@ -1224,9 +1224,8 @@ func (p *PriFiLibInstance) SetTimeoutHandler(handler func([]int, []int)) {
 	p.relayState.timeoutHandler = handler
 }
 
-
-func relayStateStr(state int16) string{
-	switch(state) {
+func relayStateStr(state int16) string {
+	switch state {
 	case RELAY_STATE_BEFORE_INIT:
 		return "RELAY_STATE_BEFORE_INIT"
 	case RELAY_STATE_COLLECTING_TRUSTEES_PKS:
@@ -1242,6 +1241,6 @@ func relayStateStr(state int16) string{
 	case RELAY_STATE_SHUTDOWN:
 		return "RELAY_STATE_SHUTDOWN"
 	default:
-		return "unknown state ("+strconv.Itoa(int(state))+")"
+		return "unknown state (" + strconv.Itoa(int(state)) + ")"
 	}
 }

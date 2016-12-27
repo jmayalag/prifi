@@ -221,8 +221,8 @@ func (s *ServiceState) setConfigToPriFiProtocol(wrapper *prifi_protocol.PriFiSDA
 	idMapCopy := make(map[string]prifi_protocol.PriFiIdentity)
 	for k, v := range s.nodesAndIDs.identitiesMap {
 		idMapCopy[k] = prifi_protocol.PriFiIdentity{
-			ID:   v.ID,
-			Role: v.Role,
+			ID:      v.ID,
+			Role:    v.Role,
 			Address: v.Address,
 		}
 	}
