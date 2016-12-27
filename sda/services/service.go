@@ -81,7 +81,10 @@ type ServiceState struct {
 
 // returns true if the PriFi SDA protocol is running (in any state : init, communicate, etc)
 func (s *ServiceState) IsPriFiProtocolRunning() bool {
-	return (s.priFiSDAProtocol != nil)
+	if s.priFiSDAProtocol != nil {
+		return !s.priFiSDAProtocol.HasStopped
+	}
+	return false
 }
 
 // Storage will be saved, on the contrary of the 'Service'-structure
@@ -105,6 +108,15 @@ func (s *ServiceState) NetworkErrorHappened(e error) {
 		s.priFiSDAProtocol = nil
 		return
 	}
+
+	s.waitQueue.mutex.Lock()
+	for k := range s.waitQueue.clients {
+		s.waitQueue.clients[k].IsWaiting = false
+	}
+	for k := range s.waitQueue.trustees {
+		s.waitQueue.trustees[k].IsWaiting = false
+	}
+	s.waitQueue.mutex.Unlock()
 
 	log.Lvl3("A network error occurred, would kill PriFi protocol, but it's not running.")
 }
