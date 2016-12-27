@@ -17,12 +17,17 @@ func init() {
 	network.RegisterPacketType(DisconnectionRequest{})
 }
 
+type WaitQueueEntry struct {
+	IsWaiting bool
+	Address *network.ServerIdentity
+}
+
 // waitQueue contains the list of nodes that are currently willing
 // to participate to the protocol.
 type waitQueue struct {
 	mutex    sync.Mutex
-	trustees map[*network.ServerIdentity]bool
-	clients  map[*network.ServerIdentity]bool
+	trustees map[string]*WaitQueueEntry
+	clients  map[string]*WaitQueueEntry
 }
 
 // ConnectionRequest messages are sent to the relay
@@ -36,7 +41,8 @@ type DisconnectionRequest struct{}
 // HandleConnection receives connection requests from other nodes.
 // It decides when another PriFi protocol should be started.
 func (s *ServiceState) HandleConnection(msg *network.Packet) {
-	log.Lvl3("Received new connection request from ", msg.ServerIdentity.Address)
+	addr := msg.ServerIdentity.Address.String()
+	log.Lvl3("Received new connection request from ", addr)
 
 	// If we are not the relay, ignore the message
 	if s.role != protocols.Relay {
@@ -44,10 +50,10 @@ func (s *ServiceState) HandleConnection(msg *network.Packet) {
 	}
 
 	s.nodesAndIDs.mutex.Lock()
-	id, found := s.nodesAndIDs.identitiesMap[msg.ServerIdentity.Address]
+	id, found := s.nodesAndIDs.identitiesMap[addr]
 	s.nodesAndIDs.mutex.Unlock()
 	if !found {
-		log.Lvl2("New previously-unknown client :", msg.ServerIdentity.Address)
+		log.Lvl2("New previously-unknown client :", addr)
 
 		s.nodesAndIDs.mutex.Lock()
 		newID := &protocols.PriFiIdentity{
@@ -55,7 +61,7 @@ func (s *ServiceState) HandleConnection(msg *network.Packet) {
 			Role: protocols.Client,
 		}
 		s.nodesAndIDs.nextFreeClientID++
-		s.nodesAndIDs.identitiesMap[msg.ServerIdentity.Address] = *newID
+		s.nodesAndIDs.identitiesMap[addr] = *newID
 		id = *newID
 		s.nodesAndIDs.mutex.Unlock()
 	}
@@ -68,8 +74,11 @@ func (s *ServiceState) HandleConnection(msg *network.Packet) {
 	// Add node to the waiting queue
 	switch id.Role {
 	case protocols.Client:
-		if _, ok := s.waitQueue.clients[msg.ServerIdentity]; !ok {
-			s.waitQueue.clients[msg.ServerIdentity] = true
+		if _, ok := s.waitQueue.clients[addr]; !ok {
+			s.waitQueue.clients[addr] = &WaitQueueEntry{
+				IsWaiting: true,
+				Address: msg.ServerIdentity,
+			}
 		} else {
 			nodeAlreadyIn = true
 		}
@@ -79,7 +88,7 @@ func (s *ServiceState) HandleConnection(msg *network.Packet) {
 		if id.ID == -1 {
 			s.nodesAndIDs.mutex.Lock()
 			id.ID = s.nodesAndIDs.nextFreeTrusteeID
-			s.nodesAndIDs.identitiesMap[msg.ServerIdentity.Address] = protocols.PriFiIdentity{
+			s.nodesAndIDs.identitiesMap[addr] = protocols.PriFiIdentity{
 				ID:   s.nodesAndIDs.nextFreeTrusteeID,
 				Role: protocols.Trustee,
 			}
@@ -87,14 +96,22 @@ func (s *ServiceState) HandleConnection(msg *network.Packet) {
 			s.nodesAndIDs.nextFreeTrusteeID++
 			s.nodesAndIDs.mutex.Unlock()
 		}
-		if _, ok := s.waitQueue.trustees[msg.ServerIdentity]; !ok {
-			s.waitQueue.trustees[msg.ServerIdentity] = true
+		if _, ok := s.waitQueue.trustees[addr]; !ok {
+			s.waitQueue.trustees[addr] = &WaitQueueEntry{
+				IsWaiting: true,
+				Address: msg.ServerIdentity,
+			}
 		} else {
 			nodeAlreadyIn = true
 		}
 	default:
 		log.Error("Ignoring connection request from node with invalid role.")
 	}
+
+	log.Lvl1("Printing stuff.... (1)")
+	s.printWaitQueue()
+	s.printIdMap()
+
 
 	// If the nodes is already participating we do not need to restart
 	if nodeAlreadyIn && s.IsPriFiProtocolRunning() {
@@ -115,6 +132,7 @@ func (s *ServiceState) HandleConnection(msg *network.Packet) {
 // HandleDisconnection receives disconnection requests.
 // It must stop the current PriFi protocol.
 func (s *ServiceState) HandleDisconnection(msg *network.Packet) {
+	addr := msg.ServerIdentity.Address.String()
 	log.Lvl2("Received disconnection request from ", msg.ServerIdentity.Address)
 
 	// If we are not the relay, ignore the message
@@ -123,11 +141,11 @@ func (s *ServiceState) HandleDisconnection(msg *network.Packet) {
 	}
 
 	s.nodesAndIDs.mutex.Lock()
-	id, ok := s.nodesAndIDs.identitiesMap[msg.ServerIdentity.Address]
+	id, ok := s.nodesAndIDs.identitiesMap[addr]
 	s.nodesAndIDs.mutex.Unlock()
 
 	if !ok {
-		log.Info("Ignoring disconnection from unknown node:", msg.ServerIdentity.Address)
+		log.Info("Ignoring disconnection from unknown node:", addr)
 		return
 	}
 
@@ -137,9 +155,9 @@ func (s *ServiceState) HandleDisconnection(msg *network.Packet) {
 	// Remove node to the waiting queue
 	switch id.Role {
 	case protocols.Client:
-		delete(s.waitQueue.clients, msg.ServerIdentity)
+		delete(s.waitQueue.clients, addr)
 	case protocols.Trustee:
-		delete(s.waitQueue.trustees, msg.ServerIdentity)
+		delete(s.waitQueue.trustees, addr)
 	default:
 		log.Info("Ignoring disconnection request from node with invalid role.")
 	}
@@ -183,7 +201,7 @@ func (s *ServiceState) autoConnect() {
 // handleTimeout is a callback that should be called on the relay
 // when a round times out. It tries to restart PriFi with the nodes
 // that sent their ciphertext in time.
-func (s *ServiceState) handleTimeout(lateClients []*network.ServerIdentity, lateTrustees []*network.ServerIdentity) {
+func (s *ServiceState) handleTimeout(lateClients []string, lateTrustees []string) {
 	s.waitQueue.mutex.Lock()
 	defer s.waitQueue.mutex.Unlock()
 
@@ -218,14 +236,18 @@ func (s *ServiceState) startPriFiCommunicateProtocol() {
 	participants := make([]*network.ServerIdentity, len(s.waitQueue.trustees)+len(s.waitQueue.clients)+1)
 	participants[0] = s.nodesAndIDs.relayIdentity
 	i := 1
-	for k := range s.waitQueue.clients {
-		participants[i] = k
+	for _, v := range s.waitQueue.clients {
+		participants[i] = v.Address
 		i++
 	}
-	for k := range s.waitQueue.trustees {
-		participants[i] = k
+	for _, v := range s.waitQueue.trustees {
+		participants[i] = v.Address
 		i++
 	}
+
+	log.Lvl1("Printing stuff....")
+	s.printWaitQueue()
+	s.printIdMap()
 
 	roster := sda.NewRoster(participants)
 
@@ -272,11 +294,30 @@ func (s *ServiceState) printWaitQueue() {
 	log.Info("Current state of the wait queue:")
 
 	log.Info("Clients:")
-	for k := range s.waitQueue.clients {
-		log.Info(k.Address)
+	for k, v := range s.waitQueue.clients {
+		log.Info(k, "->", v)
 	}
 	log.Info("Trustees:")
-	for k := range s.waitQueue.trustees {
-		log.Info(k.Address)
+	for k, v := range s.waitQueue.trustees {
+		log.Info(k, "->", v)
+	}
+}
+
+func (s *ServiceState) printIdMap() {
+	s.nodesAndIDs.mutex.Lock()
+	defer s.nodesAndIDs.mutex.Unlock()
+
+	log.Info("Current state of the identity map:")
+
+	for k,v := range s.nodesAndIDs.identitiesMap {
+		switch v.Role{
+
+		case protocols.Relay:
+			log.Info(k, " -> Relay ", v.ID)
+		case protocols.Client:
+			log.Info(k, " -> Client ", v.ID)
+		case protocols.Trustee:
+			log.Info(k, " -> Trustee ", v.ID)
+		}
 	}
 }

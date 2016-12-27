@@ -51,7 +51,7 @@ type PrifiTomlConfig struct {
 // contains the identity map, a direct link to the relay, and a mutex
 type SDANodesAndIDs struct {
 	mutex             sync.Mutex
-	identitiesMap     map[network.Address]prifi_protocol.PriFiIdentity
+	identitiesMap     map[string]prifi_protocol.PriFiIdentity
 	relayIdentity     *network.ServerIdentity
 	group             *config.Group
 	nextFreeClientID  int
@@ -95,15 +95,6 @@ type Storage struct {
 // remain in some weird state)
 func (s *ServiceState) NetworkErrorHappened(e error) {
 
-	//we clear the map
-	s.nodesAndIDs.mutex.Lock()
-	s.nodesAndIDs.identitiesMap = make(map[network.Address]prifi_protocol.PriFiIdentity)
-	s.nodesAndIDs.identitiesMap[s.nodesAndIDs.relayIdentity.Address] = prifi_protocol.PriFiIdentity{
-		Role: prifi_protocol.Relay,
-		ID:   0,
-	}
-	s.nodesAndIDs.mutex.Unlock()
-
 	if s.IsPriFiProtocolRunning() {
 
 		log.Lvl3("A network error occurred, killing the PriFi protocol.")
@@ -138,8 +129,8 @@ func (s *ServiceState) StartRelay(group *config.Group) error {
 	s.role = prifi_protocol.Relay
 	s.readGroup(group)
 	s.waitQueue = &waitQueue{
-		clients:  make(map[*network.ServerIdentity]bool),
-		trustees: make(map[*network.ServerIdentity]bool),
+		clients:  make(map[string]*WaitQueueEntry),
+		trustees: make(map[string]*WaitQueueEntry),
 	}
 
 	socksServerConfig = &prifi_protocol.SOCKSConfig{
@@ -227,11 +218,12 @@ func (s *ServiceState) setConfigToPriFiProtocol(wrapper *prifi_protocol.PriFiSDA
 
 	//deep-clone the identityMap
 	s.nodesAndIDs.mutex.Lock()
-	idMapCopy := make(map[network.Address]prifi_protocol.PriFiIdentity)
+	idMapCopy := make(map[string]prifi_protocol.PriFiIdentity)
 	for k, v := range s.nodesAndIDs.identitiesMap {
 		idMapCopy[k] = prifi_protocol.PriFiIdentity{
 			ID:   v.ID,
 			Role: v.Role,
+			Address: v.Address,
 		}
 	}
 	s.nodesAndIDs.mutex.Unlock()
@@ -333,8 +325,8 @@ func newService(c *sda.Context, path string) sda.Service {
 // mapIdentities reads the group configuration to assign PriFi roles
 // to server addresses and returns them with the server
 // identity of the relay.
-func mapIdentities(group *config.Group) (map[network.Address]prifi_protocol.PriFiIdentity, network.ServerIdentity) {
-	m := make(map[network.Address]prifi_protocol.PriFiIdentity)
+func mapIdentities(group *config.Group) (map[string]prifi_protocol.PriFiIdentity, network.ServerIdentity) {
+	m := make(map[string]prifi_protocol.PriFiIdentity)
 	var relay network.ServerIdentity
 
 	// Read the description of the nodes in the config file to assign them PriFi roles.
@@ -358,7 +350,7 @@ func mapIdentities(group *config.Group) (map[network.Address]prifi_protocol.PriF
 		}
 
 		if id != nil {
-			m[si.Address] = *id
+			m[si.Address.String()] = *id
 			if id.Role == prifi_protocol.Relay {
 				relay = *si
 			}

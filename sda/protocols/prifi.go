@@ -37,6 +37,7 @@ const (
 type PriFiIdentity struct {
 	Role PriFiRole
 	ID   int
+	Address network.Address
 }
 
 //SOCKSConfig contains the port, payload, and up/down channels for data
@@ -50,7 +51,7 @@ type SOCKSConfig struct {
 //PriFiSDAWrapperConfig is all the information the SDA-Protocols needs. It contains the network map of identities, our role, and the socks parameters if we are the corresponding role
 type PriFiSDAWrapperConfig struct {
 	prifi_lib.ALL_ALL_PARAMETERS
-	Identities            map[network.Address]PriFiIdentity
+	Identities            map[string]PriFiIdentity
 	Role                  PriFiRole
 	ClientSideSocksConfig *SOCKSConfig
 	RelaySideSocksConfig  *SOCKSConfig
@@ -63,7 +64,7 @@ type PriFiSDAProtocol struct {
 	config        PriFiSDAWrapperConfig
 	role          PriFiRole
 	ms            MessageSender
-	toHandler     func([]*network.ServerIdentity, []*network.ServerIdentity)
+	toHandler     func([]string, []string)
 	ResultChannel chan interface{}
 	// running is a pointer to the service's variable
 	// indicating if the protocol is running. It should
@@ -184,12 +185,12 @@ func (p *PriFiSDAProtocol) SetConfig(config *PriFiSDAWrapperConfig) {
 		p.prifiLibInstance.SetTimeoutHandler(p.handleTimeout)
 
 	case Trustee:
-		id := config.Identities[p.ServerIdentity().Address].ID
+		id := config.Identities[p.ServerIdentity().Address.String()].ID
 		trusteeState := prifi_lib.NewTrusteeState(id, nClients, nTrustees, config.UpCellSize)
 		p.prifiLibInstance = prifi_lib.NewPriFiTrusteeWithState(ms, trusteeState)
 
 	case Client:
-		id := config.Identities[p.ServerIdentity().Address].ID
+		id := config.Identities[p.ServerIdentity().Address.String()].ID
 		clientState := prifi_lib.NewClientState(id,
 			nTrustees,
 			nClients,
@@ -209,13 +210,13 @@ func (p *PriFiSDAProtocol) SetConfig(config *PriFiSDAWrapperConfig) {
 
 // SetTimeoutHandler sets the function that will be called on round timeout
 // if the protocol runs as the relay.
-func (p *PriFiSDAProtocol) SetTimeoutHandler(handler func([]*network.ServerIdentity, []*network.ServerIdentity)) {
+func (p *PriFiSDAProtocol) SetTimeoutHandler(handler func([]string, []string)) {
 	p.toHandler = handler
 }
 
 // buildMessageSender creates a MessageSender struct
 // given a mep between server identities and PriFi identities.
-func (p *PriFiSDAProtocol) buildMessageSender(identities map[network.Address]PriFiIdentity) MessageSender {
+func (p *PriFiSDAProtocol) buildMessageSender(identities map[string]PriFiIdentity) MessageSender {
 	nodes := p.List() // Has type []*sda.TreeNode
 	trustees := make(map[int]*sda.TreeNode)
 	clients := make(map[int]*sda.TreeNode)
@@ -224,7 +225,7 @@ func (p *PriFiSDAProtocol) buildMessageSender(identities map[network.Address]Pri
 	var relay *sda.TreeNode
 
 	for i := 0; i < len(nodes); i++ {
-		id, ok := identities[nodes[i].ServerIdentity.Address]
+		id, ok := identities[nodes[i].ServerIdentity.Address.String()]
 		if !ok {
 			log.Lvl3("Skipping unknow node with address", nodes[i].ServerIdentity.Address)
 			continue
@@ -251,15 +252,15 @@ func (p *PriFiSDAProtocol) buildMessageSender(identities map[network.Address]Pri
 // handleTimeout translates ids int ServerIdentities
 // and calls the timeout handler.
 func (p *PriFiSDAProtocol) handleTimeout(clientsIds []int, trusteesIds []int) {
-	clients := make([]*network.ServerIdentity, len(clientsIds))
-	trustees := make([]*network.ServerIdentity, len(trusteesIds))
+	clients := make([]string, len(clientsIds))
+	trustees := make([]string, len(trusteesIds))
 
 	for i, v := range clientsIds {
-		clients[i] = p.ms.clients[v].ServerIdentity
+		clients[i] = p.ms.clients[v].ServerIdentity.Address.String()
 	}
 
 	for i, v := range trusteesIds {
-		trustees[i] = p.ms.trustees[v].ServerIdentity
+		trustees[i] = p.ms.trustees[v].ServerIdentity.Address.String()
 	}
 
 	p.toHandler(clients, trustees)
