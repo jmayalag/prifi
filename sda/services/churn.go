@@ -108,11 +108,6 @@ func (s *ServiceState) HandleConnection(msg *network.Packet) {
 		log.Error("Ignoring connection request from node with invalid role.")
 	}
 
-	log.Lvl1("Printing stuff.... (1)")
-	s.printWaitQueue()
-	s.printIdMap()
-
-
 	// If the nodes is already participating we do not need to restart
 	if nodeAlreadyIn && s.IsPriFiProtocolRunning() {
 		return
@@ -244,10 +239,6 @@ func (s *ServiceState) startPriFiCommunicateProtocol() {
 		participants[i] = v.Address
 		i++
 	}
-
-	log.Lvl1("Printing stuff....")
-	s.printWaitQueue()
-	s.printIdMap()
 
 	roster := sda.NewRoster(participants)
 
