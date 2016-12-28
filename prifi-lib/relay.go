@@ -57,6 +57,12 @@ import (
 //The time slept between each round
 const PROCESSING_LOOP_SLEEP_TIME = 0 * time.Second
 
+//The timeout before retransmission. Here of 0, since we have only TCP. to be increase with UDP
+const TIMEOUT_PHASE_1 = 1 * time.Second
+
+//The timeout before kicking a client/trustee
+const TIMEOUT_PHASE_2 = 1 * time.Second
+
 // Number of ciphertexts buffered by trustees
 const TRUSTEE_WINDOW_SIZE = 10
 
@@ -125,17 +131,17 @@ type BufferedCipher struct {
 // To avoid deadlocks, make sure to ALWAYS use the locks in the order they appear in the lockPool (this means an unlock and a re-lock of a variable is sometimes required in places where it seems redundant to unlock that variable)
 // DO NOT rearrange these locks, NEW locks should be appended to the lockPool
 type lockPool struct {
-	round         sync.RWMutex
-	coder         sync.RWMutex
-	trusteeBuffer sync.RWMutex
-	clientBuffer  sync.RWMutex
-	cipherTracker sync.RWMutex
-	clients       sync.RWMutex
-	shuffle       sync.RWMutex
-	state         sync.RWMutex
-	nTrusteePK    sync.RWMutex
-	trustees      sync.RWMutex
-	expData       sync.RWMutex
+	round         sync.Mutex
+	coder         sync.Mutex
+	trusteeBuffer sync.Mutex
+	clientBuffer  sync.Mutex
+	cipherTracker sync.Mutex
+	clients       sync.Mutex
+	shuffle       sync.Mutex
+	state         sync.Mutex
+	nTrusteePK    sync.Mutex
+	trustees      sync.Mutex
+	expData       sync.Mutex
 
 	// add new locks here
 }
@@ -872,7 +878,9 @@ func (p *PriFiLibInstance) Received_CLI_REL_TELL_PK_AND_EPH_PK(msg CLI_REL_TELL_
 
 		// send to the 1st trustee
 		toSend := &REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE{pks, ephPks, G}
-		time.Sleep(time.Second * 2)
+
+		time.Sleep(time.Second * 2) //TODO : this is done because otherwise we have concurrency issues... see the robustness ? do you feel it ?
+
 		err := p.messageSender.SendToTrustee(0, toSend)
 		if err != nil {
 			e := "Could not send REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE (0-th iteration), error is " + err.Error()
@@ -1077,7 +1085,7 @@ online if they didn't answer by that time.
 */
 func (p *PriFiLibInstance) checkIfRoundHasEndedAfterTimeOut_Phase1(roundID int32) {
 
-	time.Sleep(5 * time.Second)
+	time.Sleep(TIMEOUT_PHASE_1)
 
 	p.relayState.locks.round.Lock()
 
@@ -1156,7 +1164,7 @@ This second timeout happens after a longer delay. Clients and trustees will be c
 */
 func (p *PriFiLibInstance) checkIfRoundHasEndedAfterTimeOut_Phase2(roundID int32) {
 
-	time.Sleep(5 * time.Second)
+	time.Sleep(TIMEOUT_PHASE_2)
 
 	p.relayState.locks.round.Lock()
 	if p.relayState.currentDCNetRound.currentRound != roundID {

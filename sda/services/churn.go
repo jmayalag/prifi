@@ -3,6 +3,7 @@ package services
 // This file contains the logic to handle churn.
 
 import (
+	"errors"
 	"sync"
 	"time"
 
@@ -11,6 +12,9 @@ import (
 	"github.com/dedis/cothority/sda"
 	"github.com/lbarman/prifi/sda/protocols"
 )
+
+//Delay before each host re-tried to connect
+const DELAY_BEFORE_KEEPALIVE = 5 * time.Second
 
 func init() {
 	network.RegisterPacketType(StopProtocol{})
@@ -31,6 +35,8 @@ type waitQueue struct {
 	trustees map[string]*WaitQueueEntry
 	clients  map[string]*WaitQueueEntry
 }
+
+// Packet send by relay when some node disconnected
 type StopProtocol struct{}
 
 // ConnectionRequest messages are sent to the relay
@@ -41,9 +47,10 @@ type ConnectionRequest struct{}
 // by nodes that want to leave the protocol.
 type DisconnectionRequest struct{}
 
+// Packet send by relay when some node disconnected
 func (s *ServiceState) HandleStop(msg *network.Packet) {
 
-	log.Error("Received a Handle Stop")
+	log.Fatal(errors.New("Received a Handle Stop"))
 
 }
 
@@ -194,7 +201,7 @@ func (s *ServiceState) sendConnectionRequest() {
 func (s *ServiceState) autoConnect() {
 	s.sendConnectionRequest()
 
-	tick := time.Tick(1 * time.Second)
+	tick := time.Tick(DELAY_BEFORE_KEEPALIVE)
 	for range tick {
 		if !s.IsPriFiProtocolRunning() {
 			s.sendConnectionRequest()
