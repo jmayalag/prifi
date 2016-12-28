@@ -73,7 +73,7 @@ type PriFiSDAProtocol struct {
 
 	//this is the actual "PriFi" (DC-net) protocol/library, defined in prifi-lib/prifi.go
 	prifiLibInstance *prifi_lib.PriFiLibInstance
-	HasStopped       bool //when set to true, the protocol has been stopped by PriFi-lib and should be destroyed from SDA
+	HasStopped bool //when set to true, the protocol has been stopped by PriFi-lib and should be destro
 }
 
 //Start implements the sda.Protocol interface.
@@ -100,7 +100,9 @@ func (p *PriFiSDAProtocol) Stop() {
 	case Client:
 		p.prifiLibInstance.Received_ALL_CLI_SHUTDOWN(prifi_lib.ALL_ALL_SHUTDOWN{})
 	}
+
 	p.HasStopped = true
+
 	p.Shutdown()
 	//TODO : sureley we're missing some allocated resources here...
 }

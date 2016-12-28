@@ -20,7 +20,7 @@ func init() {
 //A wait queue entry is en identity(=address), and a flag IsWaiting (if false, we know about this host, but he didn't try to connect)
 type WaitQueueEntry struct {
 	IsWaiting bool
-	Address   *network.ServerIdentity
+	Identity  *network.ServerIdentity
 }
 
 // waitQueue contains the list of nodes that are currently willing
@@ -30,6 +30,7 @@ type waitQueue struct {
 	trustees map[string]*WaitQueueEntry
 	clients  map[string]*WaitQueueEntry
 }
+type StopProtocol struct{}
 
 // ConnectionRequest messages are sent to the relay
 // by nodes that want to join the protocol.
@@ -38,6 +39,13 @@ type ConnectionRequest struct{}
 // DisconnectionRequest messages are sent to the relay
 // by nodes that want to leave the protocol.
 type DisconnectionRequest struct{}
+
+
+func (s *ServiceState) HandleStop(msg *network.Packet) {
+
+	log.Error("Received a Handle Stop")
+
+}
 
 // HandleConnection receives connection requests from other nodes.
 // It decides when another PriFi protocol should be started.
@@ -78,7 +86,7 @@ func (s *ServiceState) HandleConnection(msg *network.Packet) {
 		if _, ok := s.waitQueue.clients[addr]; !ok {
 			s.waitQueue.clients[addr] = &WaitQueueEntry{
 				IsWaiting: true,
-				Address:   msg.ServerIdentity,
+				Identity:   msg.ServerIdentity,
 			}
 		} else {
 			nodeAlreadyIn = true
@@ -100,7 +108,7 @@ func (s *ServiceState) HandleConnection(msg *network.Packet) {
 		if _, ok := s.waitQueue.trustees[addr]; !ok {
 			s.waitQueue.trustees[addr] = &WaitQueueEntry{
 				IsWaiting: true,
-				Address:   msg.ServerIdentity,
+				Identity:   msg.ServerIdentity,
 			}
 		} else {
 			nodeAlreadyIn = true
@@ -186,7 +194,7 @@ func (s *ServiceState) sendConnectionRequest() {
 func (s *ServiceState) autoConnect() {
 	s.sendConnectionRequest()
 
-	tick := time.Tick(10 * time.Second)
+	tick := time.Tick(1 * time.Second)
 	for range tick {
 		if !s.IsPriFiProtocolRunning() {
 			s.sendConnectionRequest()
@@ -233,11 +241,11 @@ func (s *ServiceState) startPriFiCommunicateProtocol() {
 	participants[0] = s.nodesAndIDs.relayIdentity
 	i := 1
 	for _, v := range s.waitQueue.clients {
-		participants[i] = v.Address
+		participants[i] = v.Identity
 		i++
 	}
 	for _, v := range s.waitQueue.trustees {
-		participants[i] = v.Address
+		participants[i] = v.Identity
 		i++
 	}
 

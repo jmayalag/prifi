@@ -100,7 +100,7 @@ func (s *ServiceState) NetworkErrorHappened(e error) {
 
 	if s.IsPriFiProtocolRunning() {
 
-		log.Lvl3("A network error occurred, killing the PriFi protocol.")
+		log.Lvl2("A network error occurred, killing the PriFi protocol.")
 
 		if s.priFiSDAProtocol != nil {
 			s.priFiSDAProtocol.Stop()
@@ -109,14 +109,18 @@ func (s *ServiceState) NetworkErrorHappened(e error) {
 		return
 	}
 
-	s.waitQueue.mutex.Lock()
-	for k := range s.waitQueue.clients {
-		s.waitQueue.clients[k].IsWaiting = false
+	if s.role == prifi_protocol.Relay {
+		s.waitQueue.mutex.Lock()
+		for k, v := range s.waitQueue.clients {
+			log.ErrFatal(s.SendRaw(v.Identity, &StopProtocol{}))
+			s.waitQueue.clients[k].IsWaiting = false
+		}
+		for k, v := range s.waitQueue.trustees {
+			s.SendRaw(v.Identity, &StopProtocol{})
+			s.waitQueue.trustees[k].IsWaiting = false
+		}
+		s.waitQueue.mutex.Unlock()
 	}
-	for k := range s.waitQueue.trustees {
-		s.waitQueue.trustees[k].IsWaiting = false
-	}
-	s.waitQueue.mutex.Unlock()
 
 	log.Lvl3("A network error occurred, would kill PriFi protocol, but it's not running.")
 }
@@ -325,6 +329,7 @@ func newService(c *sda.Context, path string) sda.Service {
 		path:             path,
 	}
 
+	c.RegisterProcessorFunc(network.TypeFromData(StopProtocol{}), s.HandleStop)
 	c.RegisterProcessorFunc(network.TypeFromData(ConnectionRequest{}), s.HandleConnection)
 	c.RegisterProcessorFunc(network.TypeFromData(DisconnectionRequest{}), s.HandleDisconnection)
 
