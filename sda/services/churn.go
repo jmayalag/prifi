@@ -13,6 +13,7 @@ import (
 )
 
 func init() {
+	network.RegisterPacketType(StopProtocol{})
 	network.RegisterPacketType(ConnectionRequest{})
 	network.RegisterPacketType(DisconnectionRequest{})
 }
@@ -39,7 +40,6 @@ type ConnectionRequest struct{}
 // DisconnectionRequest messages are sent to the relay
 // by nodes that want to leave the protocol.
 type DisconnectionRequest struct{}
-
 
 func (s *ServiceState) HandleStop(msg *network.Packet) {
 
@@ -86,7 +86,7 @@ func (s *ServiceState) HandleConnection(msg *network.Packet) {
 		if _, ok := s.waitQueue.clients[addr]; !ok {
 			s.waitQueue.clients[addr] = &WaitQueueEntry{
 				IsWaiting: true,
-				Identity:   msg.ServerIdentity,
+				Identity:  msg.ServerIdentity,
 			}
 		} else {
 			nodeAlreadyIn = true
@@ -108,7 +108,7 @@ func (s *ServiceState) HandleConnection(msg *network.Packet) {
 		if _, ok := s.waitQueue.trustees[addr]; !ok {
 			s.waitQueue.trustees[addr] = &WaitQueueEntry{
 				IsWaiting: true,
-				Identity:   msg.ServerIdentity,
+				Identity:  msg.ServerIdentity,
 			}
 		} else {
 			nodeAlreadyIn = true
@@ -198,6 +198,8 @@ func (s *ServiceState) autoConnect() {
 	for range tick {
 		if !s.IsPriFiProtocolRunning() {
 			s.sendConnectionRequest()
+		} else {
+			log.Lvl1("Prifi protocol running, not sending")
 		}
 	}
 }

@@ -98,6 +98,21 @@ type Storage struct {
 // remain in some weird state)
 func (s *ServiceState) NetworkErrorHappened(e error) {
 
+	log.Lvl2("A network error occurred, warning other clients...")
+
+	if s.role == prifi_protocol.Relay {
+		s.waitQueue.mutex.Lock()
+		for k, v := range s.waitQueue.clients {
+			s.SendRaw(v.Identity, &StopProtocol{})
+			s.waitQueue.clients[k].IsWaiting = false
+		}
+		for k, v := range s.waitQueue.trustees {
+			s.SendRaw(v.Identity, &StopProtocol{})
+			s.waitQueue.trustees[k].IsWaiting = false
+		}
+		s.waitQueue.mutex.Unlock()
+	}
+
 	if s.IsPriFiProtocolRunning() {
 
 		log.Lvl2("A network error occurred, killing the PriFi protocol.")
@@ -106,20 +121,8 @@ func (s *ServiceState) NetworkErrorHappened(e error) {
 			s.priFiSDAProtocol.Stop()
 		}
 		s.priFiSDAProtocol = nil
-		return
-	}
 
-	if s.role == prifi_protocol.Relay {
-		s.waitQueue.mutex.Lock()
-		for k, v := range s.waitQueue.clients {
-			log.ErrFatal(s.SendRaw(v.Identity, &StopProtocol{}))
-			s.waitQueue.clients[k].IsWaiting = false
-		}
-		for k, v := range s.waitQueue.trustees {
-			s.SendRaw(v.Identity, &StopProtocol{})
-			s.waitQueue.trustees[k].IsWaiting = false
-		}
-		s.waitQueue.mutex.Unlock()
+		return
 	}
 
 	log.Lvl3("A network error occurred, would kill PriFi protocol, but it's not running.")
@@ -323,7 +326,7 @@ func (s *ServiceState) tryLoad() error {
 // configuration, if desired. As we don't know when the service will exit,
 // we need to save the configuration on our own from time to time.
 func newService(c *sda.Context, path string) sda.Service {
-	log.Lvl4("Calling newService")
+	log.LLvl4("Calling newService")
 	s := &ServiceState{
 		ServiceProcessor: sda.NewServiceProcessor(c),
 		path:             path,

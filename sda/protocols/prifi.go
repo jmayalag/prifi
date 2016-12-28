@@ -73,7 +73,7 @@ type PriFiSDAProtocol struct {
 
 	//this is the actual "PriFi" (DC-net) protocol/library, defined in prifi-lib/prifi.go
 	prifiLibInstance *prifi_lib.PriFiLibInstance
-	HasStopped bool //when set to true, the protocol has been stopped by PriFi-lib and should be destro
+	HasStopped       bool //when set to true, the protocol has been stopped by PriFi-lib and should be destro
 }
 
 //Start implements the sda.Protocol interface.
