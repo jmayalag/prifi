@@ -402,9 +402,7 @@ func (p *PriFiLibInstance) Received_CLI_REL_UPSTREAM_DATA(msg CLI_REL_UPSTREAM_D
 				p.sendDownstreamData()
 			}
 
-		} else {
 		}
-
 	}
 
 	return nil
@@ -445,7 +443,6 @@ func (p *PriFiLibInstance) Received_TRU_REL_DC_CIPHER(msg TRU_REL_DC_CIPHER) err
 				log.Lvl3("Relay : Gonna send, non-acked packets is", p.relayState.numberOfNonAckedDownstreamPackets, "(window is", p.relayState.WindowSize, ")")
 				p.sendDownstreamData()
 			}
-		} else {
 		}
 
 	} else {
@@ -499,7 +496,6 @@ func (p *PriFiLibInstance) finalizeUpstreamData() error {
 	if len(upstreamPlaintext) >= 2 {
 		pattern := int(binary.BigEndian.Uint16(upstreamPlaintext[0:2]))
 		if pattern == 43690 { // 1010101010101010
-			log.Lvl3("Relay : noticed a latency-test message, sending answer...")
 			// then, we simply have to send it down
 			p.relayState.PriorityDataForClients <- upstreamPlaintext
 		}
@@ -619,7 +615,7 @@ func (p *PriFiLibInstance) roundFinished() error {
 	p.relayState.numberOfNonAckedDownstreamPackets--
 
 	timeSpent := time.Since(p.relayState.currentDCNetRound.startTime)
-	log.Lvl4("Relay finished round "+strconv.Itoa(int(p.relayState.currentDCNetRound.currentRound))+" (after", timeSpent, ").")
+	log.Lvl2("Relay finished round "+strconv.Itoa(int(p.relayState.currentDCNetRound.currentRound))+" (after", timeSpent, ").")
 	p.relayState.statistics.Report()
 
 	//prepare for the next round

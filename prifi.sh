@@ -1,7 +1,7 @@
 #variables
 cothorityBranchRequired="test_ism_2_699"
 colors="true"
-dbg_lvl=3
+dbg_lvl=1
 identity_file="identity.toml"
 group_file="group.toml"
 prifi_file="prifi.toml"
@@ -255,22 +255,22 @@ case $1 in
 
 		sleep 3
 
-		echo -n "Starting client 0...	"
+		echo -n "Starting client 0... (SOCKS on :8081)"
 		"$thisScript" client 0 8081 > client0.log 2>&1 &
 		CLIENT0PID=$!
 		echo -e "$okMsg"
 
 		sleep 3
 
-		echo -n "Starting client 1...	"
+		echo -n "Starting client 1...(SOCKS on :8082)"
 		"$thisScript" client 1 8082 > client1.log 2>&1 &
 		CLIENT1PID=$!
 		echo -e "$okMsg"
 
 		sleep 3
 
-		echo -n "Starting client 2...	"
-		"$thisScript" client 2 8082 > client2.log 2>&1 &
+		echo -n "Starting client 2...(SOCKS on :8083)"
+		"$thisScript" client 2 8083 > client2.log 2>&1 &
 		CLIENT2PID=$!
 		echo -e "$okMsg"
 

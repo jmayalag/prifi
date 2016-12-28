@@ -38,6 +38,7 @@ import (
 	"github.com/lbarman/prifi/prifi-lib/dcnet"
 	prifilog "github.com/lbarman/prifi/prifi-lib/log"
 
+	"github.com/dedis/crypto/random"
 	socks "github.com/lbarman/prifi/prifi-socks"
 )
 
@@ -287,6 +288,7 @@ func (p *PriFiLibInstance) ProcessDownStreamData(msg REL_CLI_DOWNSTREAM_DATA) er
 		}
 		//test if it is the answer from our ping (for latency test)
 		if p.clientState.LatencyTest && len(msg.Data) > 2 {
+
 			pattern := int(binary.BigEndian.Uint16(msg.Data[0:2]))
 			if pattern == 43690 {
 				//1010101010101010
@@ -301,6 +303,7 @@ func (p *PriFiLibInstance) ProcessDownStreamData(msg REL_CLI_DOWNSTREAM_DATA) er
 			}
 		}
 	}
+
 	//if the flag "Resync" is on, we cannot write data up, but need to resend the keys instead
 	if msg.FlagResync == true {
 
@@ -362,7 +365,6 @@ func (p *PriFiLibInstance) SendUpstreamData() error {
 			}
 		}
 	}
-
 	//produce the next upstream cell
 	upstreamCell := p.clientState.CellCoder.ClientEncode(upstreamCellContent, p.clientState.PayloadLength, p.clientState.MessageHistory)
 
@@ -567,11 +569,10 @@ func (p *PriFiLibInstance) Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(msg RE
 func (clientState *ClientState) generateEphemeralKeys() {
 
 	//prepare the crypto parameters
-	rand := config.CryptoSuite.Cipher([]byte(clientState.Name + "ephemeral"))
 	base := config.CryptoSuite.Point().Base()
 
 	//generate ephemeral keys
-	Epriv := config.CryptoSuite.Scalar().Pick(rand)
+	Epriv := config.CryptoSuite.Scalar().Pick(random.Stream)
 	Epub := config.CryptoSuite.Point().Mul(base, Epriv)
 
 	clientState.EphemeralPublicKey = Epub

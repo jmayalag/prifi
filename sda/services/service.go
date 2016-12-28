@@ -113,6 +113,12 @@ func (s *ServiceState) NetworkErrorHappened(e error) {
 		s.waitQueue.mutex.Unlock()
 	}
 
+	s.KillPriFiProtocol()
+}
+
+// If the protocol is running, destroys it (locally only). IsPriFiProtocolRunning returns false after that.
+func (s *ServiceState) KillPriFiProtocol() {
+
 	if s.IsPriFiProtocolRunning() {
 
 		log.Lvl2("A network error occurred, killing the PriFi protocol.")
@@ -181,6 +187,7 @@ func (s *ServiceState) StartClient(group *config.Group) error {
 		DownstreamChannel: make(chan []byte),
 	}
 
+	log.Lvl1("Starting SOCKS server on port", socksClientConfig.Port)
 	go prifi_socks.StartSocksServer(socksClientConfig.Port, socksClientConfig.PayloadLength, socksClientConfig.UpstreamChannel, socksClientConfig.DownstreamChannel, s.prifiTomlConfig.DoLatencyTests)
 
 	go s.autoConnect()
@@ -255,10 +262,6 @@ func (s *ServiceState) setConfigToPriFiProtocol(wrapper *prifi_protocol.PriFiSDA
 		RelaySideSocksConfig:  socksServerConfig,
 	}
 
-	log.Error("Setting config to PriFi-SDA-Protocol")
-	log.Lvlf1("%+v\n", configMsg)
-	log.Lvlf1("%+v\n", configMsg.Identities)
-
 	wrapper.SetConfig(configMsg)
 
 	//when PriFi-protocol (via PriFi-lib) detects a slow client, call "handleTimeout"
@@ -274,8 +277,6 @@ func (s *ServiceState) setConfigToPriFiProtocol(wrapper *prifi_protocol.PriFiSDA
 // instantiation of the protocol, use CreateProtocolService, and you can
 // give some extra-configuration to your protocol in here.
 func (s *ServiceState) NewProtocol(tn *sda.TreeNodeInstance, conf *sda.GenericConfig) (sda.ProtocolInstance, error) {
-
-	log.Lvl1("New protocol called...")
 
 	pi, err := prifi_protocol.NewPriFiSDAWrapperProtocol(tn)
 	if err != nil {

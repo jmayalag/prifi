@@ -3,7 +3,6 @@ package services
 // This file contains the logic to handle churn.
 
 import (
-	"errors"
 	"sync"
 	"time"
 
@@ -50,7 +49,9 @@ type DisconnectionRequest struct{}
 // Packet send by relay when some node disconnected
 func (s *ServiceState) HandleStop(msg *network.Packet) {
 
-	log.Fatal(errors.New("Received a Handle Stop"))
+	log.Lvl1("Received a Handle Stop")
+
+	s.KillPriFiProtocol()
 
 }
 
@@ -96,6 +97,7 @@ func (s *ServiceState) HandleConnection(msg *network.Packet) {
 				Identity:  msg.ServerIdentity,
 			}
 		} else {
+			s.waitQueue.clients[addr].IsWaiting = true
 			nodeAlreadyIn = true
 		}
 	case protocols.Trustee:
@@ -118,6 +120,7 @@ func (s *ServiceState) HandleConnection(msg *network.Packet) {
 				Identity:  msg.ServerIdentity,
 			}
 		} else {
+			s.waitQueue.trustees[addr].IsWaiting = true
 			nodeAlreadyIn = true
 		}
 	default:
@@ -130,13 +133,27 @@ func (s *ServiceState) HandleConnection(msg *network.Packet) {
 	}
 
 	// Start (or restart) PriFi if there are enough participants
-	if len(s.waitQueue.clients) >= 2 && len(s.waitQueue.trustees) >= 1 {
+	nWaitingClients := 0
+	for _, v := range s.waitQueue.clients {
+		if v.IsWaiting {
+			nWaitingClients++
+		}
+	}
+	nWaitingTrustees := 0
+	for _, v := range s.waitQueue.trustees {
+		if v.IsWaiting {
+			nWaitingTrustees++
+		}
+	}
+	if nWaitingClients >= 2 && nWaitingTrustees >= 1 {
+		log.Lvl1("We meet the parameters, starting ...")
 		if s.IsPriFiProtocolRunning() {
+			log.Lvl1("We meet the parameters and not running ,starting...")
 			s.stopPriFiCommunicateProtocol()
 		}
 		s.startPriFiCommunicateProtocol()
 	} else {
-		log.Lvl1("Too few participants (", len(s.waitQueue.clients), "clients and", len(s.waitQueue.trustees), "trustees), waiting...")
+		log.Lvl1("Too few participants (", nWaitingClients, "clients and", nWaitingTrustees, "trustees), waiting...")
 	}
 }
 
@@ -205,8 +222,6 @@ func (s *ServiceState) autoConnect() {
 	for range tick {
 		if !s.IsPriFiProtocolRunning() {
 			s.sendConnectionRequest()
-		} else {
-			log.Lvl1("Prifi protocol running, not sending")
 		}
 	}
 }
@@ -288,15 +303,7 @@ func (s *ServiceState) stopPriFiCommunicateProtocol() {
 		return
 	}
 
-	if !s.IsPriFiProtocolRunning() {
-		log.Error("Trying to stop PriFi protocol but it has not started.")
-		return
-	}
-
-	if s.priFiSDAProtocol != nil {
-		s.priFiSDAProtocol.Stop()
-	}
-	s.priFiSDAProtocol = nil
+	s.KillPriFiProtocol()
 }
 
 func (s *ServiceState) printWaitQueue() {

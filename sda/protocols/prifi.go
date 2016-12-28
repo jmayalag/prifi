@@ -137,9 +137,6 @@ func (p *PriFiSDAProtocol) SetConfig(config *PriFiSDAWrapperConfig) {
 	p.config = *config
 	p.role = config.Role
 
-	log.Lvl1("Printing identities")
-	log.Lvlf1("%+v\n", config.Identities)
-
 	ms := p.buildMessageSender(config.Identities)
 	p.ms = ms
 
