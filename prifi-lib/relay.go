@@ -240,7 +240,6 @@ When we receive this message, we should warn other protocol participants and cle
 func (p *PriFiLibInstance) Received_ALL_REL_SHUTDOWN(msg ALL_ALL_SHUTDOWN) error {
 	log.Lvl1("Relay : Received a SHUTDOWN message. ")
 
-	p.relayState.locks.state.Lock()
 	p.relayState.currentState = RELAY_STATE_SHUTDOWN
 	p.relayState.locks.state.Unlock()
 
@@ -283,7 +282,6 @@ It initializes the relay with the parameters contained in the message.
 */
 func (p *PriFiLibInstance) Received_ALL_REL_PARAMETERS(msg ALL_ALL_PARAMETERS) error {
 
-	p.relayState.locks.state.Lock()
 
 	// This can only happens in the state RELAY_STATE_BEFORE_INIT
 	if p.relayState.currentState != RELAY_STATE_BEFORE_INIT && !msg.ForceParams {
@@ -303,7 +301,6 @@ func (p *PriFiLibInstance) Received_ALL_REL_PARAMETERS(msg ALL_ALL_PARAMETERS) e
 	log.Lvlf5("%+v\n", p.relayState)
 	log.Lvl1("Relay has been initialized by message. ")
 
-	p.relayState.locks.state.Lock()
 	// Broadcast those parameters to the other nodes, then tell the trustees which ID they are.
 	if msg.StartNow {
 		p.relayState.currentState = RELAY_STATE_COLLECTING_TRUSTEES_PKS
@@ -358,7 +355,6 @@ If we finished a round (we had collected all data, and called DecodeCell()), we 
 Either we send something from the SOCKS/VPN buffer, or we answer the latency-test message if we received any, or we send 1 bit.
 */
 func (p *PriFiLibInstance) Received_CLI_REL_UPSTREAM_DATA(msg CLI_REL_UPSTREAM_DATA) error {
-	p.relayState.locks.state.Lock()
 	// This can only happens in the state RELAY_STATE_COMMUNICATING
 	if p.relayState.currentState != RELAY_STATE_COMMUNICATING {
 		e := "Relay : Received a CLI_REL_UPSTREAM_DATA, but not in state RELAY_STATE_COMMUNICATING, in state " + relayStateStr(p.relayState.currentState)
@@ -371,7 +367,6 @@ func (p *PriFiLibInstance) Received_CLI_REL_UPSTREAM_DATA(msg CLI_REL_UPSTREAM_D
 
 	}
 
-	p.relayState.locks.round.Lock()
 
 	// if this is not the message destinated for this round, discard it ! (we are in lock-step)
 	if p.relayState.currentDCNetRound.currentRound != msg.RoundID {
@@ -379,7 +374,6 @@ func (p *PriFiLibInstance) Received_CLI_REL_UPSTREAM_DATA(msg CLI_REL_UPSTREAM_D
 		e := "Relay : Client sent DC-net cipher for round " + strconv.Itoa(int(msg.RoundID)) + " but current round is " + strconv.Itoa(int(p.relayState.currentDCNetRound.currentRound))
 		log.Lvl3(e)
 
-		p.relayState.locks.clientBuffer.Lock()
 		// else, we need to buffer this message somewhere
 		if _, ok := p.relayState.bufferedClientCiphers[msg.RoundID]; ok {
 			// the roundId already exists, simply add data
@@ -396,7 +390,6 @@ func (p *PriFiLibInstance) Received_CLI_REL_UPSTREAM_DATA(msg CLI_REL_UPSTREAM_D
 
 	} else {
 		// else, if this is the message we need for this round
-		p.relayState.locks.coder.Lock()
 
 		p.relayState.CellCoder.DecodeClient(msg.Data)
 		p.relayState.currentDCNetRound.clientCipherCount++
@@ -440,7 +433,6 @@ If for a future round we need to Buffer it.
 func (p *PriFiLibInstance) Received_TRU_REL_DC_CIPHER(msg TRU_REL_DC_CIPHER) error {
 	// TODO : given the number of already-buffered Ciphers (per trustee), we need to tell him to slow down
 
-	p.relayState.locks.state.Lock()
 	// this can only happens in the state RELAY_STATE_COMMUNICATING
 	if p.relayState.currentState != RELAY_STATE_COMMUNICATING && p.relayState.currentState != RELAY_STATE_COLLECTING_SHUFFLE_SIGNATURES {
 		e := "Relay : Received a TRU_REL_DC_CIPHER, but not in state RELAY_STATE_COMMUNICATING, in state " + relayStateStr(p.relayState.currentState)
@@ -450,14 +442,12 @@ func (p *PriFiLibInstance) Received_TRU_REL_DC_CIPHER(msg TRU_REL_DC_CIPHER) err
 	p.relayState.locks.state.Unlock()
 	log.Lvl3("Relay : received TRU_REL_DC_CIPHER for round " + strconv.Itoa(int(msg.RoundID)) + " from trustee " + strconv.Itoa(msg.TrusteeID))
 
-	p.relayState.locks.round.Lock()
 
 	// if this is the message we need for this round
 	if p.relayState.currentDCNetRound.currentRound == msg.RoundID {
 
 		log.Lvl3("Relay collecting cells for round", p.relayState.currentDCNetRound.currentRound, ", ", p.relayState.currentDCNetRound.clientCipherCount, "/", p.relayState.nClients, ", ", p.relayState.currentDCNetRound.trusteeCipherCount, "/", p.relayState.nTrustees)
 
-		p.relayState.locks.coder.Lock()
 
 		p.relayState.CellCoder.DecodeTrustee(msg.Data)
 		p.relayState.currentDCNetRound.trusteeCipherCount++
@@ -484,7 +474,6 @@ func (p *PriFiLibInstance) Received_TRU_REL_DC_CIPHER(msg TRU_REL_DC_CIPHER) err
 
 		defer p.relayState.locks.round.Unlock()
 
-		p.relayState.locks.trusteeBuffer.Lock()
 
 		// else, we need to buffer this message somewhere
 		if _, ok := p.relayState.bufferedTrusteeCiphers[msg.RoundID]; ok {
@@ -500,7 +489,6 @@ func (p *PriFiLibInstance) Received_TRU_REL_DC_CIPHER(msg TRU_REL_DC_CIPHER) err
 		p.relayState.locks.trusteeBuffer.Unlock()
 
 		// Here is the control to regulate the trustees ciphers in case they should stop sending
-		p.relayState.locks.cipherTracker.Lock()
 		p.relayState.trusteeCipherTracker[msg.TrusteeID]++                                        // Increment the currently buffered ciphers for this trustee
 		currentCapacity := TRUSTEE_WINDOW_SIZE - p.relayState.trusteeCipherTracker[msg.TrusteeID] // Get our remaining allowed capacity
 		p.relayState.locks.cipherTracker.Unlock()
@@ -531,7 +519,6 @@ If we use SOCKS/VPN, give them the data.
 func (p *PriFiLibInstance) finalizeUpstreamData() error {
 
 	// we decode the DC-net cell
-	p.relayState.locks.coder.Lock()
 	upstreamPlaintext := p.relayState.CellCoder.DecodeCell()
 	p.relayState.locks.coder.Unlock()
 
@@ -617,7 +604,6 @@ func (p *PriFiLibInstance) sendDownstreamData() error {
 	}
 
 	// TODO : if something went wrong before, this flag should be used to warn the clients that the config has changed
-	p.relayState.locks.round.Lock()
 
 	flagResync := false
 	log.Lvl3("Relay is gonna broadcast messages for round " + strconv.Itoa(int(p.relayState.nextDownStreamRoundToSend)) + ".")
@@ -662,8 +648,6 @@ func (p *PriFiLibInstance) sendDownstreamData() error {
 
 func (p *PriFiLibInstance) roundFinished() error {
 
-	p.relayState.locks.coder.Lock()
-	p.relayState.locks.round.Lock()
 
 	p.relayState.numberOfNonAckedDownstreamPackets--
 
@@ -684,7 +668,6 @@ func (p *PriFiLibInstance) roundFinished() error {
 	if nextRound == int32(p.relayState.ExperimentRoundLimit) {
 		log.Lvl1("Relay : Experiment round limit (", nextRound, ") reached")
 
-		p.relayState.locks.expData.Lock()
 		// this can be set anywhere, anytime before
 		p.relayState.ExperimentResultData = &struct {
 			Data1 string
@@ -702,7 +685,6 @@ func (p *PriFiLibInstance) roundFinished() error {
 		p.Received_ALL_REL_SHUTDOWN(msg)
 	}
 
-	p.relayState.locks.trusteeBuffer.Lock()
 
 	// if we have buffered messages for next round, use them now, so whenever we receive a client message, the trustee's message are counted correctly
 	if _, ok := p.relayState.bufferedTrusteeCiphers[nextRound]; ok {
@@ -716,7 +698,6 @@ func (p *PriFiLibInstance) roundFinished() error {
 			p.relayState.currentDCNetRound.trusteeCipherCount++
 
 			// Here is the control to regulate the trustees ciphers in case they should continue sending
-			p.relayState.locks.cipherTracker.Lock()
 			p.relayState.trusteeCipherTracker[trusteeID]--
 			currentCapacity := TRUSTEE_WINDOW_SIZE - p.relayState.trusteeCipherTracker[trusteeID]
 			p.relayState.locks.cipherTracker.Unlock()
@@ -741,7 +722,6 @@ func (p *PriFiLibInstance) roundFinished() error {
 
 	p.relayState.locks.trusteeBuffer.Unlock()
 
-	p.relayState.locks.clientBuffer.Lock()
 
 	if _, ok := p.relayState.bufferedClientCiphers[nextRound]; ok {
 		for clientID, data := range p.relayState.bufferedClientCiphers[nextRound].Data {
@@ -767,7 +747,6 @@ We do nothing, until we have received one per trustee; Then, we pack them in one
 */
 func (p *PriFiLibInstance) Received_TRU_REL_TELL_PK(msg TRU_REL_TELL_PK) error {
 
-	p.relayState.locks.state.Lock()
 	// this can only happens in the state RELAY_STATE_COLLECTING_TRUSTEES_PKS
 	if p.relayState.currentState != RELAY_STATE_COLLECTING_TRUSTEES_PKS {
 		e := "Relay : Received a TRU_REL_TELL_PK, but not in state RELAY_STATE_COLLECTING_TRUSTEES_PKS, in state " + relayStateStr(p.relayState.currentState)
@@ -778,8 +757,6 @@ func (p *PriFiLibInstance) Received_TRU_REL_TELL_PK(msg TRU_REL_TELL_PK) error {
 	p.relayState.locks.state.Unlock()
 	log.Lvl3("Relay : received TRU_REL_TELL_PK")
 
-	p.relayState.locks.nTrusteePK.Lock()
-	p.relayState.locks.trustees.Lock()
 
 	p.relayState.trustees[msg.TrusteeID] = NodeRepresentation{msg.TrusteeID, true, msg.Pk, msg.Pk}
 	p.relayState.nTrusteesPkCollected++
@@ -809,7 +786,6 @@ func (p *PriFiLibInstance) Received_TRU_REL_TELL_PK(msg TRU_REL_TELL_PK) error {
 			log.Lvl3("Relay : sent REL_CLI_TELL_TRUSTEES_PK (" + strconv.Itoa(i) + "-th client)")
 		}
 
-		p.relayState.locks.state.Lock()
 		p.relayState.currentState = RELAY_STATE_COLLECTING_CLIENT_PKS
 		p.relayState.locks.state.Unlock()
 	} else {
@@ -828,7 +804,6 @@ and send them to the first trustee for it to Neff-Shuffle them.
 */
 func (p *PriFiLibInstance) Received_CLI_REL_TELL_PK_AND_EPH_PK(msg CLI_REL_TELL_PK_AND_EPH_PK) error {
 
-	p.relayState.locks.state.Lock()
 	// this can only happens in the state RELAY_STATE_COLLECTING_CLIENT_PKS
 	if p.relayState.currentState != RELAY_STATE_COLLECTING_CLIENT_PKS {
 		e := "Relay : Received a CLI_REL_TELL_PK_AND_EPH_PK, but not in state RELAY_STATE_COLLECTING_CLIENT_PKS, in state " + relayStateStr(p.relayState.currentState)
@@ -839,7 +814,6 @@ func (p *PriFiLibInstance) Received_CLI_REL_TELL_PK_AND_EPH_PK(msg CLI_REL_TELL_
 	p.relayState.locks.state.Unlock()
 	log.Lvl3("Relay : received CLI_REL_TELL_PK_AND_EPH_PK")
 
-	p.relayState.locks.clients.Lock()
 
 	// collect this client information
 	nextID := len(p.relayState.clients)
@@ -872,7 +846,6 @@ func (p *PriFiLibInstance) Received_CLI_REL_TELL_PK_AND_EPH_PK(msg CLI_REL_TELL_
 		emptyProof_s := make([][]byte, p.relayState.nTrustees)
 		emptySignature_s := make([][]byte, p.relayState.nTrustees)
 
-		p.relayState.locks.shuffle.Lock()
 		p.relayState.currentShuffleTranscript = NeffShuffleState{pks, emptyG_s, emptyEphPks_s, emptyProof_s, 0, emptySignature_s, 0}
 		p.relayState.locks.shuffle.Unlock()
 
@@ -891,7 +864,6 @@ func (p *PriFiLibInstance) Received_CLI_REL_TELL_PK_AND_EPH_PK(msg CLI_REL_TELL_
 		log.Lvl3("Relay : sent REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE (0-th iteration)")
 
 		// changing state
-		p.relayState.locks.state.Lock()
 		p.relayState.currentState = RELAY_STATE_COLLECTING_SHUFFLES
 		p.relayState.locks.state.Unlock()
 	}
@@ -910,7 +882,6 @@ When this happens, we pack a transcript, and broadcast it to all the trustees wh
 */
 func (p *PriFiLibInstance) Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS(msg TRU_REL_TELL_NEW_BASE_AND_EPH_PKS) error {
 
-	p.relayState.locks.state.Lock()
 	// this can only happens in the state RELAY_STATE_COLLECTING_SHUFFLES
 	if p.relayState.currentState != RELAY_STATE_COLLECTING_SHUFFLES {
 		e := "Relay : Received a TRU_REL_TELL_NEW_BASE_AND_EPH_PKS, but not in state RELAY_STATE_COLLECTING_SHUFFLES, in state " + relayStateStr(p.relayState.currentState)
@@ -921,7 +892,6 @@ func (p *PriFiLibInstance) Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS(msg TRU_RE
 	p.relayState.locks.state.Unlock()
 	log.Lvl3("Relay : received TRU_REL_TELL_NEW_BASE_AND_EPH_PKS")
 
-	p.relayState.locks.shuffle.Lock()
 
 	// store this shuffle's result in our transcript
 	j := p.relayState.currentShuffleTranscript.nextFreeId_Proofs
@@ -963,8 +933,6 @@ func (p *PriFiLibInstance) Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS(msg TRU_RE
 
 		p.relayState.locks.shuffle.Unlock()
 
-		p.relayState.locks.trusteeBuffer.Lock()
-		p.relayState.locks.clientBuffer.Lock()
 
 		// when receiving the next message (and after processing it), trustees will start sending data. Prepare to buffer it
 		p.relayState.bufferedTrusteeCiphers = make(map[int32]BufferedCipher)
@@ -986,9 +954,6 @@ func (p *PriFiLibInstance) Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS(msg TRU_RE
 			log.Lvl3("Relay : sent REL_TRU_TELL_TRANSCRIPT to " + strconv.Itoa(j+1) + "-th trustee")
 		}
 
-		p.relayState.locks.round.Lock()
-		p.relayState.locks.coder.Lock()
-		p.relayState.locks.state.Lock()
 
 		// prepare to collect the ciphers
 		p.relayState.currentDCNetRound = DCNetRound{0, 0, 0, make(map[int]bool), make(map[int]bool), REL_CLI_DOWNSTREAM_DATA{}, time.Now()}
@@ -1015,8 +980,6 @@ When this is done, we are finally ready to communicate. We wait for the client's
 */
 func (p *PriFiLibInstance) Received_TRU_REL_SHUFFLE_SIG(msg TRU_REL_SHUFFLE_SIG) error {
 
-	p.relayState.locks.shuffle.Lock()
-	p.relayState.locks.state.Lock()
 
 	defer p.relayState.locks.state.Unlock()
 	defer p.relayState.locks.shuffle.Unlock()
@@ -1087,7 +1050,6 @@ func (p *PriFiLibInstance) checkIfRoundHasEndedAfterTimeOut_Phase1(roundID int32
 
 	time.Sleep(TIMEOUT_PHASE_1)
 
-	p.relayState.locks.round.Lock()
 
 	if p.relayState.currentDCNetRound.currentRound != roundID {
 		//everything went well, it's great !
@@ -1095,7 +1057,6 @@ func (p *PriFiLibInstance) checkIfRoundHasEndedAfterTimeOut_Phase1(roundID int32
 		return
 	}
 
-	p.relayState.locks.state.Lock()
 
 	if p.relayState.currentState == RELAY_STATE_SHUTDOWN {
 		//nothing to ensure in that case
@@ -1114,7 +1075,6 @@ func (p *PriFiLibInstance) checkIfRoundHasEndedAfterTimeOut_Phase1(roundID int32
 		//check for the trustees
 		for j := 0; j < p.relayState.nTrustees; j++ {
 
-			p.relayState.locks.trustees.Lock()
 			trusteeID := p.relayState.trustees[j].ID
 			p.relayState.locks.trustees.Unlock()
 
@@ -1127,7 +1087,6 @@ func (p *PriFiLibInstance) checkIfRoundHasEndedAfterTimeOut_Phase1(roundID int32
 		//check for the clients
 		for i := 0; i < p.relayState.nClients; i++ {
 
-			p.relayState.locks.clients.Lock()
 			clientID := p.relayState.clients[i].ID
 			p.relayState.locks.clients.Unlock()
 
@@ -1166,14 +1125,12 @@ func (p *PriFiLibInstance) checkIfRoundHasEndedAfterTimeOut_Phase2(roundID int32
 
 	time.Sleep(TIMEOUT_PHASE_2)
 
-	p.relayState.locks.round.Lock()
 	if p.relayState.currentDCNetRound.currentRound != roundID {
 		//everything went well, it's great !
 		p.relayState.locks.round.Unlock()
 		return
 	}
 
-	p.relayState.locks.state.Lock()
 	if p.relayState.currentState == RELAY_STATE_SHUTDOWN {
 		//nothing to ensure in that case
 		p.relayState.locks.round.Unlock()
@@ -1193,7 +1150,6 @@ func (p *PriFiLibInstance) checkIfRoundHasEndedAfterTimeOut_Phase2(roundID int32
 		//check for the trustees
 		for j := 0; j < p.relayState.nTrustees; j++ {
 
-			p.relayState.locks.trustees.Lock()
 			trusteeID := p.relayState.trustees[j].ID
 			p.relayState.locks.trustees.Unlock()
 
@@ -1208,7 +1164,6 @@ func (p *PriFiLibInstance) checkIfRoundHasEndedAfterTimeOut_Phase2(roundID int32
 		//check for the clients
 		for i := 0; i < p.relayState.nClients; i++ {
 
-			p.relayState.locks.clients.Lock()
 			clientID := p.relayState.clients[i].ID
 			p.relayState.locks.clients.Unlock()
 
