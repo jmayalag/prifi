@@ -282,7 +282,6 @@ It initializes the relay with the parameters contained in the message.
 */
 func (p *PriFiLibInstance) Received_ALL_REL_PARAMETERS(msg ALL_ALL_PARAMETERS) error {
 
-
 	// This can only happens in the state RELAY_STATE_BEFORE_INIT
 	if p.relayState.currentState != RELAY_STATE_BEFORE_INIT && !msg.ForceParams {
 		log.Lvl1("Relay : Received a ALL_ALL_PARAMETERS, but not in state RELAY_STATE_BEFORE_INIT, ignoring. ")
@@ -367,7 +366,6 @@ func (p *PriFiLibInstance) Received_CLI_REL_UPSTREAM_DATA(msg CLI_REL_UPSTREAM_D
 
 	}
 
-
 	// if this is not the message destinated for this round, discard it ! (we are in lock-step)
 	if p.relayState.currentDCNetRound.currentRound != msg.RoundID {
 
@@ -442,12 +440,10 @@ func (p *PriFiLibInstance) Received_TRU_REL_DC_CIPHER(msg TRU_REL_DC_CIPHER) err
 	p.relayState.locks.state.Unlock()
 	log.Lvl3("Relay : received TRU_REL_DC_CIPHER for round " + strconv.Itoa(int(msg.RoundID)) + " from trustee " + strconv.Itoa(msg.TrusteeID))
 
-
 	// if this is the message we need for this round
 	if p.relayState.currentDCNetRound.currentRound == msg.RoundID {
 
 		log.Lvl3("Relay collecting cells for round", p.relayState.currentDCNetRound.currentRound, ", ", p.relayState.currentDCNetRound.clientCipherCount, "/", p.relayState.nClients, ", ", p.relayState.currentDCNetRound.trusteeCipherCount, "/", p.relayState.nTrustees)
-
 
 		p.relayState.CellCoder.DecodeTrustee(msg.Data)
 		p.relayState.currentDCNetRound.trusteeCipherCount++
@@ -473,7 +469,6 @@ func (p *PriFiLibInstance) Received_TRU_REL_DC_CIPHER(msg TRU_REL_DC_CIPHER) err
 	} else {
 
 		defer p.relayState.locks.round.Unlock()
-
 
 		// else, we need to buffer this message somewhere
 		if _, ok := p.relayState.bufferedTrusteeCiphers[msg.RoundID]; ok {
@@ -648,7 +643,6 @@ func (p *PriFiLibInstance) sendDownstreamData() error {
 
 func (p *PriFiLibInstance) roundFinished() error {
 
-
 	p.relayState.numberOfNonAckedDownstreamPackets--
 
 	timeSpent := time.Since(p.relayState.currentDCNetRound.startTime)
@@ -684,7 +678,6 @@ func (p *PriFiLibInstance) roundFinished() error {
 		msg := ALL_ALL_SHUTDOWN{}
 		p.Received_ALL_REL_SHUTDOWN(msg)
 	}
-
 
 	// if we have buffered messages for next round, use them now, so whenever we receive a client message, the trustee's message are counted correctly
 	if _, ok := p.relayState.bufferedTrusteeCiphers[nextRound]; ok {
@@ -722,7 +715,6 @@ func (p *PriFiLibInstance) roundFinished() error {
 
 	p.relayState.locks.trusteeBuffer.Unlock()
 
-
 	if _, ok := p.relayState.bufferedClientCiphers[nextRound]; ok {
 		for clientID, data := range p.relayState.bufferedClientCiphers[nextRound].Data {
 			// start decoding using this data
@@ -756,7 +748,6 @@ func (p *PriFiLibInstance) Received_TRU_REL_TELL_PK(msg TRU_REL_TELL_PK) error {
 	}
 	p.relayState.locks.state.Unlock()
 	log.Lvl3("Relay : received TRU_REL_TELL_PK")
-
 
 	p.relayState.trustees[msg.TrusteeID] = NodeRepresentation{msg.TrusteeID, true, msg.Pk, msg.Pk}
 	p.relayState.nTrusteesPkCollected++
@@ -813,7 +804,6 @@ func (p *PriFiLibInstance) Received_CLI_REL_TELL_PK_AND_EPH_PK(msg CLI_REL_TELL_
 	}
 	p.relayState.locks.state.Unlock()
 	log.Lvl3("Relay : received CLI_REL_TELL_PK_AND_EPH_PK")
-
 
 	// collect this client information
 	nextID := len(p.relayState.clients)
@@ -892,7 +882,6 @@ func (p *PriFiLibInstance) Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS(msg TRU_RE
 	p.relayState.locks.state.Unlock()
 	log.Lvl3("Relay : received TRU_REL_TELL_NEW_BASE_AND_EPH_PKS")
 
-
 	// store this shuffle's result in our transcript
 	j := p.relayState.currentShuffleTranscript.nextFreeId_Proofs
 	p.relayState.currentShuffleTranscript.Gs[j] = msg.NewBase
@@ -933,7 +922,6 @@ func (p *PriFiLibInstance) Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS(msg TRU_RE
 
 		p.relayState.locks.shuffle.Unlock()
 
-
 		// when receiving the next message (and after processing it), trustees will start sending data. Prepare to buffer it
 		p.relayState.bufferedTrusteeCiphers = make(map[int32]BufferedCipher)
 		p.relayState.bufferedClientCiphers = make(map[int32]BufferedCipher)
@@ -953,7 +941,6 @@ func (p *PriFiLibInstance) Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS(msg TRU_RE
 			}
 			log.Lvl3("Relay : sent REL_TRU_TELL_TRANSCRIPT to " + strconv.Itoa(j+1) + "-th trustee")
 		}
-
 
 		// prepare to collect the ciphers
 		p.relayState.currentDCNetRound = DCNetRound{0, 0, 0, make(map[int]bool), make(map[int]bool), REL_CLI_DOWNSTREAM_DATA{}, time.Now()}
@@ -979,7 +966,6 @@ in one message with the result of the Neff-Shuffle and send them to the clients.
 When this is done, we are finally ready to communicate. We wait for the client's messages.
 */
 func (p *PriFiLibInstance) Received_TRU_REL_SHUFFLE_SIG(msg TRU_REL_SHUFFLE_SIG) error {
-
 
 	defer p.relayState.locks.state.Unlock()
 	defer p.relayState.locks.shuffle.Unlock()
@@ -1050,13 +1036,11 @@ func (p *PriFiLibInstance) checkIfRoundHasEndedAfterTimeOut_Phase1(roundID int32
 
 	time.Sleep(TIMEOUT_PHASE_1)
 
-
 	if p.relayState.currentDCNetRound.currentRound != roundID {
 		//everything went well, it's great !
 		p.relayState.locks.round.Unlock()
 		return
 	}
-
 
 	if p.relayState.currentState == RELAY_STATE_SHUTDOWN {
 		//nothing to ensure in that case
