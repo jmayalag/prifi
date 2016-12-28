@@ -250,6 +250,9 @@ func StartSocksServer(localListeningAddress string, payloadLength int, upstreamC
 				}
 
 				// Write the data back to the browser
+				if socksProxyActiveConnections[socksConnectionID] == nil {
+					return
+				}
 				socksProxyActiveConnections[socksConnectionID].Write(data)
 				counter[socksConnectionID]++
 

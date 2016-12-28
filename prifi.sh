@@ -1,7 +1,7 @@
 #variables
 cothorityBranchRequired="test_ism_2_699"
 colors="true"
-dbg_lvl=1
+dbg_lvl=3
 identity_file="identity.toml"
 group_file="group.toml"
 prifi_file="prifi.toml"
@@ -234,7 +234,7 @@ case $1 in
 		
 		if [ "$socks" -ne 1 ]; then
 			echo -n "Socks proxy not running, starting it... "
-			./run-socks-proxy.sh "$port_client" > socks.log 2>&1 &
+			cd socks && ./run-socks-proxy.sh "$port_client" > ../socks.log 2>&1 &
 			SOCKSPID=$!
 			echo -e "$okMsg"
 		fi
@@ -262,19 +262,19 @@ case $1 in
 
 		sleep 3
 
-		echo -n "Starting client 1...(SOCKS on :8082)"
+		echo -n "Starting client 1... (SOCKS on :8082)"
 		"$thisScript" client 1 8082 > client1.log 2>&1 &
 		CLIENT1PID=$!
 		echo -e "$okMsg"
 
 		sleep 3
 
-		echo -n "Starting client 2...(SOCKS on :8083)"
-		"$thisScript" client 2 8083 > client2.log 2>&1 &
-		CLIENT2PID=$!
-		echo -e "$okMsg"
+		#echo -n "Starting client 2... (SOCKS on :8083)"
+		#"$thisScript" client 2 8083 > client2.log 2>&1 &
+		#CLIENT2PID=$!
+		#echo -e "$okMsg"
 
-		sleep 3
+		#sleep 3
 
 		read -p "PriFi deployed. Press [enter] to kill all..." key
 
