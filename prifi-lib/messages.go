@@ -237,7 +237,7 @@ func (prifi *PriFiLibInstance) ReceivedMessage(msg interface{}) error {
 	case ALL_ALL_PARAMETERS:
 		switch prifi.role {
 		case PRIFI_ROLE_RELAY:
-			go prifi.Received_ALL_REL_PARAMETERS(typedMsg)
+			prifi.Received_ALL_REL_PARAMETERS(typedMsg)
 		case PRIFI_ROLE_CLIENT:
 			err = prifi.Received_ALL_CLI_PARAMETERS(typedMsg)
 		case PRIFI_ROLE_TRUSTEE:
@@ -248,7 +248,7 @@ func (prifi *PriFiLibInstance) ReceivedMessage(msg interface{}) error {
 	case ALL_ALL_SHUTDOWN:
 		switch prifi.role {
 		case PRIFI_ROLE_RELAY:
-			go prifi.Received_ALL_REL_SHUTDOWN(typedMsg)
+			prifi.Received_ALL_REL_SHUTDOWN(typedMsg)
 		case PRIFI_ROLE_CLIENT:
 			err = prifi.Received_ALL_CLI_SHUTDOWN(typedMsg)
 		case PRIFI_ROLE_TRUSTEE:
@@ -257,9 +257,9 @@ func (prifi *PriFiLibInstance) ReceivedMessage(msg interface{}) error {
 			panic("Received SHUTDOWN, but we have no role yet !")
 		}
 	case CLI_REL_TELL_PK_AND_EPH_PK:
-		go prifi.Received_CLI_REL_TELL_PK_AND_EPH_PK(typedMsg)
+		prifi.Received_CLI_REL_TELL_PK_AND_EPH_PK(typedMsg)
 	case CLI_REL_UPSTREAM_DATA:
-		go prifi.Received_CLI_REL_UPSTREAM_DATA(typedMsg)
+		prifi.Received_CLI_REL_UPSTREAM_DATA(typedMsg)
 	case REL_CLI_DOWNSTREAM_DATA:
 		err = prifi.Received_REL_CLI_DOWNSTREAM_DATA(typedMsg)
 	/*
@@ -277,13 +277,13 @@ func (prifi *PriFiLibInstance) ReceivedMessage(msg interface{}) error {
 	case REL_TRU_TELL_TRANSCRIPT:
 		err = prifi.Received_REL_TRU_TELL_TRANSCRIPT(typedMsg)
 	case TRU_REL_DC_CIPHER:
-		go prifi.Received_TRU_REL_DC_CIPHER(typedMsg)
+		prifi.Received_TRU_REL_DC_CIPHER(typedMsg)
 	case TRU_REL_SHUFFLE_SIG:
-		go prifi.Received_TRU_REL_SHUFFLE_SIG(typedMsg)
+		prifi.Received_TRU_REL_SHUFFLE_SIG(typedMsg)
 	case TRU_REL_TELL_NEW_BASE_AND_EPH_PKS:
-		go prifi.Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS(typedMsg)
+		prifi.Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS(typedMsg)
 	case TRU_REL_TELL_PK:
-		go prifi.Received_TRU_REL_TELL_PK(typedMsg)
+		prifi.Received_TRU_REL_TELL_PK(typedMsg)
 	case REL_TRU_TELL_RATE_CHANGE:
 		err = prifi.Received_REL_TRU_TELL_RATE_CHANGE(typedMsg)
 	default:
