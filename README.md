@@ -39,7 +39,7 @@ You can test PriFi by running `./prifi.sh all-localhost`. This will run a SOCKS 
 
 To test a real PriFi deployement, first, re-generates your identity (so your private key is really private) :
 ```
-./prifi.sh gen
+./prifi.sh gen-id
 ```
 This will create two files `config.real/{group|identity}.toml`. You can then run a PriFi client with this identity :
 ```
