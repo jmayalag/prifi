@@ -85,7 +85,7 @@ A typical deployement could be :
 
 An *identity*, stored in `identity.toml`, is a private/public key pair. By default, PriFi will use pre-generated identities in `config/identities_default`.
 
-You should not use those for a real PriFi development, as the private key is public (and thus you get literally 0 security).
+You should not use those for a real PriFi development, as the private key is public (and thus you literally get 0 security).
 
 You can generate your own `identity.toml` by calling `./prifi.sh gen-id`. It will create a fresh identity in `config/identities_real/{entity}/`.
 
@@ -94,19 +94,16 @@ In `prifi.sh`, there is a variable `try_use_real_identities`. If `false`, the sc
 
 ## Configuration
 
-The PriFi configuration file is in `config.demo/prifi.toml`
+The PriFi configuration file is in `config/prifi.toml`
 
-- `DataOutputEnbaled (bool)`: Enables the link from and to the socks proxy.
-- `NTrustees (int)`: Number of trustees.
-- `CellSizeUp (int)`: Size of upstream data sent in one PriFi round (?)
-- `CellSizeDown (int)`: Size of upstream data sent in one PriFi round (?)
-- `RelayWindowSize (int)`: Number of ciphers from each trustee to buffer
-- `RelayUseDummyDataDown (bool)`: When true, the relay always send
-CellSizeDown bits down. When false, it may send only 1 bit.
-- `RelayReportingLimit (int)`: Unused, was for the statistics.
-- `UseUDP (bool)`: Enable or disable UDP broadcast for downstream data (?)
-- `DoLatencyTests (bool)`: Enable or disable latency tests.
-- `ReportingLimit (int)`: PriFi shuts down after this number of rounds if
-not equal to `-1`.
+ - `CellSizeUp (int)` : Size of upstream data sent in one PriFi round
+ - `CellSizeDown (int)` : Size of downstream data sent in one PriFi round
+ - `RelayWindowSize (int)` : Number of in-flight, non-acknowledged ciphers
+ - `RelayUseDummyDataDown (bool)` : If true, data-down is always equal to CellSizeDown. Otherwise, it is as small as 1 bit.
+ - `RelayReportingLimit (int)` : If -1, no limit. Otherwise, the relay shutdowns after this amount of rounds.
+ - `UseUDP (bool)` : Whether the relay uses UDP for broadcast or not
+ - `DoLatencyTests` : Whether the clients do latency tests when they have nothing to send
+ - `SocksServerPort (int)` : The port number of the SOCKS Server 1, in PriFi
+ - `SocksClientPort (int)` : The port number of the SOCKS Server 2, outside PriFi
 
 [back to main README](README.md)
