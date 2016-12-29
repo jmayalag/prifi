@@ -183,7 +183,7 @@ func StartSocksServer(localListeningAddress string, payloadLength int, upstreamC
 			controlChannels[newSocksConnectionID] = make(chan uint16, 1)
 			counter[newSocksConnectionID] = 1
 
-			log.Lvl2("SOCKS PriFi Server : got a new connection, assigned id " + strconv.Itoa(int(newSocksConnectionID)))
+			log.Error("SOCKS PriFi Server : got a new connection, assigned id " + strconv.Itoa(int(newSocksConnectionID)))
 
 			// Instantiate a connection handler and pass it the current state
 			controlChannels[newSocksConnectionID] <- currentState
@@ -250,8 +250,12 @@ func StartSocksServer(localListeningAddress string, payloadLength int, upstreamC
 				}
 
 				// Write the data back to the browser
-				socksProxyActiveConnections[socksConnectionID].Write(data)
-				counter[socksConnectionID]++
+				if socksProxyActiveConnections[socksConnectionID] != nil {
+					socksProxyActiveConnections[socksConnectionID].Write(data)
+					counter[socksConnectionID]++
+				} else {
+					log.Error("SOCKS PriFi Client: Got data for an unexisting connection " + strconv.Itoa(int(socksConnectionID)) + ", dropping.")
+				}
 
 			case SocksClosed: // Indicates a connection has been closed
 

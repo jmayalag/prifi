@@ -1,20 +1,58 @@
-#variables
-cothorityBranchRequired="test_ism_2_699"
-colors="true"
-dbg_lvl=3
-identity_file="identity.toml"
-group_file="group.toml"
-prifi_file="prifi.toml"
-bin_file="$GOPATH/src/github.com/lbarman/prifi/sda/app/prifi.go"
-colors="true"
-port=8080
-port_client=8090
-configdir="config.localhost"
+#!/usr/bin/env bash
 
-#pretty print
+
+# ************************************
+# PriFi all-in-one startup script
+# ************************************
+# author : Ludovic Barman
+# email : ludovic.barman@gmail.com
+# belongs to : the PriFi project
+# 			<github.com/lbarman/prifi>
+# ************************************
+
+# variables that you might change often
+
+dbg_lvl=3 						# 1=less verbose, 3=more verbose. goes up to 5, but then prints the SDA's message (network framework)
+try_use_real_identities="false"	# if "true", will try to use "self-generated" public/private key as a replacement for the dummy keys
+								# we generated for you. It asks you if it does not find real keys. If false, will always use the dummy keys.
+colors="true"					# if "false", the output of PriFi (not this script) will be in black-n-white
+
+socksServer1Port=8080			# the port for the SOCKS-Server-1 (part of the PriFi client)
+socksServer2Port=8090			# the port to attempt connect to (from the PriFi relay) for the SOCKS-Server-2
+								# notes : see <https://github.com/lbarman/prifi/blob/master/README_architecture.md>
+
+all_localhost_n_clients=2		# number of clients to start in the "all-localhost" script
+
+# default file names :
+
+prifi_file="prifi.toml"			#default name for the prifi config file (contains prifi-specific settings)
+identity_file="identity.toml"	#default name for the identity file (contains public + private key)
+group_file="group.toml"			#default name for the group file (contains public keys + address of other nodes)
+
+# location of the buildable (go build) prifi file :
+
+bin_file="$GOPATH/src/github.com/lbarman/prifi/sda/app/prifi.go"
+
+# we have two "identities" directory. The second one is empty unless you generate your own keys with "gen-id"
+
+configdir="config"
+defaultIdentitiesDir="identities_default" 	#in $configdir
+realIdentitiesDir="identities_real"		#in $configdir
+
+# unimportant variable (but do not change, ofc)
+
+sleeptime_between_spawns=1 		# time in second between entities launch in all-localhost part
+cothorityBranchRequired="test_ism_2_699" # the branch required for the cothority (SDA) framework
+
+#pretty colored message
 shell="\e[35m[script]\e[97m"
+warningMsg="\e[33m\e[1m[warning]\e[97m\e[0m"
 errorMsg="\e[31m\e[1m[error]\e[97m\e[0m"
 okMsg="\e[32m[ok]\e[97m"
+
+# ------------------------
+#     HELPER FUNCTIONS
+# ------------------------
 
 print_usage() {
 	echo
@@ -22,12 +60,13 @@ print_usage() {
 	echo
 	echo -e "Usage: run-prifi.sh \e[33mrole/operation [params]\e[97m"
 	echo -e "	\e[33mrole\e[97m: client, relay, trustee"
-	echo -e "	\e[33moperation\e[97m: install, sockstest, all-localhost"
+	echo -e "	\e[33moperation\e[97m: install, sockstest, all-localhost, gen-id"
 	echo -e "	\e[33mparams\e[97m for role \e[33mrelay\e[97m: [socks_server_port] (optional, numeric)"
 	echo -e "	\e[33mparams\e[97m for role \e[33mtrustee\e[97m: id (required, numeric)"
 	echo -e "	\e[33mparams\e[97m for role \e[33mclient\e[97m: id (required, numeric), [prifi_socks_server_port] (optional, numeric)"
 	echo -e "	\e[33mparams\e[97m for operation \e[33minstall\e[97m: none"
 	echo -e "	\e[33mparams\e[97m for operation \e[33mall-localhost\e[97m: none"
+	echo -e "	\e[33mparams\e[97m for operation \e[33mgen-id\e[97m: none"
 	echo -e "	\e[33mparams\e[97m for operation \e[33msockstest\e[97m: [socks_server_port] (optional, numeric), [prifi_socks_server_port] (optional, numeric)"
 	echo
 
@@ -38,6 +77,7 @@ print_usage() {
 	echo -e "	\e[33mclient\e[97m: starts a PriFi client, using the config file client\e[33mid\e[97m"
 	echo -e "	\e[33mall-localhost\e[97m: starts a Prifi relay, a trustee, three clients all on localhost"
 	echo -e "	\e[33msockstest\e[97m: starts the PriFi and non-PriFi SOCKS tunnel, without PriFi anonymization"
+	echo -e "	\e[33mgen-id\e[97m: interactive creation of identity.toml"
 	echo -e "	Lost ? read https://github.com/lbarman/prifi/README.md"
 }
 
@@ -73,6 +113,7 @@ test_digit() {
 	esac
 }
 
+#test if all the files we need are there.
 test_files() {
 
 	if [ ! -f "$bin_file" ]; then
@@ -80,23 +121,27 @@ test_files() {
 		exit
 	fi
 
-	if [ ! -f "$configdir/$identity_file" ]; then
-		echo -e "$errorMsg Cothority config file does not exist: $configdir/$identity_file"
+	if [ ! -f "$identity_file2" ]; then
+		echo -e "$errorMsg Cothority config file does not exist: $identity_file2"
 		exit
 	fi
 
-	if [ ! -f "$configdir/$group_file" ]; then
-		echo -e "$errorMsg Cothority group file does not exist: $configdir/$group_file"
+	if [ ! -f "$group_file2" ]; then
+		echo -e "$errorMsg Cothority group file does not exist: $group_file2"
 		exit
 	fi
 
-	if [ ! -f "$configdir/$prifi_file" ]; then
-		echo -e "$errorMsg PriFi config file does not exist: $configdir/$prifi_file"
+	if [ ! -f "$prifi_file2" ]; then
+		echo -e "$errorMsg PriFi config file does not exist: $prifi_file2"
 		exit
 	fi
 }
 
-#main switch, $1 is operation : "install", "relay", "client", "trustee", "sockstest", "all-localhost", "clean"
+# ------------------------
+#     MAIN SWITCH
+# ------------------------
+
+# $1 is operation : "install", "relay", "client", "trustee", "sockstest", "all-localhost", "clean", "gen-id"
 case $1 in
 
 	install|Install|INSTALL)
@@ -125,7 +170,6 @@ case $1 in
 		echo -e "$okMsg"
 
 		;;
-	
 
 	relay|Relay|RELAY)
 
@@ -136,19 +180,37 @@ case $1 in
 		# the 2nd argument can replace the port number
 		if [ "$#" -eq 2 ]; then
 			test_digit $2 2
-			port_client="$2"
+			socksServer2Port="$2"
 		fi
 
-		#specialize the config file, and test all files
-		identity_file="relay/$identity_file"
-		group_file="relay/$group_file"
+		#specialize the config file (we use the dummy folder, and maybe we replace with the real folder after)
+		prifi_file2="$configdir/$prifi_file"
+		identity_file2="$configdir/$defaultIdentitiesDir/relay/$identity_file"
+		group_file2="$configdir/$defaultIdentitiesDir/relay/$group_file"
+
+		#we we want to, try to replace with the real folder
+		if [ "$try_use_real_identities" = "true" ]; then
+			if [ -f "$configdir/$realIdentitiesDir/relay/$identity_file" ] && [ -f "$configdir/$defaultIdentitiesDir/relay/$group_file" ]; then
+				echo -e "$okMsg Found real identities (in $configdir/$realIdentitiesDir/relay/), using those."
+				identity_file2="$configdir/$realIdentitiesDir/relay/$identity_file"
+				group_file2="$configdir/$realIdentitiesDir/relay/$group_file"
+			else
+				echo -e "$warningMsg Trying to use real identities, but does not exists for relay (in $configdir/$realIdentitiesDir/relay/). Falling back to pre-generated ones."
+			fi
+		else
+			echo -e "$warningMsg using pre-created identities. Set \"try_use_real_identities\" to True in real deployements."
+		fi
+
+		# test that all files exists
 		test_files
 
 		#run PriFi in relay mode
-		DEBUG_COLOR=$colors go run $bin_file --cothority_config "$configdir/$identity_file" --group "$configdir/$group_file" -d "$dbg_lvl" --prifi_config "$configdir/$prifi_file" --port "$port" --port_client "$port_client" relay
+		DEBUG_COLOR=$colors go run $bin_file --cothority_config "$identity_file2" --group "$group_file2" -d "$dbg_lvl" --prifi_config "$prifi_file2" --port "$socksServer1Port" --port_client "$socksServer2Port" relay
 		;;
 
 	trustee|Trustee|TRUSTEE)
+
+		trusteeId="$2"
 
 		#test for proper setup
 		test_go
@@ -158,18 +220,36 @@ case $1 in
 			echo -e "$errorMsg parameter 2 need to be the trustee id."
 			exit 1
 		fi
-		test_digit $2 2
+		test_digit $trusteeId 2
 
-		#specialize the config file, and test all files
-		identity_file="trustee$2/$identity_file"
-		group_file="relay/$group_file"
+		#specialize the config file (we use the dummy folder, and maybe we replace with the real folder after)
+		prifi_file2="$configdir/$prifi_file"
+		identity_file2="$configdir/$defaultIdentitiesDir/trustee$trusteeId/$identity_file"
+		group_file2="$configdir/$defaultIdentitiesDir/trustee$trusteeId/$group_file"
+
+		#we we want to, try to replace with the real folder
+		if [ "$try_use_real_identities" = "true" ]; then
+			if [ -f "$configdir/$realIdentitiesDir/trustee$trusteeId/$identity_file" ] && [ -f "$configdir/$defaultIdentitiesDir/trustee$trusteeId/$group_file" ]; then
+				echo -e "$okMsg Found real identities (in $configdir/$realIdentitiesDir/trustee$trusteeId/), using those."
+				identity_file2="$configdir/$realIdentitiesDir/trustee$trusteeId/$identity_file"
+				group_file2="$configdir/$realIdentitiesDir/trustee$trusteeId/$group_file"
+			else
+				echo -e "$warningMsg Trying to use real identities, but does not exists for trustee $trusteeId (in $configdir/$realIdentitiesDir/trustee$trusteeId/). Falling back to pre-generated ones."
+			fi
+		else
+			echo -e "$warningMsg using pre-created identities. Set \"try_use_real_identities\" to True in real deployements."
+		fi
+
+		# test that all files exists
 		test_files
 
 		#run PriFi in relay mode
-		DEBUG_COLOR=$colors go run $bin_file --cothority_config "$configdir/$identity_file" --group "$configdir/$group_file" -d "$dbg_lvl" --prifi_config "$configdir/$prifi_file" --port "$port" --port_client "$port_client" trustee
+		DEBUG_COLOR=$colors go run $bin_file --cothority_config "$identity_file2" --group "$group_file2" -d "$dbg_lvl" --prifi_config "$prifi_file2" --port "$socksServer1Port" --port_client "$socksServer2Port" trustee
 		;;
 
 	client|Client|CLIENT)
+
+		clientId="$2"
 
 		#test for proper setup
 		test_go
@@ -179,21 +259,37 @@ case $1 in
 			echo -e "$errorMsg parameter 2 need to be the client id."
 			exit 1
 		fi
-		test_digit $2 2
+		test_digit $clientId 2
 
 		# the 3rd argument can replace the port number
 		if [ "$#" -eq 3 ]; then
 			test_digit $3 3
-			port="$3"
+			socksServer1Port="$3"
 		fi
 
-		#specialize the config file, and test all files
-		identity_file="client$2/$identity_file"
-		group_file="relay/$group_file"
+		#specialize the config file (we use the dummy folder, and maybe we replace with the real folder after)
+		prifi_file2="$configdir/$prifi_file"
+		identity_file2="$configdir/$defaultIdentitiesDir/client$clientId/$identity_file"
+		group_file2="$configdir/$defaultIdentitiesDir/client$clientId/$group_file"
+
+		#we we want to, try to replace with the real folder
+		if [ "$try_use_real_identities" = "true" ]; then
+			if [ -f "$configdir/$realIdentitiesDir/client$clientId/$identity_file" ] && [ -f "$configdir/$realIdentitiesDir/client$clientId/$group_file" ]; then
+				echo -e "$okMsg Found real identities (in $configdir/$realIdentitiesDir/client$clientId/), using those."
+				identity_file2="$configdir/$realIdentitiesDir/client$clientId/$identity_file"
+				group_file2="$configdir/$realIdentitiesDir/client$clientId/$group_file"
+			else
+				echo -e "$warningMsg Trying to use real identities, but does not exists for client $clientId (in $configdir/$realIdentitiesDir/client$clientId/). Falling back to pre-generated ones."
+			fi
+		else
+			echo -e "$warningMsg using pre-created identities. Set \"try_use_real_identities\" to True in real deployements."
+		fi
+
+		# test that all files exists
 		test_files
 
 		#run PriFi in relay mode
-		DEBUG_COLOR=$colors go run $bin_file --cothority_config "$configdir/$identity_file" --group "$configdir/$group_file" -d "$dbg_lvl" --prifi_config "$configdir/$prifi_file" --port "$port" --port_client "$port_client" client
+		DEBUG_COLOR=$colors go run $bin_file --cothority_config "$identity_file2" --group "$group_file2" -d "$dbg_lvl" --prifi_config "$prifi_file2" --port "$socksServer1Port" --port_client "$socksServer2Port" client
 		;;
 
 	sockstest|Sockstest|SOCKSTEST)
@@ -205,21 +301,23 @@ case $1 in
 		# the 2rd argument can replace the port number
 		if [ "$#" -gt 1 ]; then
 			test_digit $2 2
-			port="$2"
+			socksServer1Port="$2"
 		fi
 
 		# the 3rd argument can replace the port_client number
 		if [ "$#" -eq 3 ]; then
 			test_digit $3 3
-			port_client="$3"
+			socksServer2Port="$3"
 		fi
 
 		#specialize the config file, and test all files
-		identity_file="client0/$identity_file"
+		prifi_file2="$configdir/$prifi_file"
+		identity_file2="$configdir/$defaultIdentitiesDir/relay/$identity_file"
+		group_file2="$configdir/$defaultIdentitiesDir/relay/$group_file"
 		test_files
 
 		#run PriFi in relay mode
-		DEBUG_COLOR=$colors go run $bin_file --cothority_config "$configdir/$identity_file" --group "$configdir/$group_file" -d "$dbg_lvl" --prifi_config "$configdir/$prifi_file" --port "$port" --port_client "$port_client" sockstest
+		DEBUG_COLOR=$colors go run $bin_file --cothority_config "$identity_file2" --group "$group_file2" -d "$dbg_lvl" --prifi_config "$prifi_file2" --port "$socksServer1Port" --port_client "$socksServer2Port" sockstest
 		;;
 
 	localhost|Localhost|LOCALHOST|all-localhost|All-Localhost|ALL-LOCALHOST)
@@ -229,51 +327,53 @@ case $1 in
 		test_cothority
 
 		#test if a socks proxy is already running (needed for relay), or start ours
-		socks=$(netstat -tunpl 2>/dev/null | grep $port_client | wc -l)
+		socks=$(netstat -tunpl 2>/dev/null | grep $socksServer2Port | wc -l)
 		
 		if [ "$socks" -ne 1 ]; then
 			echo -n "Socks proxy not running, starting it... "
-			./run-socks-proxy.sh "$port_client" > socks.log 2>&1 &
+			cd socks && ./run-socks-proxy.sh "$socksServer2Port" > ../socks.log 2>&1 &
 			SOCKSPID=$!
 			echo -e "$okMsg"
 		fi
 
 		thisScript="$0"	
 
-		echo -n "Starting relay...	"
+		echo -n "Starting relay...			"
 		"$thisScript" relay > relay.log 2>&1 &
 		RELAYPID=$!
 		echo -e "$okMsg"
 
-		sleep 3
+		sleep $sleeptime_between_spawns
 
-		echo -n "Starting trustee 0...	"
+		echo -n "Starting trustee 0...			"
 		"$thisScript" trustee 0 > trustee0.log 2>&1 &
 		TRUSTEE0PID=$!
 		echo -e "$okMsg"
 
-		sleep 3
+		sleep $sleeptime_between_spawns
 
-		echo -n "Starting client 0...	"
+		echo -n "Starting client 0... (SOCKS on :8081)	"
 		"$thisScript" client 0 8081 > client0.log 2>&1 &
 		CLIENT0PID=$!
 		echo -e "$okMsg"
 
-		sleep 3
+        if [ "$all_localhost_n_clients" -gt 1 ]; then
+            sleep $sleeptime_between_spawns
 
-		echo -n "Starting client 1...	"
-		"$thisScript" client 1 8082 > client1.log 2>&1 &
-		CLIENT1PID=$!
-		echo -e "$okMsg"
+            echo -n "Starting client 1... (SOCKS on :8082)	"
+            "$thisScript" client 1 8082 > client1.log 2>&1 &
+            CLIENT1PID=$!
+            echo -e "$okMsg"
+		fi
 
-		sleep 3
+        if [ "$all_localhost_n_clients" -gt 2 ]; then
+            sleep $sleeptime_between_spawns
 
-		echo -n "Starting client 2...	"
-		"$thisScript" client 2 8082 > client2.log 2>&1 &
-		CLIENT2PID=$!
-		echo -e "$okMsg"
-
-		sleep 3
+            echo -n "Starting client 2... (SOCKS on :8083)	"
+            "$thisScript" client 2 8083 > client2.log 2>&1 &
+            CLIENT1PID=$!
+            echo -e "$okMsg"
+		fi
 
 		read -p "PriFi deployed. Press [enter] to kill all..." key
 
@@ -285,6 +385,63 @@ case $1 in
 		kill -9 -$SOCKSPID 2>/dev/null
 		pkill prifi		
 		pkill run-server # this is to kill the non-prifi SOCKS server. I am sure we can do better
+		;;
+
+	gen-id|Gen-Id|GEN-ID)
+		echo -e "Going to generate private/public keys (named \e[33midentity.toml\e[97m)..."
+
+		read -p "Do you want to generate it for [r]elay, [c]lient, or [t]trustee ? " key
+
+		path=""
+		case "$key" in
+			r|R)
+				path="relay"
+			;;
+			t|T)
+				read -p "Do you want to generate it for trustee [0] or [1] ? " key2
+
+				case "$key2" in
+					0|1)
+						path="trustee$key2"
+						;;
+					*)
+						echo -e "$errorMsg did not understand."
+						exit 1
+						;;
+				esac
+				;;
+			c|C)
+				read -p "Do you want to generate it for client [0],[1] or [2] ? " key2
+
+				case "$key2" in
+					0|1|2)
+						path="client$key2"
+						;;
+					*)
+						echo -e "$errorMsg did not understand."
+						exit 1
+						;;
+				esac
+				;;
+			*)
+				echo -e "$errorMsg did not understand."
+				exit 1
+				;;
+		esac
+
+		pathReal="$configdir/$realIdentitiesDir/$path/"
+		pathDefault="$configdir/$defaultIdentitiesDir/$path/"
+		echo -e "Gonna generate \e[33midentity.toml\e[97m in \e[33m$pathReal\e[97m"
+
+		#generate identity.toml
+		DEBUG_COLOR=$colors go run $bin_file --default_path "$pathReal" gen-id
+
+		#now group.toml
+		echo -n "Done ! now copying group.toml from identities_default/ to identity_real/..."
+		cp "${pathDefault}/group.toml" "${pathReal}group.toml"
+		echo -e "$okMsg"
+
+		echo -e "Please edit \e[33m$pathReal/group.toml\e[97m to the correct values."
 		;;
 
 	clean|Clean|CLEAN)

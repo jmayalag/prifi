@@ -12,18 +12,31 @@ import (
 	"github.com/lbarman/prifi/sda/protocols"
 )
 
+//Delay before each host re-tried to connect
+const DELAY_BEFORE_KEEPALIVE = 5 * time.Second
+
 func init() {
+	network.RegisterPacketType(StopProtocol{})
 	network.RegisterPacketType(ConnectionRequest{})
 	network.RegisterPacketType(DisconnectionRequest{})
+}
+
+//A wait queue entry is en identity(=address), and a flag IsWaiting (if false, we know about this host, but he didn't try to connect)
+type WaitQueueEntry struct {
+	IsWaiting bool
+	Identity  *network.ServerIdentity
 }
 
 // waitQueue contains the list of nodes that are currently willing
 // to participate to the protocol.
 type waitQueue struct {
 	mutex    sync.Mutex
-	trustees map[*network.ServerIdentity]bool
-	clients  map[*network.ServerIdentity]bool
+	trustees map[string]*WaitQueueEntry
+	clients  map[string]*WaitQueueEntry
 }
+
+// Packet send by relay when some node disconnected
+type StopProtocol struct{}
 
 // ConnectionRequest messages are sent to the relay
 // by nodes that want to join the protocol.
@@ -33,20 +46,41 @@ type ConnectionRequest struct{}
 // by nodes that want to leave the protocol.
 type DisconnectionRequest struct{}
 
+// Packet send by relay when some node disconnected
+func (s *ServiceState) HandleStop(msg *network.Packet) {
+
+	log.Lvl1("Received a Handle Stop")
+
+	s.KillPriFiProtocol()
+
+}
+
 // HandleConnection receives connection requests from other nodes.
 // It decides when another PriFi protocol should be started.
-func (s *Service) HandleConnection(msg *network.Packet) {
-	log.Lvl3("Received new connection request from ", msg.ServerIdentity.Address)
+func (s *ServiceState) HandleConnection(msg *network.Packet) {
+	addr := msg.ServerIdentity.Address.String()
+	log.Lvl3("Received new connection request from ", addr)
 
 	// If we are not the relay, ignore the message
 	if s.role != protocols.Relay {
 		return
 	}
 
-	id, ok := s.identityMap[msg.ServerIdentity.Address]
-	if !ok {
-		log.Lvl2("Ignoring connection from unknown node:", msg.ServerIdentity.Address)
-		return
+	s.nodesAndIDs.mutex.Lock()
+	id, found := s.nodesAndIDs.identitiesMap[addr]
+	s.nodesAndIDs.mutex.Unlock()
+	if !found {
+		log.Lvl2("New previously-unknown client :", addr)
+
+		s.nodesAndIDs.mutex.Lock()
+		newID := &protocols.PriFiIdentity{
+			ID:   s.nodesAndIDs.nextFreeClientID,
+			Role: protocols.Client,
+		}
+		s.nodesAndIDs.nextFreeClientID++
+		s.nodesAndIDs.identitiesMap[addr] = *newID
+		id = *newID
+		s.nodesAndIDs.mutex.Unlock()
 	}
 
 	s.waitQueue.mutex.Lock()
@@ -57,15 +91,36 @@ func (s *Service) HandleConnection(msg *network.Packet) {
 	// Add node to the waiting queue
 	switch id.Role {
 	case protocols.Client:
-		if _, ok := s.waitQueue.clients[msg.ServerIdentity]; !ok {
-			s.waitQueue.clients[msg.ServerIdentity] = true
+		if _, ok := s.waitQueue.clients[addr]; !ok {
+			s.waitQueue.clients[addr] = &WaitQueueEntry{
+				IsWaiting: true,
+				Identity:  msg.ServerIdentity,
+			}
 		} else {
+			s.waitQueue.clients[addr].IsWaiting = true
 			nodeAlreadyIn = true
 		}
 	case protocols.Trustee:
-		if _, ok := s.waitQueue.trustees[msg.ServerIdentity]; !ok {
-			s.waitQueue.trustees[msg.ServerIdentity] = true
+
+		//assign an ID to this trustee
+		if id.ID == -1 {
+			s.nodesAndIDs.mutex.Lock()
+			id.ID = s.nodesAndIDs.nextFreeTrusteeID
+			s.nodesAndIDs.identitiesMap[addr] = protocols.PriFiIdentity{
+				ID:   s.nodesAndIDs.nextFreeTrusteeID,
+				Role: protocols.Trustee,
+			}
+			log.Lvl2("Trustee", msg.ServerIdentity.Address, "got assigned ID", id.ID)
+			s.nodesAndIDs.nextFreeTrusteeID++
+			s.nodesAndIDs.mutex.Unlock()
+		}
+		if _, ok := s.waitQueue.trustees[addr]; !ok {
+			s.waitQueue.trustees[addr] = &WaitQueueEntry{
+				IsWaiting: true,
+				Identity:  msg.ServerIdentity,
+			}
 		} else {
+			s.waitQueue.trustees[addr].IsWaiting = true
 			nodeAlreadyIn = true
 		}
 	default:
@@ -73,24 +128,37 @@ func (s *Service) HandleConnection(msg *network.Packet) {
 	}
 
 	// If the nodes is already participating we do not need to restart
-	if nodeAlreadyIn && s.isPrifiRunning {
+	if nodeAlreadyIn && s.IsPriFiProtocolRunning() {
 		return
 	}
 
 	// Start (or restart) PriFi if there are enough participants
-	if len(s.waitQueue.clients) >= 2 && len(s.waitQueue.trustees) >= 1 {
-		if s.isPrifiRunning {
+	nWaitingClients := 0
+	for _, v := range s.waitQueue.clients {
+		if v.IsWaiting {
+			nWaitingClients++
+		}
+	}
+	nWaitingTrustees := 0
+	for _, v := range s.waitQueue.trustees {
+		if v.IsWaiting {
+			nWaitingTrustees++
+		}
+	}
+	if nWaitingClients >= 1 && nWaitingTrustees >= 1 {
+		if s.IsPriFiProtocolRunning() {
 			s.stopPriFiCommunicateProtocol()
 		}
 		s.startPriFiCommunicateProtocol()
 	} else {
-		log.Lvl1("Too few participants (", len(s.waitQueue.clients), "clients and", len(s.waitQueue.trustees), "trustees), waiting...")
+		log.Lvl1("Too few participants (", nWaitingClients, "clients and", nWaitingTrustees, "trustees), waiting...")
 	}
 }
 
 // HandleDisconnection receives disconnection requests.
 // It must stop the current PriFi protocol.
-func (s *Service) HandleDisconnection(msg *network.Packet) {
+func (s *ServiceState) HandleDisconnection(msg *network.Packet) {
+	addr := msg.ServerIdentity.Address.String()
 	log.Lvl2("Received disconnection request from ", msg.ServerIdentity.Address)
 
 	// If we are not the relay, ignore the message
@@ -98,9 +166,12 @@ func (s *Service) HandleDisconnection(msg *network.Packet) {
 		return
 	}
 
-	id, ok := s.identityMap[msg.ServerIdentity.Address]
+	s.nodesAndIDs.mutex.Lock()
+	id, ok := s.nodesAndIDs.identitiesMap[addr]
+	s.nodesAndIDs.mutex.Unlock()
+
 	if !ok {
-		log.Info("Ignoring connection from unknown node:", msg.ServerIdentity.Address)
+		log.Info("Ignoring disconnection from unknown node:", addr)
 		return
 	}
 
@@ -110,19 +181,19 @@ func (s *Service) HandleDisconnection(msg *network.Packet) {
 	// Remove node to the waiting queue
 	switch id.Role {
 	case protocols.Client:
-		delete(s.waitQueue.clients, msg.ServerIdentity)
+		delete(s.waitQueue.clients, addr)
 	case protocols.Trustee:
-		delete(s.waitQueue.trustees, msg.ServerIdentity)
+		delete(s.waitQueue.trustees, addr)
 	default:
 		log.Info("Ignoring disconnection request from node with invalid role.")
 	}
 
 	// Stop PriFi and restart if there are enough participants left.
-	if s.isPrifiRunning {
+	if s.IsPriFiProtocolRunning() {
 		s.stopPriFiCommunicateProtocol()
 	}
 
-	if len(s.waitQueue.clients) >= 2 && len(s.waitQueue.trustees) >= 1 {
+	if len(s.waitQueue.clients) >= 1 && len(s.waitQueue.trustees) >= 1 {
 		s.startPriFiCommunicateProtocol()
 	}
 }
@@ -130,9 +201,9 @@ func (s *Service) HandleDisconnection(msg *network.Packet) {
 // sendConnectionRequest sends a connection request to the relay.
 // It is called by the client and trustee services at startup to
 // announce themselves to the relay.
-func (s *Service) sendConnectionRequest() {
+func (s *ServiceState) sendConnectionRequest() {
 	log.Lvl2("Sending connection request")
-	err := s.SendRaw(s.relayIdentity, &ConnectionRequest{})
+	err := s.SendRaw(s.nodesAndIDs.relayIdentity, &ConnectionRequest{})
 
 	if err != nil {
 		log.Error("Connection failed:", err)
@@ -142,12 +213,12 @@ func (s *Service) sendConnectionRequest() {
 // autoConnect sends a connection request to the relay
 // every 10 seconds if the node is not participating to
 // a PriFi protocol.
-func (s *Service) autoConnect() {
+func (s *ServiceState) autoConnect() {
 	s.sendConnectionRequest()
 
-	tick := time.Tick(10 * time.Second)
+	tick := time.Tick(DELAY_BEFORE_KEEPALIVE)
 	for range tick {
-		if !s.isPrifiRunning {
+		if !s.IsPriFiProtocolRunning() {
 			s.sendConnectionRequest()
 		}
 	}
@@ -156,7 +227,7 @@ func (s *Service) autoConnect() {
 // handleTimeout is a callback that should be called on the relay
 // when a round times out. It tries to restart PriFi with the nodes
 // that sent their ciphertext in time.
-func (s *Service) handleTimeout(lateClients []*network.ServerIdentity, lateTrustees []*network.ServerIdentity) {
+func (s *ServiceState) handleTimeout(lateClients []string, lateTrustees []string) {
 	s.waitQueue.mutex.Lock()
 	defer s.waitQueue.mutex.Unlock()
 
@@ -178,7 +249,7 @@ func (s *Service) handleTimeout(lateClients []*network.ServerIdentity, lateTrust
 // startPriFi starts a PriFi protocol. It is called
 // by the relay as soon as enough participants are
 // ready (one trustee and two clients).
-func (s *Service) startPriFiCommunicateProtocol() {
+func (s *ServiceState) startPriFiCommunicateProtocol() {
 	log.Lvl1("Starting PriFi protocol")
 
 	if s.role != protocols.Relay {
@@ -186,24 +257,24 @@ func (s *Service) startPriFiCommunicateProtocol() {
 		return
 	}
 
-	var wrapper *protocols.PriFiSDAWrapper
+	var wrapper *protocols.PriFiSDAProtocol
 
 	participants := make([]*network.ServerIdentity, len(s.waitQueue.trustees)+len(s.waitQueue.clients)+1)
-	participants[0] = s.relayIdentity
+	participants[0] = s.nodesAndIDs.relayIdentity
 	i := 1
-	for k := range s.waitQueue.clients {
-		participants[i] = k
+	for _, v := range s.waitQueue.clients {
+		participants[i] = v.Identity
 		i++
 	}
-	for k := range s.waitQueue.trustees {
-		participants[i] = k
+	for _, v := range s.waitQueue.trustees {
+		participants[i] = v.Identity
 		i++
 	}
 
 	roster := sda.NewRoster(participants)
 
 	// Start the PriFi protocol on a flat tree with the relay as root
-	tree := roster.GenerateNaryTreeWithRoot(100, s.relayIdentity)
+	tree := roster.GenerateNaryTreeWithRoot(100, s.nodesAndIDs.relayIdentity)
 	pi, err := s.CreateProtocolService(protocols.ProtocolName, tree)
 
 	if err != nil {
@@ -211,20 +282,18 @@ func (s *Service) startPriFiCommunicateProtocol() {
 	}
 
 	// Assert that pi has type PriFiSDAWrapper
-	wrapper = pi.(*protocols.PriFiSDAWrapper)
-	s.prifiWrapper = wrapper
+	wrapper = pi.(*protocols.PriFiSDAProtocol)
 
-	s.isPrifiRunning = true
-	s.setConfigToPriFiProtocol(wrapper) //TODO: This was not there in Matthieu's work. Maybe there is a reason
+	//assign and start the protocol
+	s.priFiSDAProtocol = wrapper
 
-	wrapper.SetTimeoutHandler(s.handleTimeout)
+	s.setConfigToPriFiProtocol(wrapper)
+
 	wrapper.Start()
-
-	s.isPrifiRunning = true
 }
 
 // stopPriFi stops the PriFi protocol currently running.
-func (s *Service) stopPriFiCommunicateProtocol() {
+func (s *ServiceState) stopPriFiCommunicateProtocol() {
 	log.Lvl1("Stopping PriFi protocol")
 
 	if s.role != protocols.Relay {
@@ -232,25 +301,37 @@ func (s *Service) stopPriFiCommunicateProtocol() {
 		return
 	}
 
-	if !s.isPrifiRunning || s.prifiWrapper == nil {
-		log.Error("Trying to stop PriFi protocol but it has not started.")
-		return
-	}
-
-	s.prifiWrapper.Stop()
-	s.prifiWrapper = nil
-	s.isPrifiRunning = false
+	s.KillPriFiProtocol()
 }
 
-func (s *Service) printWaitQueue() {
+func (s *ServiceState) printWaitQueue() {
 	log.Info("Current state of the wait queue:")
 
 	log.Info("Clients:")
-	for k := range s.waitQueue.clients {
-		log.Info(k.Address)
+	for k, v := range s.waitQueue.clients {
+		log.Info(k, "->", v)
 	}
 	log.Info("Trustees:")
-	for k := range s.waitQueue.trustees {
-		log.Info(k.Address)
+	for k, v := range s.waitQueue.trustees {
+		log.Info(k, "->", v)
+	}
+}
+
+func (s *ServiceState) printIdentifiersMap() {
+	s.nodesAndIDs.mutex.Lock()
+	defer s.nodesAndIDs.mutex.Unlock()
+
+	log.Info("Current state of the identity map:")
+
+	for k, v := range s.nodesAndIDs.identitiesMap {
+		switch v.Role {
+
+		case protocols.Relay:
+			log.Info(k, " -> Relay ", v.ID)
+		case protocols.Client:
+			log.Info(k, " -> Client ", v.ID)
+		case protocols.Trustee:
+			log.Info(k, " -> Trustee ", v.ID)
+		}
 	}
 }
