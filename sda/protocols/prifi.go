@@ -151,7 +151,7 @@ func (p *PriFiSDAProtocol) SetConfig(config *PriFiSDAWrapperConfig) {
 			log.Fatal("Relay is not reachable !")
 		}
 	case Relay:
-		if len(ms.clients) < 2 {
+		if len(ms.clients) < 1 {
 			log.Fatal("Less than two clients reachable !")
 		}
 		if len(ms.trustees) < 1 {

@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 #variables
 cothorityBranchRequired="test_ism_2_699"
 colors="true"
@@ -263,12 +265,12 @@ case $1 in
 
 		sleep $sleeptime_between_spawns
 
-		echo -n "Starting client 1... (SOCKS on :8082)	"
-		"$thisScript" client 1 8082 > client1.log 2>&1 &
-		CLIENT1PID=$!
-		echo -e "$okMsg"
+		#echo -n "Starting client 1... (SOCKS on :8082)	"
+		#"$thisScript" client 1 8082 > client1.log 2>&1 &
+		#CLIENT1PID=$!
+		#echo -e "$okMsg"
 
-		sleep $sleeptime_between_spawns
+		#sleep $sleeptime_between_spawns
 
 		#echo -n "Starting client 2... (SOCKS on :8083)"
 		#"$thisScript" client 2 8083 > client2.log 2>&1 &

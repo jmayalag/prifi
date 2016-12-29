@@ -145,10 +145,8 @@ func (s *ServiceState) HandleConnection(msg *network.Packet) {
 			nWaitingTrustees++
 		}
 	}
-	if nWaitingClients >= 2 && nWaitingTrustees >= 1 {
-		log.Lvl1("We meet the parameters, starting ...")
+	if nWaitingClients >= 1 && nWaitingTrustees >= 1 {
 		if s.IsPriFiProtocolRunning() {
-			log.Lvl1("We meet the parameters and not running ,starting...")
 			s.stopPriFiCommunicateProtocol()
 		}
 		s.startPriFiCommunicateProtocol()
@@ -195,7 +193,7 @@ func (s *ServiceState) HandleDisconnection(msg *network.Packet) {
 		s.stopPriFiCommunicateProtocol()
 	}
 
-	if len(s.waitQueue.clients) >= 2 && len(s.waitQueue.trustees) >= 1 {
+	if len(s.waitQueue.clients) >= 1 && len(s.waitQueue.trustees) >= 1 {
 		s.startPriFiCommunicateProtocol()
 	}
 }

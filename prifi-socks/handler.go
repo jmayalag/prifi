@@ -199,8 +199,6 @@ func StartSocksServer(localListeningAddress string, payloadLength int, upstreamC
 			dataLength := myData.MessageLength
 			data := myData.Data[:dataLength]
 
-			log.Error("Got a packet ! ", myData.ID)
-
 			// Skip if the connection doesn't exist or the connection ID is 0, unless it's a control message (stall, resume)
 			if !downStreamContainsLatencyMessages { //of course, if the downstream contains latency messages, don't show error
 				if (packetType != StallCommunication && packetType != ResumeCommunication) && (socksConnectionID == 0 || socksProxyActiveConnections[socksConnectionID] == nil) {
@@ -252,12 +250,6 @@ func StartSocksServer(localListeningAddress string, payloadLength int, upstreamC
 				}
 
 				// Write the data back to the browser
-				log.Error("Putting data into connection", socksConnectionID)
-				for k := range socksProxyActiveConnections {
-					log.Error("->", k)
-				}
-				log.Error("Done listing connections.")
-
 				if socksProxyActiveConnections[socksConnectionID] != nil {
 					socksProxyActiveConnections[socksConnectionID].Write(data)
 					counter[socksConnectionID]++

@@ -268,7 +268,6 @@ When this function ends, it calls SendUpstreamData() which continues the communi
 */
 func (p *PriFiLibInstance) ProcessDownStreamData(msg REL_CLI_DOWNSTREAM_DATA) error {
 
-	log.Error("Here 0")
 	/*
 	 * HANDLE THE DOWNSTREAM DATA
 	 */
@@ -278,9 +277,7 @@ func (p *PriFiLibInstance) ProcessDownStreamData(msg REL_CLI_DOWNSTREAM_DATA) er
 
 		//pass the data to the VPN/SOCKS5 proxy, if enabled
 		if p.clientState.DataOutputEnabled {
-			log.Error("Ninja 0 - len is", len(msg.Data))
 			p.clientState.DataFromDCNet <- msg.Data
-			log.Error("Ninja 1")
 		}
 		//test if it is the answer from our ping (for latency test)
 		if p.clientState.LatencyTest && len(msg.Data) > 2 {
@@ -310,8 +307,6 @@ func (p *PriFiLibInstance) ProcessDownStreamData(msg REL_CLI_DOWNSTREAM_DATA) er
 
 		return nil
 	}
-
-	log.Error("Here")
 
 	//send upstream data for next round
 	return p.SendUpstreamData()
@@ -363,8 +358,6 @@ func (p *PriFiLibInstance) SendUpstreamData() error {
 			}
 		}
 	}
-
-	log.Error("Here2")
 
 	//produce the next upstream cell
 	upstreamCell := p.clientState.CellCoder.ClientEncode(upstreamCellContent, p.clientState.PayloadLength, p.clientState.MessageHistory)

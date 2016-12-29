@@ -55,7 +55,7 @@ import (
 )
 
 //The time slept between each round
-const PROCESSING_LOOP_SLEEP_TIME = 0 * time.Second
+const PROCESSING_LOOP_SLEEP_TIME = 0 * time.Millisecond
 
 //The timeout before retransmission. Here of 0, since we have only TCP. to be increase with UDP
 const TIMEOUT_PHASE_1 = 1 * time.Second
@@ -555,7 +555,7 @@ func (p *PriFiLibInstance) sendDownstreamData() error {
 
 		// either select data from the data we have to send, if any
 		case downstreamCellContent = <-p.relayState.DataForClients:
-			log.Lvl3("Relay : We have some real data for the clients. ")
+			log.Error("Relay : We have some real data for the clients. ")
 
 		default:
 			downstreamCellContent = make([]byte, 1)
