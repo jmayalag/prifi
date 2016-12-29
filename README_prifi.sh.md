@@ -6,11 +6,19 @@
 
 ## Running PriFi
 
+## tl;dr
+
+Running everything (including the two socks proxies) in localhost with :
+```
+./prifi.sh all-localhost
+```
+... and sets your browser to connect to the SOCKS server `127.0.0.1:8081`
+
 ### SOCKS Preamble
 
 As explained, you need a non-prifi SOCKS server running to handle the traffic from the relay. If you don't have one, run ours :
 ```
-./socks/run-socks-proxy.sh 8090
+cd ./socks && ./run-socks-proxy.sh 8090
 ```
 (you don't need to do this if you run `./prifi.sh all-localhost`, it done for you)
 
