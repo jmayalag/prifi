@@ -29,22 +29,15 @@ Ignore the `No buildable source` after the first step, that's OK. This script ge
 
 PriFi uses [SDA](https://github.com/dedis/cothority) as a network framework. It is easy to run all components (trustees, relay, clients) on one machine for testing purposes, or on different machines for the real setup.
 
-Each component has a *SDA configuration* : an identity (`identity.toml`, containing a private and public key), and some knowledge of the others participants via `group.toml`. For your convenience, we pre-generated some identities in `config.localhost`.
+Each component has a *SDA configuration* : an identity (`identity.toml`, containing a private and public key), and some knowledge of the others participants via `group.toml`. For your convenience, we pre-generated some identities in `config/identities_default`.
 
 ### Testing PriFi, all components in localhost
 
-You can test PriFi by running `./prifi.sh all-localhost`. This will run a SOCKS server, a PriFi relay, a Trustee, and three clients on your machine. They will use the identities in `config.localhost`. You can check what is going on by doing `tail -f {clientX|relay|trusteeX}.log`. You can test browsing through PriFi by setting your browser to use a SOCKS proxy on `localhost:8081`.
+You can test PriFi by running `./prifi.sh all-localhost`. This will run a SOCKS server, a PriFi relay, a Trustee, and three clients on your machine. They will use the identities in `config/identities_default`. You can check what is going on by doing `tail -f {clientX|relay|trusteeX|socks}.log`. You can test browsing through PriFi by setting your browser to use a SOCKS proxy on `localhost:8081`.
 
 ### Using PriFi in a real setup
 
-To test a real PriFi deployement, first, re-generates your identity (so your private key is really private) :
-```
-./prifi.sh gen-id
-```
-This will create two files `config.real/{group|identity}.toml`. You can then run a PriFi client with this identity :
-```
-./prifi.sh client real
-```
+To test a real PriFi deployement, first, re-generates your identity (so your private key is really private). The processed is detailed in the [README about ./prifi.sh startup script](README_prifi.sh.md)
 
 ## More documentation :
 
