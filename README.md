@@ -37,15 +37,15 @@ You can test PriFi by running `./prifi.sh all-localhost`. This will run a SOCKS 
 
 ### Using PriFi in a real setup
 
-To test a real PriFi deployement, first, re-generates your identity (so your private key is really private). The processed is detailed in the [README about ./prifi.sh startup script](README_prifi.sh.md)
+To test a real PriFi deployement, first, re-generates your identity (so your private key is really private). The processed is detailed in the [README about ./prifi.sh startup script](README_prifi.sh.md).
 
 ## More documentation :
 
-[README about the Architecture and SOCKS Proxies](README_architecture.md)
+ - [README about the Architecture and SOCKS Proxies](README_architecture.md)
 
-[README about ./prifi.sh startup script](README_prifi.sh.md)
+ - [README about ./prifi.sh startup script](README_prifi.sh.md)
 
-[README about contributing to this repository](README_contributing.md)
+ - [README about contributing to this repository](README_contributing.md)
 
 ## API Documentation
 
