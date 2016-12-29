@@ -13,6 +13,7 @@ port=8080
 port_client=8090
 configdir="config.localhost"
 sleeptime_between_spawns=1
+all_localhost_number_of_clients=2
 
 #pretty print
 shell="\e[35m[script]\e[97m"
@@ -263,21 +264,23 @@ case $1 in
 		CLIENT0PID=$!
 		echo -e "$okMsg"
 
-		sleep $sleeptime_between_spawns
+        if [ "$all_localhost_number_of_clients" -gt 1 ]; then
+            sleep $sleeptime_between_spawns
 
-		#echo -n "Starting client 1... (SOCKS on :8082)	"
-		#"$thisScript" client 1 8082 > client1.log 2>&1 &
-		#CLIENT1PID=$!
-		#echo -e "$okMsg"
+            echo -n "Starting client 1... (SOCKS on :8082)	"
+            "$thisScript" client 1 8082 > client1.log 2>&1 &
+            CLIENT1PID=$!
+            echo -e "$okMsg"
+		fi
 
-		#sleep $sleeptime_between_spawns
+        if [ "$all_localhost_number_of_clients" -gt 2 ]; then
+            sleep $sleeptime_between_spawns
 
-		#echo -n "Starting client 2... (SOCKS on :8083)"
-		#"$thisScript" client 2 8083 > client2.log 2>&1 &
-		#CLIENT2PID=$!
-		#echo -e "$okMsg"
-
-		#sleep $sleeptime_between_spawns
+            echo -n "Starting client 2... (SOCKS on :8083)	"
+            "$thisScript" client 2 8083 > client2.log 2>&1 &
+            CLIENT1PID=$!
+            echo -e "$okMsg"
+		fi
 
 		read -p "PriFi deployed. Press [enter] to kill all..." key
 
