@@ -6,13 +6,13 @@
 
 ### tl;dr
 
-Runs everything (including the SOCKS proxy #2) in localhost with :
+Run everything (including the SOCKS proxy #2) in localhost with :
 ```
 ./prifi.sh all-localhost
 ```
-... and sets your browser to connect to the SOCKS server `127.0.0.1:8081`
+... and sets your browser to connect to the SOCKS server `127.0.0.1:8081` or `127.0.0.1:8082`
 
-## Running PriFi
+## Running PriFi :
 
 ### SOCKS Preamble
 
@@ -20,7 +20,7 @@ As explained, you need a non-prifi SOCKS server running to handle the traffic fr
 ```
 cd ./socks && ./run-socks-proxy.sh 8090
 ```
-(you don't need to do this if you run `./prifi.sh all-localhost`, it done for you)
+(you don't need to do this if you run `./prifi.sh all-localhost`, it is done for you)
 
 ## Running PriFi
 
