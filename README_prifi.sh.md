@@ -19,15 +19,30 @@ As explained, you need a non-prifi SOCKS server running to handle the traffic fr
 There is one big startup script `prifi.sh`. 
 
 ```
-./prifi.sh 
+./prifi.sh
+
+PriFi, a tracking-resistant protocol for local-area anonymity
+
 Usage: run-prifi.sh role/operation [params]
 	role: client, relay, trustee
-	operation: sockstest, all, deploy-all
+	operation: install, sockstest, all-localhost, gen-id
 	params for role relay: [socks_server_port] (optional, numeric)
 	params for role trustee: id (required, numeric)
 	params for role client: id (required, numeric), [prifi_socks_server_port] (optional, numeric)
-	params for operation all, deploy: none
-	params for operation sockstest, deploy: [socks_server_port] (optional, numeric), [prifi_socks_server_port] (optional, numeric)
+	params for operation install: none
+	params for operation all-localhost: none
+	params for operation gen-id: none
+	params for operation sockstest: [socks_server_port] (optional, numeric), [prifi_socks_server_port] (optional, numeric)
+
+Man-page:
+	install: get the dependencies, and tests the setup
+	relay: starts a PriFi relay
+	trustee: starts a PriFi trustee, using the config file trusteeid
+	client: starts a PriFi client, using the config file clientid
+	all-localhost: starts a Prifi relay, a trustee, three clients all on localhost
+	sockstest: starts the PriFi and non-PriFi SOCKS tunnel, without PriFi anonymization
+	gen-id: interactive creation of identity.toml
+	Lost ? read https://github.com/lbarman/prifi/README.md
 
 ```
 
