@@ -4,15 +4,15 @@
 
 ## More details on ./prifi.sh
 
-## Running PriFi
+# tl;dr
 
-## tl;dr
-
-Running everything (including the two socks proxies) in localhost with :
+Runs everything (including the SOCKS proxy #2) in localhost with :
 ```
 ./prifi.sh all-localhost
 ```
 ... and sets your browser to connect to the SOCKS server `127.0.0.1:8081`
+
+## Running PriFi
 
 ### SOCKS Preamble
 
