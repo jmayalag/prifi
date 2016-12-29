@@ -4,7 +4,7 @@
 
 ## More details on ./prifi.sh
 
-# tl;dr
+### tl;dr
 
 Runs everything (including the SOCKS proxy #2) in localhost with :
 ```
