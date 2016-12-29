@@ -60,12 +60,13 @@ print_usage() {
 	echo
 	echo -e "Usage: run-prifi.sh \e[33mrole/operation [params]\e[97m"
 	echo -e "	\e[33mrole\e[97m: client, relay, trustee"
-	echo -e "	\e[33moperation\e[97m: install, sockstest, all-localhost"
+	echo -e "	\e[33moperation\e[97m: install, sockstest, all-localhost, gen-id"
 	echo -e "	\e[33mparams\e[97m for role \e[33mrelay\e[97m: [socks_server_port] (optional, numeric)"
 	echo -e "	\e[33mparams\e[97m for role \e[33mtrustee\e[97m: id (required, numeric)"
 	echo -e "	\e[33mparams\e[97m for role \e[33mclient\e[97m: id (required, numeric), [prifi_socks_server_port] (optional, numeric)"
 	echo -e "	\e[33mparams\e[97m for operation \e[33minstall\e[97m: none"
 	echo -e "	\e[33mparams\e[97m for operation \e[33mall-localhost\e[97m: none"
+	echo -e "	\e[33mparams\e[97m for operation \e[33mgen-id\e[97m: none"
 	echo -e "	\e[33mparams\e[97m for operation \e[33msockstest\e[97m: [socks_server_port] (optional, numeric), [prifi_socks_server_port] (optional, numeric)"
 	echo
 
@@ -76,6 +77,7 @@ print_usage() {
 	echo -e "	\e[33mclient\e[97m: starts a PriFi client, using the config file client\e[33mid\e[97m"
 	echo -e "	\e[33mall-localhost\e[97m: starts a Prifi relay, a trustee, three clients all on localhost"
 	echo -e "	\e[33msockstest\e[97m: starts the PriFi and non-PriFi SOCKS tunnel, without PriFi anonymization"
+	echo -e "	\e[33mgen-id\e[97m: interactive creation of identity.toml"
 	echo -e "	Lost ? read https://github.com/lbarman/prifi/README.md"
 }
 
