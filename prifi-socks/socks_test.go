@@ -24,7 +24,6 @@ func TestSocksConnect(t *testing.T) {
 	go prifi_socks.StartSocksServer(port, payloadLength, upstreamChannelServer, downstreamChannelServer, false)
 	go prifi_socks.StartSocksClient(portServer, upstreamChannelClient, downstreamChannelClient)
 
-
 	conn, err := net.Dial("tcp", port)
 	if err != nil {
 		log.Error("SOCKS PriFi Client: Could not connect to SOCKS server.", err)
