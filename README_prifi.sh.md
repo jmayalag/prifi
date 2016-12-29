@@ -81,6 +81,17 @@ A typical deployement could be :
 ./prifi.sh client 1 8081
 ```
 
+## Default or Real identities.
+
+An *identity*, stored in `identity.toml`, is a private/public key pair. By default, PriFi will use pre-generated identities in `config/identities_default`.
+
+You should not use those for a real PriFi development, as the private key is public (and thus you get literally 0 security).
+
+You can generate your own `identity.toml` by calling `./prifi.sh gen-id`. It will create a fresh identity in `config/identities_real/{entity}/`.
+
+In `prifi.sh`, there is a variable `try_use_real_identities`. If `false`, the script will always fetch identities in `config/identities_default/{entity}/`. If `true`, the script will fetch identities in `config/identities_real/{entity}/` if they exist, and fall back to `config/identities_default/{entity}/` otherwise.
+
+
 ## Configuration
 
 The PriFi configuration file is in `config.demo/prifi.toml`
