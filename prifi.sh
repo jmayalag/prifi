@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 #variables
 cothorityBranchRequired="test_ism_2_699"
 colors="true"
@@ -10,6 +12,8 @@ colors="true"
 port=8080
 port_client=8090
 configdir="config.localhost"
+sleeptime_between_spawns=1
+all_localhost_number_of_clients=2
 
 #pretty print
 shell="\e[35m[script]\e[97m"
@@ -216,6 +220,7 @@ case $1 in
 
 		#specialize the config file, and test all files
 		identity_file="client0/$identity_file"
+		group_file="client0/$group_file"
 		test_files
 
 		#run PriFi in relay mode
@@ -233,47 +238,49 @@ case $1 in
 		
 		if [ "$socks" -ne 1 ]; then
 			echo -n "Socks proxy not running, starting it... "
-			./run-socks-proxy.sh "$port_client" > socks.log 2>&1 &
+			cd socks && ./run-socks-proxy.sh "$port_client" > ../socks.log 2>&1 &
 			SOCKSPID=$!
 			echo -e "$okMsg"
 		fi
 
 		thisScript="$0"	
 
-		echo -n "Starting relay...	"
+		echo -n "Starting relay...			"
 		"$thisScript" relay > relay.log 2>&1 &
 		RELAYPID=$!
 		echo -e "$okMsg"
 
-		sleep 3
+		sleep $sleeptime_between_spawns
 
-		echo -n "Starting trustee 0...	"
+		echo -n "Starting trustee 0...			"
 		"$thisScript" trustee 0 > trustee0.log 2>&1 &
 		TRUSTEE0PID=$!
 		echo -e "$okMsg"
 
-		sleep 3
+		sleep $sleeptime_between_spawns
 
-		echo -n "Starting client 0...	"
+		echo -n "Starting client 0... (SOCKS on :8081)	"
 		"$thisScript" client 0 8081 > client0.log 2>&1 &
 		CLIENT0PID=$!
 		echo -e "$okMsg"
 
-		sleep 3
+        if [ "$all_localhost_number_of_clients" -gt 1 ]; then
+            sleep $sleeptime_between_spawns
 
-		echo -n "Starting client 1...	"
-		"$thisScript" client 1 8082 > client1.log 2>&1 &
-		CLIENT1PID=$!
-		echo -e "$okMsg"
+            echo -n "Starting client 1... (SOCKS on :8082)	"
+            "$thisScript" client 1 8082 > client1.log 2>&1 &
+            CLIENT1PID=$!
+            echo -e "$okMsg"
+		fi
 
-		sleep 3
+        if [ "$all_localhost_number_of_clients" -gt 2 ]; then
+            sleep $sleeptime_between_spawns
 
-		echo -n "Starting client 2...	"
-		"$thisScript" client 2 8082 > client2.log 2>&1 &
-		CLIENT2PID=$!
-		echo -e "$okMsg"
-
-		sleep 3
+            echo -n "Starting client 2... (SOCKS on :8083)	"
+            "$thisScript" client 2 8083 > client2.log 2>&1 &
+            CLIENT1PID=$!
+            echo -e "$okMsg"
+		fi
 
 		read -p "PriFi deployed. Press [enter] to kill all..." key
 

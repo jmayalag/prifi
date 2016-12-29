@@ -1,4 +1,4 @@
-package prifi
+package prifi_lib
 
 /*
 PriFi Trustee
@@ -118,7 +118,7 @@ func NewTrusteeState(trusteeID int, nClients int, nTrustees int, payloadLength i
 Received_ALL_TRU_SHUTDOWN handles ALL_REL_SHUTDOWN messages.
 When we receive this message we should  clean up resources.
 */
-func (p *Protocol) Received_ALL_TRU_SHUTDOWN(msg ALL_ALL_SHUTDOWN) error {
+func (p *PriFiLibInstance) Received_ALL_TRU_SHUTDOWN(msg ALL_ALL_SHUTDOWN) error {
 	log.Lvl1("Trustee " + strconv.Itoa(p.trusteeState.ID) + " : Received a SHUTDOWN message. ")
 
 	//stop the sending process
@@ -133,7 +133,7 @@ func (p *Protocol) Received_ALL_TRU_SHUTDOWN(msg ALL_ALL_SHUTDOWN) error {
 Received_ALL_TRU_PARAMETERS handles ALL_REL_PARAMETERS.
 It initializes the trustee with the parameters contained in the message.
 */
-func (p *Protocol) Received_ALL_TRU_PARAMETERS(msg ALL_ALL_PARAMETERS) error {
+func (p *PriFiLibInstance) Received_ALL_TRU_PARAMETERS(msg ALL_ALL_PARAMETERS) error {
 
 	//this can only happens in the state RELAY_STATE_BEFORE_INIT
 	if p.trusteeState.currentState != TRUSTEE_STATE_BEFORE_INIT && !msg.ForceParams {
@@ -164,7 +164,7 @@ Send_TRU_REL_PK tells the relay's public key to the relay
 (this, of course, provides no security, but this is an early version of the protocol).
 This is the first action of the trustee.
 */
-func (p *Protocol) Send_TRU_REL_PK() error {
+func (p *PriFiLibInstance) Send_TRU_REL_PK() error {
 
 	toSend := &TRU_REL_TELL_PK{p.trusteeState.ID, p.trusteeState.PublicKey}
 	err := p.messageSender.SendToRelay(toSend)
@@ -182,7 +182,7 @@ func (p *Protocol) Send_TRU_REL_PK() error {
 Send_TRU_REL_DC_CIPHER sends DC-net ciphers to the relay continuously once started.
 One can control the rate by sending flags to "rateChan".
 */
-func (p *Protocol) Send_TRU_REL_DC_CIPHER(rateChan chan int16) {
+func (p *PriFiLibInstance) Send_TRU_REL_DC_CIPHER(rateChan chan int16) {
 
 	stop := false
 	currentRate := TRUSTEE_RATE_ACTIVE
@@ -222,7 +222,7 @@ by changing the cipher sending rate.
 Either the trustee must stop sending because the relay is at full capacity
 or the trustee sends normally because the relay has emptied up enough capacity.
 */
-func (p *Protocol) Received_REL_TRU_TELL_RATE_CHANGE(msg REL_TRU_TELL_RATE_CHANGE) error {
+func (p *PriFiLibInstance) Received_REL_TRU_TELL_RATE_CHANGE(msg REL_TRU_TELL_RATE_CHANGE) error {
 
 	if msg.WindowCapacity <= TRUSTEE_WINDOW_LOWER_LIMIT { //Relay is at almost full capacity stop sending
 		p.trusteeState.sendingRate <- TRUSTEE_RATE_STOPPED
@@ -237,7 +237,7 @@ func (p *Protocol) Received_REL_TRU_TELL_RATE_CHANGE(msg REL_TRU_TELL_RATE_CHANG
 sendData is an auxiliary function used by Send_TRU_REL_DC_CIPHER. It computes the DC-net's cipher and sends it.
 It returns the new round number (previous + 1).
 */
-func sendData(p *Protocol, roundID int32) (int32, error) {
+func sendData(p *PriFiLibInstance, roundID int32) (int32, error) {
 	data := p.trusteeState.CellCoder.TrusteeEncode(p.trusteeState.PayloadLength)
 
 	//send the data
@@ -261,7 +261,7 @@ and a base given by the relay. In addition to deriving the secrets,
 the trustee uses the ephemeral keys to perform a Neff shuffle. It remembers
 this shuffle in order to check the correctness of the chain of shuffle afterwards.
 */
-func (p *Protocol) Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE(msg REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE) error {
+func (p *PriFiLibInstance) Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE(msg REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE) error {
 
 	//this can only happens in the state TRUSTEE_STATE_INITIALIZING
 	if p.trusteeState.currentState != TRUSTEE_STATE_INITIALIZING {
@@ -278,7 +278,7 @@ func (p *Protocol) Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE(msg RE
 	base := msg.Base
 
 	//sanity check
-	if len(clientsPks) < 2 || len(clientsEphemeralPks) < 2 || len(clientsPks) != len(clientsEphemeralPks) {
+	if len(clientsPks) < 1 || len(clientsEphemeralPks) < 1 || len(clientsPks) != len(clientsEphemeralPks) {
 		e := "Trustee " + strconv.Itoa(p.trusteeState.ID) + " : One of the following check failed : len(clientsPks)>1, len(clientsEphemeralPks)>1, len(clientsPks)==len(clientsEphemeralPks)"
 		log.Error(e)
 		return errors.New(e)
@@ -362,7 +362,7 @@ their own shuffle has been included in the chain of shuffles. If that's the case
 shuffle (which will be used by the clients), and sends it back to the relay.
 If everything succeed, starts the goroutine for sending DC-net ciphers to the relay.
 */
-func (p *Protocol) Received_REL_TRU_TELL_TRANSCRIPT(msg REL_TRU_TELL_TRANSCRIPT) error {
+func (p *PriFiLibInstance) Received_REL_TRU_TELL_TRANSCRIPT(msg REL_TRU_TELL_TRANSCRIPT) error {
 
 	//this can only happens in the state TRUSTEE_STATE_SHUFFLE_DONE
 	if p.trusteeState.currentState != TRUSTEE_STATE_SHUFFLE_DONE {
@@ -373,8 +373,6 @@ func (p *Protocol) Received_REL_TRU_TELL_TRANSCRIPT(msg REL_TRU_TELL_TRANSCRIPT)
 	log.Lvl3("Trustee " + strconv.Itoa(p.trusteeState.ID) + " : Received_REL_TRU_TELL_TRANSCRIPT")
 
 	// PROTOBUF FLATTENS MY 2-DIMENSIONAL ARRAY. THIS IS A PATCH
-	log.Lvl1("NTrustee :", p.trusteeState.nTrustees)
-	log.Lvl1("NClients :", p.trusteeState.nClients)
 	a := msg.EphPks
 	b := make([][]abstract.Point, p.trusteeState.nTrustees)
 	if len(a) > p.trusteeState.nTrustees {
@@ -440,9 +438,6 @@ func (p *Protocol) Received_REL_TRU_TELL_TRANSCRIPT(msg REL_TRU_TELL_TRANSCRIPT)
 
 			allKeyEqual := true
 			for k := 0; k < p.trusteeState.nClients; k++ {
-				log.Lvl1(p.trusteeState.neffShuffleToVerify.pks[k])
-				log.Lvl1(ephPublicKeys[j])
-				log.Lvl1(ephPublicKeys[j][k])
 				if !p.trusteeState.neffShuffleToVerify.pks[k].Equal(ephPublicKeys[j][k]) {
 					log.Error("Trustee " + strconv.Itoa(p.trusteeState.ID) + "; Transcript invalid for trustee " + strconv.Itoa(j) + ". Aborting.")
 					allKeyEqual = false

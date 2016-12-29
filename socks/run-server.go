@@ -10,7 +10,6 @@ import (
 	"io"
 	"net"
 
-	"encoding/hex"
 	"flag"
 	"strconv"
 
@@ -149,7 +148,6 @@ func HandleClient(conn net.Conn) {
 	//Construct Response Message
 	methodSelectionResponse := []byte{socksVersion[0], byte(methNoAuth)}
 	log.Lvl2("Socks Server : Writing negotiation response...")
-	log.Lvl2(hex.Dump(methodSelectionResponse))
 	conn.Write(methodSelectionResponse)
 
 	/* SOCKS5 Web Server Request Phase */

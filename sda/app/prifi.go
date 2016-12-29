@@ -20,12 +20,11 @@ import (
 	"github.com/dedis/cothority/network"
 	"github.com/dedis/cothority/sda"
 	"github.com/dedis/crypto/abstract"
-	crypconf "github.com/dedis/crypto/config"
-	"github.com/lbarman/prifi/sda/services"
+	cryptoconfig "github.com/dedis/crypto/config"
+	prifi_service "github.com/lbarman/prifi/sda/services"
 	"gopkg.in/urfave/cli.v1"
 	"net"
 	"strconv"
-	"time"
 )
 
 // DefaultName is the name of the binary we produce and is used to create a directory
@@ -44,15 +43,6 @@ const DefaultPriFiConfigFile = "prifi.toml"
 // DefaultPort to listen and connect to. As of this writing, this port is not listed in
 // /etc/services
 const DefaultPort = 6879
-
-// DefaultAddress where to be contacted by other servers.
-const DefaultAddress = "127.0.0.1"
-
-// Service used to get the public IP-address.
-const whatsMyIP = "http://www.whatsmyip.org/"
-
-// RequestTimeOut is how long we're willing to wait for a signature.
-var RequestTimeOut = time.Second * 1
 
 // This app can launch the prifi service in either client, trustee or relay mode
 func main() {
@@ -139,9 +129,9 @@ func main() {
 /**
  * Every "app" require reading config files and starting cothority beforehand
  */
-func readConfigAndStartCothority(c *cli.Context) (*sda.Conode, *config.Group, *services.Service) {
+func readConfigAndStartCothority(c *cli.Context) (*sda.Conode, *config.Group, *prifi_service.ServiceState) {
 	//parse PriFi parameters
-	prifiConfig, err := readPriFiConfigFile(c)
+	prifiTomlConfig, err := readPriFiConfigFile(c)
 
 	if err != nil {
 		log.Error("Could not read prifi config:", err)
@@ -156,10 +146,10 @@ func readConfigAndStartCothority(c *cli.Context) (*sda.Conode, *config.Group, *s
 	}
 
 	//finds the PriFi service
-	service := host.GetService(services.ServiceName).(*services.Service)
+	service := host.GetService(prifi_service.ServiceName).(*prifi_service.ServiceState)
 
 	//set the config from the .toml file
-	service.SetConfig(prifiConfig)
+	service.SetConfigFromToml(prifiTomlConfig)
 
 	//reads the group description
 	group := readCothorityGroupConfig(c)
@@ -181,8 +171,7 @@ func startTrustee(c *cli.Context) error {
 		log.Error("Could not start the prifi service:", err)
 		os.Exit(1)
 	}
-
-	host.Start()
+	host.StartWithErrorListener(service.NetworkErrorHappened)
 	return nil
 }
 
@@ -197,7 +186,7 @@ func startRelay(c *cli.Context) error {
 		os.Exit(1)
 	}
 
-	host.Start()
+	host.StartWithErrorListener(service.NetworkErrorHappened)
 	return nil
 }
 
@@ -212,7 +201,7 @@ func startClient(c *cli.Context) error {
 		os.Exit(1)
 	}
 
-	host.Start()
+	host.StartWithErrorListener(service.NetworkErrorHappened)
 	return nil
 }
 
@@ -227,7 +216,7 @@ func startSocksTunnelOnly(c *cli.Context) error {
 		os.Exit(1)
 	}
 
-	host.Start()
+	host.StartWithErrorListener(service.NetworkErrorHappened)
 	return nil
 }
 
@@ -353,7 +342,7 @@ func startCothorityNode(c *cli.Context) (*sda.Conode, error) {
  * CONFIG
  */
 
-func readPriFiConfigFile(c *cli.Context) (*services.PriFiConfig, error) {
+func readPriFiConfigFile(c *cli.Context) (*prifi_service.PrifiTomlConfig, error) {
 
 	cfile := c.GlobalString("prifi_config")
 
@@ -367,7 +356,7 @@ func readPriFiConfigFile(c *cli.Context) (*services.PriFiConfig, error) {
 		log.Error("Could not read file \"", cfile, "\" (specified by flag prifi_config)")
 	}
 
-	tomlConfig := &services.PriFiConfig{}
+	tomlConfig := &prifi_service.PrifiTomlConfig{}
 	_, err = toml.Decode(string(tomlRawData), tomlConfig)
 	if err != nil {
 		log.Error("Could not parse toml file", cfile)
@@ -442,7 +431,7 @@ func readCothorityGroupConfig(c *cli.Context) *config.Group {
 
 // createKeyPair returns the private and public key in hexadecimal representation.
 func createKeyPair() (string, string) {
-	kp := crypconf.NewKeyPair(network.Suite)
+	kp := cryptoconfig.NewKeyPair(network.Suite)
 	privStr, err := crypto.ScalarHex(network.Suite, kp.Secret)
 	if err != nil {
 		log.Fatal("Error formating private key to hexadecimal. Abort.")

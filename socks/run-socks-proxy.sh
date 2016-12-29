@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 #variables
 colors="true"
 dbg_lvl=3
