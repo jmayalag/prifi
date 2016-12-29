@@ -381,22 +381,6 @@ func mapIdentities(group *config.Group) (map[string]prifi_protocol.PriFiIdentity
 
 	}
 
-	// Check that there is exactly one relay and at least one trustee and client
-	t, r := 0, 0
-
-	for _, v := range m {
-		switch v.Role {
-		case prifi_protocol.Relay:
-			r++
-		case prifi_protocol.Trustee:
-			t++
-		}
-	}
-
-	if !(t > 0 && r == 1) {
-		log.Fatal("Config file does not contain exactly one relay, and at least one trustee.")
-	}
-
 	return m, relay
 }
 

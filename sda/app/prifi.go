@@ -114,6 +114,11 @@ func main() {
 			Value: getDefaultFilePathForName(DefaultCothorityGroupConfigFile),
 			Usage: "Group file",
 		},
+		cli.StringFlag{
+			Name:  "default_path",
+			Value: ".",
+			Usage: "The default creation path for identity.toml when doing gen-id",
+		},
 		cli.BoolFlag{
 			Name:  "nowait",
 			Usage: "Return immediately",
@@ -274,7 +279,13 @@ func createNewIdentityToml(c *cli.Context) error {
 
 	for !configDone {
 		// get name of config file and write to config file
-		folderPath = config.Inputf(".", "Please enter the path for the new identity.toml file:")
+		defaultPath := "."
+
+		if c.GlobalIsSet("default_path") {
+			defaultPath = c.GlobalString("default_path")
+		}
+
+		folderPath = config.Inputf(defaultPath, "Please enter the path for the new identity.toml file:")
 		identityFilePath = path.Join(folderPath, DefaultCothorityConfigFile)
 
 		// check if the directory exists
@@ -315,7 +326,7 @@ func createNewIdentityToml(c *cli.Context) error {
 	f.WriteString("# Public (base64) = " + publicKeyBase64String + "\n")
 	f.Close()
 
-	log.Info("All configurations saved, ready to serve signatures now.")
+	log.Info("Identity file saved.")
 
 	return nil
 }
