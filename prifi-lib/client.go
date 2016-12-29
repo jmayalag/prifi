@@ -192,13 +192,6 @@ func (p *PriFiLibInstance) Received_REL_CLI_DOWNSTREAM_DATA(msg REL_CLI_DOWNSTRE
 	p.clientState.mutex.Lock()
 	defer p.clientState.mutex.Unlock()
 
-	/*
-		if msg.RoundId == 3 && p.clientState.Id == 1 {
-			log.Error("Client " + strconv.Itoa(p.clientState.Id) + " : simulating loss, dropping TCP message for round 3.")
-			return nil
-		}
-	*/
-
 	//this can only happens in the state TRUSTEE_STATE_SHUFFLE_DONE
 	if p.clientState.currentState != CLIENT_STATE_READY {
 		e := "Client " + strconv.Itoa(p.clientState.ID) + " : Received a REL_CLI_DOWNSTREAM_DATA, but not in state CLIENT_STATE_READY, in state " + strconv.Itoa(int(p.clientState.currentState))
@@ -275,6 +268,7 @@ When this function ends, it calls SendUpstreamData() which continues the communi
 */
 func (p *PriFiLibInstance) ProcessDownStreamData(msg REL_CLI_DOWNSTREAM_DATA) error {
 
+	log.Error("Here 0")
 	/*
 	 * HANDLE THE DOWNSTREAM DATA
 	 */
@@ -284,7 +278,9 @@ func (p *PriFiLibInstance) ProcessDownStreamData(msg REL_CLI_DOWNSTREAM_DATA) er
 
 		//pass the data to the VPN/SOCKS5 proxy, if enabled
 		if p.clientState.DataOutputEnabled {
+			log.Error("Ninja 0 - len is", len(msg.Data))
 			p.clientState.DataFromDCNet <- msg.Data
+			log.Error("Ninja 1")
 		}
 		//test if it is the answer from our ping (for latency test)
 		if p.clientState.LatencyTest && len(msg.Data) > 2 {
@@ -314,6 +310,8 @@ func (p *PriFiLibInstance) ProcessDownStreamData(msg REL_CLI_DOWNSTREAM_DATA) er
 
 		return nil
 	}
+
+	log.Error("Here")
 
 	//send upstream data for next round
 	return p.SendUpstreamData()
@@ -365,6 +363,9 @@ func (p *PriFiLibInstance) SendUpstreamData() error {
 			}
 		}
 	}
+
+	log.Error("Here2")
+
 	//produce the next upstream cell
 	upstreamCell := p.clientState.CellCoder.ClientEncode(upstreamCellContent, p.clientState.PayloadLength, p.clientState.MessageHistory)
 

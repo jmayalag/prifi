@@ -10,6 +10,7 @@ colors="true"
 port=8080
 port_client=8090
 configdir="config.localhost"
+sleeptime_between_spawns=1
 
 #pretty print
 shell="\e[35m[script]\e[97m"
@@ -241,40 +242,40 @@ case $1 in
 
 		thisScript="$0"	
 
-		echo -n "Starting relay...	"
+		echo -n "Starting relay...			"
 		"$thisScript" relay > relay.log 2>&1 &
 		RELAYPID=$!
 		echo -e "$okMsg"
 
-		sleep 3
+		sleep $sleeptime_between_spawns
 
-		echo -n "Starting trustee 0...	"
+		echo -n "Starting trustee 0...			"
 		"$thisScript" trustee 0 > trustee0.log 2>&1 &
 		TRUSTEE0PID=$!
 		echo -e "$okMsg"
 
-		sleep 3
+		sleep $sleeptime_between_spawns
 
-		echo -n "Starting client 0... (SOCKS on :8081)"
+		echo -n "Starting client 0... (SOCKS on :8081)	"
 		"$thisScript" client 0 8081 > client0.log 2>&1 &
 		CLIENT0PID=$!
 		echo -e "$okMsg"
 
-		sleep 3
+		sleep $sleeptime_between_spawns
 
-		echo -n "Starting client 1... (SOCKS on :8082)"
+		echo -n "Starting client 1... (SOCKS on :8082)	"
 		"$thisScript" client 1 8082 > client1.log 2>&1 &
 		CLIENT1PID=$!
 		echo -e "$okMsg"
 
-		sleep 3
+		sleep $sleeptime_between_spawns
 
 		#echo -n "Starting client 2... (SOCKS on :8083)"
 		#"$thisScript" client 2 8083 > client2.log 2>&1 &
 		#CLIENT2PID=$!
 		#echo -e "$okMsg"
 
-		#sleep 3
+		#sleep $sleeptime_between_spawns
 
 		read -p "PriFi deployed. Press [enter] to kill all..." key
 

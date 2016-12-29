@@ -183,7 +183,7 @@ func StartSocksServer(localListeningAddress string, payloadLength int, upstreamC
 			controlChannels[newSocksConnectionID] = make(chan uint16, 1)
 			counter[newSocksConnectionID] = 1
 
-			log.Lvl2("SOCKS PriFi Server : got a new connection, assigned id " + strconv.Itoa(int(newSocksConnectionID)))
+			log.Error("SOCKS PriFi Server : got a new connection, assigned id " + strconv.Itoa(int(newSocksConnectionID)))
 
 			// Instantiate a connection handler and pass it the current state
 			controlChannels[newSocksConnectionID] <- currentState
@@ -198,6 +198,8 @@ func StartSocksServer(localListeningAddress string, payloadLength int, upstreamC
 			packetType := myData.Type
 			dataLength := myData.MessageLength
 			data := myData.Data[:dataLength]
+
+			log.Error("Got a packet ! ", myData.ID)
 
 			// Skip if the connection doesn't exist or the connection ID is 0, unless it's a control message (stall, resume)
 			if !downStreamContainsLatencyMessages { //of course, if the downstream contains latency messages, don't show error
@@ -250,11 +252,18 @@ func StartSocksServer(localListeningAddress string, payloadLength int, upstreamC
 				}
 
 				// Write the data back to the browser
-				if socksProxyActiveConnections[socksConnectionID] == nil {
-					return
+				log.Error("Putting data into connection", socksConnectionID)
+				for k := range socksProxyActiveConnections {
+					log.Error("->", k)
 				}
-				socksProxyActiveConnections[socksConnectionID].Write(data)
-				counter[socksConnectionID]++
+				log.Error("Done listing connections.")
+
+				if socksProxyActiveConnections[socksConnectionID] != nil {
+					socksProxyActiveConnections[socksConnectionID].Write(data)
+					counter[socksConnectionID]++
+				} else {
+					log.Error("SOCKS PriFi Client: Got data for an unexisting connection " + strconv.Itoa(int(socksConnectionID)) + ", dropping.")
+				}
 
 			case SocksClosed: // Indicates a connection has been closed
 
