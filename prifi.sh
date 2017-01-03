@@ -13,7 +13,7 @@
 # variables that you might change often
 
 dbg_lvl=3 						# 1=less verbose, 3=more verbose. goes up to 5, but then prints the SDA's message (network framework)
-try_use_real_identities="true"	# if "true", will try to use "self-generated" public/private key as a replacement for the dummy keys
+try_use_real_identities="false"	# if "true", will try to use "self-generated" public/private key as a replacement for the dummy keys
 								# we generated for you. It asks you if it does not find real keys. If false, will always use the dummy keys.
 colors="true"					# if "false", the output of PriFi (not this script) will be in black-n-white
 
@@ -321,7 +321,14 @@ case $1 in
 		;;
 
 	localhost|Localhost|LOCALHOST|all-localhost|All-Localhost|ALL-LOCALHOST)
-
+	
+		thisScript="$0"	
+		if [ "$try_use_real_identities" = "true" ]; then
+			echo -en "$warningMsg, try_use_real_identities set to true, but this is incompatible to all-localhost mode. Switching to false ..."
+			sed -i -e 's/try_use_real_identities=\"true\"/try_use_real_identities=\"false\"/g' "$thisScript"
+			echo -e "$okMsg"
+		fi
+		
 		#test for proper setup
 		test_go
 		test_cothority
@@ -336,25 +343,22 @@ case $1 in
 			echo -e "$okMsg"
 		fi
 
-		thisScript="$0"	
-
 		echo -n "Starting relay...			"
 		"$thisScript" relay > relay.log 2>&1 &
 		RELAYPID=$!
+		THISPGID=$(ps -o pgid= $RELAYPID)
 		echo -e "$okMsg"
 
 		sleep $sleeptime_between_spawns
 
 		echo -n "Starting trustee 0...			"
 		"$thisScript" trustee 0 > trustee0.log 2>&1 &
-		TRUSTEE0PID=$!
 		echo -e "$okMsg"
 
 		sleep $sleeptime_between_spawns
 
 		echo -n "Starting client 0... (SOCKS on :8081)	"
 		"$thisScript" client 0 8081 > client0.log 2>&1 &
-		CLIENT0PID=$!
 		echo -e "$okMsg"
 
         if [ "$all_localhost_n_clients" -gt 1 ]; then
@@ -362,7 +366,6 @@ case $1 in
 
             echo -n "Starting client 1... (SOCKS on :8082)	"
             "$thisScript" client 1 8082 > client1.log 2>&1 &
-            CLIENT1PID=$!
             echo -e "$okMsg"
 		fi
 
@@ -371,20 +374,12 @@ case $1 in
 
             echo -n "Starting client 2... (SOCKS on :8083)	"
             "$thisScript" client 2 8083 > client2.log 2>&1 &
-            CLIENT1PID=$!
             echo -e "$okMsg"
 		fi
 
 		read -p "PriFi deployed. Press [enter] to kill all..." key
 
-		kill -9 -$RELAYPID 2>/dev/null
-		kill -9 -$TRUSTEE0PID 2>/dev/null
-		kill -9 -$CLIENT0PID 2>/dev/null
-		kill -9 -$CLIENT1PID 2>/dev/null
-		kill -9 -$CLIENT2PID 2>/dev/null
-		kill -9 -$SOCKSPID 2>/dev/null
-		pkill prifi		
-		pkill run-server # this is to kill the non-prifi SOCKS server. I am sure we can do better
+		kill -TERM -- -$THISPGID
 		;;
 
 	gen-id|Gen-Id|GEN-ID)
@@ -442,6 +437,49 @@ case $1 in
 		echo -e "$okMsg"
 
 		echo -e "Please edit \e[33m$pathReal/group.toml\e[97m to the correct values."
+		;;
+
+	relay-d)
+
+		#test for proper setup
+		test_go
+		test_cothority
+
+		thisScript="$0"	
+
+		echo -n "Starting relay...			"
+		"$thisScript" relay > relay.log 2>&1 &
+		RELAYPID=$!
+		RELAYPGID=$(ps -o pgid= $RELAYPID)
+		echo -e "$okMsg"
+
+		echo -e "PriFi relay deployed, PGID $RELAYPGID. Kill with \"kill -TERM -- -RELAYPGID\""
+
+		;;
+
+	trustee-d)
+
+		#test for proper setup
+		test_go
+		test_cothority
+
+		thisScript="$0"	
+		trusteeId="$2"
+	
+		if [ "$#" -lt 2 ]; then
+			echo -e "$errorMsg parameter 2 need to be the client id."
+			exit 1
+		fi
+		test_digit $trusteeId 2
+
+		echo -n "Starting trustee $trusteeId...			"
+		"$thisScript" trustee "$trusteeId" > trustee${trusteeId}.log 2>&1 &
+		TRUSTEEPID=$!
+		TRUSTEEGPID=$(ps -o pgid= $TRUSTEEPID)
+		echo -e "$okMsg"
+
+		echo -e "PriFi trustee deployed, PGID $RELAYPGID. Kill with \"kill -TERM -- -RELAYPGID\""
+
 		;;
 
 	clean|Clean|CLEAN)
