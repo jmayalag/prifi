@@ -4,6 +4,6 @@ RelayWindowSize = 1
 RelayUseDummyDataDown = false
 RelayReportingLimit = -1
 UseUDP = false
-DoLatencyTests = false
+DoLatencyTests = true
 SocksServerPort = 8080
 SocksClientPort = 8090

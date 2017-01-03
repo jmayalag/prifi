@@ -243,7 +243,6 @@ func (s *ServiceState) setConfigToPriFiProtocol(wrapper *prifi_protocol.PriFiSDA
 	//deep-clone the identityMap
 	s.nodesAndIDs.mutex.Lock()
 	idMapCopy := make(map[string]prifi_protocol.PriFiIdentity)
-	log.Error("ID map has length", len(s.nodesAndIDs.identitiesMap))
 	for k, v := range s.nodesAndIDs.identitiesMap {
 		idMapCopy[k] = prifi_protocol.PriFiIdentity{
 			ID:      v.ID,
@@ -388,7 +387,6 @@ func mapIdentities(group *config.Group) (map[string]prifi_protocol.PriFiIdentity
 // readGroup reads the group description and sets up the Service struct fields
 // accordingly. It *MUST* be called first when the node is started.
 func (s *ServiceState) readGroup(group *config.Group) {
-	log.Error("Readgroup called")
 	IDs, relayID := mapIdentities(group)
 	log.Lvlf1("%+v\n", IDs)
 	s.nodesAndIDs = &SDANodesAndIDs{
