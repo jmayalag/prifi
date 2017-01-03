@@ -454,7 +454,6 @@ case $1 in
 		echo -e "$okMsg"
 
 		echo -e "PriFi relay deployed, PGID $RELAYPGID. Kill with \"kill -TERM -- -$RELAYPID\""
-
 		;;
 
 	trustee-d)
@@ -479,7 +478,6 @@ case $1 in
 		echo -e "$okMsg"
 
 		echo -e "PriFi trustee deployed, PGID $TRUSTEEGPID. Kill with \"kill -TERM -- -$TRUSTEEGPID\""
-
 		;;
 
 	socks-d)
@@ -491,7 +489,6 @@ case $1 in
 		echo -e "$okMsg"
 
 		echo -e "PriFi trustee deployed, PGID $SOCKSPGID. Kill with \"kill -TERM -- -$SOCKSPGID\""
-
 		;;
 
 	clean|Clean|CLEAN)
