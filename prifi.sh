@@ -453,8 +453,7 @@ case $1 in
 		RELAYPGID=$(ps -o pgid= $RELAYPID)
 		echo -e "$okMsg"
 
-		echo -e "PriFi relay deployed, PGID $RELAYPGID. Kill with \"kill -TERM -- -RELAYPGID\""
-
+		echo -e "PriFi relay deployed, PGID $RELAYPGID. Kill with \"kill -TERM -- -$RELAYPID\""
 		;;
 
 	trustee-d)
@@ -478,8 +477,18 @@ case $1 in
 		TRUSTEEGPID=$(ps -o pgid= $TRUSTEEPID)
 		echo -e "$okMsg"
 
-		echo -e "PriFi trustee deployed, PGID $RELAYPGID. Kill with \"kill -TERM -- -RELAYPGID\""
+		echo -e "PriFi trustee deployed, PGID $TRUSTEEGPID. Kill with \"kill -TERM -- -$TRUSTEEGPID\""
+		;;
 
+	socks-d)
+
+		echo -n "Starting SOCKS Server...			"
+		cd socks && ./run-socks-proxy.sh "$socksServer2Port" > ../socks.log 2>&1 &
+		SOCKSPID=$!
+		SOCKSPGID=$(ps -o pgid= $SOCKSPID)
+		echo -e "$okMsg"
+
+		echo -e "PriFi trustee deployed, PGID $SOCKSPGID. Kill with \"kill -TERM -- -$SOCKSPGID\""
 		;;
 
 	clean|Clean|CLEAN)

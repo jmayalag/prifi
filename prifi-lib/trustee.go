@@ -93,7 +93,7 @@ func NewTrusteeState(trusteeID int, nClients int, nTrustees int, payloadLength i
 	params.neffShuffleToVerify = NeffShuffleResult{}
 	params.nTrustees = nTrustees
 	params.PayloadLength = payloadLength
-	params.sendingRate = make(chan int16)
+	params.sendingRate = make(chan int16, 10)
 	params.TrusteeID = trusteeID
 
 	//prepare the crypto parameters
