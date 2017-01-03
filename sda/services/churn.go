@@ -220,6 +220,8 @@ func (s *ServiceState) autoConnect() {
 	for range tick {
 		if !s.IsPriFiProtocolRunning() {
 			s.sendConnectionRequest()
+		} else {
+			log.Error("skipping conn request, alive")
 		}
 	}
 }

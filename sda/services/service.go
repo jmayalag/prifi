@@ -14,6 +14,8 @@ import (
 	"os"
 	"strconv"
 
+	"sync"
+
 	"github.com/dedis/cothority/app/lib/config"
 	"github.com/dedis/cothority/log"
 	"github.com/dedis/cothority/network"
@@ -21,7 +23,6 @@ import (
 	prifi_lib "github.com/lbarman/prifi/prifi-lib"
 	prifi_socks "github.com/lbarman/prifi/prifi-socks"
 	prifi_protocol "github.com/lbarman/prifi/sda/protocols"
-	"sync"
 )
 
 //The name of the service, used by SDA's internals
@@ -82,8 +83,10 @@ type ServiceState struct {
 // returns true if the PriFi SDA protocol is running (in any state : init, communicate, etc)
 func (s *ServiceState) IsPriFiProtocolRunning() bool {
 	if s.priFiSDAProtocol != nil {
+		log.Error("IsPriFiProtocolRunning not nil -> ", (!s.priFiSDAProtocol.HasStopped))
 		return !s.priFiSDAProtocol.HasStopped
 	}
+	log.Error("IsPriFiProtocolRunning nil -> false")
 	return false
 }
 
@@ -245,12 +248,14 @@ func (s *ServiceState) setConfigToPriFiProtocol(wrapper *prifi_protocol.PriFiSDA
 	//deep-clone the identityMap
 	s.nodesAndIDs.mutex.Lock()
 	idMapCopy := make(map[string]prifi_protocol.PriFiIdentity)
+	log.Error("ID map has length", len(s.nodesAndIDs.identitiesMap))
 	for k, v := range s.nodesAndIDs.identitiesMap {
 		idMapCopy[k] = prifi_protocol.PriFiIdentity{
 			ID:      v.ID,
 			Role:    v.Role,
 			Address: v.Address,
 		}
+		log.Error("Adding", v.ID, ", role", v.Role, ", Address", v.Address)
 	}
 	s.nodesAndIDs.mutex.Unlock()
 
@@ -362,11 +367,13 @@ func mapIdentities(group *config.Group) (map[string]prifi_protocol.PriFiIdentity
 			id = &prifi_protocol.PriFiIdentity{
 				Role: prifi_protocol.Relay,
 				ID:   0,
+				Address: si.Address,
 			}
 		} else if nodeDescription == "trustee" {
 			id = &prifi_protocol.PriFiIdentity{
 				Role: prifi_protocol.Trustee,
 				ID:   -1,
+				Address: si.Address,
 			}
 		}
 
@@ -387,7 +394,9 @@ func mapIdentities(group *config.Group) (map[string]prifi_protocol.PriFiIdentity
 // readGroup reads the group description and sets up the Service struct fields
 // accordingly. It *MUST* be called first when the node is started.
 func (s *ServiceState) readGroup(group *config.Group) {
+	log.Error("Readgroup called")
 	IDs, relayID := mapIdentities(group)
+	log.Lvlf1("%+v\n", IDs)
 	s.nodesAndIDs = &SDANodesAndIDs{
 		identitiesMap: IDs,
 		relayIdentity: &relayID,
