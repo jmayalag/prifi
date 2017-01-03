@@ -144,18 +144,18 @@ func (p *PriFiSDAProtocol) SetConfig(config *PriFiSDAWrapperConfig) {
 	switch config.Role {
 	case Trustee:
 		if ms.relay == nil {
-			log.Fatal("Relay is not reachable !")
+			log.Fatal("Relay is not reachable (I'm a trustee, and I need it) !")
 		}
 	case Client:
 		if ms.relay == nil {
-			log.Fatal("Relay is not reachable !")
+			log.Fatal("Relay is not reachable (I'm a client, and I need it) !")
 		}
 	case Relay:
 		if len(ms.clients) < 1 {
-			log.Fatal("Less than two clients reachable !")
+			log.Fatal("Less than one client reachable (I'm a relay, and there's no use starting the protocol) !")
 		}
 		if len(ms.trustees) < 1 {
-			log.Fatal("No trustee reachable !")
+			log.Fatal("No trustee reachable (I'm a relay, and I cannot start the protocol) !")
 		}
 	}
 
@@ -225,6 +225,7 @@ func (p *PriFiSDAProtocol) buildMessageSender(identities map[string]PriFiIdentit
 
 	for i := 0; i < len(nodes); i++ {
 		id, ok := identities[nodes[i].ServerIdentity.Address.String()]
+
 		if !ok {
 			log.Lvl3("Skipping unknow node with address", nodes[i].ServerIdentity.Address)
 			continue

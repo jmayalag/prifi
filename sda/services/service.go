@@ -222,9 +222,6 @@ func (s *ServiceState) StartSocksTunnelOnly() error {
 
 func (s *ServiceState) setConfigToPriFiProtocol(wrapper *prifi_protocol.PriFiSDAProtocol) {
 
-	log.Lvl1("setConfigToPriFiProtocol called")
-	log.Lvlf1("%+v\n", s.prifiTomlConfig)
-
 	prifiParams := prifi_lib.ALL_ALL_PARAMETERS{
 		ClientDataOutputEnabled: true,
 		DoLatencyTests:          s.prifiTomlConfig.DoLatencyTests,
@@ -253,7 +250,6 @@ func (s *ServiceState) setConfigToPriFiProtocol(wrapper *prifi_protocol.PriFiSDA
 			Role:    v.Role,
 			Address: v.Address,
 		}
-		log.Error("Adding", v.ID, ", role", v.Role, ", Address", v.Address)
 	}
 	s.nodesAndIDs.mutex.Unlock()
 
@@ -363,14 +359,14 @@ func mapIdentities(group *config.Group) (map[string]prifi_protocol.PriFiIdentity
 
 		if nodeDescription == "relay" {
 			id = &prifi_protocol.PriFiIdentity{
-				Role: prifi_protocol.Relay,
-				ID:   0,
+				Role:    prifi_protocol.Relay,
+				ID:      0,
 				Address: si.Address,
 			}
 		} else if nodeDescription == "trustee" {
 			id = &prifi_protocol.PriFiIdentity{
-				Role: prifi_protocol.Trustee,
-				ID:   -1,
+				Role:    prifi_protocol.Trustee,
+				ID:      -1,
 				Address: si.Address,
 			}
 		}

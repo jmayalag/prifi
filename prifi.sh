@@ -13,7 +13,7 @@
 # variables that you might change often
 
 dbg_lvl=3 						# 1=less verbose, 3=more verbose. goes up to 5, but then prints the SDA's message (network framework)
-try_use_real_identities="true"	# if "true", will try to use "self-generated" public/private key as a replacement for the dummy keys
+try_use_real_identities="false"	# if "true", will try to use "self-generated" public/private key as a replacement for the dummy keys
 								# we generated for you. It asks you if it does not find real keys. If false, will always use the dummy keys.
 colors="true"					# if "false", the output of PriFi (not this script) will be in black-n-white
 
@@ -453,7 +453,7 @@ case $1 in
 		RELAYPGID=$(ps -o pgid= $RELAYPID)
 		echo -e "$okMsg"
 
-		echo -e "PriFi relay deployed, PGID $RELAYPGID. Kill with \"kill -TERM -- -RELAYPGID\""
+		echo -e "PriFi relay deployed, PGID $RELAYPGID. Kill with \"kill -TERM -- -$RELAYPID\""
 
 		;;
 
@@ -478,7 +478,19 @@ case $1 in
 		TRUSTEEGPID=$(ps -o pgid= $TRUSTEEPID)
 		echo -e "$okMsg"
 
-		echo -e "PriFi trustee deployed, PGID $RELAYPGID. Kill with \"kill -TERM -- -RELAYPGID\""
+		echo -e "PriFi trustee deployed, PGID $TRUSTEEGPID. Kill with \"kill -TERM -- -$TRUSTEEGPID\""
+
+		;;
+
+	socks-d)
+
+		echo -n "Starting SOCKS Server...			"
+		cd socks && ./run-socks-proxy.sh "$socksServer2Port" > ../socks.log 2>&1 &
+		SOCKSPID=$!
+		SOCKSPGID=$(ps -o pgid= $SOCKSPID)
+		echo -e "$okMsg"
+
+		echo -e "PriFi trustee deployed, PGID $SOCKSPGID. Kill with \"kill -TERM -- -$SOCKSPGID\""
 
 		;;
 
