@@ -101,11 +101,7 @@ func (p *PriFiSDAProtocol) Stop() {
 		p.prifiLibInstance.Received_ALL_CLI_SHUTDOWN(prifi_lib.ALL_ALL_SHUTDOWN{})
 	}
 
-	log.Error("Done 1, has stopped is now", p.HasStopped)
-
 	p.HasStopped = true
-
-	log.Error("Done 2, has stopped is now", p.HasStopped)
 
 	p.Shutdown()
 	//TODO : sureley we're missing some allocated resources here...

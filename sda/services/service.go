@@ -83,10 +83,8 @@ type ServiceState struct {
 // returns true if the PriFi SDA protocol is running (in any state : init, communicate, etc)
 func (s *ServiceState) IsPriFiProtocolRunning() bool {
 	if s.priFiSDAProtocol != nil {
-		log.Error("IsPriFiProtocolRunning not nil -> ", (!s.priFiSDAProtocol.HasStopped))
 		return !s.priFiSDAProtocol.HasStopped
 	}
-	log.Error("IsPriFiProtocolRunning nil -> false")
 	return false
 }
 
