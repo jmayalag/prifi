@@ -371,7 +371,8 @@ func mapIdentities(group *config.Group) (map[string]prifi_protocol.PriFiIdentity
 		}
 
 		if id != nil {
-			m[si.Address.String()] = *id
+			identifier := si.Address.String() + "=" + si.Public.String()
+			m[identifier] = *id
 			if id.Role == prifi_protocol.Relay {
 				relay = *si
 			}

@@ -59,7 +59,9 @@ func (s *ServiceState) HandleStop(msg *network.Packet) {
 // It decides when another PriFi protocol should be started.
 func (s *ServiceState) HandleConnection(msg *network.Packet) {
 	addr := msg.ServerIdentity.Address.String()
-	log.Lvl3("Received new connection request from ", addr)
+	public := msg.ServerIdentity.Public.String()
+	identifier := addr + "=" + public
+	log.Lvl3("Received new connection request from ", identifier)
 
 	// If we are not the relay, ignore the message
 	if s.role != protocols.Relay {
@@ -67,10 +69,10 @@ func (s *ServiceState) HandleConnection(msg *network.Packet) {
 	}
 
 	s.nodesAndIDs.mutex.Lock()
-	id, found := s.nodesAndIDs.identitiesMap[addr]
+	id, found := s.nodesAndIDs.identitiesMap[identifier]
 	s.nodesAndIDs.mutex.Unlock()
 	if !found {
-		log.Lvl2("New previously-unknown client :", addr)
+		log.Lvl2("New previously-unknown client :", identifier)
 
 		s.nodesAndIDs.mutex.Lock()
 		newID := &protocols.PriFiIdentity{
@@ -78,7 +80,7 @@ func (s *ServiceState) HandleConnection(msg *network.Packet) {
 			Role: protocols.Client,
 		}
 		s.nodesAndIDs.nextFreeClientID++
-		s.nodesAndIDs.identitiesMap[addr] = *newID
+		s.nodesAndIDs.identitiesMap[identifier] = *newID
 		id = *newID
 		s.nodesAndIDs.mutex.Unlock()
 	}
@@ -91,13 +93,13 @@ func (s *ServiceState) HandleConnection(msg *network.Packet) {
 	// Add node to the waiting queue
 	switch id.Role {
 	case protocols.Client:
-		if _, ok := s.waitQueue.clients[addr]; !ok {
-			s.waitQueue.clients[addr] = &WaitQueueEntry{
+		if _, ok := s.waitQueue.clients[identifier]; !ok {
+			s.waitQueue.clients[identifier] = &WaitQueueEntry{
 				IsWaiting: true,
 				Identity:  msg.ServerIdentity,
 			}
 		} else {
-			s.waitQueue.clients[addr].IsWaiting = true
+			s.waitQueue.clients[identifier].IsWaiting = true
 			nodeAlreadyIn = true
 		}
 	case protocols.Trustee:
@@ -106,7 +108,7 @@ func (s *ServiceState) HandleConnection(msg *network.Packet) {
 		if id.ID == -1 {
 			s.nodesAndIDs.mutex.Lock()
 			id.ID = s.nodesAndIDs.nextFreeTrusteeID
-			s.nodesAndIDs.identitiesMap[addr] = protocols.PriFiIdentity{
+			s.nodesAndIDs.identitiesMap[identifier] = protocols.PriFiIdentity{
 				ID:   s.nodesAndIDs.nextFreeTrusteeID,
 				Role: protocols.Trustee,
 			}
@@ -114,13 +116,13 @@ func (s *ServiceState) HandleConnection(msg *network.Packet) {
 			s.nodesAndIDs.nextFreeTrusteeID++
 			s.nodesAndIDs.mutex.Unlock()
 		}
-		if _, ok := s.waitQueue.trustees[addr]; !ok {
-			s.waitQueue.trustees[addr] = &WaitQueueEntry{
+		if _, ok := s.waitQueue.trustees[identifier]; !ok {
+			s.waitQueue.trustees[identifier] = &WaitQueueEntry{
 				IsWaiting: true,
 				Identity:  msg.ServerIdentity,
 			}
 		} else {
-			s.waitQueue.trustees[addr].IsWaiting = true
+			s.waitQueue.trustees[identifier].IsWaiting = true
 			nodeAlreadyIn = true
 		}
 	default:
@@ -159,7 +161,9 @@ func (s *ServiceState) HandleConnection(msg *network.Packet) {
 // It must stop the current PriFi protocol.
 func (s *ServiceState) HandleDisconnection(msg *network.Packet) {
 	addr := msg.ServerIdentity.Address.String()
-	log.Lvl2("Received disconnection request from ", msg.ServerIdentity.Address)
+	public := msg.ServerIdentity.Public.String()
+	identifier := addr + "=" + public
+	log.Lvl2("Received disconnection request from ", identifier)
 
 	// If we are not the relay, ignore the message
 	if s.role != protocols.Relay {
@@ -167,11 +171,11 @@ func (s *ServiceState) HandleDisconnection(msg *network.Packet) {
 	}
 
 	s.nodesAndIDs.mutex.Lock()
-	id, ok := s.nodesAndIDs.identitiesMap[addr]
+	id, ok := s.nodesAndIDs.identitiesMap[identifier]
 	s.nodesAndIDs.mutex.Unlock()
 
 	if !ok {
-		log.Info("Ignoring disconnection from unknown node:", addr)
+		log.Info("Ignoring disconnection from unknown node:", identifier)
 		return
 	}
 
@@ -181,9 +185,9 @@ func (s *ServiceState) HandleDisconnection(msg *network.Packet) {
 	// Remove node to the waiting queue
 	switch id.Role {
 	case protocols.Client:
-		delete(s.waitQueue.clients, addr)
+		delete(s.waitQueue.clients, identifier)
 	case protocols.Trustee:
-		delete(s.waitQueue.trustees, addr)
+		delete(s.waitQueue.trustees, identifier)
 	default:
 		log.Info("Ignoring disconnection request from node with invalid role.")
 	}
