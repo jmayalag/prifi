@@ -14,6 +14,7 @@ This has been covered by other READMEs, so I will just recap what to do :
 
 ```
 go get github.com/lbarman/prifi
+cd $GOPATH/src/github.com/lbarman/prifi
 ./prifi.sh install
 ```
 
