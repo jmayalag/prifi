@@ -37,3 +37,9 @@ Description = "PriFi"
 ```
 
 Step 4. Run the PriFi client `./prifi.sh client 0`. Connect your browser to the SOCKS server at `localhost:8080`.
+
+## Setting up your web browser
+
+I personnally use Firefox with Proxy Switcher `https://addons.mozilla.org/en-us/firefox/addon/proxy-switcher/?src=userprofile`
+
+Do *not* enable "Remote DNS*, PriFi does not support it yet.
