@@ -14,9 +14,6 @@ import (
 	"github.com/dedis/crypto/abstract"
 )
 
-type ScheduleDescription struct {
-}
-
 type Scheduler interface {
 	AddClientToSchedule(pk abstract.Point) error
 
@@ -32,5 +29,3 @@ type Scheduler interface {
 
 	ClientPayloadEmbeddable(roundID int32) (int64, int64)
 }
-
-type Factory func() Scheduler
