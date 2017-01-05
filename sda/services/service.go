@@ -242,6 +242,9 @@ func (s *ServiceState) setConfigToPriFiProtocol(wrapper *prifi_protocol.PriFiSDA
 
 	//deep-clone the identityMap
 	s.nodesAndIDs.mutex.Lock()
+	log.Lvl1("Printing ID maps len =", len(s.nodesAndIDs.identitiesMap))
+	log.Lvlf1("%+v", s.nodesAndIDs.identitiesMap)
+
 	idMapCopy := make(map[string]prifi_protocol.PriFiIdentity)
 	for k, v := range s.nodesAndIDs.identitiesMap {
 		idMapCopy[k] = prifi_protocol.PriFiIdentity{
