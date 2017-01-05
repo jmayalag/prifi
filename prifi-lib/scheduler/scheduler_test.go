@@ -22,17 +22,20 @@ func TestDoUser(t *testing.T) {
 	n.AddClient(userA.Public)
 	n.AddClient(userB.Public)
 
-	//send it to the first trustee
-	toSend := n.SendToFirstTrustee(nTrustees).(*prifi_lib.REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE)
-	log.Lvlf1("%+v\n", toSend)
+	for i :=0; i < nTrustees; i++ {
 
-	//who receives it
-	toSend2 := n.ReceivedShuffleFromRelay(toSend.Base, toSend.Pks).(*prifi_lib.TRU_REL_TELL_NEW_BASE_AND_EPH_PKS)
-	log.Lvlf1("%+v\n", toSend2)
+		//send it to the trustee
+		toSend := n.SendToFirstTrustee(nTrustees).(*prifi_lib.REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE)
+		log.Lvlf1("%+v\n", toSend)
 
-	//and answers
-	toSend3 := n.ReceivedShuffleFromTrustee(toSend2.NewBase, toSend2.NewEphPks, toSend2.Proof)
-	log.Lvlf1("%+v\n", toSend3)
+		//who receives it
+		toSend2 := n.ReceivedShuffleFromRelay(toSend.Base, toSend.Pks).(*prifi_lib.TRU_REL_TELL_NEW_BASE_AND_EPH_PKS)
+		log.Lvlf1("%+v\n", toSend2)
+
+		//and answers
+		toSend3 := n.ReceivedShuffleFromTrustee(toSend2.NewBase, toSend2.NewEphPks, toSend2.Proof)
+		log.Lvlf1("%+v\n", toSend3)
+	}
 
 	//the relay sends it to the clients
 

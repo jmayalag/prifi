@@ -17,6 +17,8 @@ import (
 	"github.com/lbarman/prifi/prifi-lib"
 	"github.com/lbarman/prifi/prifi-lib/config"
 	"math/rand"
+	"github.com/btcsuite/golangcrypto/openpgp/errors"
+	"strconv"
 )
 
 type neffShuffleRelayView struct {
@@ -26,6 +28,7 @@ type neffShuffleRelayView struct {
 	ShuffledPks_s           [][]abstract.Point
 	Proof_s                 [][]byte
 	Signature_s             [][]byte
+	lastG 			abstract.Scalar
 	currentTrusteeShuffling int
 }
 
@@ -33,20 +36,28 @@ type neffShuffleScheduler struct {
 	RelayView *neffShuffleRelayView
 }
 
-func (n *neffShuffleScheduler) AddClient(pk abstract.Point) {
+func (n *neffShuffleScheduler) AddClient(pk abstract.Point) error {
 
-	log.Lvl1("Adding client", pk)
+	if n.RelayView == nil {
+		n.RelayView = new(neffShuffleRelayView)
+	}
+	if pk == nil {
+		return errors.New("Cannot shuffle a nil key, refusing to add public key.")
+	}
+
 	if n.RelayView.Pks == nil {
 		n.RelayView.Pks = make([]abstract.Point, 0)
 	}
 	n.RelayView.Pks = append(n.RelayView.Pks, pk)
+
+	return nil
 }
 
-func (n *neffShuffleScheduler) init() {
-	n.RelayView = new(neffShuffleRelayView)
-}
+func (n *neffShuffleScheduler) PrepareNeffShuffle(nTrustees int) error {
 
-func (n *neffShuffleScheduler) SendToFirstTrustee(nTrustees int) interface{} {
+	if nTrustees < 1 {
+		return errors.New("Cannot prepare a shuffle for less than one trustee ("+strconv.Itoa(nTrustees)+")"), nil
+	}
 
 	// prepare the empty transcript
 	n.RelayView.G_s = make([]abstract.Scalar, nTrustees)
@@ -55,16 +66,37 @@ func (n *neffShuffleScheduler) SendToFirstTrustee(nTrustees int) interface{} {
 	n.RelayView.Signature_s = make([][]byte, nTrustees)
 	n.RelayView.currentTrusteeShuffling = 0
 	n.RelayView.NTrustees = nTrustees
+	n.RelayView.lastG = config.CryptoSuite.Scalar().One(
 
-	G := config.CryptoSuite.Scalar().One()
+	return nil
+}
+
+func (n *neffShuffleScheduler) SendToTrustee() (error, interface{}) {
+
+	if n.RelayView == nil {
+		return errors.New("RelayView is nil"), nil
+	}
+	if n.RelayView.Pks == nil {
+		return errors.New("RelayView's public keys is nil"), nil
+	}
+	if len(n.RelayView.Pks) == 0 {
+		return errors.New("RelayView's public key array is empty"), nil
+	}
 
 	// send to the 1st trustee
-	toSend := &prifi_lib.REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE{n.RelayView.Pks, n.RelayView.Pks, G}
+	toSend := &prifi_lib.REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE{
+		Pks: n.RelayView.Pks,
+		EphPks: n.RelayView.Pks,
+		Base: n.RelayView.lastG}
 
 	return toSend
 }
 
-func (n *neffShuffleScheduler) ReceivedShuffleFromRelay(base abstract.Scalar, clientPublicKeys []abstract.Point) interface{} {
+func (n *neffShuffleScheduler) ReceivedShuffleFromRelay(base abstract.Scalar, clientPublicKeys []abstract.Point) (error, interface{}) {
+
+	if n.RelayView == nil {
+		return errors.New("RelayView is nil"), nil
+	}
 
 	secretCoeff := config.CryptoSuite.Scalar().Pick(random.Stream)
 	base2 := config.CryptoSuite.Scalar().Mul(base, secretCoeff)
