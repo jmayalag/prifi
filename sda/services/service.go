@@ -51,13 +51,13 @@ type PrifiTomlConfig struct {
 
 // contains the identity map, a direct link to the relay, and a mutex
 type SDANodesAndIDs struct {
-	mutex             sync.Mutex
-	currentIdentitiesMap     map[string]prifi_protocol.PriFiIdentity //contains relay+trustee + whoever connects
-	originalIdentitiesMap     map[string]prifi_protocol.PriFiIdentity //contains relay+trustee for the relay
-	relayIdentity     *network.ServerIdentity
-	group             *config.Group
-	nextFreeClientID  int
-	nextFreeTrusteeID int
+	mutex                 sync.Mutex
+	currentIdentitiesMap  map[string]prifi_protocol.PriFiIdentity //contains relay+trustee + whoever connects
+	originalIdentitiesMap map[string]prifi_protocol.PriFiIdentity //contains relay+trustee for the relay
+	relayIdentity         *network.ServerIdentity
+	group                 *config.Group
+	nextFreeClientID      int
+	nextFreeTrusteeID     int
 }
 
 //Set the config, from the prifi.toml. Is called by sda/app.
@@ -243,8 +243,6 @@ func (s *ServiceState) setConfigToPriFiProtocol(wrapper *prifi_protocol.PriFiSDA
 
 	//deep-clone the identityMap
 	s.nodesAndIDs.mutex.Lock()
-	log.Lvl1("Printing ID maps len =", len(s.nodesAndIDs.currentIdentitiesMap))
-	log.Lvlf1("%+v", s.nodesAndIDs.currentIdentitiesMap)
 
 	idMapCopy := make(map[string]prifi_protocol.PriFiIdentity)
 	for k, v := range s.nodesAndIDs.currentIdentitiesMap {
@@ -406,8 +404,8 @@ func (s *ServiceState) readGroup(group *config.Group) {
 
 	s.nodesAndIDs = &SDANodesAndIDs{
 		originalIdentitiesMap: idMap,
-		currentIdentitiesMap: idMapCopy,
-		relayIdentity: &relayID,
-		group:         group,
+		currentIdentitiesMap:  idMapCopy,
+		relayIdentity:         &relayID,
+		group:                 group,
 	}
 }

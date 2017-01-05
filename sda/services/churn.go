@@ -323,7 +323,4 @@ func (s *ServiceState) stopPriFiCommunicateProtocol() {
 	}
 
 	s.nodesAndIDs.currentIdentitiesMap = idMapCopy
-
-	log.Lvl1("PriFi protocol killed, map reset to 0")
-	log.Lvlf1("%+v", s.nodesAndIDs.currentIdentitiesMap)
 }
