@@ -51,12 +51,13 @@ type PrifiTomlConfig struct {
 
 // contains the identity map, a direct link to the relay, and a mutex
 type SDANodesAndIDs struct {
-	mutex             sync.Mutex
-	identitiesMap     map[string]prifi_protocol.PriFiIdentity
-	relayIdentity     *network.ServerIdentity
-	group             *config.Group
-	nextFreeClientID  int
-	nextFreeTrusteeID int
+	mutex                 sync.Mutex
+	currentIdentitiesMap  map[string]prifi_protocol.PriFiIdentity //contains relay+trustee + whoever connects
+	originalIdentitiesMap map[string]prifi_protocol.PriFiIdentity //contains relay+trustee for the relay
+	relayIdentity         *network.ServerIdentity
+	group                 *config.Group
+	nextFreeClientID      int
+	nextFreeTrusteeID     int
 }
 
 //Set the config, from the prifi.toml. Is called by sda/app.
@@ -114,7 +115,7 @@ func (s *ServiceState) NetworkErrorHappened(e error) {
 		s.waitQueue.mutex.Unlock()
 	}
 
-	s.KillPriFiProtocol()
+	s.stopPriFiCommunicateProtocol()
 }
 
 // If the protocol is running, destroys it (locally only). IsPriFiProtocolRunning returns false after that.
@@ -242,8 +243,9 @@ func (s *ServiceState) setConfigToPriFiProtocol(wrapper *prifi_protocol.PriFiSDA
 
 	//deep-clone the identityMap
 	s.nodesAndIDs.mutex.Lock()
+
 	idMapCopy := make(map[string]prifi_protocol.PriFiIdentity)
-	for k, v := range s.nodesAndIDs.identitiesMap {
+	for k, v := range s.nodesAndIDs.currentIdentitiesMap {
 		idMapCopy[k] = prifi_protocol.PriFiIdentity{
 			ID:      v.ID,
 			Role:    v.Role,
@@ -371,7 +373,8 @@ func mapIdentities(group *config.Group) (map[string]prifi_protocol.PriFiIdentity
 		}
 
 		if id != nil {
-			m[si.Address.String()] = *id
+			identifier := si.Address.String() + "=" + si.Public.String()
+			m[identifier] = *id
 			if id.Role == prifi_protocol.Relay {
 				relay = *si
 			}
@@ -387,11 +390,22 @@ func mapIdentities(group *config.Group) (map[string]prifi_protocol.PriFiIdentity
 // readGroup reads the group description and sets up the Service struct fields
 // accordingly. It *MUST* be called first when the node is started.
 func (s *ServiceState) readGroup(group *config.Group) {
-	IDs, relayID := mapIdentities(group)
-	log.Lvlf1("%+v\n", IDs)
+	idMap, relayID := mapIdentities(group)
+
+	//clone to keep the original set
+	idMapCopy := make(map[string]prifi_protocol.PriFiIdentity)
+	for k, v := range idMap {
+		idMapCopy[k] = prifi_protocol.PriFiIdentity{
+			ID:      v.ID,
+			Role:    v.Role,
+			Address: v.Address,
+		}
+	}
+
 	s.nodesAndIDs = &SDANodesAndIDs{
-		identitiesMap: IDs,
-		relayIdentity: &relayID,
-		group:         group,
+		originalIdentitiesMap: idMap,
+		currentIdentitiesMap:  idMapCopy,
+		relayIdentity:         &relayID,
+		group:                 group,
 	}
 }

@@ -224,15 +224,16 @@ func (p *PriFiSDAProtocol) buildMessageSender(identities map[string]PriFiIdentit
 	var relay *sda.TreeNode
 
 	for i := 0; i < len(nodes); i++ {
-		id, ok := identities[nodes[i].ServerIdentity.Address.String()]
+		identifier := nodes[i].ServerIdentity.Address.String() + "=" + nodes[i].ServerIdentity.Public.String()
+		id, ok := identities[identifier]
 
 		if !ok {
-			log.Lvl3("Skipping unknow node with address", nodes[i].ServerIdentity.Address)
+			log.Lvl3("Skipping unknow node with address", identifier)
 			continue
 		}
 		switch id.Role {
 		case Client:
-			clients[clientID] = nodes[i]
+			clients[clientID] = nodes[i] //TODO : wrong
 			clientID++
 		case Trustee:
 			trustees[trusteeID] = nodes[i]
