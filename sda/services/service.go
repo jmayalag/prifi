@@ -115,7 +115,7 @@ func (s *ServiceState) NetworkErrorHappened(e error) {
 		s.waitQueue.mutex.Unlock()
 	}
 
-	s.KillPriFiProtocol()
+	s.stopPriFiCommunicateProtocol()
 }
 
 // If the protocol is running, destroys it (locally only). IsPriFiProtocolRunning returns false after that.
