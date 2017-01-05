@@ -52,7 +52,8 @@ type PrifiTomlConfig struct {
 // contains the identity map, a direct link to the relay, and a mutex
 type SDANodesAndIDs struct {
 	mutex             sync.Mutex
-	identitiesMap     map[string]prifi_protocol.PriFiIdentity
+	currentIdentitiesMap     map[string]prifi_protocol.PriFiIdentity //contains relay+trustee + whoever connects
+	originalIdentitiesMap     map[string]prifi_protocol.PriFiIdentity //contains relay+trustee for the relay
 	relayIdentity     *network.ServerIdentity
 	group             *config.Group
 	nextFreeClientID  int
@@ -242,11 +243,11 @@ func (s *ServiceState) setConfigToPriFiProtocol(wrapper *prifi_protocol.PriFiSDA
 
 	//deep-clone the identityMap
 	s.nodesAndIDs.mutex.Lock()
-	log.Lvl1("Printing ID maps len =", len(s.nodesAndIDs.identitiesMap))
-	log.Lvlf1("%+v", s.nodesAndIDs.identitiesMap)
+	log.Lvl1("Printing ID maps len =", len(s.nodesAndIDs.currentIdentitiesMap))
+	log.Lvlf1("%+v", s.nodesAndIDs.currentIdentitiesMap)
 
 	idMapCopy := make(map[string]prifi_protocol.PriFiIdentity)
-	for k, v := range s.nodesAndIDs.identitiesMap {
+	for k, v := range s.nodesAndIDs.currentIdentitiesMap {
 		idMapCopy[k] = prifi_protocol.PriFiIdentity{
 			ID:      v.ID,
 			Role:    v.Role,
@@ -391,10 +392,21 @@ func mapIdentities(group *config.Group) (map[string]prifi_protocol.PriFiIdentity
 // readGroup reads the group description and sets up the Service struct fields
 // accordingly. It *MUST* be called first when the node is started.
 func (s *ServiceState) readGroup(group *config.Group) {
-	IDs, relayID := mapIdentities(group)
-	log.Lvlf1("%+v\n", IDs)
+	idMap, relayID := mapIdentities(group)
+
+	//clone to keep the original set
+	idMapCopy := make(map[string]prifi_protocol.PriFiIdentity)
+	for k, v := range idMap {
+		idMapCopy[k] = prifi_protocol.PriFiIdentity{
+			ID:      v.ID,
+			Role:    v.Role,
+			Address: v.Address,
+		}
+	}
+
 	s.nodesAndIDs = &SDANodesAndIDs{
-		identitiesMap: IDs,
+		originalIdentitiesMap: idMap,
+		currentIdentitiesMap: idMapCopy,
 		relayIdentity: &relayID,
 		group:         group,
 	}

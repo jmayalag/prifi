@@ -69,7 +69,7 @@ func (s *ServiceState) HandleConnection(msg *network.Packet) {
 	}
 
 	s.nodesAndIDs.mutex.Lock()
-	id, found := s.nodesAndIDs.identitiesMap[identifier]
+	id, found := s.nodesAndIDs.currentIdentitiesMap[identifier]
 	s.nodesAndIDs.mutex.Unlock()
 	if !found {
 		log.Lvl2("New previously-unknown client :", identifier)
@@ -80,7 +80,7 @@ func (s *ServiceState) HandleConnection(msg *network.Packet) {
 			Role: protocols.Client,
 		}
 		s.nodesAndIDs.nextFreeClientID++
-		s.nodesAndIDs.identitiesMap[identifier] = *newID
+		s.nodesAndIDs.currentIdentitiesMap[identifier] = *newID
 		id = *newID
 		s.nodesAndIDs.mutex.Unlock()
 	}
@@ -108,7 +108,7 @@ func (s *ServiceState) HandleConnection(msg *network.Packet) {
 		if id.ID == -1 {
 			s.nodesAndIDs.mutex.Lock()
 			id.ID = s.nodesAndIDs.nextFreeTrusteeID
-			s.nodesAndIDs.identitiesMap[identifier] = protocols.PriFiIdentity{
+			s.nodesAndIDs.currentIdentitiesMap[identifier] = protocols.PriFiIdentity{
 				ID:   s.nodesAndIDs.nextFreeTrusteeID,
 				Role: protocols.Trustee,
 			}
@@ -171,7 +171,7 @@ func (s *ServiceState) HandleDisconnection(msg *network.Packet) {
 	}
 
 	s.nodesAndIDs.mutex.Lock()
-	id, ok := s.nodesAndIDs.identitiesMap[identifier]
+	id, ok := s.nodesAndIDs.currentIdentitiesMap[identifier]
 	s.nodesAndIDs.mutex.Unlock()
 
 	if !ok {
@@ -306,36 +306,21 @@ func (s *ServiceState) stopPriFiCommunicateProtocol() {
 	}
 
 	s.KillPriFiProtocol()
-}
 
-func (s *ServiceState) printWaitQueue() {
-	log.Info("Current state of the wait queue:")
+	//set the ID map to whatever it was originally
+	//clone to keep the original set
 
-	log.Info("Clients:")
-	for k, v := range s.waitQueue.clients {
-		log.Info(k, "->", v)
-	}
-	log.Info("Trustees:")
-	for k, v := range s.waitQueue.trustees {
-		log.Info(k, "->", v)
-	}
-}
-
-func (s *ServiceState) printIdentifiersMap() {
 	s.nodesAndIDs.mutex.Lock()
 	defer s.nodesAndIDs.mutex.Unlock()
 
-	log.Info("Current state of the identity map:")
-
-	for k, v := range s.nodesAndIDs.identitiesMap {
-		switch v.Role {
-
-		case protocols.Relay:
-			log.Info(k, " -> Relay ", v.ID)
-		case protocols.Client:
-			log.Info(k, " -> Client ", v.ID)
-		case protocols.Trustee:
-			log.Info(k, " -> Trustee ", v.ID)
+	idMapCopy := make(map[string]protocols.PriFiIdentity)
+	for k, v := range s.nodesAndIDs.originalIdentitiesMap {
+		idMapCopy[k] = protocols.PriFiIdentity{
+			ID:      v.ID,
+			Role:    v.Role,
+			Address: v.Address,
 		}
 	}
+
+	s.nodesAndIDs.currentIdentitiesMap = idMapCopy
 }
