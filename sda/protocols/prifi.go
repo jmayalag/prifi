@@ -223,6 +223,9 @@ func (p *PriFiSDAProtocol) buildMessageSender(identities map[string]PriFiIdentit
 	clientID := 0
 	var relay *sda.TreeNode
 
+	log.Lvlf1("Building message sender")
+	log.Lvlf1("Identities : %+v", identities)
+
 	for i := 0; i < len(nodes); i++ {
 		identifier := nodes[i].ServerIdentity.Address.String() + "=" + nodes[i].ServerIdentity.Public.String()
 		id, ok := identities[identifier]
@@ -233,12 +236,15 @@ func (p *PriFiSDAProtocol) buildMessageSender(identities map[string]PriFiIdentit
 		}
 		switch id.Role {
 		case Client:
-			clients[clientID] = nodes[i]
+			clients[clientID] = nodes[i] //TODO : wrong
+			log.Lvl1("Adding client", clientID, "from node", i)
 			clientID++
 		case Trustee:
+			log.Lvl1("Adding trustee", trusteeID, "from node", i)
 			trustees[trusteeID] = nodes[i]
 			trusteeID++
 		case Relay:
+			log.Lvl1("Adding relay from node", i)
 			if relay == nil {
 				relay = nodes[i]
 			} else {
