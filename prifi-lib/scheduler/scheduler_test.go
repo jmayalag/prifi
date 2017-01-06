@@ -20,14 +20,15 @@ type PrivatePublicPair struct {
 /*
  * Client 1 computes : p1 * B = P1
  * Client 2 computes : p2 * B = P2
- * Relay sends P1, P2, s0 to trustee
+ * Relay picks a base B
+ * Relay sends P1, P2, B to trustee
  * Trustee 1 pick c1
- * Trustee 1 compute s1 = s0 * c1
+ * Trustee 1 compute B1 = B * c1
  * Trustee 1 compute P1' = P1 * c1 = p1 * c1 * B
  * Trustee 1 compute P2' = P2 * c1 = p2 * c1 * B
- * Relay sends P1', P2', s1
+ * Relay collect, then sends P1', P2', B1
  * Trustee 2 pick c2
- * Trustee 2 compute s2 = s1 * c2 = s0 * c1 * c2
+ * Trustee 2 compute B2 = B1 * c2 = B * c1 * c2
  * Trustee 2 compute P1'' = P1' * c2 = p1 * c1 * c2 * B
  * Trustee 2 compute P2'' = P2' * c2 = p2 * c1 * c2 * B
  * Relay sends P1'', P2'', s2 to clients
@@ -80,35 +81,6 @@ func TestWholeNeffShuffle(t *testing.T) {
 		}
 		parsed := toSend.(*prifi_lib.REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE)
 
-		//Specialized test for trustee n°2 (1st trustee)
-		if i == 1 {
-			//Those test are just to see if we transmit (content of "parsed") correctly, maths are already checked below
-			//s1 (=base) = s0 * c1
-			s0 := n.RelayView.InitialCoeff
-			c1 := trustees[0].TrusteeView.SecretCoeff
-			s0c1 := config.CryptoSuite.Scalar().Mul(s0, c1)
-			if !parsed.Base.Equal(s0c1) {
-				t.Error("s1 was not computed/transmitted correctly to trustee 2 !")
-			}
-
-			//P1' = P1 * c1 = p1 * B * c1
-			p1 := clients[0].Private
-			B := config.CryptoSuite.Point().Base()
-			p1c1 := config.CryptoSuite.Scalar().Mul(p1, c1)
-			P1prime := config.CryptoSuite.Point().Mul(B, p1c1)
-			if !parsed.Pks[0].Equal(P1prime) {
-				t.Error("P1' was not computed/transmitted correctly to trustee 2 !")
-			}
-
-			//P2' = P2 * c1 = p2 * B * c1
-			p2 := clients[1].Private
-			p2c1 := config.CryptoSuite.Scalar().Mul(p2, c1)
-			P2prime := config.CryptoSuite.Point().Mul(B, p2c1)
-			if !parsed.Pks[1].Equal(P2prime) {
-				t.Error("P2' was not computed/transmitted correctly to trustee 2 !")
-			}
-		}
-
 		//who receives it
 		shuffleKeyPos := false //so we can test easily
 		toSend2, err := trustees[i].TrusteeView.ReceivedShuffleFromRelay(parsed.Base, parsed.Pks, shuffleKeyPos)
@@ -117,13 +89,16 @@ func TestWholeNeffShuffle(t *testing.T) {
 		}
 		parsed2 := toSend2.(*prifi_lib.TRU_REL_TELL_NEW_BASE_AND_EPH_PKS)
 
-		// TEST: Trustee i compute s[i] = s[i-1] * c[i]
-		s_i_minus_1 := n.RelayView.CurrentShares
+		// TEST: Trustee i compute B[i] = B[i-1] * c[i]
+		B_i_minus_1 := n.RelayView.InitialBase
+		if i > 0 {
+			B_i_minus_1 = n.RelayView.Bases[i-1]
+		}
 		c_i := trustees[i].TrusteeView.SecretCoeff
-		s_i := config.CryptoSuite.Scalar().Mul(s_i_minus_1, c_i)
+		B_i := config.CryptoSuite.Point().Mul(B_i_minus_1, c_i)
 
-		if !parsed2.NewBase.Equal(s_i) {
-			t.Error("S[" + strconv.Itoa(i+1) + "] is computed incorrectly")
+		if !parsed2.NewBase.Equal(B_i) {
+			t.Error("B[" + strconv.Itoa(i+1) + "] is computed incorrectly")
 		}
 
 		// TEST: Trustee i compute P1'[i] = P1'[i-1] * c[i] = p1 * c[1] ... c[i] * B
@@ -152,12 +127,11 @@ func TestWholeNeffShuffle(t *testing.T) {
 
 		//Specialized test for trustee n°1 (0-th trustee)
 		if i == 0 {
-			// Trustee 1 compute s1 = s0 * c1
-			B := config.CryptoSuite.Point().Base()
+			// Trustee 1 compute B1 = B * c1
+			B := n.RelayView.InitialBase
 			c1 := trustees[0].TrusteeView.SecretCoeff
-			s0 := n.RelayView.InitialCoeff
-			if !parsed2.NewBase.Equal(config.CryptoSuite.Scalar().Mul(s0, c1)) {
-				t.Error("S1 is computed incorrectly")
+			if !parsed2.NewBase.Equal(config.CryptoSuite.Point().Mul(B, c1)) {
+				t.Error("B1 is computed incorrectly")
 			}
 
 			// Trustee 1 compute P1' = P1 * c1 = p1 * c1 * B
@@ -176,14 +150,13 @@ func TestWholeNeffShuffle(t *testing.T) {
 		//Specialized test for trustee n°2 (1st trustee)
 		if i == 1 {
 
-			//* Trustee 2 compute s2 = s1 * c2 = s0 * c1 * c2
-			B := config.CryptoSuite.Point().Base()
+			//* Trustee 2 compute B2 = B1 * c2 = B * c1 * c2
+			B := n.RelayView.InitialBase
 			c1 := trustees[0].TrusteeView.SecretCoeff
 			c2 := trustees[1].TrusteeView.SecretCoeff
 			c1c2 := config.CryptoSuite.Scalar().Mul(c1, c2)
-			s0 := n.RelayView.InitialCoeff
-			if !parsed2.NewBase.Equal(config.CryptoSuite.Scalar().Mul(s0, c1c2)) {
-				t.Error("S2 is computed incorrectly (2)")
+			if !parsed2.NewBase.Equal(config.CryptoSuite.Point().Mul(B, c1c2)) {
+				t.Error("B2 is computed incorrectly (2)")
 			}
 
 			//* Trustee 2 compute P1'' = P1' * c2 = p1 * c1 * c2 * B
@@ -211,7 +184,7 @@ func TestWholeNeffShuffle(t *testing.T) {
 	parsed3 := toSend3.(*prifi_lib.REL_TRU_TELL_TRANSCRIPT)
 
 	for j := 0; j < nTrustees; j++ {
-		toSend4, err := trustees[j].TrusteeView.ReceivedTranscriptFromRelay(parsed3.Gs, parsed3.EphPks, parsed3.Proofs)
+		toSend4, err := trustees[j].TrusteeView.ReceivedTranscriptFromRelay(parsed3.Bases, parsed3.EphPks, parsed3.Proofs)
 		if err != nil {
 			t.Error(err)
 		}

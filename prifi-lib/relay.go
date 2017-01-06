@@ -94,7 +94,7 @@ type NodeRepresentation struct {
 // NeffShuffleState is where the Neff Shuffles are accumulated during the Schedule protocol.
 type NeffShuffleState struct {
 	ClientPublicKeys  []abstract.Point
-	Gs                []abstract.Scalar
+	Gs                []abstract.Point
 	ephPubKeys        [][]abstract.Point
 	proofs            [][]byte
 	nextFreeId_Proofs int
@@ -776,10 +776,10 @@ func (p *PriFiLibInstance) Received_CLI_REL_TELL_PK_AND_EPH_PK(msg CLI_REL_TELL_
 			ephPks[i] = p.relayState.clients[i].EphemeralPublicKey
 		}
 
-		G := config.CryptoSuite.Scalar().One()
+		base := config.CryptoSuite.Point().Base()
 
 		// prepare the empty shuffle
-		emptyG_s := make([]abstract.Scalar, p.relayState.nTrustees)
+		emptyG_s := make([]abstract.Point, p.relayState.nTrustees)
 		emptyEphPks_s := make([][]abstract.Point, p.relayState.nTrustees)
 		emptyProof_s := make([][]byte, p.relayState.nTrustees)
 		emptySignature_s := make([][]byte, p.relayState.nTrustees)
@@ -787,7 +787,7 @@ func (p *PriFiLibInstance) Received_CLI_REL_TELL_PK_AND_EPH_PK(msg CLI_REL_TELL_
 		p.relayState.currentShuffleTranscript = NeffShuffleState{pks, emptyG_s, emptyEphPks_s, emptyProof_s, 0, emptySignature_s, 0}
 
 		// send to the 1st trustee
-		toSend := &REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE{pks, ephPks, G}
+		toSend := &REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE{pks, ephPks, base}
 
 		err := p.messageSender.SendToTrustee(0, toSend)
 		if err != nil {

@@ -472,11 +472,11 @@ func (p *PriFiLibInstance) Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(msg RE
 	p.clientState.nClients = len(msg.EphPks)
 
 	//verify the signature
-	G := msg.Base
+	newBase := msg.Base
 	ephPubKeys := msg.EphPks
 	signatures := msg.TrusteesSigs
 
-	G_bytes, _ := G.MarshalBinary()
+	G_bytes, _ := newBase.MarshalBinary()
 	var M []byte
 	M = append(M, G_bytes...)
 	for k := 0; k < len(ephPubKeys); k++ {
@@ -498,9 +498,7 @@ func (p *PriFiLibInstance) Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(msg RE
 
 	//now, using the ephemeral keys received (the output of the neff shuffle), identify our slot
 	myPrivKey := p.clientState.ephemeralPrivateKey
-	base := config.CryptoSuite.Point().Base()
-	newBaseFromTrusteesG := config.CryptoSuite.Point().Mul(base, G)
-	ephPubInNewBase := config.CryptoSuite.Point().Mul(newBaseFromTrusteesG, myPrivKey)
+	ephPubInNewBase := config.CryptoSuite.Point().Mul(newBase, myPrivKey)
 	mySlot := -1
 
 	for j := 0; j < len(ephPubKeys); j++ {

@@ -11,7 +11,7 @@ import (
  * Tests that all trustees signed correctly the [lastBase, ephPubKey array].
  * Locate our slot (position in the shuffle) given the ephemeral public key and the new base
  */
-func (n *neffShuffleScheduler) ClientVerifySigAndRecognizeSlot(privateKey abstract.Scalar, trusteesPublicKeys []abstract.Point, shares abstract.Scalar, shuffledPublicKeys []abstract.Point, signatures [][]byte) (int, error) {
+func (n *neffShuffleScheduler) ClientVerifySigAndRecognizeSlot(privateKey abstract.Scalar, trusteesPublicKeys []abstract.Point, lastBase abstract.Point, shuffledPublicKeys []abstract.Point, signatures [][]byte) (int, error) {
 
 	if privateKey == nil {
 		return -1, errors.New("Can't verify without private key")
@@ -25,7 +25,7 @@ func (n *neffShuffleScheduler) ClientVerifySigAndRecognizeSlot(privateKey abstra
 	if shuffledPublicKeys == nil {
 		return -1, errors.New("Can't verify without ephemeral public keys")
 	}
-	if shares == nil {
+	if lastBase == nil {
 		return -1, errors.New("Can't verify without last base")
 	}
 	if len(shuffledPublicKeys) < 1 {
@@ -36,15 +36,13 @@ func (n *neffShuffleScheduler) ClientVerifySigAndRecognizeSlot(privateKey abstra
 	}
 
 	//batch-verify all signatures
-	success, err := multiSigVerify(trusteesPublicKeys, shares, shuffledPublicKeys, signatures)
+	success, err := multiSigVerify(trusteesPublicKeys, lastBase, shuffledPublicKeys, signatures)
 	if success != true {
 		return -1, err
 	}
 
 	//locate our public key in shuffle
-	G := config.CryptoSuite.Point().Base()
-	newBase := config.CryptoSuite.Point().Mul(G, shares)
-	publicKeyInNewBase := config.CryptoSuite.Point().Mul(newBase, privateKey)
+	publicKeyInNewBase := config.CryptoSuite.Point().Mul(lastBase, privateKey)
 
 	mySlot := -1
 

@@ -30,7 +30,7 @@ type neffShuffleTrusteeView struct {
 	PublicKey  abstract.Point
 
 	SecretCoeff   abstract.Scalar // c[i]
-	Shares        abstract.Scalar // s[i] = c[0] * ... c[1]
+	NewBase       abstract.Point  // s[i] = G * c[1] ... c[1]
 	Proof         []byte
 	EphemeralKeys []abstract.Point
 }
@@ -58,10 +58,10 @@ func (t *neffShuffleTrusteeView) init(trusteeID int, private abstract.Scalar, pu
  * Received s[i-1], and the public keys. Do the shuffle, store locally, and send back the new s[i], shuffle array
  * If shuffleKeyPositions is false, do not shuffle the key's position (useful for testing - 0 anonymity)
  */
-func (t *neffShuffleTrusteeView) ReceivedShuffleFromRelay(lastShares abstract.Scalar, clientPublicKeys []abstract.Point, shuffleKeyPositions bool) (interface{}, error) {
+func (t *neffShuffleTrusteeView) ReceivedShuffleFromRelay(lastBase abstract.Point, clientPublicKeys []abstract.Point, shuffleKeyPositions bool) (interface{}, error) {
 
-	if lastShares == nil {
-		return nil, errors.New("Cannot perform a shuffle is lastShare is nil")
+	if lastBase == nil {
+		return nil, errors.New("Cannot perform a shuffle is lastBase is nil")
 	}
 	if clientPublicKeys == nil {
 		return nil, errors.New("Cannot perform a shuffle is clientPublicKeys is nil")
@@ -73,7 +73,7 @@ func (t *neffShuffleTrusteeView) ReceivedShuffleFromRelay(lastShares abstract.Sc
 	//compute new shares
 	secretCoeff := config.CryptoSuite.Scalar().Pick(random.Stream)
 	t.SecretCoeff = secretCoeff
-	newShares := config.CryptoSuite.Scalar().Mul(lastShares, secretCoeff)
+	newBase := config.CryptoSuite.Point().Mul(lastBase, secretCoeff)
 
 	//transform the public keys with the secret coeff
 	ephPublicKeys2 := clientPublicKeys
@@ -96,13 +96,13 @@ func (t *neffShuffleTrusteeView) ReceivedShuffleFromRelay(lastShares abstract.Sc
 	proof := make([]byte, 50) // TODO : the proof should be done
 
 	//store the result
-	t.Shares = newShares
+	t.NewBase = newBase
 	t.EphemeralKeys = ephPublicKeys2
 	t.Proof = proof
 
 	//send the answer
 	msg := &prifi_lib.TRU_REL_TELL_NEW_BASE_AND_EPH_PKS{
-		NewBase:   newShares,
+		NewBase:   newBase,
 		NewEphPks: ephPublicKeys2,
 		Proof:     proof}
 
@@ -112,9 +112,9 @@ func (t *neffShuffleTrusteeView) ReceivedShuffleFromRelay(lastShares abstract.Sc
 /**
  * We received a transcript of the whole shuffle from the relay. Check that we are included, and sign
  */
-func (t *neffShuffleTrusteeView) ReceivedTranscriptFromRelay(shares []abstract.Scalar, shuffledPublicKeys [][]abstract.Point, proofs [][]byte) (interface{}, error) {
+func (t *neffShuffleTrusteeView) ReceivedTranscriptFromRelay(bases []abstract.Point, shuffledPublicKeys [][]abstract.Point, proofs [][]byte) (interface{}, error) {
 
-	if t.Shares == nil {
+	if t.NewBase == nil {
 		return nil, errors.New("Cannot verify the shuffle, we didn't store the base")
 	}
 	if t.EphemeralKeys == nil || len(t.EphemeralKeys) == 0 {
@@ -123,11 +123,11 @@ func (t *neffShuffleTrusteeView) ReceivedTranscriptFromRelay(shares []abstract.S
 	if t.Proof == nil {
 		return nil, errors.New("Cannot verify the shuffle, we didn't store the proof")
 	}
-	if len(shares) != len(shuffledPublicKeys) || len(shares) != len(proofs) {
-		return nil, errors.New("Size not matching, G_s is " + strconv.Itoa(len(shares)) + ", shuffledPublicKeys_s is " + strconv.Itoa(len(shuffledPublicKeys)) + ", proof_s is " + strconv.Itoa(len(proofs)) + ".")
+	if len(bases) != len(shuffledPublicKeys) || len(bases) != len(proofs) {
+		return nil, errors.New("Size not matching, bases is " + strconv.Itoa(len(bases)) + ", shuffledPublicKeys_s is " + strconv.Itoa(len(shuffledPublicKeys)) + ", proof_s is " + strconv.Itoa(len(proofs)) + ".")
 	}
 
-	nTrustees := len(shares)
+	nTrustees := len(bases)
 	nClients := len(shuffledPublicKeys[0])
 
 	//Todo : verify each individual permutations. No verification is done yet
@@ -158,7 +158,7 @@ func (t *neffShuffleTrusteeView) ReceivedTranscriptFromRelay(shares []abstract.S
 	//we verify that our shuffle was included
 	ownPermutationFound := false
 	for j := 0; j < nTrustees; j++ {
-		if shares[j].Equal(t.Shares) && bytes.Equal(t.Proof, proofs[j]) {
+		if bases[j].Equal(t.NewBase) && bytes.Equal(t.Proof, proofs[j]) {
 			allKeyEqual := true
 			for k := 0; k < nClients; k++ {
 				if !t.EphemeralKeys[k].Equal(shuffledPublicKeys[j][k]) {
@@ -180,7 +180,7 @@ func (t *neffShuffleTrusteeView) ReceivedTranscriptFromRelay(shares []abstract.S
 	var blob []byte
 	lastPerm := nTrustees - 1
 
-	lastSharesByte, err := shares[lastPerm].MarshalBinary()
+	lastSharesByte, err := bases[lastPerm].MarshalBinary()
 	if err != nil {
 		return nil, errors.New("Can't marshall the last shares...")
 	}

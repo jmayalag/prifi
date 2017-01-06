@@ -85,7 +85,7 @@ type REL_CLI_DOWNSTREAM_DATA struct {
 // REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG message contains the ephemeral public keys and the signatures
 // of the trustees and is sent by the relay to the client.
 type REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG struct {
-	Base         abstract.Scalar
+	Base         abstract.Point
 	EphPks       []abstract.Point
 	TrusteesSigs [][]byte
 }
@@ -101,13 +101,13 @@ type REL_CLI_TELL_TRUSTEES_PK struct {
 type REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE struct {
 	Pks    []abstract.Point
 	EphPks []abstract.Point
-	Base   abstract.Scalar
+	Base   abstract.Point
 }
 
 // REL_TRU_TELL_TRANSCRIPT message contains all the shuffles perfomrmed in a Neff shuffle round.
 // It is sent by the relay to the trustees to be verified.
 type REL_TRU_TELL_TRANSCRIPT struct {
-	Gs     []abstract.Scalar
+	Bases  []abstract.Point
 	EphPks [][]abstract.Point
 	Proofs [][]byte
 }
@@ -134,7 +134,7 @@ type REL_TRU_TELL_RATE_CHANGE struct {
 // TRU_REL_TELL_NEW_BASE_AND_EPH_PKS message contains the new ephemeral key of a trustee and
 // is sent to the relay.
 type TRU_REL_TELL_NEW_BASE_AND_EPH_PKS struct {
-	NewBase   abstract.Scalar
+	NewBase   abstract.Point
 	NewEphPks []abstract.Point
 	Proof     []byte
 }

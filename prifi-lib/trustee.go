@@ -74,7 +74,7 @@ type TrusteeState struct {
 // NeffShuffleResult holds the result of the NeffShuffle,
 // since it needs to be verified when we receive REL_TRU_TELL_TRANSCRIPT.
 type NeffShuffleResult struct {
-	base  abstract.Scalar
+	base  abstract.Point
 	pks   []abstract.Point
 	proof []byte
 }
@@ -297,13 +297,13 @@ func (p *PriFiLibInstance) Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BAS
 	}
 
 	secretCoeff := config.CryptoSuite.Scalar().Pick(randBytes)
-	base2 := config.CryptoSuite.Scalar().Mul(base, secretCoeff)
+	base2 := config.CryptoSuite.Point().Mul(base, secretCoeff)
 
 	ephPublicKeys2 := clientsEphemeralPks
 
 	//transform the public keys with the secret coeff
 	for i := 0; i < len(clientsEphemeralPks); i++ {
-		ephPublicKeys2[i] = config.CryptoSuite.Point().Mul(clientsEphemeralPks[i], base2)
+		ephPublicKeys2[i] = config.CryptoSuite.Point().Mul(clientsEphemeralPks[i], secretCoeff)
 	}
 
 	//shuffle the array
@@ -391,7 +391,7 @@ func (p *PriFiLibInstance) Received_REL_TRU_TELL_TRANSCRIPT(msg REL_TRU_TELL_TRA
 
 	//begin parsing the message
 	rand := config.CryptoSuite.Cipher([]byte(p.trusteeState.Name)) //TODO: this should be random
-	Gs := msg.Gs
+	Gs := msg.Bases
 	ephPublicKeys := msg.EphPks
 	proofs := msg.Proofs
 

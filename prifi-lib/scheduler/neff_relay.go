@@ -3,7 +3,6 @@ package scheduler
 import (
 	"errors"
 	"github.com/dedis/crypto/abstract"
-	"github.com/dedis/crypto/random"
 	"github.com/lbarman/prifi/prifi-lib"
 	"github.com/lbarman/prifi/prifi-lib/config"
 	"github.com/lbarman/prifi/prifi-lib/crypto"
@@ -11,11 +10,11 @@ import (
 )
 
 type neffShuffleRelayView struct {
-	NTrustees    int
-	InitialCoeff abstract.Scalar
+	NTrustees   int
+	InitialBase abstract.Point
 
 	//this is the transcript, i.e. we keep everything
-	Shares             []abstract.Scalar
+	Bases              []abstract.Point
 	ShuffledPublicKeys [][]abstract.Point
 	Proofs             [][]byte
 	Signatures         [][]byte
@@ -23,7 +22,7 @@ type neffShuffleRelayView struct {
 
 	//this is the mutable state, i.e. it change with every shuffling from trustee
 	PublicKeyBeingShuffled  []abstract.Point
-	CurrentShares           abstract.Scalar
+	LastBase                abstract.Point
 	currentTrusteeShuffling int
 	CannotAddNewKeys        bool
 }
@@ -38,7 +37,7 @@ func (r *neffShuffleRelayView) init(nTrustees int) error {
 	}
 
 	// prepare the empty transcript
-	r.Shares = make([]abstract.Scalar, nTrustees)
+	r.Bases = make([]abstract.Point, nTrustees)
 	r.ShuffledPublicKeys = make([][]abstract.Point, nTrustees)
 	r.Proofs = make([][]byte, nTrustees)
 	r.Signatures = make([][]byte, nTrustees)
@@ -46,10 +45,10 @@ func (r *neffShuffleRelayView) init(nTrustees int) error {
 	r.NTrustees = nTrustees
 
 	//the relay picks c0
-	r.InitialCoeff = config.CryptoSuite.Scalar().Pick(random.Stream)
+	r.InitialBase = config.CryptoSuite.Point().Base()
 
 	//the share of products is c0 (will become c1*c0, c2*c1*c0, ...)
-	r.CurrentShares = r.InitialCoeff
+	r.LastBase = r.InitialBase
 
 	return nil
 }
@@ -91,7 +90,7 @@ func (r *neffShuffleRelayView) SendToNextTrustee() (interface{}, error) {
 	msg := &prifi_lib.REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE{
 		Pks:    r.PublicKeyBeingShuffled,
 		EphPks: r.PublicKeyBeingShuffled,
-		Base:   r.CurrentShares}
+		Base:   r.LastBase}
 
 	return msg, nil
 }
@@ -99,9 +98,9 @@ func (r *neffShuffleRelayView) SendToNextTrustee() (interface{}, error) {
 /**
  * Simply holds the new shares and public keys, so we can use this in the next call to SendToNextTrustee()
  */
-func (r *neffShuffleRelayView) ReceivedShuffleFromTrustee(newShares abstract.Scalar, newPublicKeys []abstract.Point, proof []byte) (bool, error) {
+func (r *neffShuffleRelayView) ReceivedShuffleFromTrustee(newBase abstract.Point, newPublicKeys []abstract.Point, proof []byte) (bool, error) {
 
-	if newShares == nil {
+	if newBase == nil {
 		return false, errors.New("Received a shuffle from the trustee, but newShares is nil")
 	}
 	if newPublicKeys == nil {
@@ -118,11 +117,11 @@ func (r *neffShuffleRelayView) ReceivedShuffleFromTrustee(newShares abstract.Sca
 	j := r.currentTrusteeShuffling
 	r.ShuffledPublicKeys[j] = newPublicKeys
 	r.Proofs[j] = proof
-	r.Shares[j] = newShares
+	r.Bases[j] = newBase
 
 	//will be used by next trustee
 	r.PublicKeyBeingShuffled = newPublicKeys
-	r.CurrentShares = newShares
+	r.LastBase = newBase
 
 	r.currentTrusteeShuffling = j + 1
 
@@ -134,15 +133,15 @@ func (r *neffShuffleRelayView) ReceivedShuffleFromTrustee(newShares abstract.Sca
  */
 func (r *neffShuffleRelayView) SendTranscript() (interface{}, error) {
 
-	if len(r.Shares) != len(r.ShuffledPublicKeys) || len(r.Shares) != len(r.Proofs) {
-		return nil, errors.New("Size not matching, G_s is " + strconv.Itoa(len(r.Shares)) + ", ShuffledPks_s is " + strconv.Itoa(len(r.ShuffledPublicKeys)) + ", Proof_s is " + strconv.Itoa(len(r.Proofs)) + ".")
+	if len(r.Bases) != len(r.ShuffledPublicKeys) || len(r.Bases) != len(r.Proofs) {
+		return nil, errors.New("Size not matching, Bases is " + strconv.Itoa(len(r.Bases)) + ", ShuffledPublicKeys is " + strconv.Itoa(len(r.ShuffledPublicKeys)) + ", Proofs is " + strconv.Itoa(len(r.Proofs)) + ".")
 	}
 	if len(r.ShuffledPublicKeys) == 0 {
 		return nil, errors.New("Cannot send a transcript of empty array of public keys")
 	}
 
 	msg := &prifi_lib.REL_TRU_TELL_TRANSCRIPT{
-		Gs:     r.Shares,
+		Bases:  r.Bases,
 		EphPks: r.ShuffledPublicKeys,
 		Proofs: r.Proofs}
 	return msg, nil
@@ -171,15 +170,15 @@ func (r *neffShuffleRelayView) ReceivedSignatureFromTrustee(trusteeID int, signa
  * Packages the shares, the shuffledPublicKeys in a byte array, and test the signatures from the trustees.
  * Fails if any one signature is invalid
  */
-func multiSigVerify(trusteesPublicKeys []abstract.Point, shares abstract.Scalar, shuffledPublicKeys []abstract.Point, signatures [][]byte) (bool, error) {
+func multiSigVerify(trusteesPublicKeys []abstract.Point, lastBase abstract.Point, shuffledPublicKeys []abstract.Point, signatures [][]byte) (bool, error) {
 
 	nTrustees := len(trusteesPublicKeys)
 
 	if nTrustees == 0 {
 		return false, errors.New("no point in calling multiSigVerify is we have 0 public keys from trustees")
 	}
-	if shares == nil {
-		return false, errors.New("shares is nil")
+	if lastBase == nil {
+		return false, errors.New("lastBase is nil")
 	}
 	if shuffledPublicKeys == nil {
 		return false, errors.New("shuffledPublicKeys is nil")
@@ -192,9 +191,9 @@ func multiSigVerify(trusteesPublicKeys []abstract.Point, shares abstract.Scalar,
 	}
 
 	//we reproduce the signed blob
-	G_bytes, err := shares.MarshalBinary()
+	G_bytes, err := lastBase.MarshalBinary()
 	if err != nil {
-		return false, errors.New("Can't marshall the last signature...")
+		return false, errors.New("Can't marshall the last base...")
 	}
 	var M []byte
 	M = append(M, G_bytes...)
@@ -229,23 +228,23 @@ func (r *neffShuffleRelayView) VerifySigsAndSendToClients(trusteesPublicKeys []a
 		return nil, errors.New("shuffledPublicKeys is nil")
 	}
 
-	if len(trusteesPublicKeys) != len(r.Shares) || len(trusteesPublicKeys) != len(r.ShuffledPublicKeys) || len(trusteesPublicKeys) != len(r.Signatures) {
-		return nil, errors.New("Some size mismatch, len(trusteesPublicKeys)=" + strconv.Itoa(len(trusteesPublicKeys)) + ", len(r.Shares)=" + strconv.Itoa(len(r.Shares)) + ", len(r.ShuffledPublicKeys)=" + strconv.Itoa(len(r.ShuffledPublicKeys)) + ", len(r.Signatures)=" + strconv.Itoa(len(r.Signatures)) + "")
+	if len(trusteesPublicKeys) != len(r.Bases) || len(trusteesPublicKeys) != len(r.ShuffledPublicKeys) || len(trusteesPublicKeys) != len(r.Signatures) {
+		return nil, errors.New("Some size mismatch, len(trusteesPublicKeys)=" + strconv.Itoa(len(trusteesPublicKeys)) + ", len(r.Bases)=" + strconv.Itoa(len(r.Bases)) + ", len(r.ShuffledPublicKeys)=" + strconv.Itoa(len(r.ShuffledPublicKeys)) + ", len(r.Signatures)=" + strconv.Itoa(len(r.Signatures)) + "")
 	}
 
 	//verify the signature
 	lastPermutationIndex := r.NTrustees - 1
-	G := r.Shares[lastPermutationIndex]
+	lastBase := r.Bases[lastPermutationIndex]
 	ephPubKeys := r.ShuffledPublicKeys[lastPermutationIndex]
 	signatures := r.Signatures
 
-	success, err := multiSigVerify(trusteesPublicKeys, G, ephPubKeys, signatures)
+	success, err := multiSigVerify(trusteesPublicKeys, lastBase, ephPubKeys, signatures)
 	if success != true {
 		return nil, err
 	}
 
 	msg := &prifi_lib.REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG{
-		Base:         G,
+		Base:         lastBase,
 		EphPks:       ephPubKeys,
 		TrusteesSigs: signatures}
 	return msg, nil
