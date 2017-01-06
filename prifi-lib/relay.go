@@ -150,7 +150,7 @@ type RelayState struct {
 	CellCoder                         dcnet.CellCoder
 	clients                           []NodeRepresentation
 	currentDCNetRound                 DCNetRound
-	neffShuffle		          *scheduler.NeffShuffle
+	neffShuffle		          *scheduler.NeffShuffleRelay
 	currentState                      int16
 	DataForClients                    chan []byte // VPN / SOCKS should put data there !
 	PriorityDataForClients            chan []byte
@@ -209,8 +209,10 @@ func NewRelayState(nTrustees int, nClients int, upstreamCellSize int, downstream
 	params.numberOfNonAckedDownstreamPackets = 0
 	params.statistics = prifilog.NewBitRateStatistics()
 	params.locks = &lockPool{}
-	params.neffShuffle = new(scheduler.NeffShuffle)
-	params.neffShuffle.Init()
+
+	neffShuffle := new(scheduler.NeffShuffle)
+	neffShuffle.Init()
+	params.neffShuffle = neffShuffle.RelayView
 
 	// Prepare the crypto parameters
 	rand := config.CryptoSuite.Cipher([]byte(params.Name))
@@ -590,7 +592,7 @@ func (p *PriFiLibInstance) sendDownstreamData() error {
 
 		p.relayState.statistics.AddDownstreamCell(int64(len(downstreamCellContent)))
 	} else {
-		toSend2 := &net.REL_CLI_DOWNSTREAM_DATA_UDP{*toSend}
+		toSend2 := &net.REL_CLI_DOWNSTREAM_DATA_UDP{REL_CLI_DOWNSTREAM_DATA: *toSend}
 		toSend2.SetBytes(make([]byte, 0))
 		p.messageSender.BroadcastToAllClients(toSend2)
 
@@ -762,28 +764,23 @@ func (p *PriFiLibInstance) Received_CLI_REL_TELL_PK_AND_EPH_PK(msg net.CLI_REL_T
 	// if we have collected all clients, continue
 	if len(p.relayState.clients) == p.relayState.nClients {
 
-		// prepare the arrays; pack the public keys and ephemeral public keys
-		pks := make([]abstract.Point, p.relayState.nClients)
-		ephPks := make([]abstract.Point, p.relayState.nClients)
+		p.relayState.neffShuffle.Init(p.relayState.nTrustees)
+
 		for i := 0; i < p.relayState.nClients; i++ {
-			pks[i] = p.relayState.clients[i].PublicKey
-			ephPks[i] = p.relayState.clients[i].EphemeralPublicKey
+			p.relayState.neffShuffle.AddClient(p.relayState.clients[i].EphemeralPublicKey)
 		}
 
-		base := config.CryptoSuite.Point().Base()
-
-		// prepare the empty shuffle
-		emptyG_s := make([]abstract.Point, p.relayState.nTrustees)
-		emptyEphPks_s := make([][]abstract.Point, p.relayState.nTrustees)
-		emptyProof_s := make([][]byte, p.relayState.nTrustees)
-		emptySignature_s := make([][]byte, p.relayState.nTrustees)
-
-		p.relayState.currentShuffleTranscript = NeffShuffleState{pks, emptyG_s, emptyEphPks_s, emptyProof_s, 0, emptySignature_s, 0}
+		msg, trusteeID, err := p.relayState.neffShuffle.SendToNextTrustee()
+		if err != nil {
+			e := "Could not do p.relayState.neffShuffle.SendToNextTrustee, error is " + err.Error()
+			log.Error(e)
+			return errors.New(e)
+		}
+		toSend := msg.(*net.REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE)
 
 		// send to the 1st trustee
-		toSend := &net.REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE{pks, ephPks, base}
 
-		err := p.messageSender.SendToTrustee(0, toSend)
+		err = p.messageSender.SendToTrustee(trusteeID, toSend)
 		if err != nil {
 			e := "Could not send REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE (0-th iteration), error is " + err.Error()
 			log.Error(e)
@@ -815,40 +812,44 @@ func (p *PriFiLibInstance) Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS(msg net.TR
 	}
 	log.Lvl3("Relay : received TRU_REL_TELL_NEW_BASE_AND_EPH_PKS")
 
-	// store this shuffle's result in our transcript
-	j := p.relayState.currentShuffleTranscript.nextFreeId_Proofs
-	p.relayState.currentShuffleTranscript.Gs[j] = msg.NewBase
-	p.relayState.currentShuffleTranscript.ephPubKeys[j] = msg.NewEphPks
-	p.relayState.currentShuffleTranscript.proofs[j] = msg.Proof
-
-	p.relayState.currentShuffleTranscript.nextFreeId_Proofs = j + 1
-
-	log.Lvl2("Relay : received TRU_REL_TELL_NEW_BASE_AND_EPH_PKS (" + strconv.Itoa(p.relayState.currentShuffleTranscript.nextFreeId_Proofs) + "/" + strconv.Itoa(p.relayState.nTrustees) + ")")
+	done, err := p.relayState.neffShuffle.ReceivedShuffleFromTrustee(msg.NewBase, msg.NewEphPks, msg.Proof)
+	if err != nil {
+		e := "Relay : error in p.relayState.neffShuffle.ReceivedShuffleFromTrustee " + err.Error()
+		log.Error(e)
+		return errors.New(e)
+	}
 
 	// if we're still waiting on some trustees, send them the new shuffle
-	if p.relayState.currentShuffleTranscript.nextFreeId_Proofs != p.relayState.nTrustees {
+	if !done {
 
-		pks := p.relayState.currentShuffleTranscript.ClientPublicKeys
-		ephPks := msg.NewEphPks
-		G := msg.NewBase
-
-		// send to the i-th trustee
-		toSend := &net.REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE{pks, ephPks, G}
-		err := p.messageSender.SendToTrustee(j+1, toSend)
+		msg, trusteeID, err := p.relayState.neffShuffle.SendToNextTrustee()
 		if err != nil {
-			e := "Could not send REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE (" + strconv.Itoa(j+1) + "-th iteration), error is " + err.Error()
+			e := "Could not do p.relayState.neffShuffle.SendToNextTrustee, error is " + err.Error()
 			log.Error(e)
 			return errors.New(e)
 		}
-		log.Lvl3("Relay : sent REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE (" + strconv.Itoa(j+1) + "-th iteration)")
+		toSend := msg.(*net.REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE)
+
+		// send to the i-th trustee
+		err = p.messageSender.SendToTrustee(trusteeID, toSend)
+		if err != nil {
+			e := "Could not send REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE (" + strconv.Itoa(trusteeID) + "-th iteration), error is " + err.Error()
+			log.Error(e)
+			return errors.New(e)
+		}
+		log.Lvl3("Relay : sent REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE (" + strconv.Itoa(trusteeID) + "-th iteration)")
 
 	} else {
 		// if we have all the shuffles
 
-		// pack transcript
-		G_s := p.relayState.currentShuffleTranscript.Gs
-		ephPublicKeys_s := p.relayState.currentShuffleTranscript.ephPubKeys
-		proof_s := p.relayState.currentShuffleTranscript.proofs
+		msg, err := p.relayState.neffShuffle.SendTranscript()
+		if err != nil {
+			e := "Could not do p.relayState.neffShuffle.SendTranscript(), error is " + err.Error()
+			log.Error(e)
+			return errors.New(e)
+		}
+
+		toSend := msg.(*net.REL_TRU_TELL_TRANSCRIPT)
 
 		// when receiving the next message (and after processing it), trustees will start sending data. Prepare to buffer it
 		p.relayState.bufferedTrusteeCiphers = make(map[int32]BufferedCipher)
@@ -857,7 +858,6 @@ func (p *PriFiLibInstance) Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS(msg net.TR
 		// broadcast to all trustees
 		for j := 0; j < p.relayState.nTrustees; j++ {
 			// send to the j-th trustee
-			toSend := &net.REL_TRU_TELL_TRANSCRIPT{G_s, ephPublicKeys_s, proof_s}
 			err := p.messageSender.SendToTrustee(j, toSend) // TODO : this should be the trustee X !
 			if err != nil {
 				e := "Could not send REL_TRU_TELL_TRANSCRIPT to " + strconv.Itoa(j+1) + "-th trustee, error is " + err.Error()
@@ -896,30 +896,29 @@ func (p *PriFiLibInstance) Received_TRU_REL_SHUFFLE_SIG(msg net.TRU_REL_SHUFFLE_
 	}
 	log.Lvl3("Relay : received TRU_REL_SHUFFLE_SIG")
 
-	// sanity check
-	if msg.TrusteeID < 0 || msg.TrusteeID > len(p.relayState.currentShuffleTranscript.signatures) {
-		e := "Relay : One of the following check failed : msg.TrusteeId >= 0 && msg.TrusteeId < len(p.relayState.currentShuffleTranscript.signatures_s) ; msg.TrusteeId = " + strconv.Itoa(msg.TrusteeID) + ";"
+	done, err := p.relayState.neffShuffle.ReceivedSignatureFromTrustee(msg.TrusteeID, msg.Sig)
+	if err != nil {
+		e := "Could not do p.relayState.neffShuffle.ReceivedSignatureFromTrustee(), error is " + err.Error()
 		log.Error(e)
 		return errors.New(e)
 	}
 
-	// store this shuffle's signature in our transcript
-	p.relayState.currentShuffleTranscript.signatures[msg.TrusteeID] = msg.Sig
-	p.relayState.currentShuffleTranscript.signatureCount++
-
-	log.Lvl2("Relay : received TRU_REL_SHUFFLE_SIG (" + strconv.Itoa(p.relayState.currentShuffleTranscript.signatureCount) + "/" + strconv.Itoa(p.relayState.nTrustees) + ")")
-
 	// if we have all the signatures
-	if p.relayState.currentShuffleTranscript.signatureCount == p.relayState.nTrustees {
+	if done {
+		trusteesPks := make([]abstract.Point, p.relayState.nTrustees)
+		i := 0
+		for _, v := range p.relayState.trustees {
+			trusteesPks[i] = v.PublicKey
+			i++
+		}
 
-		// We could verify here before broadcasting to the clients, for performance (but this does not add security)
-
-		// prepare the message for the clients
-		lastPermutationIndex := p.relayState.nTrustees - 1
-		G := p.relayState.currentShuffleTranscript.Gs[lastPermutationIndex]
-		ephPks := p.relayState.currentShuffleTranscript.ephPubKeys[lastPermutationIndex]
-		signatures := p.relayState.currentShuffleTranscript.signatures
-
+		toSend5, err :=  p.relayState.neffShuffle.VerifySigsAndSendToClients(trusteesPks)
+		if err != nil {
+			e := "Could not do p.relayState.neffShuffle.VerifySigsAndSendToClients(), error is " + err.Error()
+			log.Error(e)
+			return errors.New(e)
+		}
+		msg := toSend5.(*net.REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG)
 		// changing state
 		log.Lvl2("Relay : ready to communicate.")
 		p.relayState.currentState = RELAY_STATE_COMMUNICATING
@@ -927,8 +926,7 @@ func (p *PriFiLibInstance) Received_TRU_REL_SHUFFLE_SIG(msg net.TRU_REL_SHUFFLE_
 		// broadcast to all clients
 		for i := 0; i < p.relayState.nClients; i++ {
 			// send to the i-th client
-			toSend := &net.REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG{G, ephPks, signatures} //TODO: remove from loop (it's loop independent)
-			err := p.messageSender.SendToClient(i, toSend)
+			err := p.messageSender.SendToClient(i, msg)
 			if err != nil {
 				e := "Could not send REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG to " + strconv.Itoa(i+1) + "-th client, error is " + err.Error()
 				log.Error(e)

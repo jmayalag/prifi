@@ -9,7 +9,7 @@ import (
 	"strconv"
 )
 
-type neffShuffleRelayView struct {
+type NeffShuffleRelay struct {
 	NTrustees   int
 	InitialBase abstract.Point
 
@@ -30,7 +30,7 @@ type neffShuffleRelayView struct {
 /**
  * Prepares the relay-view to hold the answers from the trustees, etc
  */
-func (r *neffShuffleRelayView) Init(nTrustees int) error {
+func (r *NeffShuffleRelay) Init(nTrustees int) error {
 
 	if nTrustees < 1 {
 		return errors.New("Cannot prepare a shuffle for less than one trustee (" + strconv.Itoa(nTrustees) + ")")
@@ -56,7 +56,7 @@ func (r *neffShuffleRelayView) Init(nTrustees int) error {
 /**
  * Adds a (ephemeral if possible) public key to the shuffle pool.
  */
-func (r *neffShuffleRelayView) AddClient(publicKey abstract.Point) error {
+func (r *NeffShuffleRelay) AddClient(publicKey abstract.Point) error {
 
 	if publicKey == nil {
 		return errors.New("Cannot shuffle a nil key, refusing to add public key.")
@@ -76,13 +76,13 @@ func (r *neffShuffleRelayView) AddClient(publicKey abstract.Point) error {
 /**
  * Packs a message for the next trustee. Contains the current state of the shuffle, i.e. PublicKeyBeingShuffled + LastShareProduct
  */
-func (r *neffShuffleRelayView) SendToNextTrustee() (interface{}, error) {
+func (r *NeffShuffleRelay) SendToNextTrustee() (interface{}, int, error) {
 
 	if r.PublicKeyBeingShuffled == nil {
-		return nil, errors.New("RelayView's public keys is nil")
+		return nil, -1, errors.New("RelayView's public keys is nil")
 	}
 	if len(r.PublicKeyBeingShuffled) == 0 {
-		return nil, errors.New("RelayView's public key array is empty")
+		return nil, -1, errors.New("RelayView's public key array is empty")
 	}
 	r.CannotAddNewKeys = true
 
@@ -92,13 +92,13 @@ func (r *neffShuffleRelayView) SendToNextTrustee() (interface{}, error) {
 		EphPks: r.PublicKeyBeingShuffled,
 		Base:   r.LastBase}
 
-	return msg, nil
+	return msg, r.currentTrusteeShuffling, nil
 }
 
 /**
  * Simply holds the new shares and public keys, so we can use this in the next call to SendToNextTrustee()
  */
-func (r *neffShuffleRelayView) ReceivedShuffleFromTrustee(newBase abstract.Point, newPublicKeys []abstract.Point, proof []byte) (bool, error) {
+func (r *NeffShuffleRelay) ReceivedShuffleFromTrustee(newBase abstract.Point, newPublicKeys []abstract.Point, proof []byte) (bool, error) {
 
 	if newBase == nil {
 		return false, errors.New("Received a shuffle from the trustee, but newShares is nil")
@@ -131,7 +131,7 @@ func (r *neffShuffleRelayView) ReceivedShuffleFromTrustee(newBase abstract.Point
 /**
  * Packages the Shares, ShuffledPublicKeys and Proofs
  */
-func (r *neffShuffleRelayView) SendTranscript() (interface{}, error) {
+func (r *NeffShuffleRelay) SendTranscript() (interface{}, error) {
 
 	if len(r.Bases) != len(r.ShuffledPublicKeys) || len(r.Bases) != len(r.Proofs) {
 		return nil, errors.New("Size not matching, Bases is " + strconv.Itoa(len(r.Bases)) + ", ShuffledPublicKeys is " + strconv.Itoa(len(r.ShuffledPublicKeys)) + ", Proofs is " + strconv.Itoa(len(r.Proofs)) + ".")
@@ -150,7 +150,7 @@ func (r *neffShuffleRelayView) SendTranscript() (interface{}, error) {
 /**
  * Simply stores the signatures
  */
-func (r *neffShuffleRelayView) ReceivedSignatureFromTrustee(trusteeID int, signature []byte) (bool, error) {
+func (r *NeffShuffleRelay) ReceivedSignatureFromTrustee(trusteeID int, signature []byte) (bool, error) {
 
 	if signature == nil {
 		return false, errors.New("Received a signature from a trustee, but sig is nil")
@@ -222,7 +222,7 @@ func multiSigVerify(trusteesPublicKeys []abstract.Point, lastBase abstract.Point
 /**
  * Verify all signatures, and sends to client the last shuffle (and the signatures)
  */
-func (r *neffShuffleRelayView) VerifySigsAndSendToClients(trusteesPublicKeys []abstract.Point) (interface{}, error) {
+func (r *NeffShuffleRelay) VerifySigsAndSendToClients(trusteesPublicKeys []abstract.Point) (interface{}, error) {
 
 	if trusteesPublicKeys == nil {
 		return nil, errors.New("shuffledPublicKeys is nil")

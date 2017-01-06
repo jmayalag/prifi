@@ -130,7 +130,7 @@ func NeffShuffleTestHelper(t *testing.T, nClients int, nTrustees int, shuffleKey
 		}
 
 		//the relay send the shuffle send it to the next trustee
-		toSend, err := n.RelayView.SendToNextTrustee()
+		toSend, _, err := n.RelayView.SendToNextTrustee()
 		if err != nil {
 			t.Error(err)
 		}

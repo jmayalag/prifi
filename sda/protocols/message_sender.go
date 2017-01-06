@@ -8,6 +8,7 @@ import (
 	"github.com/dedis/cothority/log"
 	"github.com/dedis/cothority/sda"
 	prifi_lib "github.com/lbarman/prifi/prifi-lib"
+	"github.com/lbarman/prifi/prifi-lib/net"
 )
 
 //MessageSender is the struct we need to give PriFi-Lib so it can send messages.
@@ -54,7 +55,7 @@ func (ms MessageSender) SendToRelay(msg interface{}) error {
 //BroadcastToAllClients broadcasts a message (must be a REL_CLI_DOWNSTREAM_DATA_UDP) to all clients using UDP
 func (ms MessageSender) BroadcastToAllClients(msg interface{}) error {
 
-	castedMsg, canCast := msg.(*prifi_lib.REL_CLI_DOWNSTREAM_DATA_UDP)
+	castedMsg, canCast := msg.(*net.REL_CLI_DOWNSTREAM_DATA_UDP)
 	if !canCast {
 		log.Error("Message sender : could not cast msg to REL_CLI_DOWNSTREAM_DATA_UDP, and I don't know how to send other messages.")
 	}
@@ -84,7 +85,7 @@ func (ms MessageSender) ClientSubscribeToBroadcast(clientName string, prifiLibIn
 		}
 
 		if listening {
-			emptyMessage := prifi_lib.REL_CLI_DOWNSTREAM_DATA_UDP{}
+			emptyMessage := net.REL_CLI_DOWNSTREAM_DATA_UDP{}
 			//listen
 			filledMessage, err := udpChan.ListenAndBlock(&emptyMessage, lastSeenMessage)
 			lastSeenMessage++

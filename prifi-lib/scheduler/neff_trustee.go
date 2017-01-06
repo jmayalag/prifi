@@ -24,7 +24,7 @@ import (
 	"strconv"
 )
 
-type neffShuffleTrusteeView struct {
+type NeffShuffleTrustee struct {
 	TrusteeID  int
 	PrivateKey abstract.Scalar
 	PublicKey  abstract.Point
@@ -38,7 +38,7 @@ type neffShuffleTrusteeView struct {
 /**
  * Creates a new trustee-view for the neff shuffle, and initiates the fields correctly
  */
-func (t *neffShuffleTrusteeView) Init(trusteeID int, private abstract.Scalar, public abstract.Point) error {
+func (t *NeffShuffleTrustee) Init(trusteeID int, private abstract.Scalar, public abstract.Point) error {
 	if trusteeID < 0 {
 		return errors.New("Cannot shuffle without a valid id (>= 0)")
 	}
@@ -58,7 +58,7 @@ func (t *neffShuffleTrusteeView) Init(trusteeID int, private abstract.Scalar, pu
  * Received s[i-1], and the public keys. Do the shuffle, store locally, and send back the new s[i], shuffle array
  * If shuffleKeyPositions is false, do not shuffle the key's position (useful for testing - 0 anonymity)
  */
-func (t *neffShuffleTrusteeView) ReceivedShuffleFromRelay(lastBase abstract.Point, clientPublicKeys []abstract.Point, shuffleKeyPositions bool) (interface{}, error) {
+func (t *NeffShuffleTrustee) ReceivedShuffleFromRelay(lastBase abstract.Point, clientPublicKeys []abstract.Point, shuffleKeyPositions bool) (interface{}, error) {
 
 	if lastBase == nil {
 		return nil, errors.New("Cannot perform a shuffle is lastBase is nil")
@@ -112,7 +112,7 @@ func (t *neffShuffleTrusteeView) ReceivedShuffleFromRelay(lastBase abstract.Poin
 /**
  * We received a transcript of the whole shuffle from the relay. Check that we are included, and sign
  */
-func (t *neffShuffleTrusteeView) ReceivedTranscriptFromRelay(bases []abstract.Point, shuffledPublicKeys [][]abstract.Point, proofs [][]byte) (interface{}, error) {
+func (t *NeffShuffleTrustee) ReceivedTranscriptFromRelay(bases []abstract.Point, shuffledPublicKeys [][]abstract.Point, proofs [][]byte) (interface{}, error) {
 
 	if t.NewBase == nil {
 		return nil, errors.New("Cannot verify the shuffle, we didn't store the base")
