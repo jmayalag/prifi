@@ -37,9 +37,61 @@ type PrivatePublicPair struct {
  */
 func TestWholeNeffShuffle(t *testing.T) {
 
-	nTrustees := 2
-	nClients := 2
+	nClientsRange := []int{1, 2, 3, 4, 5, 10, 100}
+	nTrusteeRange := []int{1, 2, 3, 5, 10}
 
+	//standard testing. shuffleKeyPos=false to allow testing
+	for _, nClients := range nClientsRange {
+		for _, nTrustees := range nTrusteeRange {
+			//standard testing
+			fmt.Println("Testing for", nClients, "clients,", nTrustees, "trustees...")
+			NeffShuffleTestHelper(t, nClients, nTrustees, false)
+		}
+	}
+
+	//output distribution testing.
+	nClientsRange = []int{2, 3, 4, 5, 10}
+	nTrusteeRange = []int{1}
+
+	repetition := 100
+	for _, nClients := range nClientsRange {
+		for _, nTrustees := range nTrusteeRange {
+			mappingDistrib := make([][]float64, nClients)
+			for k := 0; k < nClients; k++ {
+				mappingDistrib[k] = make([]float64, nClients)
+			}
+			fmt.Print("Testing distribution for ", nClients, " clients, ", nTrustees, " trustees... ")
+			for i := 0; i < repetition; i++ {
+				mapping := NeffShuffleTestHelper(t, nClients, nTrustees, true)
+				for clientID, slot := range mapping {
+					mappingDistrib[clientID][slot] += float64(1)
+				}
+			}
+			maxDeviation := float64(-1)
+			for clientID, _ := range mappingDistrib {
+				for slot := 0; slot < nClients; slot++ {
+					//compute deviation
+					expectedValue := float64(100) / float64(len(mappingDistrib[clientID]))
+					mappingDistrib[clientID][slot] -= expectedValue
+					if mappingDistrib[clientID][slot] < 0 {
+						mappingDistrib[clientID][slot] = -mappingDistrib[clientID][slot]
+					}
+
+					//store max deviation
+					if mappingDistrib[clientID][slot] > maxDeviation {
+						maxDeviation = mappingDistrib[clientID][slot]
+					}
+				}
+			}
+			fmt.Printf("+-%d%%\n", int(maxDeviation))
+			if int(maxDeviation) > 30 {
+				t.Error(errors.New("Max allowed distribution biais is 30%"))
+			}
+		}
+	}
+}
+
+func NeffShuffleTestHelper(t *testing.T, nClients int, nTrustees int, shuffleKeyPos bool) []int {
 	clients := make([]*PrivatePublicPair, nClients)
 	for i := 0; i < nClients; i++ {
 		pub, priv := genKeyPair()
@@ -62,7 +114,10 @@ func TestWholeNeffShuffle(t *testing.T) {
 	}
 
 	//init the relay
-	n.RelayView.init(nTrustees)
+	err := n.RelayView.init(nTrustees)
+	if err != nil {
+		t.Error(err)
+	}
 	for i := 0; i < nClients; i++ {
 		n.RelayView.AddClient(clients[i].Public)
 	}
@@ -82,7 +137,6 @@ func TestWholeNeffShuffle(t *testing.T) {
 		parsed := toSend.(*prifi_lib.REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE)
 
 		//who receives it
-		shuffleKeyPos := false //so we can test easily
 		toSend2, err := trustees[i].TrusteeView.ReceivedShuffleFromRelay(parsed.Base, parsed.Pks, shuffleKeyPos)
 		if err != nil {
 			t.Error(err)
@@ -101,73 +155,63 @@ func TestWholeNeffShuffle(t *testing.T) {
 			t.Error("B[" + strconv.Itoa(i+1) + "] is computed incorrectly")
 		}
 
-		// TEST: Trustee i compute P1'[i] = P1'[i-1] * c[i] = p1 * c[1] ... c[i] * B
-		p1 := clients[0].Private
-		c_s := config.CryptoSuite.Scalar().One()
-		for j := 0; j <= i; j++ {
-			c_j := trustees[j].TrusteeView.SecretCoeff
-			c_s = config.CryptoSuite.Scalar().Mul(c_s, c_j)
-		}
-		B := config.CryptoSuite.Point().Base()
-		p1_c_s := config.CryptoSuite.Scalar().Mul(p1, c_s)
-		LHS := config.CryptoSuite.Point().Mul(B, p1_c_s)
+		//if shuffle the key pos, we cannot test this easily
+		if !shuffleKeyPos {
+			// TEST: Trustee i compute P1'[i] = P1'[i-1] * c[i] = p1 * c[1] ... c[i] * B
 
-		if !parsed2.NewEphPks[0].Equal(LHS) {
-			t.Error("P1'[" + strconv.Itoa(i+1) + "] is computed incorrectly")
-		}
+			for clientID := 0; clientID < nClients; clientID++ {
+				p1 := clients[clientID].Private
+				c_s := config.CryptoSuite.Scalar().One()
+				for j := 0; j <= i; j++ {
+					c_j := trustees[j].TrusteeView.SecretCoeff
+					c_s = config.CryptoSuite.Scalar().Mul(c_s, c_j)
+				}
+				B := config.CryptoSuite.Point().Base()
+				p1_c_s := config.CryptoSuite.Scalar().Mul(p1, c_s)
+				LHS := config.CryptoSuite.Point().Mul(B, p1_c_s)
 
-		// TEST: Trustee i compute P2'[i] = P2'[i-1] * c[i] = p2 * c[1] ... c[i] * B
-		p2 := clients[1].Private
-		p2_c_s := config.CryptoSuite.Scalar().Mul(p2, c_s)
-		LHS = config.CryptoSuite.Point().Mul(B, p2_c_s)
-
-		if !parsed2.NewEphPks[1].Equal(LHS) {
-			t.Error("P2'[" + strconv.Itoa(i+1) + "] is computed incorrectly")
-		}
-
-		//Specialized test for trustee n°1 (0-th trustee)
-		if i == 0 {
-			// Trustee 1 compute B1 = B * c1
-			B := n.RelayView.InitialBase
-			c1 := trustees[0].TrusteeView.SecretCoeff
-			if !parsed2.NewBase.Equal(config.CryptoSuite.Point().Mul(B, c1)) {
-				t.Error("B1 is computed incorrectly")
+				if !parsed2.NewEphPks[clientID].Equal(LHS) {
+					t.Error("P" + strconv.Itoa(clientID) + "'[" + strconv.Itoa(i+1) + "] is computed incorrectly")
+				}
 			}
 
-			// Trustee 1 compute P1' = P1 * c1 = p1 * c1 * B
-			p1prime := config.CryptoSuite.Scalar().Mul(clients[0].Private, c1)
-			if !parsed2.NewEphPks[0].Equal(config.CryptoSuite.Point().Mul(B, p1prime)) {
-				t.Error("P1' is computed incorrectly")
+			//Specialized test for trustee n°1 (0-th trustee)
+			if i == 0 {
+				// Trustee 1 compute B1 = B * c1
+				B := n.RelayView.InitialBase
+				c1 := trustees[0].TrusteeView.SecretCoeff
+				if !parsed2.NewBase.Equal(config.CryptoSuite.Point().Mul(B, c1)) {
+					t.Error("B1 is computed incorrectly")
+				}
+
+				// Trustee 1 compute P1' = P1 * c1 = p1 * c1 * B
+				for clientID := 0; clientID < nClients; clientID++ {
+					p1prime := config.CryptoSuite.Scalar().Mul(clients[clientID].Private, c1)
+					if !parsed2.NewEphPks[clientID].Equal(config.CryptoSuite.Point().Mul(B, p1prime)) {
+						t.Error("P" + strconv.Itoa(clientID) + "' is computed incorrectly")
+					}
+				}
 			}
 
-			// Trustee 1 compute P2' = P2 * c1 = p2 * c1 * B
-			p2prime := config.CryptoSuite.Scalar().Mul(clients[1].Private, c1)
-			if !parsed2.NewEphPks[1].Equal(config.CryptoSuite.Point().Mul(B, p2prime)) {
-				t.Error("P2' is computed incorrectly")
-			}
-		}
+			//Specialized test for trustee n°2 (1st trustee)
+			if i == 1 {
 
-		//Specialized test for trustee n°2 (1st trustee)
-		if i == 1 {
+				//* Trustee 2 compute B2 = B1 * c2 = B * c1 * c2
+				B := n.RelayView.InitialBase
+				c1 := trustees[0].TrusteeView.SecretCoeff
+				c2 := trustees[1].TrusteeView.SecretCoeff
+				c1c2 := config.CryptoSuite.Scalar().Mul(c1, c2)
+				if !parsed2.NewBase.Equal(config.CryptoSuite.Point().Mul(B, c1c2)) {
+					t.Error("B2 is computed incorrectly (2)")
+				}
 
-			//* Trustee 2 compute B2 = B1 * c2 = B * c1 * c2
-			B := n.RelayView.InitialBase
-			c1 := trustees[0].TrusteeView.SecretCoeff
-			c2 := trustees[1].TrusteeView.SecretCoeff
-			c1c2 := config.CryptoSuite.Scalar().Mul(c1, c2)
-			if !parsed2.NewBase.Equal(config.CryptoSuite.Point().Mul(B, c1c2)) {
-				t.Error("B2 is computed incorrectly (2)")
-			}
-
-			//* Trustee 2 compute P1'' = P1' * c2 = p1 * c1 * c2 * B
-			p1prime2 := config.CryptoSuite.Scalar().Mul(clients[0].Private, c1c2)
-			if !parsed2.NewEphPks[0].Equal(config.CryptoSuite.Point().Mul(B, p1prime2)) {
-				t.Error("P1'' is computed incorrectly")
-			}
-			//* Trustee 2 compute P2'' = P2' * c2 = p2 * c1 * c2 * B
-			p2prime2 := config.CryptoSuite.Scalar().Mul(clients[1].Private, c1c2)
-			if !parsed2.NewEphPks[1].Equal(config.CryptoSuite.Point().Mul(B, p2prime2)) {
-				t.Error("P2'' is computed incorrectly")
+				//* Trustee 2 compute P1'' = P1' * c2 = p1 * c1 * c2 * B
+				for clientID := 0; clientID < nClients; clientID++ {
+					p1prime2 := config.CryptoSuite.Scalar().Mul(clients[clientID].Private, c1c2)
+					if !parsed2.NewEphPks[clientID].Equal(config.CryptoSuite.Point().Mul(B, p1prime2)) {
+						t.Error("P" + strconv.Itoa(clientID) + "'' is computed incorrectly")
+					}
+				}
 			}
 		}
 
@@ -211,15 +255,36 @@ func TestWholeNeffShuffle(t *testing.T) {
 	}
 	parsed5 := toSend5.(*prifi_lib.REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG)
 
+	mapping := make([]int, nClients)
+
 	//client verify the sig and recognize their slot
 	for j := 0; j < nClients; j++ {
 		mySlot, err := n.ClientVerifySigAndRecognizeSlot(clients[j].Private, trusteesPks, parsed5.Base, parsed5.EphPks, parsed5.TrusteesSigs)
 		if err != nil {
 			t.Error(err)
 		}
-		fmt.Println("Client", j, "got assigned slot", mySlot)
+		mapping[j] = mySlot
 	}
 
+	//test that mapping is valid
+	for j := 0; j < nClients; j++ {
+
+		if mapping[j] < 0 || mapping[j] >= nClients {
+			t.Error("Final mapping invalid,", j, "->", mapping[j])
+		}
+
+		//test for duplicate
+		mySlot := mapping[j]
+		for k := 0; k < nClients; k++ {
+			if k != j {
+				if mapping[k] == mySlot {
+					t.Error("Collision, mapping[", j, "]=mapping[", k, "]=", mySlot)
+				}
+			}
+		}
+	}
+
+	return mapping
 }
 
 func genKeyPair() (abstract.Point, abstract.Scalar) {
