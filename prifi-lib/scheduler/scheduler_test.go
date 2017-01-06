@@ -4,9 +4,11 @@ import (
 	"github.com/dedis/cothority/network"
 	"github.com/dedis/crypto/abstract"
 	cryptoconfig "github.com/dedis/crypto/config"
+	"github.com/lbarman/prifi/prifi-lib/config"
 	"github.com/lbarman/prifi/prifi-lib"
 	"testing"
 	"strconv"
+	"github.com/dedis/crypto/random"
 	"fmt"
 )
 
@@ -15,6 +17,23 @@ type PrivatePublicPair struct {
 	Public abstract.Point
 }
 
+/*
+ * Client 1 computes : p1 * B = P1
+ * Client 2 computes : p2 * B = P2
+ * Relay sends P1, P2, s0 to trustee
+ * Trustee 1 pick c1
+ * Trustee 1 compute s1 = s0 * c1
+ * Trustee 1 compute P1' = P1 * c1 = p1 * c1 * B
+ * Trustee 1 compute P2' = P2 * c1 = p2 * c1 * B
+ * Relay sends P1', P2', s1
+ * Trustee 2 pick c2
+ * Trustee 2 compute s2 = s1 * c2 = s0 * c1 * c2
+ * Trustee 2 compute P1'' = P1' * c2 = p1 * c1 * c2 * B
+ * Trustee 2 compute P2'' = P2' * c2 = p2 * c1 * c2 * B
+ * Relay sends P1'', P2'', s2 to clients
+ * Client 1 compute p1 * s2 * B = p1 * s0 * c1 * c2 * B = P1''
+ * Client 2 compute p2 * s2 * B = p2 * s0 * c1 * c2 * B = P2''
+ */
 func TestNeff(t *testing.T) {
 
 	nTrustees := 2
@@ -22,10 +41,10 @@ func TestNeff(t *testing.T) {
 
 	clients := make([]*PrivatePublicPair, nClients)
 	for i:=0; i<nClients; i++ {
-		clientI := cryptoconfig.NewKeyPair(network.Suite)
+		pub, priv := genKeyPair()
 		clients[i] = new(PrivatePublicPair)
-		clients[i].Public = clientI.Public
-		clients[i].Private = clientI.Secret
+		clients[i].Public = pub
+		clients[i].Private = priv
 	}
 
 	//create the scheduler
@@ -61,14 +80,126 @@ func TestNeff(t *testing.T) {
 		}
 		parsed := toSend.(*prifi_lib.REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE)
 
+		//Specialized test for trustee n°2 (1st trustee)
+		if i == 1 {
+			//Those test are just to see if we transmit (content of "parsed") correctly, maths are already checked below
+			//s1 (=base) = s0 * c1
+			s0 := config.CryptoSuite.Scalar().One()
+			c1 := trustees[0].TrusteeView.SecretCoeff
+			s0c1 := config.CryptoSuite.Scalar().Mul(s0, c1)
+			if !parsed.Base.Equal(s0c1) {
+				t.Error("s1 was not computed/transmitted correctly to trustee 2 !")
+			}
+
+			//P1' = P1 * c1 = p1 * B * c1
+			p1 := clients[0].Private
+			B := config.CryptoSuite.Point().Base()
+			p1c1 := config.CryptoSuite.Scalar().Mul(p1, c1)
+			P1prime := config.CryptoSuite.Point().Mul(B, p1c1)
+			if !parsed.Pks[0].Equal(P1prime) {
+				t.Error("P1' was not computed/transmitted correctly to trustee 2 !")
+			}
+
+			//P2' = P2 * c1 = p2 * B * c1
+			p2 := clients[1].Private
+			p2c1 := config.CryptoSuite.Scalar().Mul(p2, c1)
+			P2prime := config.CryptoSuite.Point().Mul(B, p2c1)
+			if !parsed.Pks[1].Equal(P2prime) {
+				t.Error("P2' was not computed/transmitted correctly to trustee 2 !")
+			}
+		}
+
 		//who receives it
-		err, toSend2 := trustees[i].TrusteeView.ReceivedShuffleFromRelay(parsed.Base, parsed.Pks)
+		shuffleKeyPos := false //so we can test easily
+		err, toSend2 := trustees[i].TrusteeView.ReceivedShuffleFromRelay(parsed.Base, parsed.Pks, shuffleKeyPos)
 		if err != nil {
 			t.Error(err)
 		}
 		parsed2 := toSend2.(*prifi_lib.TRU_REL_TELL_NEW_BASE_AND_EPH_PKS)
 
-		//and answers
+
+		// TEST: Trustee i compute s[i] = s[i-1] * c[i]
+		s_i_minus_1 := n.RelayView.LastSecret
+		c_i := trustees[i].TrusteeView.SecretCoeff
+		s_i := config.CryptoSuite.Scalar().Mul(s_i_minus_1, c_i)
+
+		if !parsed2.NewBase.Equal(s_i) {
+			t.Error("S["+strconv.Itoa(i+1)+"] is computed incorrectly")
+		}
+
+		// TEST: Trustee i compute P1'[i] = P1'[i-1] * c[i] = p1 * c[1] ... c[i] * B
+		p1 := clients[0].Private
+		c_s := config.CryptoSuite.Scalar().One()
+		for j := 0; j<=i; j++ {
+			c_j := trustees[j].TrusteeView.SecretCoeff
+			c_s = config.CryptoSuite.Scalar().Mul(c_s, c_j)
+		}
+		B := config.CryptoSuite.Point().Base()
+		p1_c_s := config.CryptoSuite.Scalar().Mul(p1, c_s)
+		LHS := config.CryptoSuite.Point().Mul(B, p1_c_s)
+
+		if !parsed2.NewEphPks[0].Equal(LHS) {
+			t.Error("P1'["+strconv.Itoa(i+1)+"] is computed incorrectly")
+		}
+
+		// TEST: Trustee i compute P2'[i] = P2'[i-1] * c[i] = p2 * c[1] ... c[i] * B
+		p2 := clients[1].Private
+		p2_c_s := config.CryptoSuite.Scalar().Mul(p2, c_s)
+		LHS = config.CryptoSuite.Point().Mul(B, p2_c_s)
+
+		if !parsed2.NewEphPks[1].Equal(LHS) {
+			t.Error("P2'["+strconv.Itoa(i+1)+"] is computed incorrectly")
+		}
+
+		//Specialized test for trustee n°1 (0-th trustee)
+		if i == 0 {
+			// Trustee 1 compute s1 = s0 * c1
+			B := config.CryptoSuite.Point().Base()
+			c1 := trustees[0].TrusteeView.SecretCoeff
+			s0 := config.CryptoSuite.Scalar().One()
+			if !parsed2.NewBase.Equal(config.CryptoSuite.Scalar().Mul(s0, c1)) {
+				t.Error("S1 is computed incorrectly")
+			}
+
+			// Trustee 1 compute P1' = P1 * c1 = p1 * c1 * B
+			p1prime := config.CryptoSuite.Scalar().Mul(clients[0].Private, c1)
+			if !parsed2.NewEphPks[0].Equal(config.CryptoSuite.Point().Mul(B, p1prime)) {
+				t.Error("P1' is computed incorrectly")
+			}
+
+			// Trustee 1 compute P2' = P2 * c1 = p2 * c1 * B
+			p2prime := config.CryptoSuite.Scalar().Mul(clients[1].Private, c1)
+			if !parsed2.NewEphPks[1].Equal(config.CryptoSuite.Point().Mul(B, p2prime)) {
+				t.Error("P2' is computed incorrectly")
+			}
+		}
+
+		//Specialized test for trustee n°2 (1st trustee)
+		if i == 1 {
+
+			//* Trustee 2 compute s2 = s1 * c2 = s0 * c1 * c2
+			B := config.CryptoSuite.Point().Base()
+			c1 := trustees[0].TrusteeView.SecretCoeff
+			c2 := trustees[1].TrusteeView.SecretCoeff
+			c1c2 := config.CryptoSuite.Scalar().Mul(c1, c2)
+			s0 := config.CryptoSuite.Scalar().One()
+			if !parsed2.NewBase.Equal(config.CryptoSuite.Scalar().Mul(s0, c1c2)) {
+				t.Error("S2 is computed incorrectly (2)")
+			}
+
+			//* Trustee 2 compute P1'' = P1' * c2 = p1 * c1 * c2 * B
+			p1prime2 := config.CryptoSuite.Scalar().Mul(clients[0].Private, c1c2)
+			if !parsed2.NewEphPks[0].Equal(config.CryptoSuite.Point().Mul(B, p1prime2)) {
+				t.Error("P1'' is computed incorrectly")
+			}
+			//* Trustee 2 compute P2'' = P2' * c2 = p2 * c1 * c2 * B
+			p2prime2 := config.CryptoSuite.Scalar().Mul(clients[1].Private, c1c2)
+			if !parsed2.NewEphPks[1].Equal(config.CryptoSuite.Point().Mul(B, p2prime2)) {
+				t.Error("P2'' is computed incorrectly")
+			}
+		}
+
+		//and answers, the relay receives it
 		err, isDone = n.RelayView.ReceivedShuffleFromTrustee(parsed2.NewBase, parsed2.NewEphPks, parsed2.Proof)
 
 		i ++
@@ -97,9 +228,14 @@ func TestNeff(t *testing.T) {
 		}
 	}
 
+	fmt.Println("*******")
+
 	trusteesPks := make([]abstract.Point, nTrustees)
 	for j := 0; j<nTrustees; j++ {
 		trusteesPks[j] = trustees[j].TrusteeView.PublicKey
+
+		fmt.Println("Trustee",j,"secretCoeff", trustees[j].TrusteeView.SecretCoeff)
+		fmt.Println("Trustee",j,"base2", trustees[j].TrusteeView.Base)
 	}
 
 	err, toSend5 := n.RelayView.VerifySigsAndSendToClients(trusteesPks)
@@ -117,4 +253,13 @@ func TestNeff(t *testing.T) {
 		fmt.Println("Client", j, "got assigned slot", mySlot)
 	}
 
+}
+
+func genKeyPair() (abstract.Point, abstract.Scalar) {
+
+	base := config.CryptoSuite.Point().Base()
+	priv := config.CryptoSuite.Scalar().Pick(random.Stream)
+	pub := config.CryptoSuite.Point().Mul(base, priv)
+
+	return pub, priv
 }

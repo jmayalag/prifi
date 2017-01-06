@@ -13,7 +13,6 @@ OUTPUT : list of slots
 import (
 	"github.com/dedis/crypto/abstract"
 	"github.com/dedis/crypto/random"
-	"github.com/dedis/cothority/log"
 	"github.com/lbarman/prifi/prifi-lib"
 	"github.com/lbarman/prifi/prifi-lib/config"
 	"github.com/dedis/crypto/shuffle"
@@ -33,8 +32,8 @@ type neffShuffleRelayView struct {
 	ShuffledPks_s           [][]abstract.Point
 	Proof_s                 [][]byte
 	Signature_s             [][]byte
-	SignatureCount		int
-	lastG 			abstract.Scalar
+	SignatureCount          int
+	LastSecret              abstract.Scalar
 	currentTrusteeShuffling int
 }
 
@@ -45,6 +44,7 @@ type neffShuffleTrusteeView struct {
 	Proof []byte
 	PrivateKey abstract.Scalar
 	PublicKey abstract.Point
+	SecretCoeff abstract.Scalar
 }
 
 type neffShuffleScheduler struct {
@@ -84,7 +84,7 @@ func (r *neffShuffleRelayView) init(nTrustees int) error {
 	r.Signature_s = make([][]byte, nTrustees)
 	r.currentTrusteeShuffling = 0
 	r.NTrustees = nTrustees
-	r.lastG = config.CryptoSuite.Scalar().One()
+	r.LastSecret = config.CryptoSuite.Scalar().One()
 
 	return nil
 }
@@ -114,38 +114,45 @@ func (r *neffShuffleRelayView) SendToNextTrustee() (error, interface{}) {
 		return errors.New("RelayView's public key array is empty"), nil
 	}
 
-	// send to the 1st trustee
+	// send to the next trustee
 	toSend := &prifi_lib.REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE{
 		Pks: r.Pks,
 		EphPks: r.Pks,
-		Base: r.lastG}
+		Base: r.LastSecret}
 
 	return nil, toSend
 }
 
-func (t *neffShuffleTrusteeView) ReceivedShuffleFromRelay(base abstract.Scalar, clientPublicKeys []abstract.Point) (error, interface{}) {
+func (t *neffShuffleTrusteeView) ReceivedShuffleFromRelay(base abstract.Scalar, clientPublicKeys []abstract.Point, shuffleKeyPositions bool) (error, interface{}) {
 
 	secretCoeff := config.CryptoSuite.Scalar().Pick(random.Stream)
+	t.SecretCoeff = secretCoeff
 	base2 := config.CryptoSuite.Scalar().Mul(base, secretCoeff)
 
 	ephPublicKeys2 := clientPublicKeys
 
-	fmt.Println("base is", base2)
+	fmt.Println("------------")
+	fmt.Println("base is", base)
+	fmt.Println("secretCoeff is", secretCoeff)
+	fmt.Println("base2 is", base2)
 	//transform the public keys with the secret coeff
+
 	for i := 0; i < len(clientPublicKeys); i++ {
 		oldKey := clientPublicKeys[i]
-		ephPublicKeys2[i] = config.CryptoSuite.Point().Mul(oldKey, base2)
-		fmt.Println(oldKey, " changed to ", ephPublicKeys2[i])
+		ephPublicKeys2[i] = config.CryptoSuite.Point().Mul(oldKey, secretCoeff)
+		//fmt.Println(oldKey, " changed to ", ephPublicKeys2[i])
 	}
 
 	//shuffle the array
-	ephPublicKeys3 := make([]abstract.Point, len(ephPublicKeys2))
-	perm := rand.Perm(len(ephPublicKeys2))
-	for i, v := range perm {
-		ephPublicKeys3[v] = ephPublicKeys2[i]
-		fmt.Println(i, " now goes to ", v)
+	if shuffleKeyPositions {
+		ephPublicKeys3 := make([]abstract.Point, len(ephPublicKeys2))
+		perm := rand.Perm(len(ephPublicKeys2))
+		for i, v := range perm {
+			ephPublicKeys3[v] = ephPublicKeys2[i]
+			//fmt.Println(i, " now goes to ", v)
+		}
+		ephPublicKeys2 = ephPublicKeys3
 	}
-	ephPublicKeys2 = ephPublicKeys3
 
 	proof := make([]byte, 50) // TODO : the proof should be done
 
@@ -167,7 +174,10 @@ func (r *neffShuffleRelayView) ReceivedShuffleFromTrustee(newBase abstract.Scala
 	r.ShuffledPks_s[j] = newPublicKeys
 	r.Proof_s[j] = proof
 	r.G_s[j] = newBase
-	r.lastG = newBase
+
+	//will be used by next trustee
+	r.Pks = newPublicKeys
+	r.LastSecret = newBase
 
 	r.currentTrusteeShuffling = j + 1
 
@@ -218,7 +228,7 @@ func (t *neffShuffleTrusteeView) ReceivedTranscriptFromRelay(G_s []abstract.Scal
 		}
 		shuffledPublicKeys_s = b
 	} else {
-		log.Print("Probably the Protobuf lib has been patched ! you might remove this code.")
+		//log.Print("Probably the Protobuf lib has been patched ! you might remove this code.")
 	}
 	// END OF PATCH
 
@@ -358,6 +368,10 @@ func (r *neffShuffleRelayView) VerifySigsAndSendToClients(trusteesPublicKeys []a
 
 func (n *neffShuffleScheduler) ClientVerifySigAndRecognizeSlot(privateKey abstract.Scalar, trusteesPublicKeys []abstract.Point, lastBase abstract.Scalar, ephPubKeys []abstract.Point, signatures [][]byte) (error, int) {
 
+	fmt.Println("#########################")
+	fmt.Println("My private key", privateKey)
+	fmt.Println("secret", lastBase) //c1 * c2 * ...
+
 	err, success := multiSigVerify(trusteesPublicKeys, lastBase, ephPubKeys, signatures)
 	if success != true {
 		return err, -1
@@ -366,11 +380,16 @@ func (n *neffShuffleScheduler) ClientVerifySigAndRecognizeSlot(privateKey abstra
 	base := config.CryptoSuite.Point().Base()
 	newBaseFromTrusteesG := config.CryptoSuite.Point().Mul(base, lastBase)
 	ephPubInNewBase := config.CryptoSuite.Point().Mul(newBaseFromTrusteesG, privateKey)
-	fmt.Println("My private key is", privateKey, "the new base is", base, "hence my new public key is", ephPubInNewBase)
+
+
+	fmt.Println("base", base) // G
+	fmt.Println("newBaseFromTrusteesG", newBaseFromTrusteesG) // G * c1 * c2
+	fmt.Println("ephPubInNewBase", ephPubInNewBase) // G * c1 * c2 * p
+
 	mySlot := -1
 
 	for j := 0; j < len(ephPubKeys); j++ {
-		fmt.Println("... comparing with", ephPubKeys[j])
+		fmt.Println("... comparing with", ephPubKeys[j]) // p * G * c1 * c2
 		if ephPubKeys[j].Equal(ephPubInNewBase) {
 			mySlot = j
 		}
