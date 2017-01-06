@@ -1,22 +1,12 @@
 package scheduler
 
-import (
-	"github.com/dedis/crypto/abstract"
-)
+type NeffShuffle struct {
+	RelayView   *neffShuffleRelayView
+	TrusteeView *neffShuffleTrusteeView
+	//client do not have a "view", no state to hold
+}
 
-//not implemented
-type Scheduler interface {
-	AddClientToSchedule(pk abstract.Point) error
-
-	FinalizeClientSet() error
-
-	RelayPerformShuffle()
-
-	TrusteePerformShuffle()
-
-	TrusteeValidateSchedule()
-
-	RelayValidateSchedule()
-
-	ClientPayloadEmbeddable(roundID int32) (int64, int64)
+func (n *NeffShuffle) Init() {
+	n.RelayView = new(neffShuffleRelayView)
+	n.TrusteeView = new(neffShuffleTrusteeView)
 }

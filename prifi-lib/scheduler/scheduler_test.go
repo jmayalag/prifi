@@ -6,7 +6,7 @@ import (
 	"github.com/dedis/crypto/abstract"
 	cryptoconfig "github.com/dedis/crypto/config"
 	"github.com/dedis/crypto/random"
-	"github.com/lbarman/prifi/prifi-lib"
+	"github.com/lbarman/prifi/prifi-lib/net"
 	"github.com/lbarman/prifi/prifi-lib/config"
 	"strconv"
 	"testing"
@@ -101,20 +101,20 @@ func NeffShuffleTestHelper(t *testing.T, nClients int, nTrustees int, shuffleKey
 	}
 
 	//create the scheduler
-	n := new(neffShuffleScheduler) //this will hold 1 relay, 1 trustee at most. Recreate n for >1 trustee
-	n.init()
+	n := new(NeffShuffle) //this will hold 1 relay, 1 trustee at most. Recreate n for >1 trustee
+	n.Init()
 
 	//init the trustees
-	trustees := make([]*neffShuffleScheduler, nTrustees)
+	trustees := make([]*NeffShuffle, nTrustees)
 	for i := 0; i < nTrustees; i++ {
-		trustees[i] = new(neffShuffleScheduler)
-		trustees[i].init()
+		trustees[i] = new(NeffShuffle)
+		trustees[i].Init()
 		trustee := cryptoconfig.NewKeyPair(network.Suite)
 		trustees[i].TrusteeView.init(i, trustee.Secret, trustee.Public)
 	}
 
 	//init the relay
-	err := n.RelayView.init(nTrustees)
+	err := n.RelayView.Init(nTrustees)
 	if err != nil {
 		t.Error(err)
 	}
@@ -134,14 +134,14 @@ func NeffShuffleTestHelper(t *testing.T, nClients int, nTrustees int, shuffleKey
 		if err != nil {
 			t.Error(err)
 		}
-		parsed := toSend.(*prifi_lib.REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE)
+		parsed := toSend.(*net.REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE)
 
 		//who receives it
 		toSend2, err := trustees[i].TrusteeView.ReceivedShuffleFromRelay(parsed.Base, parsed.Pks, shuffleKeyPos)
 		if err != nil {
 			t.Error(err)
 		}
-		parsed2 := toSend2.(*prifi_lib.TRU_REL_TELL_NEW_BASE_AND_EPH_PKS)
+		parsed2 := toSend2.(*net.TRU_REL_TELL_NEW_BASE_AND_EPH_PKS)
 
 		// TEST: Trustee i compute B[i] = B[i-1] * c[i]
 		B_i_minus_1 := n.RelayView.InitialBase
@@ -225,14 +225,14 @@ func NeffShuffleTestHelper(t *testing.T, nClients int, nTrustees int, shuffleKey
 	if err != nil {
 		t.Error(err)
 	}
-	parsed3 := toSend3.(*prifi_lib.REL_TRU_TELL_TRANSCRIPT)
+	parsed3 := toSend3.(*net.REL_TRU_TELL_TRANSCRIPT)
 
 	for j := 0; j < nTrustees; j++ {
 		toSend4, err := trustees[j].TrusteeView.ReceivedTranscriptFromRelay(parsed3.Bases, parsed3.EphPks, parsed3.Proofs)
 		if err != nil {
 			t.Error(err)
 		}
-		parsed4 := toSend4.(*prifi_lib.TRU_REL_SHUFFLE_SIG)
+		parsed4 := toSend4.(*net.TRU_REL_SHUFFLE_SIG)
 
 		done, err := n.RelayView.ReceivedSignatureFromTrustee(parsed4.TrusteeID, parsed4.Sig)
 
@@ -253,7 +253,7 @@ func NeffShuffleTestHelper(t *testing.T, nClients int, nTrustees int, shuffleKey
 	if err != nil {
 		t.Error(err)
 	}
-	parsed5 := toSend5.(*prifi_lib.REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG)
+	parsed5 := toSend5.(*net.REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG)
 
 	mapping := make([]int, nClients)
 

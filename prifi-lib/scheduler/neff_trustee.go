@@ -17,8 +17,8 @@ import (
 	crypto_proof "github.com/dedis/crypto/proof"
 	"github.com/dedis/crypto/random"
 	"github.com/dedis/crypto/shuffle"
-	"github.com/lbarman/prifi/prifi-lib"
 	"github.com/lbarman/prifi/prifi-lib/config"
+	"github.com/lbarman/prifi/prifi-lib/net"
 	"github.com/lbarman/prifi/prifi-lib/crypto"
 	"math/rand"
 	"strconv"
@@ -38,7 +38,7 @@ type neffShuffleTrusteeView struct {
 /**
  * Creates a new trustee-view for the neff shuffle, and initiates the fields correctly
  */
-func (t *neffShuffleTrusteeView) init(trusteeID int, private abstract.Scalar, public abstract.Point) error {
+func (t *neffShuffleTrusteeView) Init(trusteeID int, private abstract.Scalar, public abstract.Point) error {
 	if trusteeID < 0 {
 		return errors.New("Cannot shuffle without a valid id (>= 0)")
 	}
@@ -101,7 +101,7 @@ func (t *neffShuffleTrusteeView) ReceivedShuffleFromRelay(lastBase abstract.Poin
 	t.Proof = proof
 
 	//send the answer
-	msg := &prifi_lib.TRU_REL_TELL_NEW_BASE_AND_EPH_PKS{
+	msg := &net.TRU_REL_TELL_NEW_BASE_AND_EPH_PKS{
 		NewBase:   newBase,
 		NewEphPks: ephPublicKeys2,
 		Proof:     proof}
@@ -198,7 +198,7 @@ func (t *neffShuffleTrusteeView) ReceivedTranscriptFromRelay(bases []abstract.Po
 	signature := crypto.SchnorrSign(config.CryptoSuite, random.Stream, blob, t.PrivateKey)
 
 	//send the answer
-	msg := &prifi_lib.TRU_REL_SHUFFLE_SIG{
+	msg := &net.TRU_REL_SHUFFLE_SIG{
 		TrusteeID: t.TrusteeID,
 		Sig:       signature}
 

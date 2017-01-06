@@ -11,7 +11,7 @@ import (
  * Tests that all trustees signed correctly the [lastBase, ephPubKey array].
  * Locate our slot (position in the shuffle) given the ephemeral public key and the new base
  */
-func (n *neffShuffleScheduler) ClientVerifySigAndRecognizeSlot(privateKey abstract.Scalar, trusteesPublicKeys []abstract.Point, lastBase abstract.Point, shuffledPublicKeys []abstract.Point, signatures [][]byte) (int, error) {
+func (n *NeffShuffle) ClientVerifySigAndRecognizeSlot(privateKey abstract.Scalar, trusteesPublicKeys []abstract.Point, lastBase abstract.Point, shuffledPublicKeys []abstract.Point, signatures [][]byte) (int, error) {
 
 	if privateKey == nil {
 		return -1, errors.New("Can't verify without private key")

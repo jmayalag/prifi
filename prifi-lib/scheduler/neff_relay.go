@@ -3,7 +3,7 @@ package scheduler
 import (
 	"errors"
 	"github.com/dedis/crypto/abstract"
-	"github.com/lbarman/prifi/prifi-lib"
+	"github.com/lbarman/prifi/prifi-lib/net"
 	"github.com/lbarman/prifi/prifi-lib/config"
 	"github.com/lbarman/prifi/prifi-lib/crypto"
 	"strconv"
@@ -30,7 +30,7 @@ type neffShuffleRelayView struct {
 /**
  * Prepares the relay-view to hold the answers from the trustees, etc
  */
-func (r *neffShuffleRelayView) init(nTrustees int) error {
+func (r *neffShuffleRelayView) Init(nTrustees int) error {
 
 	if nTrustees < 1 {
 		return errors.New("Cannot prepare a shuffle for less than one trustee (" + strconv.Itoa(nTrustees) + ")")
@@ -87,7 +87,7 @@ func (r *neffShuffleRelayView) SendToNextTrustee() (interface{}, error) {
 	r.CannotAddNewKeys = true
 
 	// send to the next trustee
-	msg := &prifi_lib.REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE{
+	msg := &net.REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE{
 		Pks:    r.PublicKeyBeingShuffled,
 		EphPks: r.PublicKeyBeingShuffled,
 		Base:   r.LastBase}
@@ -140,7 +140,7 @@ func (r *neffShuffleRelayView) SendTranscript() (interface{}, error) {
 		return nil, errors.New("Cannot send a transcript of empty array of public keys")
 	}
 
-	msg := &prifi_lib.REL_TRU_TELL_TRANSCRIPT{
+	msg := &net.REL_TRU_TELL_TRANSCRIPT{
 		Bases:  r.Bases,
 		EphPks: r.ShuffledPublicKeys,
 		Proofs: r.Proofs}
@@ -243,7 +243,7 @@ func (r *neffShuffleRelayView) VerifySigsAndSendToClients(trusteesPublicKeys []a
 		return nil, err
 	}
 
-	msg := &prifi_lib.REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG{
+	msg := &net.REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG{
 		Base:         lastBase,
 		EphPks:       ephPubKeys,
 		TrusteesSigs: signatures}

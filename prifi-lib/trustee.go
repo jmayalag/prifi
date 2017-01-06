@@ -29,6 +29,7 @@ import (
 	crypto_proof "github.com/dedis/crypto/proof"
 	"github.com/dedis/crypto/shuffle"
 	"github.com/lbarman/prifi/prifi-lib/config"
+	"github.com/lbarman/prifi/prifi-lib/net"
 	"github.com/lbarman/prifi/prifi-lib/crypto"
 	"github.com/lbarman/prifi/prifi-lib/dcnet"
 )
@@ -118,7 +119,7 @@ func NewTrusteeState(trusteeID int, nClients int, nTrustees int, payloadLength i
 Received_ALL_TRU_SHUTDOWN handles ALL_REL_SHUTDOWN messages.
 When we receive this message we should  clean up resources.
 */
-func (p *PriFiLibInstance) Received_ALL_TRU_SHUTDOWN(msg ALL_ALL_SHUTDOWN) error {
+func (p *PriFiLibInstance) Received_ALL_TRU_SHUTDOWN(msg net.ALL_ALL_SHUTDOWN) error {
 	log.Lvl1("Trustee " + strconv.Itoa(p.trusteeState.ID) + " : Received a SHUTDOWN message. ")
 
 	//stop the sending process
@@ -133,7 +134,7 @@ func (p *PriFiLibInstance) Received_ALL_TRU_SHUTDOWN(msg ALL_ALL_SHUTDOWN) error
 Received_ALL_TRU_PARAMETERS handles ALL_REL_PARAMETERS.
 It initializes the trustee with the parameters contained in the message.
 */
-func (p *PriFiLibInstance) Received_ALL_TRU_PARAMETERS(msg ALL_ALL_PARAMETERS) error {
+func (p *PriFiLibInstance) Received_ALL_TRU_PARAMETERS(msg net.ALL_ALL_PARAMETERS) error {
 
 	//this can only happens in the state RELAY_STATE_BEFORE_INIT
 	if p.trusteeState.currentState != TRUSTEE_STATE_BEFORE_INIT && !msg.ForceParams {
@@ -166,7 +167,7 @@ This is the first action of the trustee.
 */
 func (p *PriFiLibInstance) Send_TRU_REL_PK() error {
 
-	toSend := &TRU_REL_TELL_PK{p.trusteeState.ID, p.trusteeState.PublicKey}
+	toSend := &net.TRU_REL_TELL_PK{p.trusteeState.ID, p.trusteeState.PublicKey}
 	err := p.messageSender.SendToRelay(toSend)
 	if err != nil {
 		e := "Could not send TRU_REL_TELL_PK, error is " + err.Error()
@@ -222,7 +223,7 @@ by changing the cipher sending rate.
 Either the trustee must stop sending because the relay is at full capacity
 or the trustee sends normally because the relay has emptied up enough capacity.
 */
-func (p *PriFiLibInstance) Received_REL_TRU_TELL_RATE_CHANGE(msg REL_TRU_TELL_RATE_CHANGE) error {
+func (p *PriFiLibInstance) Received_REL_TRU_TELL_RATE_CHANGE(msg net.REL_TRU_TELL_RATE_CHANGE) error {
 
 	if msg.WindowCapacity <= TRUSTEE_WINDOW_LOWER_LIMIT { //Relay is at almost full capacity stop sending
 		p.trusteeState.sendingRate <- TRUSTEE_RATE_STOPPED
@@ -241,7 +242,7 @@ func sendData(p *PriFiLibInstance, roundID int32) (int32, error) {
 	data := p.trusteeState.CellCoder.TrusteeEncode(p.trusteeState.PayloadLength)
 
 	//send the data
-	toSend := &TRU_REL_DC_CIPHER{roundID, p.trusteeState.ID, data}
+	toSend := &net.TRU_REL_DC_CIPHER{roundID, p.trusteeState.ID, data}
 	err := p.messageSender.SendToRelay(toSend) //TODO : this should be the root ! make sure of it
 	if err != nil {
 		e := "Could not send Struct_TRU_REL_DC_CIPHER for round (" + strconv.Itoa(int(roundID)) + ") error is " + err.Error()
@@ -261,7 +262,7 @@ and a base given by the relay. In addition to deriving the secrets,
 the trustee uses the ephemeral keys to perform a Neff shuffle. It remembers
 this shuffle in order to check the correctness of the chain of shuffle afterwards.
 */
-func (p *PriFiLibInstance) Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE(msg REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE) error {
+func (p *PriFiLibInstance) Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE(msg net.REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE) error {
 
 	//this can only happens in the state TRUSTEE_STATE_INITIALIZING
 	if p.trusteeState.currentState != TRUSTEE_STATE_INITIALIZING {
@@ -337,7 +338,7 @@ func (p *PriFiLibInstance) Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BAS
 	*/
 
 	//send the answer
-	toSend := &TRU_REL_TELL_NEW_BASE_AND_EPH_PKS{base2, ephPublicKeys2, proof}
+	toSend := &net.TRU_REL_TELL_NEW_BASE_AND_EPH_PKS{base2, ephPublicKeys2, proof}
 	err := p.messageSender.SendToRelay(toSend) //TODO : this should be the root ! make sure of it
 	if err != nil {
 		e := "Could not send TRU_REL_TELL_NEW_BASE_AND_EPH_PKS, error is " + err.Error()
@@ -362,7 +363,7 @@ their own shuffle has been included in the chain of shuffles. If that's the case
 shuffle (which will be used by the clients), and sends it back to the relay.
 If everything succeed, starts the goroutine for sending DC-net ciphers to the relay.
 */
-func (p *PriFiLibInstance) Received_REL_TRU_TELL_TRANSCRIPT(msg REL_TRU_TELL_TRANSCRIPT) error {
+func (p *PriFiLibInstance) Received_REL_TRU_TELL_TRANSCRIPT(msg net.REL_TRU_TELL_TRANSCRIPT) error {
 
 	//this can only happens in the state TRUSTEE_STATE_SHUFFLE_DONE
 	if p.trusteeState.currentState != TRUSTEE_STATE_SHUFFLE_DONE {
@@ -483,7 +484,7 @@ func (p *PriFiLibInstance) Received_REL_TRU_TELL_TRANSCRIPT(msg REL_TRU_TELL_TRA
 	log.Lvl2("Trustee " + strconv.Itoa(p.trusteeState.ID) + "; Sending signature of transcript")
 
 	//send the answer
-	toSend := &TRU_REL_SHUFFLE_SIG{p.trusteeState.ID, sig}
+	toSend := &net.TRU_REL_SHUFFLE_SIG{p.trusteeState.ID, sig}
 	err = p.messageSender.SendToRelay(toSend) //TODO : this should be the root ! make sure of it
 	if err != nil {
 		e := "Could not send TRU_REL_SHUFFLE_SIG, error is " + err.Error()
