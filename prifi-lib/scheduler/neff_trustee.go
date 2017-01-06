@@ -25,7 +25,7 @@ import (
 )
 
 type neffShuffleTrusteeView struct {
-	TrusteeId  int
+	TrusteeID  int
 	PrivateKey abstract.Scalar
 	PublicKey  abstract.Point
 
@@ -38,8 +38,8 @@ type neffShuffleTrusteeView struct {
 /**
  * Creates a new trustee-view for the neff shuffle, and initiates the fields correctly
  */
-func (t *neffShuffleTrusteeView) init(trusteeId int, private abstract.Scalar, public abstract.Point) error {
-	if trusteeId < 0 {
+func (t *neffShuffleTrusteeView) init(trusteeID int, private abstract.Scalar, public abstract.Point) error {
+	if trusteeID < 0 {
 		return errors.New("Cannot shuffle without a valid id (>= 0)")
 	}
 	if private == nil {
@@ -48,7 +48,7 @@ func (t *neffShuffleTrusteeView) init(trusteeId int, private abstract.Scalar, pu
 	if public == nil {
 		return errors.New("Cannot shuffle without a public key.")
 	}
-	t.TrusteeId = trusteeId
+	t.TrusteeID = trusteeID
 	t.PrivateKey = private
 	t.PublicKey = public
 	return nil
@@ -58,16 +58,16 @@ func (t *neffShuffleTrusteeView) init(trusteeId int, private abstract.Scalar, pu
  * Received s[i-1], and the public keys. Do the shuffle, store locally, and send back the new s[i], shuffle array
  * If shuffleKeyPositions is false, do not shuffle the key's position (useful for testing - 0 anonymity)
  */
-func (t *neffShuffleTrusteeView) ReceivedShuffleFromRelay(lastShares abstract.Scalar, clientPublicKeys []abstract.Point, shuffleKeyPositions bool) (error, interface{}) {
+func (t *neffShuffleTrusteeView) ReceivedShuffleFromRelay(lastShares abstract.Scalar, clientPublicKeys []abstract.Point, shuffleKeyPositions bool) (interface{}, error) {
 
 	if lastShares == nil {
-		return errors.New("Cannot perform a shuffle is lastShare is nil"), nil
+		return nil, errors.New("Cannot perform a shuffle is lastShare is nil")
 	}
 	if clientPublicKeys == nil {
-		return errors.New("Cannot perform a shuffle is clientPublicKeys is nil"), nil
+		return nil, errors.New("Cannot perform a shuffle is clientPublicKeys is nil")
 	}
 	if len(clientPublicKeys) == 0 {
-		return errors.New("Cannot perform a shuffle is len(clientPublicKeys) is 0"), nil
+		return nil, errors.New("Cannot perform a shuffle is len(clientPublicKeys) is 0")
 	}
 
 	//compute new shares
@@ -106,25 +106,25 @@ func (t *neffShuffleTrusteeView) ReceivedShuffleFromRelay(lastShares abstract.Sc
 		NewEphPks: ephPublicKeys2,
 		Proof:     proof}
 
-	return nil, msg
+	return msg, nil
 }
 
 /**
  * We received a transcript of the whole shuffle from the relay. Check that we are included, and sign
  */
-func (t *neffShuffleTrusteeView) ReceivedTranscriptFromRelay(shares []abstract.Scalar, shuffledPublicKeys [][]abstract.Point, proofs [][]byte) (error, interface{}) {
+func (t *neffShuffleTrusteeView) ReceivedTranscriptFromRelay(shares []abstract.Scalar, shuffledPublicKeys [][]abstract.Point, proofs [][]byte) (interface{}, error) {
 
 	if t.Shares == nil {
-		return errors.New("Cannot verify the shuffle, we didn't store the base"), nil
+		return nil, errors.New("Cannot verify the shuffle, we didn't store the base")
 	}
 	if t.EphemeralKeys == nil || len(t.EphemeralKeys) == 0 {
-		return errors.New("Cannot verify the shuffle, we didn't store the ephemeral keys"), nil
+		return nil, errors.New("Cannot verify the shuffle, we didn't store the ephemeral keys")
 	}
 	if t.Proof == nil {
-		return errors.New("Cannot verify the shuffle, we didn't store the proof"), nil
+		return nil, errors.New("Cannot verify the shuffle, we didn't store the proof")
 	}
 	if len(shares) != len(shuffledPublicKeys) || len(shares) != len(proofs) {
-		return errors.New("Size not matching, G_s is " + strconv.Itoa(len(shares)) + ", shuffledPublicKeys_s is " + strconv.Itoa(len(shuffledPublicKeys)) + ", proof_s is " + strconv.Itoa(len(proofs)) + "."), nil
+		return nil, errors.New("Size not matching, G_s is " + strconv.Itoa(len(shares)) + ", shuffledPublicKeys_s is " + strconv.Itoa(len(shuffledPublicKeys)) + ", proof_s is " + strconv.Itoa(len(proofs)) + ".")
 	}
 
 	nTrustees := len(shares)
@@ -151,7 +151,7 @@ func (t *neffShuffleTrusteeView) ReceivedTranscriptFromRelay(shares []abstract.S
 		verify = true // TODO: This shuffle needs to be fixed
 
 		if !verify {
-			return errors.New("Could not verify the " + strconv.Itoa(j) + "th neff shuffle, error is " + err.Error()), nil
+			return nil, errors.New("Could not verify the " + strconv.Itoa(j) + "th neff shuffle, error is " + err.Error())
 		}
 	}
 
@@ -182,14 +182,14 @@ func (t *neffShuffleTrusteeView) ReceivedTranscriptFromRelay(shares []abstract.S
 
 	lastSharesByte, err := shares[lastPerm].MarshalBinary()
 	if err != nil {
-		return errors.New("Can't marshall the last shares..."), nil
+		return nil, errors.New("Can't marshall the last shares...")
 	}
 	blob = append(blob, lastSharesByte...)
 
 	for j := 0; j < nClients; j++ {
 		pkBytes, err := shuffledPublicKeys[lastPerm][j].MarshalBinary()
 		if err != nil {
-			return errors.New("Can't marshall shuffled public key" + strconv.Itoa(j)), nil
+			return nil, errors.New("Can't marshall shuffled public key" + strconv.Itoa(j))
 		}
 		blob = append(blob, pkBytes...)
 	}
@@ -199,8 +199,8 @@ func (t *neffShuffleTrusteeView) ReceivedTranscriptFromRelay(shares []abstract.S
 
 	//send the answer
 	msg := &prifi_lib.TRU_REL_SHUFFLE_SIG{
-		TrusteeID: t.TrusteeId,
+		TrusteeID: t.TrusteeID,
 		Sig:       signature}
 
-	return nil, msg
+	return msg, nil
 }

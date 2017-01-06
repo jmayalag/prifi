@@ -11,34 +11,34 @@ import (
  * Tests that all trustees signed correctly the [lastBase, ephPubKey array].
  * Locate our slot (position in the shuffle) given the ephemeral public key and the new base
  */
-func (n *neffShuffleScheduler) ClientVerifySigAndRecognizeSlot(privateKey abstract.Scalar, trusteesPublicKeys []abstract.Point, shares abstract.Scalar, shuffledPublicKeys []abstract.Point, signatures [][]byte) (error, int) {
+func (n *neffShuffleScheduler) ClientVerifySigAndRecognizeSlot(privateKey abstract.Scalar, trusteesPublicKeys []abstract.Point, shares abstract.Scalar, shuffledPublicKeys []abstract.Point, signatures [][]byte) (int, error) {
 
 	if privateKey == nil {
-		return errors.New("Can't verify without private key"), -1
+		return -1, errors.New("Can't verify without private key")
 	}
 	if trusteesPublicKeys == nil {
-		return errors.New("Can't verify without trustee's public keys"), -1
+		return -1, errors.New("Can't verify without trustee's public keys")
 	}
 	if trusteesPublicKeys == nil {
-		return errors.New("Can't verify without trustee's public signatures"), -1
+		return -1, errors.New("Can't verify without trustee's public signatures")
 	}
 	if shuffledPublicKeys == nil {
-		return errors.New("Can't verify without ephemeral public keys"), -1
+		return -1, errors.New("Can't verify without ephemeral public keys")
 	}
 	if shares == nil {
-		return errors.New("Can't verify without last base"), -1
+		return -1, errors.New("Can't verify without last base")
 	}
 	if len(shuffledPublicKeys) < 1 {
-		return errors.New("Can't verify without ephemeral public keys (len=0)"), -1
+		return -1, errors.New("Can't verify without ephemeral public keys (len=0)")
 	}
 	if len(signatures) != len(trusteesPublicKeys) {
-		return errors.New("Can't verify if len(sig) != len(trusteesPublicKeys), " + strconv.Itoa(len(signatures)) + " != " + strconv.Itoa(len(trusteesPublicKeys)) + "."), -1
+		return -1, errors.New("Can't verify if len(sig) != len(trusteesPublicKeys), " + strconv.Itoa(len(signatures)) + " != " + strconv.Itoa(len(trusteesPublicKeys)) + ".")
 	}
 
 	//batch-verify all signatures
-	err, success := multiSigVerify(trusteesPublicKeys, shares, shuffledPublicKeys, signatures)
+	success, err := multiSigVerify(trusteesPublicKeys, shares, shuffledPublicKeys, signatures)
 	if success != true {
-		return err, -1
+		return -1, err
 	}
 
 	//locate our public key in shuffle
@@ -55,7 +55,7 @@ func (n *neffShuffleScheduler) ClientVerifySigAndRecognizeSlot(privateKey abstra
 	}
 
 	if mySlot == -1 {
-		return errors.New("Could not locate my slot"), -1
+		return -1, errors.New("Could not locate my slot")
 	}
-	return nil, mySlot
+	return mySlot, nil
 }

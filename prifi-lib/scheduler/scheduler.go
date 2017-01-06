@@ -1,19 +1,10 @@
 package scheduler
 
-/*
-
-The interface should be :
-
-INPUT : list of client's public keys
-
-OUTPUT : list of slots
-
-*/
-
 import (
 	"github.com/dedis/crypto/abstract"
 )
 
+//not implemented
 type Scheduler interface {
 	AddClientToSchedule(pk abstract.Point) error
 

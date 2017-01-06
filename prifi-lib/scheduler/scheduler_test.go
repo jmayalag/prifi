@@ -34,7 +34,7 @@ type PrivatePublicPair struct {
  * Client 1 compute p1 * s2 * B = p1 * s0 * c1 * c2 * B = P1''
  * Client 2 compute p2 * s2 * B = p2 * s0 * c1 * c2 * B = P2''
  */
-func TestNeff(t *testing.T) {
+func TestWholeNeffShuffle(t *testing.T) {
 
 	nTrustees := 2
 	nClients := 2
@@ -74,7 +74,7 @@ func TestNeff(t *testing.T) {
 		}
 
 		//the relay send the shuffle send it to the next trustee
-		err, toSend := n.RelayView.SendToNextTrustee()
+		toSend, err := n.RelayView.SendToNextTrustee()
 		if err != nil {
 			t.Error(err)
 		}
@@ -111,7 +111,7 @@ func TestNeff(t *testing.T) {
 
 		//who receives it
 		shuffleKeyPos := false //so we can test easily
-		err, toSend2 := trustees[i].TrusteeView.ReceivedShuffleFromRelay(parsed.Base, parsed.Pks, shuffleKeyPos)
+		toSend2, err := trustees[i].TrusteeView.ReceivedShuffleFromRelay(parsed.Base, parsed.Pks, shuffleKeyPos)
 		if err != nil {
 			t.Error(err)
 		}
@@ -199,25 +199,25 @@ func TestNeff(t *testing.T) {
 		}
 
 		//and answers, the relay receives it
-		err, isDone = n.RelayView.ReceivedShuffleFromTrustee(parsed2.NewBase, parsed2.NewEphPks, parsed2.Proof)
+		isDone, err = n.RelayView.ReceivedShuffleFromTrustee(parsed2.NewBase, parsed2.NewEphPks, parsed2.Proof)
 
 		i++
 	}
 
-	err, toSend3 := n.RelayView.SendTranscript()
+	toSend3, err := n.RelayView.SendTranscript()
 	if err != nil {
 		t.Error(err)
 	}
 	parsed3 := toSend3.(*prifi_lib.REL_TRU_TELL_TRANSCRIPT)
 
 	for j := 0; j < nTrustees; j++ {
-		err, toSend4 := trustees[j].TrusteeView.ReceivedTranscriptFromRelay(parsed3.Gs, parsed3.EphPks, parsed3.Proofs)
+		toSend4, err := trustees[j].TrusteeView.ReceivedTranscriptFromRelay(parsed3.Gs, parsed3.EphPks, parsed3.Proofs)
 		if err != nil {
 			t.Error(err)
 		}
 		parsed4 := toSend4.(*prifi_lib.TRU_REL_SHUFFLE_SIG)
 
-		err, done := n.RelayView.ReceivedSignatureFromTrustee(parsed4.TrusteeID, parsed4.Sig)
+		done, err := n.RelayView.ReceivedSignatureFromTrustee(parsed4.TrusteeID, parsed4.Sig)
 
 		if done && j != nTrustees-1 {
 			t.Error("Relay collecting signature, but is done too early, only received " + strconv.Itoa(j+1) + " signatures out of " + strconv.Itoa(nTrustees))
@@ -232,7 +232,7 @@ func TestNeff(t *testing.T) {
 		trusteesPks[j] = trustees[j].TrusteeView.PublicKey
 	}
 
-	err, toSend5 := n.RelayView.VerifySigsAndSendToClients(trusteesPks)
+	toSend5, err := n.RelayView.VerifySigsAndSendToClients(trusteesPks)
 	if err != nil {
 		t.Error(err)
 	}
@@ -240,7 +240,7 @@ func TestNeff(t *testing.T) {
 
 	//client verify the sig and recognize their slot
 	for j := 0; j < nClients; j++ {
-		err, mySlot := n.ClientVerifySigAndRecognizeSlot(clients[j].Private, trusteesPks, parsed5.Base, parsed5.EphPks, parsed5.TrusteesSigs)
+		mySlot, err := n.ClientVerifySigAndRecognizeSlot(clients[j].Private, trusteesPks, parsed5.Base, parsed5.EphPks, parsed5.TrusteesSigs)
 		if err != nil {
 			t.Error(err)
 		}
