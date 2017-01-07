@@ -3,12 +3,15 @@ package scheduler
 import (
 	"errors"
 	"github.com/dedis/crypto/abstract"
-	"github.com/lbarman/prifi/prifi-lib/net"
 	"github.com/lbarman/prifi/prifi-lib/config"
 	"github.com/lbarman/prifi/prifi-lib/crypto"
+	"github.com/lbarman/prifi/prifi-lib/net"
 	"strconv"
 )
 
+/**
+ * The view of the relay for the Neff Shuffle
+ */
 type NeffShuffleRelay struct {
 	NTrustees   int
 	InitialBase abstract.Point

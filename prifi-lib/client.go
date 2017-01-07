@@ -36,8 +36,8 @@ import (
 	"github.com/lbarman/prifi/prifi-lib/config"
 	"github.com/lbarman/prifi/prifi-lib/crypto"
 	"github.com/lbarman/prifi/prifi-lib/dcnet"
-	"github.com/lbarman/prifi/prifi-lib/net"
 	prifilog "github.com/lbarman/prifi/prifi-lib/log"
+	"github.com/lbarman/prifi/prifi-lib/net"
 
 	"github.com/dedis/crypto/random"
 	socks "github.com/lbarman/prifi/prifi-socks"

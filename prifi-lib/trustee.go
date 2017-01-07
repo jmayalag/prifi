@@ -29,9 +29,9 @@ import (
 	crypto_proof "github.com/dedis/crypto/proof"
 	"github.com/dedis/crypto/shuffle"
 	"github.com/lbarman/prifi/prifi-lib/config"
-	"github.com/lbarman/prifi/prifi-lib/net"
 	"github.com/lbarman/prifi/prifi-lib/crypto"
 	"github.com/lbarman/prifi/prifi-lib/dcnet"
+	"github.com/lbarman/prifi/prifi-lib/net"
 )
 
 // Possible states the trustees are in. This restrict the kind of messages they can receive at a given point in time.

@@ -145,6 +145,7 @@ func NewPriFiTrusteeWithState(msgSender MessageSender, state *TrusteeState) *Pri
 	log.Lvl1("Trustee has been initialized by function call. ")
 	return &prifi
 }
+
 // ReceivedMessage must be called when a PriFi host receives a message.
 // It takes care to call the correct message handler function.
 func (prifi *PriFiLibInstance) ReceivedMessage(msg interface{}) error {
@@ -221,4 +222,3 @@ func (prifi *PriFiLibInstance) ReceivedMessage(msg interface{}) error {
 
 	return nil
 }
-

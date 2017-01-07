@@ -18,12 +18,15 @@ import (
 	"github.com/dedis/crypto/random"
 	"github.com/dedis/crypto/shuffle"
 	"github.com/lbarman/prifi/prifi-lib/config"
-	"github.com/lbarman/prifi/prifi-lib/net"
 	"github.com/lbarman/prifi/prifi-lib/crypto"
+	"github.com/lbarman/prifi/prifi-lib/net"
 	"math/rand"
 	"strconv"
 )
 
+/**
+ * The view of one trustee for the Neff Shuffle
+ */
 type NeffShuffleTrustee struct {
 	TrusteeID  int
 	PrivateKey abstract.Scalar

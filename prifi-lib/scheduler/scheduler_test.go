@@ -6,8 +6,8 @@ import (
 	"github.com/dedis/crypto/abstract"
 	cryptoconfig "github.com/dedis/crypto/config"
 	"github.com/dedis/crypto/random"
-	"github.com/lbarman/prifi/prifi-lib/net"
 	"github.com/lbarman/prifi/prifi-lib/config"
+	"github.com/lbarman/prifi/prifi-lib/net"
 	"strconv"
 	"testing"
 )
@@ -85,7 +85,7 @@ func TestWholeNeffShuffle(t *testing.T) {
 			}
 			fmt.Printf("+-%d%%\n", int(maxDeviation))
 			if int(maxDeviation) > 30 {
-				t.Error(errors.New("Max allowed distribution biais is 30%"))
+				t.Error("Max allowed distribution biais is 30 percent.")
 			}
 		}
 	}
@@ -110,7 +110,7 @@ func NeffShuffleTestHelper(t *testing.T, nClients int, nTrustees int, shuffleKey
 		trustees[i] = new(NeffShuffle)
 		trustees[i].Init()
 		trustee := cryptoconfig.NewKeyPair(network.Suite)
-		trustees[i].TrusteeView.init(i, trustee.Secret, trustee.Public)
+		trustees[i].TrusteeView.Init(i, trustee.Secret, trustee.Public)
 	}
 
 	//init the relay

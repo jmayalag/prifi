@@ -49,9 +49,9 @@ import (
 	"github.com/dedis/crypto/abstract"
 	"github.com/lbarman/prifi/prifi-lib/config"
 	"github.com/lbarman/prifi/prifi-lib/dcnet"
-	"github.com/lbarman/prifi/prifi-lib/scheduler"
 	prifilog "github.com/lbarman/prifi/prifi-lib/log"
 	"github.com/lbarman/prifi/prifi-lib/net"
+	"github.com/lbarman/prifi/prifi-lib/scheduler"
 
 	socks "github.com/lbarman/prifi/prifi-socks"
 )
@@ -150,7 +150,7 @@ type RelayState struct {
 	CellCoder                         dcnet.CellCoder
 	clients                           []NodeRepresentation
 	currentDCNetRound                 DCNetRound
-	neffShuffle		          *scheduler.NeffShuffleRelay
+	neffShuffle                       *scheduler.NeffShuffleRelay
 	currentState                      int16
 	DataForClients                    chan []byte // VPN / SOCKS should put data there !
 	PriorityDataForClients            chan []byte
@@ -912,7 +912,7 @@ func (p *PriFiLibInstance) Received_TRU_REL_SHUFFLE_SIG(msg net.TRU_REL_SHUFFLE_
 			i++
 		}
 
-		toSend5, err :=  p.relayState.neffShuffle.VerifySigsAndSendToClients(trusteesPks)
+		toSend5, err := p.relayState.neffShuffle.VerifySigsAndSendToClients(trusteesPks)
 		if err != nil {
 			e := "Could not do p.relayState.neffShuffle.VerifySigsAndSendToClients(), error is " + err.Error()
 			log.Error(e)
