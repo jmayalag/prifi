@@ -1,9 +1,9 @@
 package net
 
 import (
-	"testing"
-	"github.com/dedis/crypto/random"
 	"bytes"
+	"github.com/dedis/crypto/random"
+	"testing"
 )
 
 func TestUDPMessage(t *testing.T) {
