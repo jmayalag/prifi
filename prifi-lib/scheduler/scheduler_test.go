@@ -48,47 +48,6 @@ func TestWholeNeffShuffle(t *testing.T) {
 			NeffShuffleTestHelper(t, nClients, nTrustees, false)
 		}
 	}
-
-	//output distribution testing.
-	nClientsRange = []int{2, 3, 4, 5, 10}
-	nTrusteeRange = []int{1}
-
-	repetition := 100
-	for _, nClients := range nClientsRange {
-		for _, nTrustees := range nTrusteeRange {
-			mappingDistrib := make([][]float64, nClients)
-			for k := 0; k < nClients; k++ {
-				mappingDistrib[k] = make([]float64, nClients)
-			}
-			fmt.Print("Testing distribution for ", nClients, " clients, ", nTrustees, " trustees... ")
-			for i := 0; i < repetition; i++ {
-				mapping := NeffShuffleTestHelper(t, nClients, nTrustees, true)
-				for clientID, slot := range mapping {
-					mappingDistrib[clientID][slot] += float64(1)
-				}
-			}
-			maxDeviation := float64(-1)
-			for clientID, _ := range mappingDistrib {
-				for slot := 0; slot < nClients; slot++ {
-					//compute deviation
-					expectedValue := float64(100) / float64(len(mappingDistrib[clientID]))
-					mappingDistrib[clientID][slot] -= expectedValue
-					if mappingDistrib[clientID][slot] < 0 {
-						mappingDistrib[clientID][slot] = -mappingDistrib[clientID][slot]
-					}
-
-					//store max deviation
-					if mappingDistrib[clientID][slot] > maxDeviation {
-						maxDeviation = mappingDistrib[clientID][slot]
-					}
-				}
-			}
-			fmt.Printf("+-%d%%\n", int(maxDeviation))
-			if int(maxDeviation) > 30 {
-				t.Error("Max allowed distribution biais is 30 percent.")
-			}
-		}
-	}
 }
 
 func NeffShuffleTestHelper(t *testing.T, nClients int, nTrustees int, shuffleKeyPos bool) []int {

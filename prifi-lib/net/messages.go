@@ -154,7 +154,6 @@ structure (but does not decode it), and FromBytes(), which decodes the REL_CLI_D
 */
 type REL_CLI_DOWNSTREAM_DATA_UDP struct {
 	REL_CLI_DOWNSTREAM_DATA
-	byteEncoded []byte
 }
 
 // Print prints the raw value of this message.
@@ -163,9 +162,8 @@ func (m REL_CLI_DOWNSTREAM_DATA_UDP) Print() {
 }
 
 // SetBytes sets the bytes contained in this message.
-func (m *REL_CLI_DOWNSTREAM_DATA_UDP) SetBytes(data []byte) {
-	m.byteEncoded = make([]byte, len(data))
-	copy(m.byteEncoded, data)
+func (m *REL_CLI_DOWNSTREAM_DATA_UDP) SetContent(data REL_CLI_DOWNSTREAM_DATA) {
+	m.REL_CLI_DOWNSTREAM_DATA = data
 }
 
 // ToBytes encodes a message into a slice of bytes.
@@ -188,9 +186,7 @@ func (m *REL_CLI_DOWNSTREAM_DATA_UDP) ToBytes() ([]byte, error) {
 }
 
 // FromBytes decodes the message contained in the message's byteEncoded field.
-func (m *REL_CLI_DOWNSTREAM_DATA_UDP) FromBytes() (interface{}, error) {
-
-	buffer := m.byteEncoded
+func (m *REL_CLI_DOWNSTREAM_DATA_UDP) FromBytes(buffer []byte) (interface{}, error) {
 
 	//the smallest message is 4 bytes, indicating a length of 0
 	if len(buffer) < 4 {
@@ -217,7 +213,7 @@ func (m *REL_CLI_DOWNSTREAM_DATA_UDP) FromBytes() (interface{}, error) {
 	}
 
 	innerMessage := REL_CLI_DOWNSTREAM_DATA{roundID, data, flagResync} //This wrapping feels wierd
-	resultMessage := REL_CLI_DOWNSTREAM_DATA_UDP{innerMessage, make([]byte, 0)}
+	resultMessage := REL_CLI_DOWNSTREAM_DATA_UDP{innerMessage}
 
 	return resultMessage, nil
 }

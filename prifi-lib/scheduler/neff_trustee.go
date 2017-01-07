@@ -20,7 +20,6 @@ import (
 	"github.com/lbarman/prifi/prifi-lib/config"
 	"github.com/lbarman/prifi/prifi-lib/crypto"
 	"github.com/lbarman/prifi/prifi-lib/net"
-	"math/rand"
 	"strconv"
 )
 
@@ -73,40 +72,22 @@ func (t *NeffShuffleTrustee) ReceivedShuffleFromRelay(lastBase abstract.Point, c
 		return nil, errors.New("Cannot perform a shuffle is len(clientPublicKeys) is 0")
 	}
 
-	//compute new shares
-	secretCoeff := config.CryptoSuite.Scalar().Pick(random.Stream)
+	shuffledKeys, newBase, secretCoeff, proof, err := crypto.NeffShuffle(clientPublicKeys, lastBase, config.CryptoSuite, shuffleKeyPositions)
+	if err != nil {
+		return nil, err
+	}
+
 	t.SecretCoeff = secretCoeff
-	newBase := config.CryptoSuite.Point().Mul(lastBase, secretCoeff)
-
-	//transform the public keys with the secret coeff
-	ephPublicKeys2 := clientPublicKeys
-	for i := 0; i < len(clientPublicKeys); i++ {
-		oldKey := clientPublicKeys[i]
-		ephPublicKeys2[i] = config.CryptoSuite.Point().Mul(oldKey, secretCoeff)
-	}
-
-	//shuffle the array
-	if shuffleKeyPositions {
-		//TODO : I'm not shure this actually shuffles ?
-		ephPublicKeys3 := make([]abstract.Point, len(ephPublicKeys2))
-		perm := rand.Perm(len(ephPublicKeys2))
-		for i, v := range perm {
-			ephPublicKeys3[v] = ephPublicKeys2[i]
-		}
-		ephPublicKeys2 = ephPublicKeys3
-	}
-
-	proof := make([]byte, 50) // TODO : the proof should be done
 
 	//store the result
 	t.NewBase = newBase
-	t.EphemeralKeys = ephPublicKeys2
+	t.EphemeralKeys = shuffledKeys
 	t.Proof = proof
 
 	//send the answer
 	msg := &net.TRU_REL_TELL_NEW_BASE_AND_EPH_PKS{
 		NewBase:   newBase,
-		NewEphPks: ephPublicKeys2,
+		NewEphPks: shuffledKeys,
 		Proof:     proof}
 
 	return msg, nil
