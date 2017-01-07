@@ -1,4 +1,4 @@
-package prifi_lib
+package net
 
 import (
 	"encoding/binary"
@@ -85,7 +85,7 @@ type REL_CLI_DOWNSTREAM_DATA struct {
 // REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG message contains the ephemeral public keys and the signatures
 // of the trustees and is sent by the relay to the client.
 type REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG struct {
-	Base         abstract.Scalar
+	Base         abstract.Point
 	EphPks       []abstract.Point
 	TrusteesSigs [][]byte
 }
@@ -101,13 +101,13 @@ type REL_CLI_TELL_TRUSTEES_PK struct {
 type REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE struct {
 	Pks    []abstract.Point
 	EphPks []abstract.Point
-	Base   abstract.Scalar
+	Base   abstract.Point
 }
 
 // REL_TRU_TELL_TRANSCRIPT message contains all the shuffles perfomrmed in a Neff shuffle round.
 // It is sent by the relay to the trustees to be verified.
 type REL_TRU_TELL_TRANSCRIPT struct {
-	Gs     []abstract.Scalar
+	Bases  []abstract.Point
 	EphPks [][]abstract.Point
 	Proofs [][]byte
 }
@@ -134,7 +134,7 @@ type REL_TRU_TELL_RATE_CHANGE struct {
 // TRU_REL_TELL_NEW_BASE_AND_EPH_PKS message contains the new ephemeral key of a trustee and
 // is sent to the relay.
 type TRU_REL_TELL_NEW_BASE_AND_EPH_PKS struct {
-	NewBase   abstract.Scalar
+	NewBase   abstract.Point
 	NewEphPks []abstract.Point
 	Proof     []byte
 }
@@ -154,7 +154,6 @@ structure (but does not decode it), and FromBytes(), which decodes the REL_CLI_D
 */
 type REL_CLI_DOWNSTREAM_DATA_UDP struct {
 	REL_CLI_DOWNSTREAM_DATA
-	byteEncoded []byte
 }
 
 // Print prints the raw value of this message.
@@ -163,9 +162,8 @@ func (m REL_CLI_DOWNSTREAM_DATA_UDP) Print() {
 }
 
 // SetBytes sets the bytes contained in this message.
-func (m *REL_CLI_DOWNSTREAM_DATA_UDP) SetBytes(data []byte) {
-	m.byteEncoded = make([]byte, len(data))
-	copy(m.byteEncoded, data)
+func (m *REL_CLI_DOWNSTREAM_DATA_UDP) SetContent(data REL_CLI_DOWNSTREAM_DATA) {
+	m.REL_CLI_DOWNSTREAM_DATA = data
 }
 
 // ToBytes encodes a message into a slice of bytes.
@@ -188,9 +186,7 @@ func (m *REL_CLI_DOWNSTREAM_DATA_UDP) ToBytes() ([]byte, error) {
 }
 
 // FromBytes decodes the message contained in the message's byteEncoded field.
-func (m *REL_CLI_DOWNSTREAM_DATA_UDP) FromBytes() (interface{}, error) {
-
-	buffer := m.byteEncoded
+func (m *REL_CLI_DOWNSTREAM_DATA_UDP) FromBytes(buffer []byte) (interface{}, error) {
 
 	//the smallest message is 4 bytes, indicating a length of 0
 	if len(buffer) < 4 {
@@ -217,84 +213,7 @@ func (m *REL_CLI_DOWNSTREAM_DATA_UDP) FromBytes() (interface{}, error) {
 	}
 
 	innerMessage := REL_CLI_DOWNSTREAM_DATA{roundID, data, flagResync} //This wrapping feels wierd
-	resultMessage := REL_CLI_DOWNSTREAM_DATA_UDP{innerMessage, make([]byte, 0)}
+	resultMessage := REL_CLI_DOWNSTREAM_DATA_UDP{innerMessage}
 
 	return resultMessage, nil
-}
-
-// ReceivedMessage must be called when a PriFi host receives a message.
-// It takes care to call the correct message handler function.
-func (prifi *PriFiLibInstance) ReceivedMessage(msg interface{}) error {
-
-	if prifi == nil {
-		log.Print("Received a message ", msg)
-		panic("But prifi is nil !")
-	}
-
-	var err error
-
-	switch typedMsg := msg.(type) {
-	case ALL_ALL_PARAMETERS:
-		switch prifi.role {
-		case PRIFI_ROLE_RELAY:
-			prifi.Received_ALL_REL_PARAMETERS(typedMsg)
-		case PRIFI_ROLE_CLIENT:
-			err = prifi.Received_ALL_CLI_PARAMETERS(typedMsg)
-		case PRIFI_ROLE_TRUSTEE:
-			err = prifi.Received_ALL_TRU_PARAMETERS(typedMsg)
-		default:
-			panic("Received parameters, but we have no role yet !")
-		}
-	case ALL_ALL_SHUTDOWN:
-		switch prifi.role {
-		case PRIFI_ROLE_RELAY:
-			prifi.Received_ALL_REL_SHUTDOWN(typedMsg)
-		case PRIFI_ROLE_CLIENT:
-			err = prifi.Received_ALL_CLI_SHUTDOWN(typedMsg)
-		case PRIFI_ROLE_TRUSTEE:
-			err = prifi.Received_ALL_TRU_SHUTDOWN(typedMsg)
-		default:
-			panic("Received SHUTDOWN, but we have no role yet !")
-		}
-	case CLI_REL_TELL_PK_AND_EPH_PK:
-		prifi.Received_CLI_REL_TELL_PK_AND_EPH_PK(typedMsg)
-	case CLI_REL_UPSTREAM_DATA:
-		prifi.Received_CLI_REL_UPSTREAM_DATA(typedMsg)
-	case REL_CLI_DOWNSTREAM_DATA:
-		err = prifi.Received_REL_CLI_DOWNSTREAM_DATA(typedMsg)
-	/*
-	 * this message is a bit special. At this point, we don't care anymore that's it's UDP, and cast it back to REL_CLI_DOWNSTREAM_DATA.
-	 * the relay only handles REL_CLI_DOWNSTREAM_DATA
-	 */
-	case REL_CLI_DOWNSTREAM_DATA_UDP:
-		err = prifi.Received_REL_CLI_UDP_DOWNSTREAM_DATA(typedMsg.REL_CLI_DOWNSTREAM_DATA)
-	case REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG:
-		err = prifi.Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(typedMsg)
-	case REL_CLI_TELL_TRUSTEES_PK:
-		err = prifi.Received_REL_CLI_TELL_TRUSTEES_PK(typedMsg)
-	case REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE:
-		err = prifi.Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE(typedMsg)
-	case REL_TRU_TELL_TRANSCRIPT:
-		err = prifi.Received_REL_TRU_TELL_TRANSCRIPT(typedMsg)
-	case TRU_REL_DC_CIPHER:
-		prifi.Received_TRU_REL_DC_CIPHER(typedMsg)
-	case TRU_REL_SHUFFLE_SIG:
-		prifi.Received_TRU_REL_SHUFFLE_SIG(typedMsg)
-	case TRU_REL_TELL_NEW_BASE_AND_EPH_PKS:
-		prifi.Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS(typedMsg)
-	case TRU_REL_TELL_PK:
-		prifi.Received_TRU_REL_TELL_PK(typedMsg)
-	case REL_TRU_TELL_RATE_CHANGE:
-		err = prifi.Received_REL_TRU_TELL_RATE_CHANGE(typedMsg)
-	default:
-		panic("unrecognized message !")
-	}
-
-	//no need to push the error further up. display it here !
-	if err != nil {
-		log.Error("ReceivedMessage: got an error, " + err.Error())
-		return err
-	}
-
-	return nil
 }

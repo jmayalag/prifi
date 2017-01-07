@@ -20,7 +20,7 @@ import (
 	"github.com/dedis/cothority/log"
 	"github.com/dedis/cothority/network"
 	"github.com/dedis/cothority/sda"
-	prifi_lib "github.com/lbarman/prifi/prifi-lib"
+	prifi_net "github.com/lbarman/prifi/prifi-lib/net"
 	prifi_socks "github.com/lbarman/prifi/prifi-socks"
 	prifi_protocol "github.com/lbarman/prifi/sda/protocols"
 )
@@ -223,7 +223,7 @@ func (s *ServiceState) StartSocksTunnelOnly() error {
 
 func (s *ServiceState) setConfigToPriFiProtocol(wrapper *prifi_protocol.PriFiSDAProtocol) {
 
-	prifiParams := prifi_lib.ALL_ALL_PARAMETERS{
+	prifiParams := prifi_net.ALL_ALL_PARAMETERS{
 		ClientDataOutputEnabled: true,
 		DoLatencyTests:          s.prifiTomlConfig.DoLatencyTests,
 		DownCellSize:            s.prifiTomlConfig.CellSizeDown,

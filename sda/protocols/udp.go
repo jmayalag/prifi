@@ -33,11 +33,9 @@ const FAKE_LOCAL_UDP_SIMULATED_LOSS_PERCENTAGE = 0
 type MarshallableMessage interface {
 	Print()
 
-	SetBytes(data []byte)
-
 	ToBytes() ([]byte, error)
 
-	FromBytes() (interface{}, error)
+	FromBytes(data []byte) (interface{}, error)
 }
 
 //UDPChannel is the interface for UDP channel, since this class has two implementation.
@@ -136,7 +134,7 @@ func (lc *LocalhostChannel) ListenAndBlock(emptyMessage MarshallableMessage, las
 	//there's one
 	lastMsg := lc.lastMessage
 
-	emptyMessage.SetBytes(lastMsg)
+	emptyMessage.FromBytes(lastMsg)
 
 	return emptyMessage, nil
 }
@@ -210,7 +208,7 @@ func (c *RealUDPChannel) ListenAndBlock(emptyMessage MarshallableMessage, lastSe
 		log.Error("ListenAndBlock: Received a message of", n, "bytes, from addr", addr)
 	}
 
-	emptyMessage.SetBytes(buf)
+	emptyMessage.FromBytes(buf)
 
 	return emptyMessage, nil
 }
