@@ -15,7 +15,7 @@
 dbg_lvl=3						# 1=less verbose, 3=more verbose. goes up to 5, but then prints the SDA's message (network framework)
 try_use_real_identities="false"	# if "true", will try to use "self-generated" public/private key as a replacement for the dummy keys
 								# we generated for you. It asks you if it does not find real keys. If false, will always use the dummy keys.
-colors="true"					# if "false", the output of PriFi (not this script) will be in black-n-white
+colors="false"					# if "false", the output of PriFi (and this script) will be in black-n-white
 
 socksServer1Port=8080			# the port for the SOCKS-Server-1 (part of the PriFi client)
 socksServer2Port=8090			# the port to attempt connect to (from the PriFi relay) for the SOCKS-Server-2
@@ -45,10 +45,20 @@ sleeptime_between_spawns=1 		# time in second between entities launch in all-loc
 cothorityBranchRequired="test_ism_2_699" # the branch required for the cothority (SDA) framework
 
 #pretty colored message
-shell="\e[35m[script]\e[97m"
-warningMsg="\e[33m\e[1m[warning]\e[97m\e[0m"
-errorMsg="\e[31m\e[1m[error]\e[97m\e[0m"
-okMsg="\e[32m[ok]\e[97m"
+highlightOn="$\e[97m"
+highlight0ff="\e[0m"
+shell="\e[35m[script]${highlightOff}"
+warningMsg="${highlightOn}\e[1m[warning]${highlightOff}\e[0m"
+errorMsg="\e[31m\e[1m[error]${highlightOff}"
+okMsg="\e[32m[ok]${highlightOff}"
+if [ "$colors" = "false" ]; then
+	highlightOn=""
+	highlight0ff=""
+	shell="[script]"
+	warningMsg="[warning]"
+	errorMsg="[error]"
+	okMsg="[ok]"
+fi
 
 # ------------------------
 #     HELPER FUNCTIONS
@@ -58,27 +68,27 @@ print_usage() {
 	echo
 	echo -e "PriFi, a tracking-resistant protocol for local-area anonymity"
 	echo
-	echo -e "Usage: run-prifi.sh \e[33mrole/operation [params]\e[97m"
-	echo -e "	\e[33mrole\e[97m: client, relay, trustee"
-	echo -e "	\e[33moperation\e[97m: install, sockstest, all-localhost, gen-id, integration-test"
-	echo -e "	\e[33mparams\e[97m for role \e[33mrelay\e[97m: [socks_server_port] (optional, numeric)"
-	echo -e "	\e[33mparams\e[97m for role \e[33mtrustee\e[97m: id (required, numeric)"
-	echo -e "	\e[33mparams\e[97m for role \e[33mclient\e[97m: id (required, numeric), [prifi_socks_server_port] (optional, numeric)"
-	echo -e "	\e[33mparams\e[97m for operation \e[33minstall\e[97m: none"
-	echo -e "	\e[33mparams\e[97m for operation \e[33mall-localhost\e[97m: none"
-	echo -e "	\e[33mparams\e[97m for operation \e[33mgen-id\e[97m: none"
-	echo -e "	\e[33mparams\e[97m for operation \e[33msockstest\e[97m: [socks_server_port] (optional, numeric), [prifi_socks_server_port] (optional, numeric)"
+	echo -e "Usage: run-prifi.sh ${highlightOn}role/operation [params]${highlightOff}"
+	echo -e "	${highlightOn}role${highlightOff}: client, relay, trustee"
+	echo -e "	${highlightOn}operation${highlightOff}: install, sockstest, all-localhost, gen-id, integration-test"
+	echo -e "	${highlightOn}params${highlightOff} for role ${highlightOn}relay${highlightOff}: [socks_server_port] (optional, numeric)"
+	echo -e "	${highlightOn}params${highlightOff} for role ${highlightOn}trustee${highlightOff}: id (required, numeric)"
+	echo -e "	${highlightOn}params${highlightOff} for role ${highlightOn}client${highlightOff}: id (required, numeric), [prifi_socks_server_port] (optional, numeric)"
+	echo -e "	${highlightOn}params${highlightOff} for operation ${highlightOn}install${highlightOff}: none"
+	echo -e "	${highlightOn}params${highlightOff} for operation ${highlightOn}all-localhost${highlightOff}: none"
+	echo -e "	${highlightOn}params${highlightOff} for operation ${highlightOn}gen-id${highlightOff}: none"
+	echo -e "	${highlightOn}params${highlightOff} for operation ${highlightOn}sockstest${highlightOff}: [socks_server_port] (optional, numeric), [prifi_socks_server_port] (optional, numeric)"
 	echo
 
 	echo -e "Man-page:"
-	echo -e "	\e[33minstall\e[97m: get the dependencies, and tests the setup"
-	echo -e "	\e[33mrelay\e[97m: starts a PriFi relay"
-	echo -e "	\e[33mtrustee\e[97m: starts a PriFi trustee, using the config file trustee\e[33mid\e[97m"
-	echo -e "	\e[33mclient\e[97m: starts a PriFi client, using the config file client\e[33mid\e[97m"
-	echo -e "	\e[33mall-localhost\e[97m: starts a Prifi relay, a trustee, three clients all on localhost"
-	echo -e "	\e[33msockstest\e[97m: starts the PriFi and non-PriFi SOCKS tunnel, without PriFi anonymization"
-	echo -e "	\e[33mgen-id\e[97m: interactive creation of identity.toml"
-	echo -e "	\e[33mintegration-test\e[97m: runs all-localhost and test if the relay manages to communicate"
+	echo -e "	${highlightOn}install${highlightOff}: get the dependencies, and tests the setup"
+	echo -e "	${highlightOn}relay${highlightOff}: starts a PriFi relay"
+	echo -e "	${highlightOn}trustee${highlightOff}: starts a PriFi trustee, using the config file trustee${highlightOn}id${highlightOff}"
+	echo -e "	${highlightOn}client${highlightOff}: starts a PriFi client, using the config file client${highlightOn}id${highlightOff}"
+	echo -e "	${highlightOn}all-localhost${highlightOff}: starts a Prifi relay, a trustee, three clients all on localhost"
+	echo -e "	${highlightOn}sockstest${highlightOff}: starts the PriFi and non-PriFi SOCKS tunnel, without PriFi anonymization"
+	echo -e "	${highlightOn}gen-id${highlightOff}: interactive creation of identity.toml"
+	echo -e "	${highlightOn}integration-test${highlightOff}: runs all-localhost and test if the relay manages to communicate"
 	echo -e "	Lost ? read https://github.com/lbarman/prifi/README.md"
 }
 
@@ -384,7 +394,7 @@ case $1 in
 		;;
 
 	gen-id|Gen-Id|GEN-ID)
-		echo -e "Going to generate private/public keys (named \e[33midentity.toml\e[97m)..."
+		echo -e "Going to generate private/public keys (named ${highlightOn}identity.toml${highlightOff})..."
 
 		read -p "Do you want to generate it for [r]elay, [c]lient, or [t]trustee ? " key
 
@@ -427,7 +437,7 @@ case $1 in
 
 		pathReal="$configdir/$realIdentitiesDir/$path/"
 		pathDefault="$configdir/$defaultIdentitiesDir/$path/"
-		echo -e "Gonna generate \e[33midentity.toml\e[97m in \e[33m$pathReal\e[97m"
+		echo -e "Gonna generate ${highlightOn}identity.toml${highlightOff} in ${highlightOn}$pathReal${highlightOff}"
 
 		#generate identity.toml
 		DEBUG_COLOR=$colors go run $bin_file --default_path "$pathReal" gen-id
@@ -437,7 +447,7 @@ case $1 in
 		cp "${pathDefault}/group.toml" "${pathReal}group.toml"
 		echo -e "$okMsg"
 
-		echo -e "Please edit \e[33m$pathReal/group.toml\e[97m to the correct values."
+		echo -e "Please edit ${highlightOn}$pathReal/group.toml${highlightOff} to the correct values."
 		;;
 
 	integration-test)
