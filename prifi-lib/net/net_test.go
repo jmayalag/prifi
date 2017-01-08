@@ -2,9 +2,97 @@ package net
 
 import (
 	"bytes"
+	"errors"
 	"github.com/dedis/crypto/random"
 	"testing"
 )
+
+type TestMessageSender struct {
+}
+
+func (t *TestMessageSender) SendToClient(i int, msg interface{}) error {
+	return errors.New("Tried to send to client!")
+}
+func (t *TestMessageSender) SendToTrustee(i int, msg interface{}) error {
+	return nil
+}
+func (t *TestMessageSender) SendToRelay(msg interface{}) error {
+	if msg == "trigger-error" {
+		return errors.New("error triggered")
+	}
+	return nil
+}
+func (t *TestMessageSender) BroadcastToAllClients(msg interface{}) error {
+	return nil
+}
+func (t *TestMessageSender) ClientSubscribeToBroadcast(clientName string, messageReceived func(interface{}) error, startStopChan chan bool) error {
+	return nil
+}
+
+func TestMessageSenderWrapper(t *testing.T) {
+
+	_, err := NewMessageSenderWrapper(true, nil, nil, nil)
+	if err == nil {
+		t.Error("If logging=true, should provide a logging function")
+	}
+
+	_, err = NewMessageSenderWrapper(false, nil, nil, nil)
+	if err == nil {
+		t.Error("Should provide a error handling function")
+	}
+
+	errHandling := func(e error) {}
+	_, err = NewMessageSenderWrapper(false, nil, errHandling, nil)
+	if err == nil {
+		t.Error("Should provide a messageSender")
+	}
+
+	//test the real stuff
+	var errorHandlerCalled bool = false
+	errHandling = func(e error) { errorHandlerCalled = true }
+	msgSender := new(TestMessageSender)
+	msw, err := NewMessageSenderWrapper(false, nil, errHandling, msgSender)
+	if err != nil {
+		t.Error("Should be able to create a MessageSenderWrapper")
+	}
+
+	success := msw.SendToTrusteeWithLog(0, "hello")
+	if !success || errorHandlerCalled {
+		t.Error("this call should not trigger an error")
+	}
+	var loggingFunctionCalled bool = false
+	logging := func(e interface{}) { loggingFunctionCalled = true }
+	msw, err = NewMessageSenderWrapper(true, logging, errHandling, msgSender)
+	success = msw.SendToClientWithLog(0, "hello")
+	if success || !errorHandlerCalled {
+		t.Error("this call should trigger an error")
+	}
+}
+
+func TestMessageSenderWrapperRelay(t *testing.T) {
+
+	//test the real stuff
+	var errorHandlerCalled bool = false
+	var loggingFunctionCalled bool = false
+
+	errHandling := func(e error) { errorHandlerCalled = true }
+	logging := func(e interface{}) { loggingFunctionCalled = true }
+
+	msgSender := new(TestMessageSender)
+	msw, err := NewMessageSenderWrapper(true, logging, errHandling, msgSender)
+	if err != nil {
+		t.Error("Should be able to create a MessageSenderWrapper")
+	}
+
+	success := msw.SendToRelayWithLog("hello")
+	if !success || errorHandlerCalled {
+		t.Error("this call should not trigger an error")
+	}
+	success = msw.SendToRelayWithLog("trigger-error")
+	if success || !errorHandlerCalled {
+		t.Error("this call should trigger an error")
+	}
+}
 
 func TestUDPMessage(t *testing.T) {
 
