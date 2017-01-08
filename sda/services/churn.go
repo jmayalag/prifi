@@ -10,6 +10,7 @@ import (
 	"github.com/dedis/cothority/network"
 	"github.com/dedis/cothority/sda"
 	"github.com/lbarman/prifi/sda/protocols"
+	"github.com/lbarman/prifi/utils/timing"
 )
 
 //Delay before each host re-tried to connect
@@ -255,6 +256,8 @@ func (s *ServiceState) handleTimeout(lateClients []string, lateTrustees []string
 // ready (one trustee and two clients).
 func (s *ServiceState) startPriFiCommunicateProtocol() {
 	log.Lvl1("Starting PriFi protocol")
+
+	timing.StartMeasure("Resync")
 
 	if s.role != protocols.Relay {
 		log.Error("Trying to start PriFi protocol from a non-relay node.")
