@@ -18,7 +18,7 @@ Then, it runs the PriFi anonymous communication network among those entities.
 // PriFiLibInstance contains the mutable state of a PriFi entity.
 type PriFiLibInstance struct {
 	role          int16
-	messageSender net.MessageSender
+	messageSender *net.MessageSenderWrapper
 	// TODO: combine states into a single interface
 	clientState  ClientState  //only one of those will be set
 	relayState   RelayState   //only one of those will be set
@@ -42,6 +42,19 @@ first message to finish initializing itself (this is handy if only the Relay has
 Otherwise, the 3 last methods fully initialize the entity.
 */
 
+func newMessageSenderWrapper(msgSender net.MessageSender) *net.MessageSenderWrapper {
+
+	errHandling := func(e error) { /* do nothing yet, we are alerted of errors via the SDA */ }
+	loggingSuccessFunction := func(e interface{}) { log.Lvl3(e) }
+	loggingErrorFunction := func(e interface{}) { log.Error(e) }
+
+	msw, err := net.NewMessageSenderWrapper(true, loggingSuccessFunction, loggingErrorFunction, errHandling, msgSender)
+	if err != nil {
+		log.Fatal("Could not create a MessageSenderWrapper, error is", err)
+	}
+	return msw
+}
+
 // NewPriFiRelay creates a new PriFi relay entity state.
 // Note: the returned state is not sufficient for the PrFi protocol
 // to start; this entity will expect a ALL_ALL_PARAMETERS message as
@@ -49,7 +62,7 @@ Otherwise, the 3 last methods fully initialize the entity.
 func NewPriFiRelay(msgSender net.MessageSender) *PriFiLibInstance {
 	prifi := PriFiLibInstance{
 		role:          PRIFI_ROLE_RELAY,
-		messageSender: msgSender,
+		messageSender: newMessageSenderWrapper(msgSender),
 	}
 
 	return &prifi
@@ -62,7 +75,7 @@ func NewPriFiRelay(msgSender net.MessageSender) *PriFiLibInstance {
 func NewPriFiClient(msgSender net.MessageSender) *PriFiLibInstance {
 	prifi := PriFiLibInstance{
 		role:          PRIFI_ROLE_CLIENT,
-		messageSender: msgSender,
+		messageSender: newMessageSenderWrapper(msgSender),
 	}
 	return &prifi
 }
@@ -74,7 +87,7 @@ func NewPriFiClient(msgSender net.MessageSender) *PriFiLibInstance {
 func NewPriFiTrustee(msgSender net.MessageSender) *PriFiLibInstance {
 	prifi := PriFiLibInstance{
 		role:          PRIFI_ROLE_TRUSTEE,
-		messageSender: msgSender,
+		messageSender: newMessageSenderWrapper(msgSender),
 	}
 	return &prifi
 }
@@ -83,7 +96,7 @@ func NewPriFiTrustee(msgSender net.MessageSender) *PriFiLibInstance {
 func NewPriFiRelayWithState(msgSender net.MessageSender, state *RelayState) *PriFiLibInstance {
 	prifi := PriFiLibInstance{
 		role:          PRIFI_ROLE_RELAY,
-		messageSender: msgSender,
+		messageSender: newMessageSenderWrapper(msgSender),
 		relayState:    *state,
 	}
 
@@ -95,7 +108,7 @@ func NewPriFiRelayWithState(msgSender net.MessageSender, state *RelayState) *Pri
 func NewPriFiClientWithState(msgSender net.MessageSender, state *ClientState) *PriFiLibInstance {
 	prifi := PriFiLibInstance{
 		role:          PRIFI_ROLE_CLIENT,
-		messageSender: msgSender,
+		messageSender: newMessageSenderWrapper(msgSender),
 		clientState:   *state,
 	}
 	log.Lvl1("Client has been initialized by function call. ")
@@ -109,7 +122,7 @@ func NewPriFiClientWithState(msgSender net.MessageSender, state *ClientState) *P
 func NewPriFiTrusteeWithState(msgSender net.MessageSender, state *TrusteeState) *PriFiLibInstance {
 	prifi := PriFiLibInstance{
 		role:          PRIFI_ROLE_TRUSTEE,
-		messageSender: msgSender,
+		messageSender: newMessageSenderWrapper(msgSender),
 		trusteeState:  *state,
 	}
 

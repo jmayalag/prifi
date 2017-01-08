@@ -2,7 +2,6 @@ package net
 
 import (
 	"errors"
-	"github.com/dedis/cothority/log"
 	"reflect"
 )
 
@@ -40,18 +39,22 @@ type MessageSender interface {
  * will call networkErrorHappened on error
  */
 type MessageSenderWrapper struct {
+	MessageSender
 	loggingEnabled       bool
-	logFunction          func(interface{})
+	logSuccessFunction   func(interface{})
+	logErrorFunction     func(interface{})
 	networkErrorHappened func(error)
-	messageSender        MessageSender
 }
 
 /**
  * Creates a wrapper around a messageSender. will automatically print what it does (logFunction) if loggingEnabled, and
  * will call networkErrorHappened on error
  */
-func NewMessageSenderWrapper(logging bool, logFunction func(interface{}), networkErrorHappened func(error), ms MessageSender) (*MessageSenderWrapper, error) {
-	if logging && logFunction == nil {
+func NewMessageSenderWrapper(logging bool, logSuccessFunction func(interface{}), logErrorFunction func(interface{}), networkErrorHappened func(error), ms MessageSender) (*MessageSenderWrapper, error) {
+	if logging && logSuccessFunction == nil {
+		return nil, errors.New("Can't create a MessageSenderWrapper without logFunction if logging is enabled")
+	}
+	if logging && logErrorFunction == nil {
 		return nil, errors.New("Can't create a MessageSenderWrapper without logFunction if logging is enabled")
 	}
 	if networkErrorHappened == nil {
@@ -63,9 +66,10 @@ func NewMessageSenderWrapper(logging bool, logFunction func(interface{}), networ
 
 	msw := &MessageSenderWrapper{
 		loggingEnabled:       logging,
-		logFunction:          logFunction,
+		logSuccessFunction:   logSuccessFunction,
+		logErrorFunction:     logErrorFunction,
 		networkErrorHappened: networkErrorHappened,
-		messageSender:        ms,
+		MessageSender:        ms,
 	}
 
 	return msw, nil
@@ -75,24 +79,24 @@ func NewMessageSenderWrapper(logging bool, logFunction func(interface{}), networ
  * Send a message to client i. will automatically print what it does (Lvl3) if loggingenabled, and
  * will call networkErrorHappened on error
  */
-func (m *MessageSenderWrapper) SendToClientWithLog(i int, msg interface{}) bool {
-	return m.sendToWithLog(m.messageSender.SendToClient, i, msg)
+func (m *MessageSenderWrapper) SendToClientWithLog(i int, msg interface{}, extraInfos string) bool {
+	return m.sendToWithLog(m.MessageSender.SendToClient, i, msg, extraInfos)
 }
 
 /**
  * Send a message to trustee i. will automatically print what it does (Lvl3) if loggingenabled, and
  * will call networkErrorHappened on error
  */
-func (m *MessageSenderWrapper) SendToTrusteeWithLog(i int, msg interface{}) bool {
-	return m.sendToWithLog(m.messageSender.SendToTrustee, i, msg)
+func (m *MessageSenderWrapper) SendToTrusteeWithLog(i int, msg interface{}, extraInfos string) bool {
+	return m.sendToWithLog(m.MessageSender.SendToTrustee, i, msg, extraInfos)
 }
 
 /**
  * Send a message to the relay. will automatically print what it does (Lvl3) if loggingenabled, and
  * will call networkErrorHappened on error
  */
-func (m *MessageSenderWrapper) SendToRelayWithLog(msg interface{}) bool {
-	err := m.messageSender.SendToRelay(msg)
+func (m *MessageSenderWrapper) SendToRelayWithLog(msg interface{}, extraInfos string) bool {
+	err := m.MessageSender.SendToRelay(msg)
 	msgName := reflect.TypeOf(msg).String()
 	if err != nil {
 		e := "Tried to send a " + msgName + ", but some network error occured. Err is: " + err.Error()
@@ -100,19 +104,19 @@ func (m *MessageSenderWrapper) SendToRelayWithLog(msg interface{}) bool {
 			m.networkErrorHappened(errors.New(e))
 		}
 		if m.loggingEnabled {
-			m.logFunction(e)
+			m.logErrorFunction(e + extraInfos)
 		}
 		return false
 	}
 
-	log.Lvl3("Sent a " + msgName + ".")
+	m.logSuccessFunction("Sent a " + msgName + "." + extraInfos)
 	return true
 }
 
 /**
  * Helper function for both SendToClientWithLog and SendToTrusteeWithLog
  */
-func (m *MessageSenderWrapper) sendToWithLog(sendingFunc func(int, interface{}) error, i int, msg interface{}) bool {
+func (m *MessageSenderWrapper) sendToWithLog(sendingFunc func(int, interface{}) error, i int, msg interface{}, extraInfos string) bool {
 	err := sendingFunc(i, msg)
 	msgName := reflect.TypeOf(msg).String()
 	if err != nil {
@@ -121,11 +125,11 @@ func (m *MessageSenderWrapper) sendToWithLog(sendingFunc func(int, interface{}) 
 			m.networkErrorHappened(errors.New(e))
 		}
 		if m.loggingEnabled {
-			m.logFunction(e)
+			m.logErrorFunction(e + extraInfos)
 		}
 		return false
 	}
 
-	log.Lvl3("Sent a " + msgName + ".")
+	m.logSuccessFunction("Sent a " + msgName + "." + extraInfos)
 	return true
 }

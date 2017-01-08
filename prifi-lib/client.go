@@ -168,7 +168,7 @@ func (p *PriFiLibInstance) Received_ALL_CLI_PARAMETERS(msg net.ALL_ALL_PARAMETER
 
 	//start the broadcast-listener goroutine
 	log.Lvl2("Client " + strconv.Itoa(p.clientState.ID) + " : starting the broadcast-listener goroutine")
-	go p.messageSender.ClientSubscribeToBroadcast(p.clientState.Name, p.ReceivedMessage, p.clientState.StartStopReceiveBroadcast)
+	go p.messageSender.MessageSender.ClientSubscribeToBroadcast(p.clientState.Name, p.ReceivedMessage, p.clientState.StartStopReceiveBroadcast)
 
 	//after receiving this message, we are done with the state CLIENT_STATE_BEFORE_INIT, and are ready for initializing
 	p.clientState.currentState = CLIENT_STATE_INITIALIZING
@@ -365,13 +365,7 @@ func (p *PriFiLibInstance) SendUpstreamData() error {
 
 	//send the data to the relay
 	toSend := &net.CLI_REL_UPSTREAM_DATA{p.clientState.ID, p.clientState.RoundNo, upstreamCell}
-	err := p.messageSender.SendToRelay(toSend)
-	if err != nil {
-		e := "Could not send CLI_REL_UPSTREAM_DATA, for round " + strconv.Itoa(int(p.clientState.RoundNo)) + ", error is " + err.Error()
-		log.Error(e)
-		return errors.New(e)
-	}
-	log.Lvl3("Client " + strconv.Itoa(p.clientState.ID) + " : sent CLI_REL_UPSTREAM_DATA for round " + strconv.Itoa(int(p.clientState.RoundNo)))
+	p.messageSender.SendToRelayWithLog(toSend, "(round "+strconv.Itoa(int(p.clientState.RoundNo))+")")
 
 	//clean old buffered messages
 	delete(p.clientState.BufferedRoundData, int32(p.clientState.RoundNo-1))
@@ -431,13 +425,7 @@ func (p *PriFiLibInstance) Received_REL_CLI_TELL_TRUSTEES_PK(msg net.REL_CLI_TEL
 
 	//send the keys to the relay
 	toSend := &net.CLI_REL_TELL_PK_AND_EPH_PK{p.clientState.PublicKey, p.clientState.EphemeralPublicKey}
-	err := p.messageSender.SendToRelay(toSend)
-	if err != nil {
-		e := "Could not send CLI_REL_TELL_PK_AND_EPH_PK, error is " + err.Error()
-		log.Error(e)
-		return errors.New(e)
-	}
-	log.Lvl3("Client " + strconv.Itoa(p.clientState.ID) + " : sent CLI_REL_TELL_PK_AND_EPH_PK")
+	p.messageSender.SendToRelayWithLog(toSend, "")
 
 	//change state
 	p.clientState.currentState = CLIENT_STATE_EPH_KEYS_SENT
@@ -545,13 +533,7 @@ func (p *PriFiLibInstance) Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(msg ne
 
 	//send the data to the relay
 	toSend := &net.CLI_REL_UPSTREAM_DATA{p.clientState.ID, p.clientState.RoundNo, upstreamCell}
-	err := p.messageSender.SendToRelay(toSend)
-	if err != nil {
-		e := "Could not send CLI_REL_UPSTREAM_DATA, for round " + strconv.Itoa(int(p.clientState.RoundNo)) + ", error is " + err.Error()
-		log.Error(e)
-		return errors.New(e)
-	}
-	log.Lvl3("Client " + strconv.Itoa(p.clientState.ID) + " : sent CLI_REL_UPSTREAM_DATA for round " + strconv.Itoa(int(p.clientState.RoundNo)))
+	p.messageSender.SendToRelayWithLog(toSend, "(round "+strconv.Itoa(int(p.clientState.RoundNo))+")")
 
 	p.clientState.RoundNo++
 

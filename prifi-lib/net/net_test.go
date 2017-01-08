@@ -31,18 +31,18 @@ func (t *TestMessageSender) ClientSubscribeToBroadcast(clientName string, messag
 
 func TestMessageSenderWrapper(t *testing.T) {
 
-	_, err := NewMessageSenderWrapper(true, nil, nil, nil)
+	_, err := NewMessageSenderWrapper(true, nil, nil, nil, nil)
 	if err == nil {
 		t.Error("If logging=true, should provide a logging function")
 	}
 
-	_, err = NewMessageSenderWrapper(false, nil, nil, nil)
+	_, err = NewMessageSenderWrapper(false, nil, nil, nil, nil)
 	if err == nil {
 		t.Error("Should provide a error handling function")
 	}
 
 	errHandling := func(e error) {}
-	_, err = NewMessageSenderWrapper(false, nil, errHandling, nil)
+	_, err = NewMessageSenderWrapper(false, nil, nil, errHandling, nil)
 	if err == nil {
 		t.Error("Should provide a messageSender")
 	}
@@ -51,19 +51,19 @@ func TestMessageSenderWrapper(t *testing.T) {
 	var errorHandlerCalled bool = false
 	errHandling = func(e error) { errorHandlerCalled = true }
 	msgSender := new(TestMessageSender)
-	msw, err := NewMessageSenderWrapper(false, nil, errHandling, msgSender)
+	msw, err := NewMessageSenderWrapper(false, nil, nil, errHandling, msgSender)
 	if err != nil {
 		t.Error("Should be able to create a MessageSenderWrapper")
 	}
 
-	success := msw.SendToTrusteeWithLog(0, "hello")
+	success := msw.SendToTrusteeWithLog(0, "hello", "")
 	if !success || errorHandlerCalled {
 		t.Error("this call should not trigger an error")
 	}
 	var loggingFunctionCalled bool = false
 	logging := func(e interface{}) { loggingFunctionCalled = true }
-	msw, err = NewMessageSenderWrapper(true, logging, errHandling, msgSender)
-	success = msw.SendToClientWithLog(0, "hello")
+	msw, err = NewMessageSenderWrapper(true, logging, logging, errHandling, msgSender)
+	success = msw.SendToClientWithLog(0, "hello", "")
 	if success || !errorHandlerCalled {
 		t.Error("this call should trigger an error")
 	}
@@ -79,16 +79,16 @@ func TestMessageSenderWrapperRelay(t *testing.T) {
 	logging := func(e interface{}) { loggingFunctionCalled = true }
 
 	msgSender := new(TestMessageSender)
-	msw, err := NewMessageSenderWrapper(true, logging, errHandling, msgSender)
+	msw, err := NewMessageSenderWrapper(true, logging, logging, errHandling, msgSender)
 	if err != nil {
 		t.Error("Should be able to create a MessageSenderWrapper")
 	}
 
-	success := msw.SendToRelayWithLog("hello")
+	success := msw.SendToRelayWithLog("hello", "")
 	if !success || errorHandlerCalled {
 		t.Error("this call should not trigger an error")
 	}
-	success = msw.SendToRelayWithLog("trigger-error")
+	success = msw.SendToRelayWithLog("trigger-error", "")
 	if success || !errorHandlerCalled {
 		t.Error("this call should trigger an error")
 	}
