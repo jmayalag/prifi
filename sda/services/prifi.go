@@ -32,13 +32,27 @@ func (s *ServiceState) IsPriFiProtocolRunning() bool {
 	return false
 }
 
-// Packet send by relay when some node disconnected
+// Packet send by relay; when we get it, we stop the protocol
 func (s *ServiceState) HandleStop(msg *network.Packet) {
-
 	log.Lvl1("Received a Handle Stop")
-
 	s.stopPriFiCommunicateProtocol()
 
+}
+
+// Packet send by relay when some node connected
+func (s *ServiceState) HandleConnection(msg *network.Packet) {
+	if s.churnHandler == nil {
+		log.Fatal("Can't handle a connection without a churnHandler")
+	}
+	s.churnHandler.handleConnection(msg)
+}
+
+// Packet send by relay when some node disconnected
+func (s *ServiceState) HandleDisconnection(msg *network.Packet) {
+	if s.churnHandler == nil {
+		log.Fatal("Can't handle a disconnection without a churnHandler")
+	}
+	s.churnHandler.handleDisconnection(msg)
 }
 
 // handleTimeout is a callback that should be called on the relay
@@ -47,6 +61,19 @@ func (s *ServiceState) HandleStop(msg *network.Packet) {
 func (s *ServiceState) handleTimeout(lateClients []string, lateTrustees []string) {
 
 	// we can probably do something more clever here, since we know who disconnected. Yet let's just restart everything
+	s.stopPriFiCommunicateProtocol()
+}
+
+// This is a handler passed to the SDA when starting a host. The SDA usually handle all the network by itself,
+// but in our case it is useful to know when a network RESET occured, so we can kill protocols (otherwise they
+// remain in some weird state)
+func (s *ServiceState) NetworkErrorHappened(e error) {
+
+	if s.role != prifi_protocol.Relay {
+		log.Error("A network error occurred, but we're not the relay, nothing to do.")
+		return
+	}
+
 	s.stopPriFiCommunicateProtocol()
 }
 

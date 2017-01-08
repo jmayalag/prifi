@@ -78,6 +78,18 @@ func mapIdentities(group *config.Group) (*network.ServerIdentity, []*network.Ser
 }
 func (s *ServiceState) setConfigToPriFiProtocol(wrapper *prifi_protocol.PriFiSDAProtocol) {
 
+	//normal nodes only needs the relay in their identity map
+	identitiesMap := make(map[string]prifi_protocol.PriFiIdentity)
+	identitiesMap[idFromServerIdentity(s.relayIdentity)] = prifi_protocol.PriFiIdentity{
+		Role:     prifi_protocol.Relay,
+		ID:       0,
+		ServerID: s.relayIdentity,
+	}
+	//but the relay needs to know everyone, and this is managed by the churnHandler
+	if s.role == prifi_protocol.Relay {
+		identitiesMap = s.churnHandler.createIdentitiesMap()
+	}
+
 	prifiParams := prifi_net.ALL_ALL_PARAMETERS{
 		ClientDataOutputEnabled: true,
 		DoLatencyTests:          s.prifiTomlConfig.DoLatencyTests,
@@ -98,7 +110,7 @@ func (s *ServiceState) setConfigToPriFiProtocol(wrapper *prifi_protocol.PriFiSDA
 
 	configMsg := &prifi_protocol.PriFiSDAWrapperConfig{
 		ALL_ALL_PARAMETERS: prifiParams,
-		Identities:         s.churnHandler.createIdentitiesMap(),
+		Identities:         identitiesMap,
 		Role:               s.role,
 		ClientSideSocksConfig: socksClientConfig,
 		RelaySideSocksConfig:  socksServerConfig,

@@ -40,6 +40,7 @@ type ServiceState struct {
 	Storage         *Storage
 	path            string
 	role            prifi_protocol.PriFiRole
+	relayIdentity   *network.ServerIdentity
 
 	//this hold the churn handler; protocol is started there. Only relay has this != nil
 	churnHandler *churnHandler
@@ -54,19 +55,6 @@ type Storage struct {
 	//our service has no state to be saved
 }
 
-// This is a handler passed to the SDA when starting a host. The SDA usually handle all the network by itself,
-// but in our case it is useful to know when a network RESET occured, so we can kill protocols (otherwise they
-// remain in some weird state)
-func (s *ServiceState) NetworkErrorHappened(e error) {
-
-	if s.role != prifi_protocol.Relay {
-		log.Error("A network error occurred, but we're not the relay, nothing to do.")
-		return
-	}
-
-	s.stopPriFiCommunicateProtocol()
-}
-
 // newService receives the context and a path where it can write its
 // configuration, if desired. As we don't know when the service will exit,
 // we need to save the configuration on our own from time to time.
@@ -77,9 +65,10 @@ func newService(c *sda.Context, path string) sda.Service {
 		path:             path,
 	}
 
+	log.LLvlf1("Registering messages on s %+v", &s)
 	c.RegisterProcessorFunc(network.TypeFromData(StopProtocol{}), s.HandleStop)
-	c.RegisterProcessorFunc(network.TypeFromData(ConnectionRequest{}), s.churnHandler.handleDisconnection)
-	c.RegisterProcessorFunc(network.TypeFromData(DisconnectionRequest{}), s.churnHandler.handleDisconnection)
+	c.RegisterProcessorFunc(network.TypeFromData(ConnectionRequest{}), s.HandleConnection)
+	c.RegisterProcessorFunc(network.TypeFromData(DisconnectionRequest{}), s.HandleDisconnection)
 
 	if err := s.tryLoad(); err != nil {
 		log.Error(err)
@@ -117,9 +106,15 @@ func (s *ServiceState) StartRelay(group *config.Group) error {
 	//set state to the correct info, parse .toml
 	s.role = prifi_protocol.Relay
 	relayID, trusteesIDs := mapIdentities(group)
+	s.relayIdentity = relayID //should not be used in the case of the relay
 
 	s.churnHandler = new(churnHandler)
 	s.churnHandler.init(relayID, trusteesIDs)
+	s.churnHandler.isProtocolRunning = s.IsPriFiProtocolRunning
+	s.churnHandler.startProtocol = s.startPriFiCommunicateProtocol
+	s.churnHandler.stopProtocol = s.stopPriFiCommunicateProtocol
+
+	log.LLvlf1("StartRelay, %+v", s.churnHandler)
 
 	socksServerConfig = &prifi_protocol.SOCKSConfig{
 		Port:              "127.0.0.1:" + strconv.Itoa(s.prifiTomlConfig.SocksClientPort),
@@ -140,6 +135,7 @@ func (s *ServiceState) StartClient(group *config.Group) error {
 	s.role = prifi_protocol.Client
 
 	relayID, _ := mapIdentities(group)
+	s.relayIdentity = relayID
 
 	socksClientConfig = &prifi_protocol.SOCKSConfig{
 		Port:              ":" + strconv.Itoa(s.prifiTomlConfig.SocksServerPort),
@@ -187,6 +183,8 @@ func (s *ServiceState) StartTrustee(group *config.Group) error {
 	s.role = prifi_protocol.Trustee
 
 	relayID, _ := mapIdentities(group)
+	s.relayIdentity = relayID
+
 	go s.autoConnect(relayID)
 
 	return nil

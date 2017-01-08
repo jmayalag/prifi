@@ -71,6 +71,14 @@ type churnHandler struct {
 }
 
 func (c *churnHandler) init(relayID *network.ServerIdentity, trusteesIDs []*network.ServerIdentity) {
+
+	if relayID == nil {
+		log.Fatal("Can't start the churnHandler without the relayID")
+	}
+	if trusteesIDs == nil {
+		log.Fatal("Can't start the churnHandler without the trusteesIDs")
+	}
+
 	c.waitQueue = &waitQueue{
 		clients:  make(map[string]*waitQueueEntry),
 		trustees: make(map[string]*waitQueueEntry),
@@ -128,6 +136,8 @@ func (c *churnHandler) createRoster() *sda.Roster {
  * Tests if the given serverIdentity represents a trustee
  */
 func (c *churnHandler) isATrustee(ID *network.ServerIdentity) bool {
+	log.LLvl1("%#v", c)
+
 	for _, v := range c.trusteesIDs {
 		if v.Equal(ID) {
 			return true
@@ -196,6 +206,8 @@ func (c *churnHandler) getTrusteesIdentities() []*network.ServerIdentity {
  * Handles a "Connection" message
  */
 func (c *churnHandler) handleConnection(msg *network.Packet) {
+
+	log.LLvl1("handleconnection, %+v", c)
 
 	ID := idFromMsg(msg)
 	isTrustee := c.isATrustee(msg.ServerIdentity)
