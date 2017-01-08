@@ -16,9 +16,9 @@ type Output interface {
 }
 
 // PrintOutput prints it's messages to the standard output.
-type PrintOutput struct {}
+type PrintOutput struct{}
 
-func(o PrintOutput) Print(text string) {
+func (o PrintOutput) Print(text string) {
 	fmt.Println(text)
 }
 
@@ -28,16 +28,21 @@ type LogOutput struct {
 	Info  bool
 }
 
-func(o LogOutput) Print(text string) {
-	if (o.Info) {
+func (o LogOutput) Print(text string) {
+	if o.Info {
 		log.Info(text)
 	} else {
 		switch o.Level {
-		case 1: log.Lvl1(text)
-		case 2: log.Lvl2(text)
-		case 3: log.Lvl3(text)
-		case 4: log.Lvl4(text)
-		case 5: log.Lvl5(text)
+		case 1:
+			log.Lvl1(text)
+		case 2:
+			log.Lvl2(text)
+		case 3:
+			log.Lvl3(text)
+		case 4:
+			log.Lvl4(text)
+		case 5:
+			log.Lvl5(text)
 		default:
 			log.Print(text)
 		}
@@ -45,6 +50,6 @@ func(o LogOutput) Print(text string) {
 }
 
 // NullOutput prints discards all messages.
-type NullOutput struct {}
+type NullOutput struct{}
 
-func(o NullOutput) Print(text string) {}
+func (o NullOutput) Print(text string) {}

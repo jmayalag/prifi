@@ -10,10 +10,10 @@
 package timing
 
 import (
-	"time"
 	"fmt"
 	"github.com/lbarman/prifi/utils/output"
 	"sync"
+	"time"
 )
 
 var startTimes map[string]time.Time = make(map[string]time.Time)
