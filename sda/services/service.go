@@ -9,20 +9,16 @@ package services
  */
 
 import (
-	"fmt"
 	"io/ioutil"
-	"os"
 	"strconv"
-
-	"sync"
 
 	"github.com/dedis/cothority/app/lib/config"
 	"github.com/dedis/cothority/log"
 	"github.com/dedis/cothority/network"
 	"github.com/dedis/cothority/sda"
-	prifi_net "github.com/lbarman/prifi/prifi-lib/net"
 	prifi_socks "github.com/lbarman/prifi/prifi-socks"
 	prifi_protocol "github.com/lbarman/prifi/sda/protocols"
+	"time"
 )
 
 //The name of the service, used by SDA's internals
@@ -36,35 +32,12 @@ func init() {
 	serviceID = sda.ServiceFactory.ServiceID(ServiceName)
 }
 
-//The configuration read in prifi.toml
-type PrifiTomlConfig struct {
-	CellSizeUp            int
-	CellSizeDown          int
-	RelayWindowSize       int
-	RelayUseDummyDataDown bool
-	RelayReportingLimit   int
-	UseUDP                bool
-	DoLatencyTests        bool
-	SocksServerPort       int
-	SocksClientPort       int
-}
-
 // contains the identity map, a direct link to the relay, and a mutex
 type SDANodesAndIDs struct {
-	mutex                 sync.Mutex
 	currentIdentitiesMap  map[string]prifi_protocol.PriFiIdentity //contains relay+trustee + whoever connects
 	originalIdentitiesMap map[string]prifi_protocol.PriFiIdentity //contains relay+trustee for the relay
 	relayIdentity         *network.ServerIdentity
 	group                 *config.Group
-	nextFreeClientID      int
-	nextFreeTrusteeID     int
-}
-
-//Set the config, from the prifi.toml. Is called by sda/app.
-func (s *ServiceState) SetConfigFromToml(config *PrifiTomlConfig) {
-	log.Lvl3("Setting PriFi configuration...")
-	log.Lvlf3("%+v\n", config)
-	s.prifiTomlConfig = config
 }
 
 //Service contains the state of the service
@@ -72,12 +45,15 @@ type ServiceState struct {
 	// We need to embed the ServiceProcessor, so that incoming messages
 	// are correctly handled.
 	*sda.ServiceProcessor
-	prifiTomlConfig  *PrifiTomlConfig
-	Storage          *Storage
-	path             string
-	role             prifi_protocol.PriFiRole
-	nodesAndIDs      *SDANodesAndIDs
-	waitQueue        *waitQueue
+	prifiTomlConfig *PrifiTomlConfig
+	Storage         *Storage
+	path            string
+	role            prifi_protocol.PriFiRole
+
+	//this hold the churn handler; protocol is started there. Only relay has this != nil
+	churnHandler *churnHandler
+
+	//this hold the running protocol (when it runs)
 	priFiSDAProtocol *prifi_protocol.PriFiSDAProtocol
 }
 
@@ -100,40 +76,12 @@ type Storage struct {
 // remain in some weird state)
 func (s *ServiceState) NetworkErrorHappened(e error) {
 
-	log.Lvl2("A network error occurred, warning other clients...")
-
-	if s.role == prifi_protocol.Relay {
-		s.waitQueue.mutex.Lock()
-		for k, v := range s.waitQueue.clients {
-			s.SendRaw(v.Identity, &StopProtocol{})
-			s.waitQueue.clients[k].IsWaiting = false
-		}
-		for k, v := range s.waitQueue.trustees {
-			s.SendRaw(v.Identity, &StopProtocol{})
-			s.waitQueue.trustees[k].IsWaiting = false
-		}
-		s.waitQueue.mutex.Unlock()
-	}
-
-	s.stopPriFiCommunicateProtocol()
-}
-
-// If the protocol is running, destroys it (locally only). IsPriFiProtocolRunning returns false after that.
-func (s *ServiceState) KillPriFiProtocol() {
-
-	if s.IsPriFiProtocolRunning() {
-
-		log.Lvl2("A network error occurred, killing the PriFi protocol.")
-
-		if s.priFiSDAProtocol != nil {
-			s.priFiSDAProtocol.Stop()
-		}
-		s.priFiSDAProtocol = nil
-
+	if s.role != prifi_protocol.Relay {
+		log.Error("A network error occurred, but we're not the relay, nothing to do.")
 		return
 	}
 
-	log.Lvl3("A network error occurred, would kill PriFi protocol, but it's not running.")
+	s.stopPriFiCommunicateProtocol()
 }
 
 // StartTrustee starts the necessary
@@ -141,9 +89,9 @@ func (s *ServiceState) KillPriFiProtocol() {
 func (s *ServiceState) StartTrustee(group *config.Group) error {
 	log.Info("Service", s, "running in trustee mode")
 	s.role = prifi_protocol.Trustee
-	s.readGroup(group)
 
-	go s.autoConnect()
+	_, relayID := mapIdentities(group)
+	go s.autoConnect(relayID)
 
 	return nil
 }
@@ -153,11 +101,21 @@ func (s *ServiceState) StartTrustee(group *config.Group) error {
 // In this example it simply starts the demo protocol
 func (s *ServiceState) StartRelay(group *config.Group) error {
 	log.Info("Service", s, "running in relay mode")
+
+	//set state to the correct info, parse .toml
 	s.role = prifi_protocol.Relay
-	s.readGroup(group)
-	s.waitQueue = &waitQueue{
-		clients:  make(map[string]*WaitQueueEntry),
-		trustees: make(map[string]*WaitQueueEntry),
+	idMap, relayID := mapIdentities(group)
+
+	s.churnHandler = new(churnHandler)
+	s.churnHandler.init(relayID)
+	s.churnHandler.isATrustee = func(ID *network.ServerIdentity) bool {
+
+		for _, v := range idMap {
+			if v.ServerID.Equal(ID) {
+				return true //only trustees and relay are in idMap
+			}
+		}
+		return false
 	}
 
 	socksServerConfig = &prifi_protocol.SOCKSConfig{
@@ -180,7 +138,8 @@ var socksServerConfig *prifi_protocol.SOCKSConfig
 func (s *ServiceState) StartClient(group *config.Group) error {
 	log.Info("Service", s, "running in client mode")
 	s.role = prifi_protocol.Client
-	s.readGroup(group)
+
+	_, relayID := mapIdentities(group)
 
 	socksClientConfig = &prifi_protocol.SOCKSConfig{
 		Port:              ":" + strconv.Itoa(s.prifiTomlConfig.SocksServerPort),
@@ -192,7 +151,7 @@ func (s *ServiceState) StartClient(group *config.Group) error {
 	log.Lvl1("Starting SOCKS server on port", socksClientConfig.Port)
 	go prifi_socks.StartSocksServer(socksClientConfig.Port, socksClientConfig.PayloadLength, socksClientConfig.UpstreamChannel, socksClientConfig.DownstreamChannel, s.prifiTomlConfig.DoLatencyTests)
 
-	go s.autoConnect()
+	go s.autoConnect(relayID)
 
 	return nil
 }
@@ -219,54 +178,6 @@ func (s *ServiceState) StartSocksTunnelOnly() error {
 	go prifi_socks.StartSocksClient(socksServerConfig.Port, socksServerConfig.UpstreamChannel, socksServerConfig.DownstreamChannel)
 
 	return nil
-}
-
-func (s *ServiceState) setConfigToPriFiProtocol(wrapper *prifi_protocol.PriFiSDAProtocol) {
-
-	prifiParams := prifi_net.ALL_ALL_PARAMETERS{
-		ClientDataOutputEnabled: true,
-		DoLatencyTests:          s.prifiTomlConfig.DoLatencyTests,
-		DownCellSize:            s.prifiTomlConfig.CellSizeDown,
-		ForceParams:             true,
-		NClients:                -1, //computer later
-		NextFreeClientID:        0,
-		NextFreeTrusteeID:       0,
-		NTrustees:               -1, //computer later
-		RelayDataOutputEnabled:  true,
-		RelayReportingLimit:     s.prifiTomlConfig.RelayReportingLimit,
-		RelayUseDummyDataDown:   s.prifiTomlConfig.RelayUseDummyDataDown,
-		RelayWindowSize:         s.prifiTomlConfig.RelayWindowSize,
-		StartNow:                false,
-		UpCellSize:              s.prifiTomlConfig.CellSizeUp,
-		UseUDP:                  s.prifiTomlConfig.UseUDP,
-	}
-
-	//deep-clone the identityMap
-	s.nodesAndIDs.mutex.Lock()
-
-	idMapCopy := make(map[string]prifi_protocol.PriFiIdentity)
-	for k, v := range s.nodesAndIDs.currentIdentitiesMap {
-		idMapCopy[k] = prifi_protocol.PriFiIdentity{
-			ID:      v.ID,
-			Role:    v.Role,
-			Address: v.Address,
-		}
-	}
-	s.nodesAndIDs.mutex.Unlock()
-
-	configMsg := &prifi_protocol.PriFiSDAWrapperConfig{
-		ALL_ALL_PARAMETERS: prifiParams,
-		Identities:         idMapCopy,
-		Role:               s.role,
-		ClientSideSocksConfig: socksClientConfig,
-		RelaySideSocksConfig:  socksServerConfig,
-	}
-
-	wrapper.SetConfig(configMsg)
-
-	//when PriFi-protocol (via PriFi-lib) detects a slow client, call "handleTimeout"
-	wrapper.SetTimeoutHandler(s.handleTimeout)
-
 }
 
 // NewProtocol is called on all nodes of a Tree (except the root, since it is
@@ -304,25 +215,6 @@ func (s *ServiceState) save() {
 	}
 }
 
-// tryLoad tries to load the configuration and updates if a configuration
-// is found, else it returns an error.
-func (s *ServiceState) tryLoad() error {
-	configFile := s.path + "/identity.bin"
-	b, err := ioutil.ReadFile(configFile)
-	if err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("Error while reading %s: %s", configFile, err)
-	}
-	if len(b) > 0 {
-		_, msg, err := network.UnmarshalRegistered(b)
-		if err != nil {
-			return fmt.Errorf("Couldn't unmarshal: %s", err)
-		}
-		log.Lvl3("Successfully loaded")
-		s.Storage = msg.(*Storage)
-	}
-	return nil
-}
-
 // newService receives the context and a path where it can write its
 // configuration, if desired. As we don't know when the service will exit,
 // we need to save the configuration on our own from time to time.
@@ -334,8 +226,8 @@ func newService(c *sda.Context, path string) sda.Service {
 	}
 
 	c.RegisterProcessorFunc(network.TypeFromData(StopProtocol{}), s.HandleStop)
-	c.RegisterProcessorFunc(network.TypeFromData(ConnectionRequest{}), s.HandleConnection)
-	c.RegisterProcessorFunc(network.TypeFromData(DisconnectionRequest{}), s.HandleDisconnection)
+	c.RegisterProcessorFunc(network.TypeFromData(ConnectionRequest{}), s.churnHandler.handleDisconnection)
+	c.RegisterProcessorFunc(network.TypeFromData(DisconnectionRequest{}), s.churnHandler.handleDisconnection)
 
 	if err := s.tryLoad(); err != nil {
 		log.Error(err)
@@ -343,69 +235,108 @@ func newService(c *sda.Context, path string) sda.Service {
 	return s
 }
 
-// mapIdentities reads the group configuration to assign PriFi roles
-// to server addresses and returns them with the server
-// identity of the relay.
-func mapIdentities(group *config.Group) (map[string]prifi_protocol.PriFiIdentity, network.ServerIdentity) {
-	m := make(map[string]prifi_protocol.PriFiIdentity)
-	var relay network.ServerIdentity
+// Packet send by relay when some node disconnected
+func (s *ServiceState) HandleStop(msg *network.Packet) {
 
-	// Read the description of the nodes in the config file to assign them PriFi roles.
-	nodeList := group.Roster.List
-	for i := 0; i < len(nodeList); i++ {
-		si := nodeList[i]
-		nodeDescription := group.GetDescription(si)
+	log.Lvl1("Received a Handle Stop")
 
-		var id *prifi_protocol.PriFiIdentity
+	s.stopPriFiCommunicateProtocol()
 
-		if nodeDescription == "relay" {
-			id = &prifi_protocol.PriFiIdentity{
-				Role:    prifi_protocol.Relay,
-				ID:      0,
-				Address: si.Address,
-			}
-		} else if nodeDescription == "trustee" {
-			id = &prifi_protocol.PriFiIdentity{
-				Role:    prifi_protocol.Trustee,
-				ID:      -1,
-				Address: si.Address,
-			}
-		}
-
-		if id != nil {
-			identifier := si.Address.String() + "=" + si.Public.String()
-			m[identifier] = *id
-			if id.Role == prifi_protocol.Relay {
-				relay = *si
-			}
-		} else {
-			log.Error("Cannot parse node description, skipping:", si)
-		}
-
-	}
-
-	return m, relay
 }
 
-// readGroup reads the group description and sets up the Service struct fields
-// accordingly. It *MUST* be called first when the node is started.
-func (s *ServiceState) readGroup(group *config.Group) {
-	idMap, relayID := mapIdentities(group)
+// handleTimeout is a callback that should be called on the relay
+// when a round times out. It tries to restart PriFi with the nodes
+// that sent their ciphertext in time.
+func (s *ServiceState) handleTimeout(lateClients []string, lateTrustees []string) {
 
-	//clone to keep the original set
-	idMapCopy := make(map[string]prifi_protocol.PriFiIdentity)
-	for k, v := range idMap {
-		idMapCopy[k] = prifi_protocol.PriFiIdentity{
-			ID:      v.ID,
-			Role:    v.Role,
-			Address: v.Address,
-		}
+	// we can probably do something more clever here, since we know who disconnected. Yet let's just restart everything
+	s.stopPriFiCommunicateProtocol()
+}
+
+// startPriFi starts a PriFi protocol. It is called
+// by the relay as soon as enough participants are
+// ready (one trustee and two clients).
+func (s *ServiceState) startPriFiCommunicateProtocol() {
+	log.Lvl1("Starting PriFi protocol")
+
+	if s.role != prifi_protocol.Relay {
+		log.Error("Trying to start PriFi protocol from a non-relay node.")
+		return
 	}
 
-	s.nodesAndIDs = &SDANodesAndIDs{
-		originalIdentitiesMap: idMap,
-		currentIdentitiesMap:  idMapCopy,
-		relayIdentity:         &relayID,
-		group:                 group,
+	var wrapper *prifi_protocol.PriFiSDAProtocol
+	roster := s.churnHandler.createRoster()
+
+	// Start the PriFi protocol on a flat tree with the relay as root
+	tree := roster.GenerateNaryTreeWithRoot(100, s.churnHandler.relayIdentity)
+	pi, err := s.CreateProtocolService(prifi_protocol.ProtocolName, tree)
+
+	if err != nil {
+		log.Fatal("Unable to start Prifi protocol:", err)
+	}
+
+	// Assert that pi has type PriFiSDAWrapper
+	wrapper = pi.(*prifi_protocol.PriFiSDAProtocol)
+
+	//assign and start the protocol
+	s.priFiSDAProtocol = wrapper
+
+	s.setConfigToPriFiProtocol(wrapper)
+
+	wrapper.Start()
+}
+
+// stopPriFi stops the PriFi protocol currently running.
+func (s *ServiceState) stopPriFiCommunicateProtocol() {
+	log.Lvl1("Stopping PriFi protocol")
+
+	if !s.IsPriFiProtocolRunning() {
+		log.Lvl3("Would stop PriFi protocol, but it's not running.")
+		return
+	}
+
+	log.Lvl2("A network error occurred, killing the PriFi protocol.")
+
+	if s.priFiSDAProtocol != nil {
+		s.priFiSDAProtocol.Stop()
+	}
+	s.priFiSDAProtocol = nil
+
+	if s.role == prifi_protocol.Relay {
+
+		log.Lvl2("A network error occurred, we're the relay, warning other clients...")
+
+		for _, v := range s.churnHandler.getClientsIdentities() {
+			s.SendRaw(v, &StopProtocol{})
+		}
+		for _, v := range s.churnHandler.getTrusteesIdentities() {
+			s.SendRaw(v, &StopProtocol{})
+		}
+	}
+}
+
+// autoConnect sends a connection request to the relay
+// every 10 seconds if the node is not participating to
+// a PriFi protocol.
+func (s *ServiceState) autoConnect(relayID *network.ServerIdentity) {
+	s.sendConnectionRequest(relayID)
+
+	tick := time.Tick(DELAY_BEFORE_KEEPALIVE)
+	for range tick {
+		if !s.IsPriFiProtocolRunning() {
+			s.sendConnectionRequest(relayID)
+		}
+	}
+}
+
+// sendConnectionRequest sends a connection request to the relay.
+// It is called by the client and trustee services at startup to
+// announce themselves to the relay.
+func (s *ServiceState) sendConnectionRequest(relayID *network.ServerIdentity) {
+	log.Lvl2("Sending connection request")
+	err := s.SendRaw(relayID, &ConnectionRequest{})
+
+	if err != nil {
+		log.Error("Connection failed:", err)
 	}
 }

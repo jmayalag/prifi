@@ -36,9 +36,9 @@ const (
 
 //PriFiIdentity is the identity (role + ID)
 type PriFiIdentity struct {
-	Role    PriFiRole
-	ID      int
-	Address network.Address
+	Role     PriFiRole
+	ID       int
+	ServerID *network.ServerIdentity
 }
 
 //SOCKSConfig contains the port, payload, and up/down channels for data
