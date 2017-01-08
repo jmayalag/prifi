@@ -169,7 +169,10 @@ func CellCoderTest(t *testing.T, suite abstract.Suite, factory CellFactory) {
 	t.Log("Simulating DC-nets")
 	payloadlen := 1200
 	inb := make([]byte, payloadlen)
-	inf, _ := os.Open("../LOW_LATENCY_DESIGN")
+	inf, err := os.Open("./simple.go")
+	if err != nil {
+		t.Error("Could not run test, unable to read file")
+	}
 	beg := time.Now()
 	ncells := 0
 	nbytes := 0
