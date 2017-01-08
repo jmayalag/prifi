@@ -39,7 +39,6 @@ import (
 	prifilog "github.com/lbarman/prifi/prifi-lib/log"
 	"github.com/lbarman/prifi/prifi-lib/net"
 
-	"github.com/dedis/crypto/random"
 	socks "github.com/lbarman/prifi/prifi-socks"
 )
 
@@ -543,15 +542,9 @@ func (p *PriFiLibInstance) Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(msg ne
 // generateEphemeralKeys is an auxiliary function used by Received_REL_CLI_TELL_TRUSTEES_PK
 func (clientState *ClientState) generateEphemeralKeys() {
 
-	//prepare the crypto parameters
-	base := config.CryptoSuite.Point().Base()
-
-	//generate ephemeral keys
-	Epriv := config.CryptoSuite.Scalar().Pick(random.Stream)
-	Epub := config.CryptoSuite.Point().Mul(base, Epriv)
-
-	clientState.EphemeralPublicKey = Epub
-	clientState.ephemeralPrivateKey = Epriv
+	pub, priv := crypto.NewKeyPair()
+	clientState.EphemeralPublicKey = pub
+	clientState.ephemeralPrivateKey = priv
 
 }
 

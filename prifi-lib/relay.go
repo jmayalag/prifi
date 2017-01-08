@@ -35,7 +35,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"strconv"
-	"sync"
 	"time"
 
 	"github.com/dedis/cothority/log"
