@@ -6,8 +6,6 @@ PriFi Relay
 This regroups the behavior of the PriFi relay.
 Needs to be instantiated via the PriFiProtocol in prifi.go
 Then, this file simple handle the answer to the different message kind :
-Always make sure to use the locks in the lockPool in the order they appear:
-Locking Guideline: Assume lock A appears before lock B in the lockPool and you want to lock A and B, lock A before B. If B is locked and you want to lock A, unlock B then lock A and re-lock B.
 
 - ALL_ALL_SHUTDOWN - kill this relay
 - ALL_ALL_PARAMETERS (specialized into ALL_REL_PARAMETERS) - used to initialize the relay over the network / overwrite its configuration
@@ -113,25 +111,6 @@ type BufferedCipher struct {
 	Data    map[int][]byte
 }
 
-// lockPool contains the locks used to ensure thread-safe concurrency
-// To avoid deadlocks, make sure to ALWAYS use the locks in the order they appear in the lockPool (this means an unlock and a re-lock of a variable is sometimes required in places where it seems redundant to unlock that variable)
-// DO NOT rearrange these locks, NEW locks should be appended to the lockPool
-type lockPool struct {
-	round         sync.Mutex
-	coder         sync.Mutex
-	trusteeBuffer sync.Mutex
-	clientBuffer  sync.Mutex
-	cipherTracker sync.Mutex
-	clients       sync.Mutex
-	shuffle       sync.Mutex
-	state         sync.Mutex
-	nTrusteePK    sync.Mutex
-	trustees      sync.Mutex
-	expData       sync.Mutex
-
-	// add new locks here
-}
-
 // RelayState contains the mutable state of the relay.
 type RelayState struct {
 	// RelayPort				string
@@ -169,7 +148,6 @@ type RelayState struct {
 	nextDownStreamRoundToSend         int32
 	ExperimentResultChannel           chan interface{}
 	ExperimentResultData              interface{}
-	locks                             *lockPool
 	timeoutHandler                    func([]int, []int)
 	statistics                        *prifilog.BitrateStatistics
 }
@@ -203,7 +181,6 @@ func NewRelayState(nTrustees int, nClients int, upstreamCellSize int, downstream
 	params.nextDownStreamRoundToSend = int32(1) //since first round is half-round
 	params.numberOfNonAckedDownstreamPackets = 0
 	params.statistics = prifilog.NewBitRateStatistics()
-	params.locks = &lockPool{}
 
 	neffShuffle := new(scheduler.NeffShuffle)
 	neffShuffle.Init()
