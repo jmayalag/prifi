@@ -56,7 +56,7 @@ func StopMeasure(name string) time.Duration {
 
 		return duration
 	}
-	
+
 	// Unlock before potentially expensive writing to output.
 	mutex.Unlock()
 
