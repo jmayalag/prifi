@@ -34,12 +34,6 @@ import (
 //Delay before each host re-tried to connect
 const DELAY_BEFORE_KEEPALIVE = 5 * time.Second
 
-func init() {
-	network.RegisterPacketType(StopProtocol{})
-	network.RegisterPacketType(ConnectionRequest{})
-	network.RegisterPacketType(DisconnectionRequest{})
-}
-
 type waitQueueEntry struct {
 	serverID  *network.ServerIdentity
 	numericID int
@@ -52,17 +46,6 @@ type waitQueue struct {
 	trustees map[string]*waitQueueEntry
 	clients  map[string]*waitQueueEntry
 }
-
-// Packet send by relay when some node disconnected
-type StopProtocol struct{}
-
-// ConnectionRequest messages are sent to the relay
-// by nodes that want to join the protocol.
-type ConnectionRequest struct{}
-
-// DisconnectionRequest messages are sent to the relay
-// by nodes that want to leave the protocol.
-type DisconnectionRequest struct{}
 
 func idFromMsg(msg *network.Packet) string {
 	return idFromServerIdentity(msg.ServerIdentity)

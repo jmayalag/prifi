@@ -2,11 +2,9 @@ package scheduler
 
 import (
 	"fmt"
-	"github.com/dedis/cothority/network"
 	"github.com/dedis/crypto/abstract"
-	cryptoconfig "github.com/dedis/crypto/config"
-	"github.com/dedis/crypto/random"
 	"github.com/lbarman/prifi/prifi-lib/config"
+	"github.com/lbarman/prifi/prifi-lib/crypto"
 	"github.com/lbarman/prifi/prifi-lib/net"
 	"strconv"
 	"testing"
@@ -53,7 +51,7 @@ func TestWholeNeffShuffle(t *testing.T) {
 func NeffShuffleTestHelper(t *testing.T, nClients int, nTrustees int, shuffleKeyPos bool) []int {
 	clients := make([]*PrivatePublicPair, nClients)
 	for i := 0; i < nClients; i++ {
-		pub, priv := genKeyPair()
+		pub, priv := crypto.NewKeyPair()
 		clients[i] = new(PrivatePublicPair)
 		clients[i].Public = pub
 		clients[i].Private = priv
@@ -68,7 +66,7 @@ func NeffShuffleTestHelper(t *testing.T, nClients int, nTrustees int, shuffleKey
 	for i := 0; i < nTrustees; i++ {
 		trustees[i] = new(NeffShuffle)
 		trustees[i].Init()
-		trustee := cryptoconfig.NewKeyPair(network.Suite)
+		trustee := crypto.NewKeyPair()
 		trustees[i].TrusteeView.Init(i, trustee.Secret, trustee.Public)
 	}
 
@@ -244,13 +242,4 @@ func NeffShuffleTestHelper(t *testing.T, nClients int, nTrustees int, shuffleKey
 	}
 
 	return mapping
-}
-
-func genKeyPair() (abstract.Point, abstract.Scalar) {
-
-	base := config.CryptoSuite.Point().Base()
-	priv := config.CryptoSuite.Scalar().Pick(random.Stream)
-	pub := config.CryptoSuite.Point().Mul(base, priv)
-
-	return pub, priv
 }

@@ -12,8 +12,8 @@ import (
 
 func TestSchnorr(t *testing.T) {
 
-	pub, priv := genKeyPair()
-	pub2, priv2 := genKeyPair()
+	pub, priv := NewKeyPair()
+	pub2, priv2 := NewKeyPair()
 
 	//with empty data
 	data := make([]byte, 0)
@@ -53,22 +53,13 @@ func TestSchnorr(t *testing.T) {
 
 func TestSchnorrHash(t *testing.T) {
 
-	pub, _ := genKeyPair()
+	pub, _ := NewKeyPair()
 	data := random.Bits(100, false, random.Stream)
 	secret := hashSchnorr(config.CryptoSuite, data, pub)
 
 	if secret == nil {
 		t.Error("Secret should not be nil")
 	}
-}
-
-func genKeyPair() (abstract.Point, abstract.Scalar) {
-
-	base := config.CryptoSuite.Point().Base()
-	priv := config.CryptoSuite.Scalar().Pick(random.Stream)
-	pub := config.CryptoSuite.Point().Mul(base, priv)
-
-	return pub, priv
 }
 
 func TestNeffShuffle(t *testing.T) {
@@ -86,7 +77,7 @@ func TestNeffShuffle(t *testing.T) {
 		clientPks := make([]abstract.Point, nClients)
 		clientPrivKeys := make([]abstract.Scalar, nClients)
 		for i := 0; i < nClients; i++ {
-			pub, priv := genKeyPair()
+			pub, priv := NewKeyPair()
 			clientPks[i] = pub
 			clientPrivKeys[i] = priv
 		}

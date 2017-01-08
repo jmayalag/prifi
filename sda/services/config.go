@@ -12,6 +12,9 @@ import (
 	prifi_protocol "github.com/lbarman/prifi/sda/protocols"
 )
 
+var socksClientConfig *prifi_protocol.SOCKSConfig
+var socksServerConfig *prifi_protocol.SOCKSConfig
+
 //The configuration read in prifi.toml
 type PrifiTomlConfig struct {
 	CellSizeUp            int
