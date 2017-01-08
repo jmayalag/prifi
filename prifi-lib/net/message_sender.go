@@ -109,7 +109,9 @@ func (m *MessageSenderWrapper) SendToRelayWithLog(msg interface{}, extraInfos st
 		return false
 	}
 
-	m.logSuccessFunction("Sent a " + msgName + "." + extraInfos)
+	if m.loggingEnabled {
+		m.logSuccessFunction("Sent a " + msgName + "." + extraInfos)
+	}
 	return true
 }
 
@@ -130,6 +132,8 @@ func (m *MessageSenderWrapper) sendToWithLog(sendingFunc func(int, interface{}) 
 		return false
 	}
 
-	m.logSuccessFunction("Sent a " + msgName + "." + extraInfos)
+	if m.loggingEnabled {
+		m.logSuccessFunction("Sent a " + msgName + "." + extraInfos)
+	}
 	return true
 }
