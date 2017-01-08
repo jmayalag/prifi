@@ -168,7 +168,7 @@ func (p *PriFiLibInstance) Received_ALL_CLI_PARAMETERS(msg net.ALL_ALL_PARAMETER
 
 	//start the broadcast-listener goroutine
 	log.Lvl2("Client " + strconv.Itoa(p.clientState.ID) + " : starting the broadcast-listener goroutine")
-	go p.messageSender.ClientSubscribeToBroadcast(p.clientState.Name, p, p.clientState.StartStopReceiveBroadcast)
+	go p.messageSender.ClientSubscribeToBroadcast(p.clientState.Name, p.ReceivedMessage, p.clientState.StartStopReceiveBroadcast)
 
 	//after receiving this message, we are done with the state CLIENT_STATE_BEFORE_INIT, and are ready for initializing
 	p.clientState.currentState = CLIENT_STATE_INITIALIZING

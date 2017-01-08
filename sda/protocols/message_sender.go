@@ -7,7 +7,6 @@ import (
 
 	"github.com/dedis/cothority/log"
 	"github.com/dedis/cothority/sda"
-	prifi_lib "github.com/lbarman/prifi/prifi-lib"
 	"github.com/lbarman/prifi/prifi-lib/net"
 )
 
@@ -65,7 +64,7 @@ func (ms MessageSender) BroadcastToAllClients(msg interface{}) error {
 }
 
 //ClientSubscribeToBroadcast allows a client to subscribe to UDP broadcast
-func (ms MessageSender) ClientSubscribeToBroadcast(clientName string, prifiLibInstance *prifi_lib.PriFiLibInstance, startStopChan chan bool) error {
+func (ms MessageSender) ClientSubscribeToBroadcast(clientName string, messageReceived func(interface{}) error, startStopChan chan bool) error {
 
 	log.Lvl3(clientName, " started UDP-listener helper.")
 	listening := false
@@ -101,7 +100,8 @@ func (ms MessageSender) ClientSubscribeToBroadcast(clientName string, prifiLibIn
 			}
 
 			//forward to PriFi
-			prifiLibInstance.ReceivedMessage(filledMessage)
+			//prifiLibInstance.ReceivedMessage(filledMessage)
+			messageReceived(filledMessage)
 
 		}
 
