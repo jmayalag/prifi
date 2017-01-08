@@ -29,13 +29,16 @@ test_lint:
 		fi \
 	}
 	
-test_go:
+coveralls:
 	./coveralls.sh
 
 test_verbose:
 	go test -v -race -short ./...
 
+integration_test:
+	./prifi.sh integration-test
 
-test: test_fmt test_govet test_lint test_go
 
-all: test
+test: test_fmt test_govet test_lint
+
+all: test coveralls integration_test
