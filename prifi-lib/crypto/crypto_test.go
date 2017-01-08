@@ -51,6 +51,40 @@ func TestSchnorr(t *testing.T) {
 
 }
 
+func TestNeffErrors(t *testing.T) {
+
+	nClients := 2
+	base := config.CryptoSuite.Point().Base()
+
+	//build the client's public key array
+	clientPks := make([]abstract.Point, nClients)
+	clientPrivKeys := make([]abstract.Scalar, nClients)
+	for i := 0; i < nClients; i++ {
+		pub, priv := NewKeyPair()
+		clientPks[i] = pub
+		clientPrivKeys[i] = priv
+	}
+
+	//each of those call should fail
+	_, _, _, _, err := NeffShuffle(nil, base, config.CryptoSuite, true)
+	if err == nil {
+		t.Error("NeffShuffle without a public key array should fail")
+	}
+	_, _, _, _, err = NeffShuffle(clientPks, nil, config.CryptoSuite, true)
+	if err == nil {
+		t.Error("NeffShuffle without a base should fail")
+	}
+	_, _, _, _, err = NeffShuffle(clientPks, base, nil, true)
+	if err == nil {
+		t.Error("NeffShuffle without a suite should fail")
+	}
+	_, _, _, _, err = NeffShuffle(make([]abstract.Point, 0), base, config.CryptoSuite, true)
+	if err == nil {
+		t.Error("NeffShuffle with 0 public keys should fail")
+	}
+
+}
+
 func TestSchnorrHash(t *testing.T) {
 
 	pub, _ := NewKeyPair()
