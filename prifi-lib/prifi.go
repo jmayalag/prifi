@@ -18,7 +18,7 @@ Then, it runs the PriFi anonymous communication network among those entities.
 // PriFiLibInstance contains the mutable state of a PriFi entity.
 type PriFiLibInstance struct {
 	role          int16
-	messageSender MessageSender
+	messageSender *net.MessageSenderWrapper
 	// TODO: combine states into a single interface
 	clientState  ClientState  //only one of those will be set
 	relayState   RelayState   //only one of those will be set
@@ -35,35 +35,6 @@ const (
 	PRIFI_ROLE_TRUSTEE
 )
 
-// MessageSender is the interface that abstracts the network
-// interactions.
-type MessageSender interface {
-	// SendToClient tries to deliver the message "msg" to the client i.
-	SendToClient(i int, msg interface{}) error
-
-	// SendToTrustee tries to deliver the message "msg" to the trustee i.
-	SendToTrustee(i int, msg interface{}) error
-
-	// SendToRelay tries to deliver the message "msg" to the relay.
-	SendToRelay(msg interface{}) error
-
-	/*
-		BroadcastToAllClients tries to deliver the message "msg"
-		to every client, possibly using broadcast.
-	*/
-	BroadcastToAllClients(msg interface{}) error
-
-	/*
-		ClientSubscribeToBroadcast should be called by the Clients
-		in order to receive the Broadcast messages.
-		Calling the function starts the handler but does not actually
-		listen for broadcast messages.
-		Sending true to startStopChan starts receiving the broadcasts.
-		Sending false to startStopChan stops receiving the broadcasts.
-	*/
-	ClientSubscribeToBroadcast(clientName string, protocolInstance *PriFiLibInstance, startStopChan chan bool) error
-}
-
 /*
 call the functions below on the appropriate machine on the network.
 if you call *without state* (one of the first 3 methods), IT IS NOT SUFFICIENT FOR PRIFI to start; this entity will expect a ALL_ALL_PARAMETERS as a
@@ -71,14 +42,27 @@ first message to finish initializing itself (this is handy if only the Relay has
 Otherwise, the 3 last methods fully initialize the entity.
 */
 
+func newMessageSenderWrapper(msgSender net.MessageSender) *net.MessageSenderWrapper {
+
+	errHandling := func(e error) { /* do nothing yet, we are alerted of errors via the SDA */ }
+	loggingSuccessFunction := func(e interface{}) { log.Lvl3(e) }
+	loggingErrorFunction := func(e interface{}) { log.Error(e) }
+
+	msw, err := net.NewMessageSenderWrapper(true, loggingSuccessFunction, loggingErrorFunction, errHandling, msgSender)
+	if err != nil {
+		log.Fatal("Could not create a MessageSenderWrapper, error is", err)
+	}
+	return msw
+}
+
 // NewPriFiRelay creates a new PriFi relay entity state.
 // Note: the returned state is not sufficient for the PrFi protocol
 // to start; this entity will expect a ALL_ALL_PARAMETERS message as
 // first received message to complete it's state.
-func NewPriFiRelay(msgSender MessageSender) *PriFiLibInstance {
+func NewPriFiRelay(msgSender net.MessageSender) *PriFiLibInstance {
 	prifi := PriFiLibInstance{
 		role:          PRIFI_ROLE_RELAY,
-		messageSender: msgSender,
+		messageSender: newMessageSenderWrapper(msgSender),
 	}
 
 	return &prifi
@@ -88,10 +72,10 @@ func NewPriFiRelay(msgSender MessageSender) *PriFiLibInstance {
 // Note: the returned state is not sufficient for the PrFi protocol
 // to start; this entity will expect a ALL_ALL_PARAMETERS message as
 // first received message to complete it's state.
-func NewPriFiClient(msgSender MessageSender) *PriFiLibInstance {
+func NewPriFiClient(msgSender net.MessageSender) *PriFiLibInstance {
 	prifi := PriFiLibInstance{
 		role:          PRIFI_ROLE_CLIENT,
-		messageSender: msgSender,
+		messageSender: newMessageSenderWrapper(msgSender),
 	}
 	return &prifi
 }
@@ -100,19 +84,19 @@ func NewPriFiClient(msgSender MessageSender) *PriFiLibInstance {
 // Note: the returned state is not sufficient for the PrFi protocol
 // to start; this entity will expect a ALL_ALL_PARAMETERS message as
 // first received message to complete it's state.
-func NewPriFiTrustee(msgSender MessageSender) *PriFiLibInstance {
+func NewPriFiTrustee(msgSender net.MessageSender) *PriFiLibInstance {
 	prifi := PriFiLibInstance{
 		role:          PRIFI_ROLE_TRUSTEE,
-		messageSender: msgSender,
+		messageSender: newMessageSenderWrapper(msgSender),
 	}
 	return &prifi
 }
 
 // NewPriFiRelayWithState creates a new PriFi relay entity state.
-func NewPriFiRelayWithState(msgSender MessageSender, state *RelayState) *PriFiLibInstance {
+func NewPriFiRelayWithState(msgSender net.MessageSender, state *RelayState) *PriFiLibInstance {
 	prifi := PriFiLibInstance{
 		role:          PRIFI_ROLE_RELAY,
-		messageSender: msgSender,
+		messageSender: newMessageSenderWrapper(msgSender),
 		relayState:    *state,
 	}
 
@@ -121,24 +105,24 @@ func NewPriFiRelayWithState(msgSender MessageSender, state *RelayState) *PriFiLi
 }
 
 // NewPriFiClientWithState creates a new PriFi client entity state.
-func NewPriFiClientWithState(msgSender MessageSender, state *ClientState) *PriFiLibInstance {
+func NewPriFiClientWithState(msgSender net.MessageSender, state *ClientState) *PriFiLibInstance {
 	prifi := PriFiLibInstance{
 		role:          PRIFI_ROLE_CLIENT,
-		messageSender: msgSender,
+		messageSender: newMessageSenderWrapper(msgSender),
 		clientState:   *state,
 	}
 	log.Lvl1("Client has been initialized by function call. ")
 
 	log.Lvl2("Client " + strconv.Itoa(prifi.clientState.ID) + " : starting the broadcast-listener goroutine")
-	go prifi.messageSender.ClientSubscribeToBroadcast(prifi.clientState.Name, &prifi, prifi.clientState.StartStopReceiveBroadcast)
+	go prifi.messageSender.ClientSubscribeToBroadcast(prifi.clientState.Name, prifi.ReceivedMessage, prifi.clientState.StartStopReceiveBroadcast)
 	return &prifi
 }
 
 // NewPriFiTrusteeWithState creates a new PriFi trustee entity state.
-func NewPriFiTrusteeWithState(msgSender MessageSender, state *TrusteeState) *PriFiLibInstance {
+func NewPriFiTrusteeWithState(msgSender net.MessageSender, state *TrusteeState) *PriFiLibInstance {
 	prifi := PriFiLibInstance{
 		role:          PRIFI_ROLE_TRUSTEE,
-		messageSender: msgSender,
+		messageSender: newMessageSenderWrapper(msgSender),
 		trusteeState:  *state,
 	}
 

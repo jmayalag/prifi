@@ -6,8 +6,6 @@ PriFi Relay
 This regroups the behavior of the PriFi relay.
 Needs to be instantiated via the PriFiProtocol in prifi.go
 Then, this file simple handle the answer to the different message kind :
-Always make sure to use the locks in the lockPool in the order they appear:
-Locking Guideline: Assume lock A appears before lock B in the lockPool and you want to lock A and B, lock A before B. If B is locked and you want to lock A, unlock B then lock A and re-lock B.
 
 - ALL_ALL_SHUTDOWN - kill this relay
 - ALL_ALL_PARAMETERS (specialized into ALL_REL_PARAMETERS) - used to initialize the relay over the network / overwrite its configuration
@@ -31,18 +29,12 @@ checkIfRoundHasEndedAfterTimeOut_Phase1() - called by sendDownstreamData(), whic
 checkIfRoundHasEndedAfterTimeOut_Phase2() - called by checkIfRoundHasEndedAfterTimeOut_Phase1(). After some long time, entities that didn't send us data should be
 considered disconnected
 
-TODO : We should timeout if some client did not send anything after a while
-TODO : given the number of already-buffered Ciphers (per trustee), we need to tell him to slow down
-TODO : if something went wrong before, this flag should be used to warn the clients that the config has changed
-TODO : sanity check that we don't have twice the same client
-TODO : create a "send" function that takes as parameter the data we want and the message to print if an error occurs (since the sending block always looks the same)
 */
 
 import (
 	"encoding/binary"
 	"errors"
 	"strconv"
-	"sync"
 	"time"
 
 	"github.com/dedis/cothority/log"
@@ -118,25 +110,6 @@ type BufferedCipher struct {
 	Data    map[int][]byte
 }
 
-// lockPool contains the locks used to ensure thread-safe concurrency
-// To avoid deadlocks, make sure to ALWAYS use the locks in the order they appear in the lockPool (this means an unlock and a re-lock of a variable is sometimes required in places where it seems redundant to unlock that variable)
-// DO NOT rearrange these locks, NEW locks should be appended to the lockPool
-type lockPool struct {
-	round         sync.Mutex
-	coder         sync.Mutex
-	trusteeBuffer sync.Mutex
-	clientBuffer  sync.Mutex
-	cipherTracker sync.Mutex
-	clients       sync.Mutex
-	shuffle       sync.Mutex
-	state         sync.Mutex
-	nTrusteePK    sync.Mutex
-	trustees      sync.Mutex
-	expData       sync.Mutex
-
-	// add new locks here
-}
-
 // RelayState contains the mutable state of the relay.
 type RelayState struct {
 	// RelayPort				string
@@ -174,7 +147,6 @@ type RelayState struct {
 	nextDownStreamRoundToSend         int32
 	ExperimentResultChannel           chan interface{}
 	ExperimentResultData              interface{}
-	locks                             *lockPool
 	timeoutHandler                    func([]int, []int)
 	statistics                        *prifilog.BitrateStatistics
 }
@@ -208,7 +180,6 @@ func NewRelayState(nTrustees int, nClients int, upstreamCellSize int, downstream
 	params.nextDownStreamRoundToSend = int32(1) //since first round is half-round
 	params.numberOfNonAckedDownstreamPackets = 0
 	params.statistics = prifilog.NewBitRateStatistics()
-	params.locks = &lockPool{}
 
 	neffShuffle := new(scheduler.NeffShuffle)
 	neffShuffle.Init()
@@ -243,26 +214,12 @@ func (p *PriFiLibInstance) Received_ALL_REL_SHUTDOWN(msg net.ALL_ALL_SHUTDOWN) e
 
 	// Send this shutdown to all trustees
 	for j := 0; j < p.relayState.nTrustees; j++ {
-		err := p.messageSender.SendToTrustee(j, msg2)
-		if err != nil {
-			e := "Could not send ALL_TRU_SHUTDOWN to Trustee " + strconv.Itoa(j) + ", error is " + err.Error()
-			log.Error(e)
-			err = errors.New(e)
-		} else {
-			log.Lvl3("Relay : sent ALL_TRU_PARAMETERS to Trustee " + strconv.Itoa(j) + ".")
-		}
+		p.messageSender.SendToTrusteeWithLog(j, msg2, "")
 	}
 
 	// Send this shutdown to all clients
 	for j := 0; j < p.relayState.nClients; j++ {
-		err := p.messageSender.SendToClient(j, msg2)
-		if err != nil {
-			e := "Could not send ALL_TRU_SHUTDOWN to Client " + strconv.Itoa(j) + ", error is " + err.Error()
-			log.Error(e)
-			err = errors.New(e)
-		} else {
-			log.Lvl3("Relay : sent ALL_TRU_PARAMETERS to Client " + strconv.Itoa(j) + ".")
-		}
+		p.messageSender.SendToClientWithLog(j, msg2, "")
 	}
 
 	// TODO : stop all go-routines we created
@@ -324,13 +281,7 @@ func (p *PriFiLibInstance) ConnectToTrustees() error {
 
 		// The ID is unique !
 		msg.NextFreeTrusteeID = j
-		err := p.messageSender.SendToTrustee(j, msg)
-		if err != nil {
-			e := "Could not send ALL_TRU_PARAMETERS to Trustee " + strconv.Itoa(j) + ", error is " + err.Error()
-			log.Error(e)
-			return errors.New(e)
-		}
-		log.Lvl3("Relay : sent ALL_TRU_PARAMETERS to Trustee " + strconv.Itoa(j) + ".")
+		p.messageSender.SendToTrusteeWithLog(j, msg, "")
 	}
 
 	return nil
@@ -459,14 +410,7 @@ func (p *PriFiLibInstance) Received_TRU_REL_DC_CIPHER(msg net.TRU_REL_DC_CIPHER)
 
 		if currentCapacity <= TRUSTEE_WINDOW_LOWER_LIMIT { // Check if the capacity is lower then allowed
 			toSend := &net.REL_TRU_TELL_RATE_CHANGE{currentCapacity}
-			err := p.messageSender.SendToTrustee(msg.TrusteeID, toSend) // send the trustee a message informing them of the capacity
-
-			if err != nil {
-				e := "Could not send REL_TRU_TELL_RATE_CHANGE to " + strconv.Itoa(msg.TrusteeID) + "-th trustee for round " + strconv.Itoa(int(p.relayState.currentDCNetRound.currentRound)) + ", error is " + err.Error()
-				log.Error(e)
-				return errors.New(e)
-			}
-			log.Lvl3("Relay : sent REL_TRU_TELL_RATE_CHANGE to " + strconv.Itoa(msg.TrusteeID) + "-th trustee for round " + strconv.Itoa(int(p.relayState.currentDCNetRound.currentRound)))
+			p.messageSender.SendToTrusteeWithLog(msg.TrusteeID, toSend, "(trustee "+strconv.Itoa(msg.TrusteeID)+", round "+strconv.Itoa(int(p.relayState.currentDCNetRound.currentRound))+")")
 		}
 
 	}
@@ -576,24 +520,13 @@ func (p *PriFiLibInstance) sendDownstreamData() error {
 		// broadcast to all clients
 		for i := 0; i < p.relayState.nClients; i++ {
 			//send to the i-th client
-			err := p.messageSender.SendToClient(i, toSend)
-			if err != nil {
-				e := "Could not send REL_CLI_DOWNSTREAM_DATA to client " + strconv.Itoa(i) + " for round " + strconv.Itoa(int(p.relayState.nextDownStreamRoundToSend)) + ", error is " + err.Error()
-				log.Error(e)
-
-				arr := make([]int, 1)
-				arr[0] = i
-				p.relayState.timeoutHandler(arr, make([]int, 0))
-
-				return errors.New(e)
-			}
-			log.Lvl3("Relay : sent REL_CLI_DOWNSTREAM_DATA to client " + strconv.Itoa(i) + " for round " + strconv.Itoa(int(p.relayState.nextDownStreamRoundToSend)))
+			p.messageSender.SendToClientWithLog(i, toSend, "(client "+strconv.Itoa(i)+", round "+strconv.Itoa(int(p.relayState.nextDownStreamRoundToSend))+")")
 		}
 
 		p.relayState.statistics.AddDownstreamCell(int64(len(downstreamCellContent)))
 	} else {
 		toSend2 := &net.REL_CLI_DOWNSTREAM_DATA_UDP{REL_CLI_DOWNSTREAM_DATA: *toSend}
-		p.messageSender.BroadcastToAllClients(toSend2)
+		p.messageSender.MessageSender.BroadcastToAllClients(toSend2)
 
 		p.relayState.statistics.AddDownstreamUDPCell(int64(len(downstreamCellContent)), p.relayState.nClients)
 	}
@@ -658,13 +591,7 @@ func (p *PriFiLibInstance) roundFinished() error {
 
 			if currentCapacity >= int(threshhold) { // if the previous capacity was at the lower limit allowed
 				toSend := &net.REL_TRU_TELL_RATE_CHANGE{currentCapacity}
-				err := p.messageSender.SendToTrustee(trusteeID, toSend) // send the trustee informing them of the current capacity that has free'd up
-				if err != nil {
-					e := "Could not send REL_TRU_TELL_RATE_CHANGE to " + strconv.Itoa(trusteeID) + "-th trustee for round " + strconv.Itoa(int(p.relayState.currentDCNetRound.currentRound)) + ", error is " + err.Error()
-					log.Error(e)
-					return errors.New(e)
-				}
-				log.Lvl3("Relay : sent REL_TRU_TELL_RATE_CHANGE to " + strconv.Itoa(trusteeID) + "-th trustee for round " + strconv.Itoa(int(p.relayState.currentDCNetRound.currentRound)))
+				p.messageSender.SendToTrusteeWithLog(trusteeID, toSend, "(trustee "+strconv.Itoa(trusteeID)+", round "+strconv.Itoa(int(p.relayState.currentDCNetRound.currentRound))+")")
 			}
 		}
 
@@ -716,13 +643,7 @@ func (p *PriFiLibInstance) Received_TRU_REL_TELL_PK(msg net.TRU_REL_TELL_PK) err
 		// Send the pack to the clients
 		toSend := &net.REL_CLI_TELL_TRUSTEES_PK{trusteesPk}
 		for i := 0; i < p.relayState.nClients; i++ {
-			err := p.messageSender.SendToClient(i, toSend)
-			if err != nil {
-				e := "Could not send REL_CLI_TELL_TRUSTEES_PK (" + strconv.Itoa(i) + "-th client), error is " + err.Error()
-				log.Error(e)
-				return errors.New(e)
-			}
-			log.Lvl3("Relay : sent REL_CLI_TELL_TRUSTEES_PK (" + strconv.Itoa(i) + "-th client)")
+			p.messageSender.SendToClientWithLog(i, toSend, "(client "+strconv.Itoa(i)+")")
 		}
 
 		p.relayState.currentState = RELAY_STATE_COLLECTING_CLIENT_PKS
@@ -778,14 +699,7 @@ func (p *PriFiLibInstance) Received_CLI_REL_TELL_PK_AND_EPH_PK(msg net.CLI_REL_T
 		toSend := msg.(*net.REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE)
 
 		// send to the 1st trustee
-
-		err = p.messageSender.SendToTrustee(trusteeID, toSend)
-		if err != nil {
-			e := "Could not send REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE (0-th iteration), error is " + err.Error()
-			log.Error(e)
-			return errors.New(e)
-		}
-		log.Lvl3("Relay : sent REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE (0-th iteration)")
+		p.messageSender.SendToTrusteeWithLog(trusteeID, toSend, "(0-th iteration)")
 
 		// changing state
 		p.relayState.currentState = RELAY_STATE_COLLECTING_SHUFFLES
@@ -830,13 +744,7 @@ func (p *PriFiLibInstance) Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS(msg net.TR
 		toSend := msg.(*net.REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE)
 
 		// send to the i-th trustee
-		err = p.messageSender.SendToTrustee(trusteeID, toSend)
-		if err != nil {
-			e := "Could not send REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE (" + strconv.Itoa(trusteeID) + "-th iteration), error is " + err.Error()
-			log.Error(e)
-			return errors.New(e)
-		}
-		log.Lvl3("Relay : sent REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE (" + strconv.Itoa(trusteeID) + "-th iteration)")
+		p.messageSender.SendToTrusteeWithLog(trusteeID, toSend, "("+strconv.Itoa(trusteeID)+"-th iteration)")
 
 	} else {
 		// if we have all the shuffles
@@ -857,13 +765,7 @@ func (p *PriFiLibInstance) Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS(msg net.TR
 		// broadcast to all trustees
 		for j := 0; j < p.relayState.nTrustees; j++ {
 			// send to the j-th trustee
-			err := p.messageSender.SendToTrustee(j, toSend) // TODO : this should be the trustee X !
-			if err != nil {
-				e := "Could not send REL_TRU_TELL_TRANSCRIPT to " + strconv.Itoa(j+1) + "-th trustee, error is " + err.Error()
-				log.Error(e)
-				return errors.New(e)
-			}
-			log.Lvl3("Relay : sent REL_TRU_TELL_TRANSCRIPT to " + strconv.Itoa(j+1) + "-th trustee")
+			p.messageSender.SendToTrusteeWithLog(j, toSend, "(trustee "+strconv.Itoa(j+1)+")")
 		}
 
 		// prepare to collect the ciphers
@@ -925,13 +827,7 @@ func (p *PriFiLibInstance) Received_TRU_REL_SHUFFLE_SIG(msg net.TRU_REL_SHUFFLE_
 		// broadcast to all clients
 		for i := 0; i < p.relayState.nClients; i++ {
 			// send to the i-th client
-			err := p.messageSender.SendToClient(i, msg)
-			if err != nil {
-				e := "Could not send REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG to " + strconv.Itoa(i+1) + "-th client, error is " + err.Error()
-				log.Error(e)
-				return errors.New(e)
-			}
-			log.Lvl3("Relay : sent REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG to " + strconv.Itoa(i+1) + "-th client")
+			p.messageSender.SendToClientWithLog(i, msg, "(client "+strconv.Itoa(i+1)+")")
 		}
 
 		//client will answer will CLI_REL_UPSTREAM_DATA. There is no data down on round 0. We set the following variable to 1 since the reception of CLI_REL_UPSTREAM_DATA decrements it.
@@ -989,13 +885,8 @@ func (p *PriFiLibInstance) checkIfRoundHasEndedAfterTimeOut_Phase1(roundID int32
 				//If we're using UDP, client might have missed the broadcast, re-sending
 				if p.relayState.UseUDP {
 					log.Error("Relay : Client " + strconv.Itoa(clientID) + " didn't sent us is cipher for round " + strconv.Itoa(int(roundID)) + ". Phase 1 timeout. Re-sending...")
-					err := p.messageSender.SendToClient(i, &p.relayState.currentDCNetRound.dataAlreadySent)
-					if err != nil {
-						e := "Could not send REL_CLI_DOWNSTREAM_DATA to " + strconv.Itoa(i+1) + "-th client for round " + strconv.Itoa(int(p.relayState.currentDCNetRound.currentRound)) + ", error is " + err.Error()
-						log.Error(e)
-					} else {
-						log.Lvl3("Relay : sent REL_CLI_DOWNSTREAM_DATA to " + strconv.Itoa(i+1) + "-th client for round " + strconv.Itoa(int(p.relayState.currentDCNetRound.currentRound)))
-					}
+					extraInfo := "(client " + strconv.Itoa(i+1) + ", round " + strconv.Itoa(int(p.relayState.currentDCNetRound.currentRound)) + ")"
+					p.messageSender.SendToClientWithLog(i, &p.relayState.currentDCNetRound.dataAlreadySent, extraInfo)
 				}
 			}
 		}

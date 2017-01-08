@@ -166,16 +166,8 @@ Send_TRU_REL_PK tells the relay's public key to the relay
 This is the first action of the trustee.
 */
 func (p *PriFiLibInstance) Send_TRU_REL_PK() error {
-
 	toSend := &net.TRU_REL_TELL_PK{p.trusteeState.ID, p.trusteeState.PublicKey}
-	err := p.messageSender.SendToRelay(toSend)
-	if err != nil {
-		e := "Could not send TRU_REL_TELL_PK, error is " + err.Error()
-		log.Error(e)
-		return errors.New(e)
-	}
-	log.Lvl3("Trustee " + strconv.Itoa(p.trusteeState.ID) + " : sent TRU_REL_TELL_PK ") //TODO: this should be "trustee"
-
+	p.messageSender.SendToRelayWithLog(toSend, "")
 	return nil
 }
 
@@ -243,13 +235,7 @@ func sendData(p *PriFiLibInstance, roundID int32) (int32, error) {
 
 	//send the data
 	toSend := &net.TRU_REL_DC_CIPHER{roundID, p.trusteeState.ID, data}
-	err := p.messageSender.SendToRelay(toSend) //TODO : this should be the root ! make sure of it
-	if err != nil {
-		e := "Could not send Struct_TRU_REL_DC_CIPHER for round (" + strconv.Itoa(int(roundID)) + ") error is " + err.Error()
-		log.Error(e)
-		return roundID, errors.New(e)
-	}
-	log.Lvl3("Trustee " + strconv.Itoa(p.trusteeState.ID) + " : sent cipher " + strconv.Itoa(int(roundID)))
+	p.messageSender.SendToRelayWithLog(toSend, "(round "+strconv.Itoa(int(roundID))+")")
 
 	return roundID + 1, nil
 }
@@ -339,13 +325,7 @@ func (p *PriFiLibInstance) Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BAS
 
 	//send the answer
 	toSend := &net.TRU_REL_TELL_NEW_BASE_AND_EPH_PKS{base2, ephPublicKeys2, proof}
-	err := p.messageSender.SendToRelay(toSend) //TODO : this should be the root ! make sure of it
-	if err != nil {
-		e := "Could not send TRU_REL_TELL_NEW_BASE_AND_EPH_PKS, error is " + err.Error()
-		log.Error(e)
-		return errors.New(e)
-	}
-	log.Lvl3("Trustee " + strconv.Itoa(p.trusteeState.ID) + " : sent TRU_REL_TELL_NEW_BASE_AND_EPH_PKS")
+	p.messageSender.SendToRelayWithLog(toSend, "")
 
 	//remember our shuffle
 	p.trusteeState.neffShuffleToVerify = NeffShuffleResult{base2, ephPublicKeys2, proof}
@@ -485,13 +465,7 @@ func (p *PriFiLibInstance) Received_REL_TRU_TELL_TRANSCRIPT(msg net.REL_TRU_TELL
 
 	//send the answer
 	toSend := &net.TRU_REL_SHUFFLE_SIG{p.trusteeState.ID, sig}
-	err = p.messageSender.SendToRelay(toSend) //TODO : this should be the root ! make sure of it
-	if err != nil {
-		e := "Could not send TRU_REL_SHUFFLE_SIG, error is " + err.Error()
-		log.Error(e)
-		return errors.New(e)
-	}
-	log.Lvl3("Trustee " + strconv.Itoa(p.trusteeState.ID) + " : sent TRU_REL_SHUFFLE_SIG")
+	p.messageSender.SendToRelayWithLog(toSend, "")
 
 	//we can forget our shuffle
 	//p.trusteeState.neffShuffleToVerify = NeffShuffleResult{base2, ephPublicKeys2, proof}

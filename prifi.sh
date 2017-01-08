@@ -12,7 +12,7 @@
 
 # variables that you might change often
 
-dbg_lvl=5 						# 1=less verbose, 3=more verbose. goes up to 5, but then prints the SDA's message (network framework)
+dbg_lvl=3						# 1=less verbose, 3=more verbose. goes up to 5, but then prints the SDA's message (network framework)
 try_use_real_identities="false"	# if "true", will try to use "self-generated" public/private key as a replacement for the dummy keys
 								# we generated for you. It asks you if it does not find real keys. If false, will always use the dummy keys.
 colors="true"					# if "false", the output of PriFi (not this script) will be in black-n-white
@@ -60,7 +60,7 @@ print_usage() {
 	echo
 	echo -e "Usage: run-prifi.sh \e[33mrole/operation [params]\e[97m"
 	echo -e "	\e[33mrole\e[97m: client, relay, trustee"
-	echo -e "	\e[33moperation\e[97m: install, sockstest, all-localhost, gen-id"
+	echo -e "	\e[33moperation\e[97m: install, sockstest, all-localhost, gen-id, integration-test"
 	echo -e "	\e[33mparams\e[97m for role \e[33mrelay\e[97m: [socks_server_port] (optional, numeric)"
 	echo -e "	\e[33mparams\e[97m for role \e[33mtrustee\e[97m: id (required, numeric)"
 	echo -e "	\e[33mparams\e[97m for role \e[33mclient\e[97m: id (required, numeric), [prifi_socks_server_port] (optional, numeric)"
@@ -78,6 +78,7 @@ print_usage() {
 	echo -e "	\e[33mall-localhost\e[97m: starts a Prifi relay, a trustee, three clients all on localhost"
 	echo -e "	\e[33msockstest\e[97m: starts the PriFi and non-PriFi SOCKS tunnel, without PriFi anonymization"
 	echo -e "	\e[33mgen-id\e[97m: interactive creation of identity.toml"
+	echo -e "	\e[33mintegration-test\e[97m: runs all-localhost and test if the relay manages to communicate"
 	echo -e "	Lost ? read https://github.com/lbarman/prifi/README.md"
 }
 
@@ -439,13 +440,77 @@ case $1 in
 		echo -e "Please edit \e[33m$pathReal/group.toml\e[97m to the correct values."
 		;;
 
+	integration-test)
+
+        pkill prifi 2>/dev/null
+        kill -TERM $(pidof "go run run-server.go") 2>/dev/null
+
+		thisScript="$0"	
+		"$thisScript" clean
+
+        rm -f relay.log 2>/dev/null # just to be sure...
+
+		echo -n "Starting relay...			"
+		"$thisScript" relay > relay.log 2>&1 &
+		echo -e "$okMsg"
+
+		sleep $sleeptime_between_spawns
+
+		echo -n "Starting trustee 0...			"
+		"$thisScript" trustee 0 > trustee0.log 2>&1 &
+		echo -e "$okMsg"
+
+		sleep $sleeptime_between_spawns
+
+		echo -n "Starting client 0... (SOCKS on :8081)	"
+		"$thisScript" client 0 8081 > client0.log 2>&1 &
+		echo -e "$okMsg"
+
+        if [ "$all_localhost_n_clients" -gt 1 ]; then
+            sleep $sleeptime_between_spawns
+
+            echo -n "Starting client 1... (SOCKS on :8082)	"
+            "$thisScript" client 1 8082 > client1.log 2>&1 &
+            echo -e "$okMsg"
+		fi
+
+        if [ "$all_localhost_n_clients" -gt 2 ]; then
+            sleep $sleeptime_between_spawns
+
+            echo -n "Starting client 2... (SOCKS on :8083)	"
+            "$thisScript" client 2 8083 > client2.log 2>&1 &
+            echo -e "$okMsg"
+		fi
+
+		#let it boot
+		waitTime=10
+        echo "Waiting $waitTime seconds..."
+        sleep $waitTime
+
+        #reporting is every 5 second by default. if we wait 30, we should have 6 of those
+        lines=$(cat relay.log | grep -E "([0-9\.]+) round/sec, ([0-9\.]+) kB/s up, ([0-9\.]+) kB/s down, ([0-9\.]+) kB/s down\(udp\)" | wc -l)
+
+        echo "Number of reportings : $lines"
+
+        pkill prifi 2>/dev/null
+        kill -TERM $(pidof "go run run-server.go")  2>/dev/null
+
+        if [ "$lines" -gt 1 ]; then
+        	echo "Test succeeded"
+        	exit 0
+        else
+        	echo "Test failed"
+        	exit 1
+        fi
+		;;
+
 	relay-d)
 
 		#test for proper setup
 		test_go
 		test_cothority
 
-		thisScript="$0"	
+		thisScript="$0"	&
 
 		echo -n "Starting relay...			"
 		"$thisScript" relay > relay.log 2>&1 &
@@ -492,7 +557,7 @@ case $1 in
 		;;
 
 	clean|Clean|CLEAN)
-		echo -n "Cleaning log files... "
+		echo -n "Cleaning log files... 			"
 		rm *.log 1>/dev/null 2>&1
 		echo -e "$okMsg"
 		;;

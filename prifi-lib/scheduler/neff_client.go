@@ -19,7 +19,7 @@ func (n *NeffShuffle) ClientVerifySigAndRecognizeSlot(privateKey abstract.Scalar
 	if trusteesPublicKeys == nil {
 		return -1, errors.New("Can't verify without trustee's public keys")
 	}
-	if trusteesPublicKeys == nil {
+	if signatures == nil {
 		return -1, errors.New("Can't verify without trustee's public signatures")
 	}
 	if shuffledPublicKeys == nil {

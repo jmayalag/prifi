@@ -12,8 +12,8 @@ import (
 
 func TestSchnorr(t *testing.T) {
 
-	pub, priv := genKeyPair()
-	pub2, priv2 := genKeyPair()
+	pub, priv := NewKeyPair()
+	pub2, priv2 := NewKeyPair()
 
 	//with empty data
 	data := make([]byte, 0)
@@ -51,24 +51,49 @@ func TestSchnorr(t *testing.T) {
 
 }
 
+func TestNeffErrors(t *testing.T) {
+
+	nClients := 2
+	base := config.CryptoSuite.Point().Base()
+
+	//build the client's public key array
+	clientPks := make([]abstract.Point, nClients)
+	clientPrivKeys := make([]abstract.Scalar, nClients)
+	for i := 0; i < nClients; i++ {
+		pub, priv := NewKeyPair()
+		clientPks[i] = pub
+		clientPrivKeys[i] = priv
+	}
+
+	//each of those call should fail
+	_, _, _, _, err := NeffShuffle(nil, base, config.CryptoSuite, true)
+	if err == nil {
+		t.Error("NeffShuffle without a public key array should fail")
+	}
+	_, _, _, _, err = NeffShuffle(clientPks, nil, config.CryptoSuite, true)
+	if err == nil {
+		t.Error("NeffShuffle without a base should fail")
+	}
+	_, _, _, _, err = NeffShuffle(clientPks, base, nil, true)
+	if err == nil {
+		t.Error("NeffShuffle without a suite should fail")
+	}
+	_, _, _, _, err = NeffShuffle(make([]abstract.Point, 0), base, config.CryptoSuite, true)
+	if err == nil {
+		t.Error("NeffShuffle with 0 public keys should fail")
+	}
+
+}
+
 func TestSchnorrHash(t *testing.T) {
 
-	pub, _ := genKeyPair()
+	pub, _ := NewKeyPair()
 	data := random.Bits(100, false, random.Stream)
 	secret := hashSchnorr(config.CryptoSuite, data, pub)
 
 	if secret == nil {
 		t.Error("Secret should not be nil")
 	}
-}
-
-func genKeyPair() (abstract.Point, abstract.Scalar) {
-
-	base := config.CryptoSuite.Point().Base()
-	priv := config.CryptoSuite.Scalar().Pick(random.Stream)
-	pub := config.CryptoSuite.Point().Mul(base, priv)
-
-	return pub, priv
 }
 
 func TestNeffShuffle(t *testing.T) {
@@ -86,7 +111,7 @@ func TestNeffShuffle(t *testing.T) {
 		clientPks := make([]abstract.Point, nClients)
 		clientPrivKeys := make([]abstract.Scalar, nClients)
 		for i := 0; i < nClients; i++ {
-			pub, priv := genKeyPair()
+			pub, priv := NewKeyPair()
 			clientPks[i] = pub
 			clientPrivKeys[i] = priv
 		}
