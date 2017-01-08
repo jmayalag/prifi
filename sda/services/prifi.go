@@ -1,6 +1,7 @@
 package services
 
 import (
+	"errors"
 	"github.com/dedis/cothority/log"
 	"github.com/dedis/cothority/network"
 	prifi_protocol "github.com/lbarman/prifi/sda/protocols"
@@ -61,7 +62,7 @@ func (s *ServiceState) HandleDisconnection(msg *network.Packet) {
 func (s *ServiceState) handleTimeout(lateClients []string, lateTrustees []string) {
 
 	// we can probably do something more clever here, since we know who disconnected. Yet let's just restart everything
-	s.stopPriFiCommunicateProtocol()
+	s.NetworkErrorHappened(errors.New("Timeout"))
 }
 
 // This is a handler passed to the SDA when starting a host. The SDA usually handle all the network by itself,
@@ -70,11 +71,15 @@ func (s *ServiceState) handleTimeout(lateClients []string, lateTrustees []string
 func (s *ServiceState) NetworkErrorHappened(e error) {
 
 	if s.role != prifi_protocol.Relay {
-		log.Error("A network error occurred, but we're not the relay, nothing to do.")
+		log.Lvl3("A network error occurred, but we're not the relay, nothing to do.")
 		return
 	}
+	if s.churnHandler == nil {
+		log.Fatal("Can't handle a network error without a churnHandler")
+	}
 
-	s.stopPriFiCommunicateProtocol()
+	log.Error("A network error occurred, warning other clients.")
+	s.churnHandler.handleUnknownDisconnection()
 }
 
 // startPriFi starts a PriFi protocol. It is called

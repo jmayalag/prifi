@@ -136,8 +136,6 @@ func (c *churnHandler) createRoster() *sda.Roster {
  * Tests if the given serverIdentity represents a trustee
  */
 func (c *churnHandler) isATrustee(ID *network.ServerIdentity) bool {
-	log.LLvl1("%#v", c)
-
 	for _, v := range c.trusteesIDs {
 		if v.Equal(ID) {
 			return true
@@ -206,8 +204,6 @@ func (c *churnHandler) getTrusteesIdentities() []*network.ServerIdentity {
  * Handles a "Connection" message
  */
 func (c *churnHandler) handleConnection(msg *network.Packet) {
-
-	log.LLvl1("handleconnection, %+v", c)
 
 	ID := idFromMsg(msg)
 	isTrustee := c.isATrustee(msg.ServerIdentity)

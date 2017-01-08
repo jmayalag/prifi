@@ -261,7 +261,7 @@ func (p *PriFiLibInstance) Received_ALL_REL_SHUTDOWN(msg net.ALL_ALL_SHUTDOWN) e
 			log.Error(e)
 			err = errors.New(e)
 		} else {
-			log.Lvl3("Relay : sent ALL_TRU_PARAMETERS to Client " + strconv.Itoa(j) + ".")
+			log.Lvl3("Relay : sent ALL_TRU_SHUTDOWN to Client " + strconv.Itoa(j) + ".")
 		}
 	}
 

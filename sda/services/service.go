@@ -114,8 +114,6 @@ func (s *ServiceState) StartRelay(group *config.Group) error {
 	s.churnHandler.startProtocol = s.startPriFiCommunicateProtocol
 	s.churnHandler.stopProtocol = s.stopPriFiCommunicateProtocol
 
-	log.LLvlf1("StartRelay, %+v", s.churnHandler)
-
 	socksServerConfig = &prifi_protocol.SOCKSConfig{
 		Port:              "127.0.0.1:" + strconv.Itoa(s.prifiTomlConfig.SocksClientPort),
 		PayloadLength:     s.prifiTomlConfig.CellSizeUp,

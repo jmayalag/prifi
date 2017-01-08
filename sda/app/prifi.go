@@ -185,7 +185,6 @@ func startRelay(c *cli.Context) error {
 	log.Info("Starting relay")
 
 	host, group, service := readConfigAndStartCothority(c)
-	log.LLvlf1("Starting relay on service %+v", &service)
 
 	if err := service.StartRelay(group); err != nil {
 		log.Error("Could not start the prifi service:", err)
