@@ -46,4 +46,21 @@ func TestUDPMessage(t *testing.T) {
 	if !bytes.Equal(parsedMsg.Data, content.Data) {
 		t.Error("Data unparsed incorrectly")
 	}
+
+	//this should fail, cannot read the size if len<4
+	void = new(REL_CLI_DOWNSTREAM_DATA_UDP)
+	_, err2 = void.FromBytes(msgBytes[0:3])
+
+	if err2 == nil {
+		t.Error("REL_CLI_DOWNSTREAM_DATA_UDP should not allow to decode message < 4 bytes")
+	}
+
+	//this should fail, the size is wrong
+	void = new(REL_CLI_DOWNSTREAM_DATA_UDP)
+	msgBytes[0] = byte(10)
+	_, err2 = void.FromBytes(msgBytes)
+
+	if err2 == nil {
+		t.Error("REL_CLI_DOWNSTREAM_DATA_UDP should not allow to decode wrong-size messages")
+	}
 }
