@@ -13,7 +13,7 @@ _warning_ : expect very bad performance, because :
 This has been covered by other READMEs, so I will just recap what to do :
 
 ```
-go get github.com/lbarman/prifi
+go get github.com/lbarman/prifi/sda/app
 cd $GOPATH/src/github.com/lbarman/prifi
 ./prifi.sh install
 ```
