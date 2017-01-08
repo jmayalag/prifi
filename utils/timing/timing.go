@@ -1,3 +1,12 @@
+// Package timing contains utility functions
+// to measure execution times. It identifies measure
+// by names to be able to start and stop the measurements
+// from completely different parts of the code without
+// having to share a variable.
+//
+// This package can be configured to use any
+// object that implements the Output interface
+// from the output package to write it's results.
 package timing
 
 import (

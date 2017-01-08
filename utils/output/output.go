@@ -1,3 +1,8 @@
+// Package output defines an interface to write
+// text messages. It provides implementations
+// of this interface that use standard output,
+// Cothority's logging infrastructure to write
+// the messages or simply discards them.
 package output
 
 import (
@@ -17,7 +22,7 @@ func(o PrintOutput) Print(text string) {
 	fmt.Println(text)
 }
 
-// LogOutput prints it's messages using Cothority's log infrastructure.
+// LogOutput prints it's messages using Cothority's logging infrastructure.
 type LogOutput struct {
 	Level int
 	Info  bool
