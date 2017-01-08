@@ -62,15 +62,15 @@ type churnHandler struct {
 	nextFreeClientID  int
 	nextFreeTrusteeID int
 	relayIdentity     *network.ServerIdentity //necessary to call createRoster
+	trusteesIDs       []*network.ServerIdentity
 
 	//to be specified when instantiated
-	isATrustee        func(*network.ServerIdentity) bool
 	startProtocol     func()
 	stopProtocol      func()
 	isProtocolRunning func() bool
 }
 
-func (c *churnHandler) init(relayID *network.ServerIdentity) {
+func (c *churnHandler) init(relayID *network.ServerIdentity, trusteesIDs []*network.ServerIdentity) {
 	c.waitQueue = &waitQueue{
 		clients:  make(map[string]*waitQueueEntry),
 		trustees: make(map[string]*waitQueueEntry),
@@ -78,6 +78,7 @@ func (c *churnHandler) init(relayID *network.ServerIdentity) {
 	c.nextFreeClientID = 0
 	c.nextFreeTrusteeID = 0
 	c.relayIdentity = relayID
+	c.trusteesIDs = trusteesIDs
 }
 
 /**
@@ -99,6 +100,9 @@ func (wq *waitQueue) count() (int, int) {
 	return len(wq.clients), len(wq.trustees)
 }
 
+/**
+ * Creates a roster from waiting nodes, used by SDA
+ */
 func (c *churnHandler) createRoster() *sda.Roster {
 
 	n, m := c.waitQueue.count()
@@ -120,6 +124,21 @@ func (c *churnHandler) createRoster() *sda.Roster {
 	return roster
 }
 
+/**
+ * Tests if the given serverIdentity represents a trustee
+ */
+func (c *churnHandler) isATrustee(ID *network.ServerIdentity) bool {
+	for _, v := range c.trusteesIDs {
+		if v.Equal(ID) {
+			return true
+		}
+	}
+	return false
+}
+
+/**
+ * Creates an IdentityMap from the waiting nodes, used by PriFi-lib
+ */
 func (c *churnHandler) createIdentitiesMap() map[string]protocols.PriFiIdentity {
 	res := make(map[string]protocols.PriFiIdentity)
 

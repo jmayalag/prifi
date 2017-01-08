@@ -116,19 +116,10 @@ func (s *ServiceState) StartRelay(group *config.Group) error {
 
 	//set state to the correct info, parse .toml
 	s.role = prifi_protocol.Relay
-	idMap, relayID := mapIdentities(group)
+	relayID, trusteesIDs := mapIdentities(group)
 
 	s.churnHandler = new(churnHandler)
-	s.churnHandler.init(relayID)
-	s.churnHandler.isATrustee = func(ID *network.ServerIdentity) bool {
-
-		for _, v := range idMap {
-			if v.ServerID.Equal(ID) {
-				return true //only trustees and relay are in idMap
-			}
-		}
-		return false
-	}
+	s.churnHandler.init(relayID, trusteesIDs)
 
 	socksServerConfig = &prifi_protocol.SOCKSConfig{
 		Port:              "127.0.0.1:" + strconv.Itoa(s.prifiTomlConfig.SocksClientPort),
@@ -148,7 +139,7 @@ func (s *ServiceState) StartClient(group *config.Group) error {
 	log.Info("Service", s, "running in client mode")
 	s.role = prifi_protocol.Client
 
-	_, relayID := mapIdentities(group)
+	relayID, _ := mapIdentities(group)
 
 	socksClientConfig = &prifi_protocol.SOCKSConfig{
 		Port:              ":" + strconv.Itoa(s.prifiTomlConfig.SocksServerPort),
@@ -195,7 +186,7 @@ func (s *ServiceState) StartTrustee(group *config.Group) error {
 	log.Info("Service", s, "running in trustee mode")
 	s.role = prifi_protocol.Trustee
 
-	_, relayID := mapIdentities(group)
+	relayID, _ := mapIdentities(group)
 	go s.autoConnect(relayID)
 
 	return nil

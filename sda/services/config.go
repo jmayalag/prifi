@@ -57,8 +57,8 @@ func (s *ServiceState) tryLoad() error {
 // mapIdentities reads the group configuration to assign PriFi roles
 // to server addresses and returns them with the server
 // identity of the relay.
-func mapIdentities(group *config.Group) (map[string]prifi_protocol.PriFiIdentity, *network.ServerIdentity) {
-	m := make(map[string]prifi_protocol.PriFiIdentity)
+func mapIdentities(group *config.Group) (*network.ServerIdentity, []*network.ServerIdentity) {
+	trustees := make([]*network.ServerIdentity, 0)
 	var relay *network.ServerIdentity
 
 	// Read the description of the nodes in the config file to assign them PriFi roles.
@@ -67,35 +67,14 @@ func mapIdentities(group *config.Group) (map[string]prifi_protocol.PriFiIdentity
 		si := nodeList[i]
 		nodeDescription := group.GetDescription(si)
 
-		var id *prifi_protocol.PriFiIdentity
-
 		if nodeDescription == "relay" {
-			id = &prifi_protocol.PriFiIdentity{
-				Role:     prifi_protocol.Relay,
-				ID:       0,
-				ServerID: si,
-			}
+			relay = si
 		} else if nodeDescription == "trustee" {
-			id = &prifi_protocol.PriFiIdentity{
-				Role:     prifi_protocol.Trustee,
-				ID:       -1,
-				ServerID: si,
-			}
+			trustees = append(trustees, si)
 		}
-
-		if id != nil {
-			identifier := si.Address.String() + "=" + si.Public.String()
-			m[identifier] = *id
-			if id.Role == prifi_protocol.Relay {
-				relay = si
-			}
-		} else {
-			log.Error("Cannot parse node description, skipping:", si)
-		}
-
 	}
 
-	return m, relay
+	return relay, trustees
 }
 func (s *ServiceState) setConfigToPriFiProtocol(wrapper *prifi_protocol.PriFiSDAProtocol) {
 

@@ -66,8 +66,8 @@ func NeffShuffleTestHelper(t *testing.T, nClients int, nTrustees int, shuffleKey
 	for i := 0; i < nTrustees; i++ {
 		trustees[i] = new(NeffShuffle)
 		trustees[i].Init()
-		trustee := crypto.NewKeyPair()
-		trustees[i].TrusteeView.Init(i, trustee.Secret, trustee.Public)
+		pub, priv := crypto.NewKeyPair()
+		trustees[i].TrusteeView.Init(i, priv, pub)
 	}
 
 	//init the relay
