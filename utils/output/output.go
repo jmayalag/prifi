@@ -10,14 +10,16 @@ import (
 	"github.com/dedis/cothority/log"
 )
 
-// Output Interface provides a Print function.
+// Output Interface represents a generic output.
 type Output interface {
+	// Print prints a message to the output.
 	Print(text string)
 }
 
 // PrintOutput prints it's messages to the standard output.
 type PrintOutput struct{}
 
+// Print implements Output interface.
 func (o PrintOutput) Print(text string) {
 	fmt.Println(text)
 }
@@ -28,6 +30,7 @@ type LogOutput struct {
 	Info  bool
 }
 
+// Print implements Output interface.
 func (o LogOutput) Print(text string) {
 	if o.Info {
 		log.Info(text)
@@ -52,4 +55,5 @@ func (o LogOutput) Print(text string) {
 // NullOutput prints discards all messages.
 type NullOutput struct{}
 
+// Print implements Output interface.
 func (o NullOutput) Print(text string) {}

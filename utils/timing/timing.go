@@ -16,7 +16,7 @@ import (
 	"time"
 )
 
-var startTimes map[string]time.Time = make(map[string]time.Time)
+var startTimes = make(map[string]time.Time)
 var mutex sync.Mutex
 var outputInterface output.Output = output.PrintOutput{}
 
@@ -55,15 +55,15 @@ func StopMeasure(name string) time.Duration {
 		outputInterface.Print(msg)
 
 		return duration
-	} else {
-		// Unlock before potentially expensive writing to output.
-		mutex.Unlock()
-
-		msg := fmt.Sprint("WARNING: stopping a measure that was not started with name: ", name)
-		outputInterface.Print(msg)
-
-		return time.Duration(0)
 	}
+	
+	// Unlock before potentially expensive writing to output.
+	mutex.Unlock()
+
+	msg := fmt.Sprint("WARNING: stopping a measure that was not started with name: ", name)
+	outputInterface.Print(msg)
+
+	return time.Duration(0)
 }
 
 // SetOutputInterface sets the output interface to use
