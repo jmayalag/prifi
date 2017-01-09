@@ -409,7 +409,7 @@ func (p *PriFiLibInstance) Received_TRU_REL_DC_CIPHER(msg net.TRU_REL_DC_CIPHER)
 		currentCapacity := TRUSTEE_WINDOW_SIZE - p.relayState.trusteeCipherTracker[msg.TrusteeID] // Get our remaining allowed capacity
 
 		if currentCapacity <= TRUSTEE_WINDOW_LOWER_LIMIT { // Check if the capacity is lower then allowed
-			toSend := &net.REL_TRU_TELL_RATE_CHANGE{currentCapacity}
+			toSend := &net.REL_TRU_TELL_RATE_CHANGE{WindowCapacity: currentCapacity}
 			p.messageSender.SendToTrusteeWithLog(msg.TrusteeID, toSend, "(trustee "+strconv.Itoa(msg.TrusteeID)+", round "+strconv.Itoa(int(p.relayState.currentDCNetRound.currentRound))+")")
 		}
 
@@ -513,7 +513,10 @@ func (p *PriFiLibInstance) sendDownstreamData() error {
 
 	flagResync := false
 	log.Lvl3("Relay is gonna broadcast messages for round " + strconv.Itoa(int(p.relayState.nextDownStreamRoundToSend)) + ".")
-	toSend := &net.REL_CLI_DOWNSTREAM_DATA{p.relayState.nextDownStreamRoundToSend, downstreamCellContent, flagResync}
+	toSend := &net.REL_CLI_DOWNSTREAM_DATA{
+		RoundID:    p.relayState.nextDownStreamRoundToSend,
+		Data:       downstreamCellContent,
+		FlagResync: flagResync}
 	p.relayState.currentDCNetRound.dataAlreadySent = *toSend
 
 	if !p.relayState.UseUDP {
@@ -548,7 +551,10 @@ func (p *PriFiLibInstance) roundFinished() error {
 
 	//prepare for the next round
 	nextRound := p.relayState.currentDCNetRound.currentRound + 1
-	nilMessage := &net.REL_CLI_DOWNSTREAM_DATA{-1, make([]byte, 0), false}
+	nilMessage := &net.REL_CLI_DOWNSTREAM_DATA{
+		RoundID:    -1,
+		Data:       make([]byte, 0),
+		FlagResync: false}
 	p.relayState.currentDCNetRound = DCNetRound{nextRound, 0, 0, make(map[int]bool), make(map[int]bool), *nilMessage, time.Now()}
 	p.relayState.CellCoder.DecodeStart(p.relayState.UpstreamCellSize, p.relayState.MessageHistory) //this empties the buffer, making them ready for a new round
 
@@ -590,7 +596,7 @@ func (p *PriFiLibInstance) roundFinished() error {
 			currentCapacity := TRUSTEE_WINDOW_SIZE - p.relayState.trusteeCipherTracker[trusteeID]
 
 			if currentCapacity >= int(threshhold) { // if the previous capacity was at the lower limit allowed
-				toSend := &net.REL_TRU_TELL_RATE_CHANGE{currentCapacity}
+				toSend := &net.REL_TRU_TELL_RATE_CHANGE{WindowCapacity: currentCapacity}
 				p.messageSender.SendToTrusteeWithLog(trusteeID, toSend, "(trustee "+strconv.Itoa(trusteeID)+", round "+strconv.Itoa(int(p.relayState.currentDCNetRound.currentRound))+")")
 			}
 		}
@@ -641,15 +647,13 @@ func (p *PriFiLibInstance) Received_TRU_REL_TELL_PK(msg net.TRU_REL_TELL_PK) err
 		}
 
 		// Send the pack to the clients
-		toSend := &net.REL_CLI_TELL_TRUSTEES_PK{trusteesPk}
+		toSend := &net.REL_CLI_TELL_TRUSTEES_PK{Pks: trusteesPk}
 		for i := 0; i < p.relayState.nClients; i++ {
 			p.messageSender.SendToClientWithLog(i, toSend, "(client "+strconv.Itoa(i)+")")
 		}
 
 		p.relayState.currentState = RELAY_STATE_COLLECTING_CLIENT_PKS
-	} else {
 	}
-
 	return nil
 }
 

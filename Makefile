@@ -20,7 +20,7 @@ test_lint:
 	@echo Checking linting of files ...
 	@{ \
 		go get -u github.com/golang/lint/golint; \
-		exclude="_test.go|ALL_CAPS|underscore|should be of the form|.deprecated|and that stutters|error strings should not be capitalized|composite literal uses unkeyed fields"; \
+		exclude="_test.go|ALL_CAPS|underscore|should be of the form|.deprecated|and that stutters|error strings should not be capitalized"; \
 		lintfiles=$$( golint ./... | egrep -v "($$exclude)" ); \
 		if [ -n "$$lintfiles" ]; then \
 		echo "Lint errors:"; \

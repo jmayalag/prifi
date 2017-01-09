@@ -166,7 +166,7 @@ Send_TRU_REL_PK tells the relay's public key to the relay
 This is the first action of the trustee.
 */
 func (p *PriFiLibInstance) Send_TRU_REL_PK() error {
-	toSend := &net.TRU_REL_TELL_PK{p.trusteeState.ID, p.trusteeState.PublicKey}
+	toSend := &net.TRU_REL_TELL_PK{TrusteeID: p.trusteeState.ID, Pk: p.trusteeState.PublicKey}
 	p.messageSender.SendToRelayWithLog(toSend, "")
 	return nil
 }
@@ -234,7 +234,10 @@ func sendData(p *PriFiLibInstance, roundID int32) (int32, error) {
 	data := p.trusteeState.CellCoder.TrusteeEncode(p.trusteeState.PayloadLength)
 
 	//send the data
-	toSend := &net.TRU_REL_DC_CIPHER{roundID, p.trusteeState.ID, data}
+	toSend := &net.TRU_REL_DC_CIPHER{
+		RoundID:   roundID,
+		TrusteeID: p.trusteeState.ID,
+		Data:      data}
 	p.messageSender.SendToRelayWithLog(toSend, "(round "+strconv.Itoa(int(roundID))+")")
 
 	return roundID + 1, nil
@@ -324,7 +327,10 @@ func (p *PriFiLibInstance) Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BAS
 	*/
 
 	//send the answer
-	toSend := &net.TRU_REL_TELL_NEW_BASE_AND_EPH_PKS{base2, ephPublicKeys2, proof}
+	toSend := &net.TRU_REL_TELL_NEW_BASE_AND_EPH_PKS{
+		NewBase:   base2,
+		NewEphPks: ephPublicKeys2,
+		Proof:     proof}
 	p.messageSender.SendToRelayWithLog(toSend, "")
 
 	//remember our shuffle
@@ -464,7 +470,7 @@ func (p *PriFiLibInstance) Received_REL_TRU_TELL_TRANSCRIPT(msg net.REL_TRU_TELL
 	log.Lvl2("Trustee " + strconv.Itoa(p.trusteeState.ID) + "; Sending signature of transcript")
 
 	//send the answer
-	toSend := &net.TRU_REL_SHUFFLE_SIG{p.trusteeState.ID, sig}
+	toSend := &net.TRU_REL_SHUFFLE_SIG{TrusteeID: p.trusteeState.ID, Sig: sig}
 	p.messageSender.SendToRelayWithLog(toSend, "")
 
 	//we can forget our shuffle

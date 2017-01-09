@@ -363,7 +363,10 @@ func (p *PriFiLibInstance) SendUpstreamData() error {
 	upstreamCell := p.clientState.CellCoder.ClientEncode(upstreamCellContent, p.clientState.PayloadLength, p.clientState.MessageHistory)
 
 	//send the data to the relay
-	toSend := &net.CLI_REL_UPSTREAM_DATA{p.clientState.ID, p.clientState.RoundNo, upstreamCell}
+	toSend := &net.CLI_REL_UPSTREAM_DATA{
+		ClientID: p.clientState.ID,
+		RoundID:  p.clientState.RoundNo,
+		Data:     upstreamCell}
 	p.messageSender.SendToRelayWithLog(toSend, "(round "+strconv.Itoa(int(p.clientState.RoundNo))+")")
 
 	//clean old buffered messages
@@ -423,7 +426,10 @@ func (p *PriFiLibInstance) Received_REL_CLI_TELL_TRUSTEES_PK(msg net.REL_CLI_TEL
 	p.clientState.generateEphemeralKeys()
 
 	//send the keys to the relay
-	toSend := &net.CLI_REL_TELL_PK_AND_EPH_PK{p.clientState.PublicKey, p.clientState.EphemeralPublicKey}
+	toSend := &net.CLI_REL_TELL_PK_AND_EPH_PK{
+		Pk:    p.clientState.PublicKey,
+		EphPk: p.clientState.EphemeralPublicKey,
+	}
 	p.messageSender.SendToRelayWithLog(toSend, "")
 
 	//change state
@@ -531,7 +537,11 @@ func (p *PriFiLibInstance) Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(msg ne
 	upstreamCell := p.clientState.CellCoder.ClientEncode(make([]byte, 0), p.clientState.PayloadLength, p.clientState.MessageHistory)
 
 	//send the data to the relay
-	toSend := &net.CLI_REL_UPSTREAM_DATA{p.clientState.ID, p.clientState.RoundNo, upstreamCell}
+	toSend := &net.CLI_REL_UPSTREAM_DATA{
+		ClientID: p.clientState.ID,
+		RoundID:  p.clientState.RoundNo,
+		Data:     upstreamCell,
+	}
 	p.messageSender.SendToRelayWithLog(toSend, "(round "+strconv.Itoa(int(p.clientState.RoundNo))+")")
 
 	p.clientState.RoundNo++
