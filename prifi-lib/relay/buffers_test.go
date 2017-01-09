@@ -115,6 +115,9 @@ func TestBuffers(test *testing.T) {
 	b.AddClientCipher(2, 0, clientSlice2)
 	b.AddTrusteeCipher(3, 0, trusteeSlice3)
 
+	//r1[c,]
+	//r2[c,]
+	//r3[,t]
 	//nothing should have changed
 	if b.CurrentRound() != 1 {
 		test.Error("BufferManager should still be in round 1")
@@ -129,6 +132,9 @@ func TestBuffers(test *testing.T) {
 
 	b.AddClientCipher(1, 0, clientSlice1)
 
+	//r1[c,]
+	//r2[c,]
+	//r3[,t]
 	//nothing should have changed if we re-add cipher 1 for client 0
 	if b.CurrentRound() != 1 {
 		test.Error("BufferManager should still be in round 1")
@@ -141,6 +147,9 @@ func TestBuffers(test *testing.T) {
 		test.Error("BufferManager did not compute correctly the missing ciphers")
 	}
 
+	//r1[c,t]
+	//r2[c,]
+	//r3[,t]
 	//add one trustee
 	b.AddTrusteeCipher(1, 0, trusteeSlice1)
 	slices, err = b.FinalizeRound()
@@ -154,6 +163,8 @@ func TestBuffers(test *testing.T) {
 		test.Error("Trustee slice should be the same")
 	}
 
+	//r2[c,]
+	//r3[,t]
 	//we should be in round 2, but already have the cipher for the client
 	if b.CurrentRound() != 2 {
 		test.Error("BufferManager should now be in round 2")
@@ -166,6 +177,8 @@ func TestBuffers(test *testing.T) {
 		test.Error("BufferManager did not compute correctly the missing ciphers")
 	}
 
+	//r2[c,t]
+	//r3[,t]
 	//add one trustee
 	b.AddTrusteeCipher(2, 0, trusteeSlice2)
 	slices, err = b.FinalizeRound()
@@ -179,6 +192,8 @@ func TestBuffers(test *testing.T) {
 		test.Error("Trustee slice should be the same")
 	}
 
+	//r3[,t]
+	//we should be in round 3 with one trustee
 	if b.CurrentRound() != 3 {
 		test.Error("BufferManager should now be in round 3")
 	}

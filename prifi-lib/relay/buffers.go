@@ -169,7 +169,7 @@ func (b *BufferManager) FinalizeRound() ([][]byte, error) {
 	}
 	for i := 0; i < b.nTrustees; i++ {
 		if _, exists := b.bufferedTrusteeCiphers[i][b.currentRoundID]; exists {
-			b.clientAckMap[i] = true
+			b.trusteeAckMap[i] = true
 		}
 	}
 
