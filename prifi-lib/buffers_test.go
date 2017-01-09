@@ -101,14 +101,19 @@ func TestBuffers(test *testing.T) {
 	trusteeSlice1 := genDataSlice()
 	clientSlice2 := genDataSlice()
 	trusteeSlice2 := genDataSlice()
+	trusteeSlice3 := genDataSlice()
 
 	//should refuse to add slices in the apst
 	if err = b.AddClientCipher(0, 0, clientSlice1); err == nil {
-		test.Error("Should refuse to add slices in the past")
+		test.Error("Should refuse to add client slices in the past")
+	}
+	if err = b.AddTrusteeCipher(0, 0, trusteeSlice1); err == nil {
+		test.Error("Should refuse to add trustee slices in the past")
 	}
 
 	b.AddClientCipher(1, 0, clientSlice1)
 	b.AddClientCipher(2, 0, clientSlice2)
+	b.AddTrusteeCipher(3, 0, trusteeSlice3)
 
 	//nothing should have changed
 	if b.CurrentRound() != 1 {
@@ -149,7 +154,7 @@ func TestBuffers(test *testing.T) {
 		test.Error("Trustee slice should be the same")
 	}
 
-	//nothing should have changed
+	//we should be in round 2, but already have the cipher for the client
 	if b.CurrentRound() != 2 {
 		test.Error("BufferManager should now be in round 2")
 	}
@@ -157,7 +162,7 @@ func TestBuffers(test *testing.T) {
 		test.Error("BufferManager does not have all ciphers for round 2")
 	}
 	c, t = b.MissingCiphersForCurrentRound()
-	if len(c) != 1 || len(t) != 0 {
+	if len(c) != 0 || len(t) != 1 {
 		test.Error("BufferManager did not compute correctly the missing ciphers")
 	}
 
@@ -181,17 +186,17 @@ func TestBuffers(test *testing.T) {
 		test.Error("BufferManager does not have all ciphers for round 3")
 	}
 	c, t = b.MissingCiphersForCurrentRound()
-	if len(c) != 0 || len(t) != 0 {
+	if len(c) != 1 || len(t) != 0 {
 		test.Error("BufferManager did not compute correctly the missing ciphers")
 	}
 
 	//should both fail on nil slice
 	err = b.AddClientCipher(0, 0, nil)
-	if err != nil {
+	if err == nil {
 		test.Error("Shouldn't be able to add a nil slice")
 	}
 	err = b.AddTrusteeCipher(0, 0, nil)
-	if err != nil {
+	if err == nil {
 		test.Error("Shouldn't be able to add a nil slice")
 	}
 }
