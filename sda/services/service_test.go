@@ -11,15 +11,16 @@ func TestMain(m *testing.M) {
 }
 
 func TestServiceTemplate(t *testing.T) {
+
 	/*
 		local := sda.NewLocalTest()
 		defer local.CloseAll()
 		hosts, roster, _ := local.MakeHELS(5, serviceID)
 		log.Lvl1("Roster is", roster)
 
-		var services []*Service
+		var services []sda.Service
 		for _, h := range hosts {
-			service := local.Services[h.ServerIdentity.ID][serviceID].(*Service)
+			service := local.Services[h.ServerIdentity.ID][serviceID].(sda.Service)
 			services = append(services, service)
 		}
 
@@ -29,5 +30,4 @@ func TestServiceTemplate(t *testing.T) {
 		services[3].StartClient()
 		services[4].StartClient()
 	*/
-	// Now do something with the client and exit
 }

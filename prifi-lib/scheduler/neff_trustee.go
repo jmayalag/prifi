@@ -157,7 +157,7 @@ func (t *NeffShuffleTrustee) ReceivedTranscriptFromRelay(bases []abstract.Point,
 	}
 
 	if !ownPermutationFound {
-		return errors.New("Could not locate our own permutation in the transcript..."), nil
+		return nil, errors.New("Could not locate our own permutation in the transcript...")
 	}
 
 	//prepare the transcript signature. Since it is OK, we're gonna sign only the latest permutation

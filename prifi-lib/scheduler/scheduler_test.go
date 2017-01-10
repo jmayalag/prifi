@@ -2,11 +2,9 @@ package scheduler
 
 import (
 	"fmt"
-	"github.com/dedis/cothority/network"
 	"github.com/dedis/crypto/abstract"
-	cryptoconfig "github.com/dedis/crypto/config"
-	"github.com/dedis/crypto/random"
 	"github.com/lbarman/prifi/prifi-lib/config"
+	"github.com/lbarman/prifi/prifi-lib/crypto"
 	"github.com/lbarman/prifi/prifi-lib/net"
 	"strconv"
 	"testing"
@@ -37,7 +35,7 @@ type PrivatePublicPair struct {
  */
 func TestWholeNeffShuffle(t *testing.T) {
 
-	nClientsRange := []int{1, 2, 3, 4, 5, 10, 100}
+	nClientsRange := []int{1, 2, 3, 4, 5, 10}
 	nTrusteeRange := []int{1, 2, 3, 5, 10}
 
 	//standard testing. shuffleKeyPos=false to allow testing
@@ -53,7 +51,7 @@ func TestWholeNeffShuffle(t *testing.T) {
 func NeffShuffleTestHelper(t *testing.T, nClients int, nTrustees int, shuffleKeyPos bool) []int {
 	clients := make([]*PrivatePublicPair, nClients)
 	for i := 0; i < nClients; i++ {
-		pub, priv := genKeyPair()
+		pub, priv := crypto.NewKeyPair()
 		clients[i] = new(PrivatePublicPair)
 		clients[i].Public = pub
 		clients[i].Private = priv
@@ -68,8 +66,8 @@ func NeffShuffleTestHelper(t *testing.T, nClients int, nTrustees int, shuffleKey
 	for i := 0; i < nTrustees; i++ {
 		trustees[i] = new(NeffShuffle)
 		trustees[i].Init()
-		trustee := cryptoconfig.NewKeyPair(network.Suite)
-		trustees[i].TrusteeView.Init(i, trustee.Secret, trustee.Public)
+		pub, priv := crypto.NewKeyPair()
+		trustees[i].TrusteeView.Init(i, priv, pub)
 	}
 
 	//init the relay
@@ -246,11 +244,253 @@ func NeffShuffleTestHelper(t *testing.T, nClients int, nTrustees int, shuffleKey
 	return mapping
 }
 
-func genKeyPair() (abstract.Point, abstract.Scalar) {
+func TestWholeNeffShuffleClientErrors(t *testing.T) {
+	n := new(NeffShuffle) //this will hold 1 relay, 1 trustee at most. Recreate n for >1 trustee
+	n.Init()
+	_, priv := crypto.NewKeyPair()
+
+	//init the trustees
+	nTrustees := 2
+	trusteesPks := make([]abstract.Point, nTrustees)
+	for i := 0; i < nTrustees; i++ {
+		pub, _ := crypto.NewKeyPair()
+		trusteesPks[i] = pub
+	}
+
+	//init the ephemeral keys
+	nClients := 4
+	ephPks := make([]abstract.Point, nClients)
+	for i := 0; i < nTrustees; i++ {
+		pub, _ := crypto.NewKeyPair()
+		ephPks[i] = pub
+	}
 
 	base := config.CryptoSuite.Point().Base()
-	priv := config.CryptoSuite.Scalar().Pick(random.Stream)
-	pub := config.CryptoSuite.Point().Mul(base, priv)
 
-	return pub, priv
+	//init the sigs
+	trusteesSigs := make([][]byte, nTrustees)
+	for i := 0; i < nTrustees; i++ {
+		trusteesSigs[i] = make([]byte, 2)
+	}
+
+	_, err := n.ClientVerifySigAndRecognizeSlot(nil, trusteesPks, base, ephPks, trusteesSigs)
+	if err == nil {
+		t.Error("ClientVerifySigAndRecognizeSlot should fail without private key")
+	}
+	_, err = n.ClientVerifySigAndRecognizeSlot(priv, nil, base, ephPks, trusteesSigs)
+	if err == nil {
+		t.Error("ClientVerifySigAndRecognizeSlot should fail without public keys from trustees")
+	}
+	_, err = n.ClientVerifySigAndRecognizeSlot(priv, trusteesPks, nil, ephPks, trusteesSigs)
+	if err == nil {
+		t.Error("ClientVerifySigAndRecognizeSlot should fail without base")
+	}
+	_, err = n.ClientVerifySigAndRecognizeSlot(priv, trusteesPks, base, nil, trusteesSigs)
+	if err == nil {
+		t.Error("ClientVerifySigAndRecognizeSlot should fail without the ephemeral keys")
+	}
+	_, err = n.ClientVerifySigAndRecognizeSlot(priv, trusteesPks, base, ephPks, nil)
+	if err == nil {
+		t.Error("ClientVerifySigAndRecognizeSlot should fail without signatures from trustees")
+	}
+	_, err = n.ClientVerifySigAndRecognizeSlot(priv, trusteesPks, base, make([]abstract.Point, 0), trusteesSigs)
+	if err == nil {
+		t.Error("ClientVerifySigAndRecognizeSlot should fail with 0 ephemeral keys")
+	}
+	_, err = n.ClientVerifySigAndRecognizeSlot(priv, trusteesPks, base, ephPks, trusteesSigs[0:1])
+	if err == nil {
+		t.Error("ClientVerifySigAndRecognizeSlot should fail with mismatching sizes between sigs and pks (trustees)")
+	}
+}
+
+func TestWholeNeffShuffleRelayErrors(t *testing.T) {
+
+	pub, _ := crypto.NewKeyPair()
+	//create the scheduler
+	n := new(NeffShuffle)
+	n.Init()
+
+	err := n.RelayView.Init(0)
+	if err == nil {
+		t.Error("Should not be able to init a shuffle with 0 trustees")
+	}
+	err = n.RelayView.Init(1)
+
+	//cannot start without keys
+	_, _, err = n.RelayView.SendToNextTrustee()
+	if err == nil {
+		t.Error("Should not be able to start without any keys")
+	}
+	n.RelayView.PublicKeyBeingShuffled = make([]abstract.Point, 0)
+	_, _, err = n.RelayView.SendToNextTrustee()
+	if err == nil {
+		t.Error("Should not be able to start without any keys")
+	}
+
+	//try adding invalid clients
+	err = n.RelayView.AddClient(nil)
+	if err == nil {
+		t.Error("Should not be able to add an nil key")
+	}
+	err = n.RelayView.AddClient(pub)
+	n.RelayView.SendToNextTrustee()
+	err = n.RelayView.AddClient(pub)
+	if err == nil {
+		t.Error("Should not be able to add a key once SendToNextTrustee has been called")
+	}
+
+	//should not accept invalid shares
+	base := config.CryptoSuite.Point().Base()
+	//init the ephemeral keys
+	nClients := 4
+	ephPks := make([]abstract.Point, nClients)
+	for i := 0; i < nClients; i++ {
+		pub, _ := crypto.NewKeyPair()
+		ephPks[i] = pub
+	}
+	proof := make([]byte, 10)
+
+	_, err = n.RelayView.ReceivedShuffleFromTrustee(nil, ephPks, proof)
+	if err == nil {
+		t.Error("shouldn't accept a shuffle from a trustee if base is nil")
+	}
+	_, err = n.RelayView.ReceivedShuffleFromTrustee(base, nil, proof)
+	if err == nil {
+		t.Error("shouldn't accept a shuffle from a trustee if ephPks is nil")
+	}
+	_, err = n.RelayView.ReceivedShuffleFromTrustee(base, ephPks, nil)
+	if err == nil {
+		t.Error("shouldn't accept a shuffle from a trustee if proof is nil")
+	}
+	_, err = n.RelayView.ReceivedShuffleFromTrustee(base, make([]abstract.Point, 0), proof)
+	if err == nil {
+		t.Error("shouldn't accept a shuffle from a trustee if it contains 0 public keys")
+	}
+
+	// cannot send transcript when inner state is invalid
+	n.RelayView.Bases = make([]abstract.Point, 1)
+	n.RelayView.ShuffledPublicKeys = make([][]abstract.Point, 0)
+	n.RelayView.Proofs = make([][]byte, 2)
+	_, err = n.RelayView.SendTranscript()
+	if err == nil {
+		t.Error("Relay shouldn't try to send obviously wrong transcript")
+	}
+	n.RelayView.Bases = make([]abstract.Point, 0)
+	n.RelayView.ShuffledPublicKeys = make([][]abstract.Point, 0)
+	n.RelayView.Proofs = make([][]byte, 0)
+	_, err = n.RelayView.SendTranscript()
+	if err == nil {
+		t.Error("Relay shouldn't try to send empty transcript")
+	}
+
+	//cannot accept a signed shuffle if its invalid !
+	_, err = n.RelayView.ReceivedSignatureFromTrustee(0, nil)
+	if err == nil {
+		t.Error("Relay shouldn't accept a signature if signature's bytes are nil")
+	}
+	_, err = n.RelayView.ReceivedSignatureFromTrustee(-1, make([]byte, 10))
+	if err == nil {
+		t.Error("Relay shouldn't accept a signature if trustee signing doesn't give its correct ID")
+	}
+
+	//cannot verify if inner state is wrong
+	_, err = n.RelayView.VerifySigsAndSendToClients(nil)
+	if err == nil {
+		t.Error("Relay shouldn't accept to verify without trustees public keys")
+	}
+	n.RelayView.ShuffledPublicKeys = make([][]abstract.Point, 1)
+	n.RelayView.Signatures = make([][]byte, 2)
+	_, err = n.RelayView.VerifySigsAndSendToClients(make([]abstract.Point, 3))
+	if err == nil {
+		t.Error("Relay shouldn't accept to verify when sizes are mismatching")
+	}
+}
+
+func TestWholeNeffShuffleTrusteeErrors(t *testing.T) {
+
+	pub, priv := crypto.NewKeyPair()
+	//create the scheduler
+	n := new(NeffShuffle)
+	n.Init()
+
+	err := n.TrusteeView.Init(-1, priv, pub)
+	if err == nil {
+		t.Error("Should not be able to init a shuffle with an invalid ID")
+	}
+	err = n.TrusteeView.Init(1, nil, pub)
+	if err == nil {
+		t.Error("Should not be able to init a shuffle without public key")
+	}
+	err = n.TrusteeView.Init(1, priv, nil)
+	if err == nil {
+		t.Error("Should not be able to init a shuffle without private key")
+	}
+
+	//sanity check on receivedshuffle
+	base := config.CryptoSuite.Point().Base()
+	nClients := 4
+	ephPks := make([]abstract.Point, nClients)
+	for i := 0; i < nClients; i++ {
+		pub, _ := crypto.NewKeyPair()
+		ephPks[i] = pub
+	}
+	_, err = n.TrusteeView.ReceivedShuffleFromRelay(nil, ephPks, true)
+	if err == nil {
+		t.Error("Shouldn't accept a shuffle from the relay when base is nil")
+	}
+	_, err = n.TrusteeView.ReceivedShuffleFromRelay(base, nil, true)
+	if err == nil {
+		t.Error("Shouldn't accept a shuffle from the relay when ephPks is nil")
+	}
+	_, err = n.TrusteeView.ReceivedShuffleFromRelay(base, make([]abstract.Point, 0), true)
+	if err == nil {
+		t.Error("Shouldn't accept a shuffle from the relay with no keys to shuffle")
+	}
+
+	//sanity check on ReceivedTranscriptFromRelay
+	bases := make([]abstract.Point, 2)
+	shuffledPublicKeys := make([][]abstract.Point, 3)
+	proofs := make([][]byte, 4)
+	_, err = n.TrusteeView.ReceivedTranscriptFromRelay(nil, shuffledPublicKeys, proofs)
+	if err == nil {
+		t.Error("Shouldn't accept a transcript with nil instead of bases")
+	}
+	_, err = n.TrusteeView.ReceivedTranscriptFromRelay(bases, nil, proofs)
+	if err == nil {
+		t.Error("Shouldn't accept a transcript with nil instead of bases")
+	}
+	_, err = n.TrusteeView.ReceivedTranscriptFromRelay(bases, shuffledPublicKeys, nil)
+	if err == nil {
+		t.Error("Shouldn't accept a transcript with nil instead of bases")
+	}
+	_, err = n.TrusteeView.ReceivedTranscriptFromRelay(bases, shuffledPublicKeys, proofs)
+	if err == nil {
+		t.Error("Shouldn't accept a transcript when elements mismatch in sizes")
+	}
+
+	//more in-depth checks
+	bases = make([]abstract.Point, 1)
+	bases[0] = config.CryptoSuite.Point().Base()
+	n.TrusteeView.NewBase = bases[0] //base match
+
+	proofs = make([][]byte, 1)
+	proofs[0] = []byte{1, 2}
+	n.TrusteeView.Proof = []byte{1, 2} //proof match
+
+	n.TrusteeView.EphemeralKeys = ephPks
+
+	newPub, _ := crypto.NewKeyPair()
+	ephPks_s := make([][]abstract.Point, 1)
+	for i := 0; i < len(ephPks_s); i++ {
+		ephPks_s[i] = make([]abstract.Point, len(ephPks))
+	}
+	for i := 0; i < len(ephPks); i++ {
+		ephPks_s[0][i] = ephPks[i]
+	}
+	ephPks_s[0][0] = newPub
+
+	_, err = n.TrusteeView.ReceivedTranscriptFromRelay(bases, ephPks_s, proofs)
+	if err == nil {
+		t.Error("Shouldn't accept a transcript when one key has been changed !")
+	}
 }

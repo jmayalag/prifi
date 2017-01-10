@@ -14,13 +14,14 @@ For more details about PriFi, please check our [WPES 2016 paper](http://www.cs.y
 
 ## Getting PriFi
 
-First, [get the Go language](https://golang.org/dl/). They have some `.tar.gz`, but I personally prefer to use my package manager :
+First, [get the Go language](https://golang.org/dl/), >= 1.7. They have some `.tar.gz`, but I personally prefer to use my package manager :
 `sudo apt-get install golang` for Ubuntu, or `sudo dnf install golang` for Fedora 24.
 
 Then, get PriFi by doing:
 
 ```
-go get github.com/lbarman/prifi
+go get github.com/lbarman/prifi/sda/app
+cd $GOPATH/src/github.com/lbarman/prifi
 ./prifi.sh install
 ```
 Ignore the `No buildable source` after the first step, that's OK. This script gets all the dependencies (via `go get`), and make sure everything is correctly set.
