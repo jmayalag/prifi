@@ -4,7 +4,24 @@ import (
 	"testing"
 )
 
-func TestLog(t *testing.T) {
+func TestBWStatistics(t *testing.T) {
+	b := NewBitRateStatistics()
+	b.AddDownstreamCell(int64(1000))
+	b.AddDownstreamUDPCell(int64(2000), 2)
+	b.AddDownstreamRetransmitCell(int64(1000))
+	b.AddUpstreamCell(int64(1000))
+	b.Report()
+	b.Dump()
+}
+func TestLatencyStatistics(t *testing.T) {
+	b := NewLatencyStatistics()
+	b.AddLatency(int64(1000))
+	b.AddLatency(int64(2000))
+	b.AddLatency(int64(2000))
+	b.Report()
+}
+
+func TestUtils(t *testing.T) {
 	//round
 	if Round(float64(6.3)) != 6 {
 		t.Error("Rounding error")
