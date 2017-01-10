@@ -25,7 +25,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"strconv"
-	"sync"
 	"time"
 
 	"github.com/dedis/cothority/log"
@@ -50,7 +49,6 @@ const (
 
 // ClientState contains the mutable state of the client.
 type ClientState struct {
-	mutex                     *sync.RWMutex
 	CellCoder                 dcnet.CellCoder
 	currentState              int16
 	DataForDCNet              chan []byte //Data to the relay : VPN / SOCKS should put data there !
@@ -105,7 +103,6 @@ func NewClientState(clientID int, nTrustees int, nClients int, payloadLength int
 	params.BufferedRoundData = make(map[int32]net.REL_CLI_DOWNSTREAM_DATA)
 	params.StartStopReceiveBroadcast = make(chan bool)
 	params.statistics = prifilog.NewLatencyStatistics()
-	params.mutex = &sync.RWMutex{}
 
 	//prepare the crypto parameters
 	rand := config.CryptoSuite.Cipher([]byte(params.Name))
@@ -130,9 +127,6 @@ func NewClientState(clientID int, nTrustees int, nClients int, payloadLength int
 func (p *PriFiLibInstance) Received_ALL_CLI_SHUTDOWN(msg net.ALL_ALL_SHUTDOWN) error {
 	log.Lvl1("Client " + strconv.Itoa(p.clientState.ID) + " : Received a SHUTDOWN message. ")
 
-	p.clientState.mutex.Lock()
-	defer p.clientState.mutex.Unlock()
-
 	p.clientState.currentState = CLIENT_STATE_SHUTDOWN
 
 	return nil
@@ -141,9 +135,6 @@ func (p *PriFiLibInstance) Received_ALL_CLI_SHUTDOWN(msg net.ALL_ALL_SHUTDOWN) e
 // Received_ALL_CLI_PARAMETERS handles ALL_CLI_PARAMETERS messages.
 // It uses the message's parameters to initialize the client.
 func (p *PriFiLibInstance) Received_ALL_CLI_PARAMETERS(msg net.ALL_ALL_PARAMETERS) error {
-
-	p.clientState.mutex.Lock()
-	defer p.clientState.mutex.Unlock()
 
 	//this can only happens in the state RELAY_STATE_BEFORE_INIT
 	if p.clientState.currentState != CLIENT_STATE_BEFORE_INIT && !msg.ForceParams {
@@ -186,9 +177,6 @@ SOCKS/VPN data, or if we're running latency tests, we send a "ping" message to c
 */
 func (p *PriFiLibInstance) Received_REL_CLI_DOWNSTREAM_DATA(msg net.REL_CLI_DOWNSTREAM_DATA) error {
 
-	p.clientState.mutex.Lock()
-	defer p.clientState.mutex.Unlock()
-
 	//this can only happens in the state TRUSTEE_STATE_SHUFFLE_DONE
 	if p.clientState.currentState != CLIENT_STATE_READY {
 		e := "Client " + strconv.Itoa(p.clientState.ID) + " : Received a REL_CLI_DOWNSTREAM_DATA, but not in state CLIENT_STATE_READY, in state " + strconv.Itoa(int(p.clientState.currentState))
@@ -223,16 +211,6 @@ If we're lucky (if this is our slot), we are allowed to embed some message (whic
 SOCKS/VPN data, or if we're running latency tests, we send a "ping" message to compute the latency. If we have nothing to say, we send 0's.
 */
 func (p *PriFiLibInstance) Received_REL_CLI_UDP_DOWNSTREAM_DATA(msg net.REL_CLI_DOWNSTREAM_DATA) error {
-
-	p.clientState.mutex.Lock()
-	defer p.clientState.mutex.Unlock()
-
-	/*
-		if msg.RoundId == 3 && p.clientState.Id == 1 {
-			log.Error("Client " + strconv.Itoa(p.clientState.Id) + " : simulating loss, dropping UDP message for round 3.")
-			return nil
-		}
-	*/
 
 	//this can only happens in the state TRUSTEE_STATE_SHUFFLE_DONE
 	if p.clientState.currentState != CLIENT_STATE_READY {
@@ -390,9 +368,6 @@ Once we receive this message, we need to reply with our Public Key (Used to deri
 */
 func (p *PriFiLibInstance) Received_REL_CLI_TELL_TRUSTEES_PK(msg net.REL_CLI_TELL_TRUSTEES_PK) error {
 
-	p.clientState.mutex.Lock()
-	defer p.clientState.mutex.Unlock()
-
 	//this can only happens in the state CLIENT_STATE_INITIALIZING
 	if p.clientState.currentState != CLIENT_STATE_INITIALIZING {
 		e := "Client " + strconv.Itoa(p.clientState.ID) + " : Received a REL_CLI_TELL_TRUSTEES_PK, but not in state CLIENT_STATE_INITIALIZING, in state " + strconv.Itoa(int(p.clientState.currentState))
@@ -447,9 +422,6 @@ As the client should send the first data, we do so; to keep this function simple
 "round function", that is Received_REL_CLI_DOWNSTREAM_DATA().
 */
 func (p *PriFiLibInstance) Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(msg net.REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG) error {
-
-	p.clientState.mutex.Lock()
-	defer p.clientState.mutex.Unlock()
 
 	//this can only happens in the state CLIENT_STATE_EPH_KEYS_SENT
 	if p.clientState.currentState != CLIENT_STATE_EPH_KEYS_SENT {
