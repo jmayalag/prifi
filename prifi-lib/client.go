@@ -35,6 +35,7 @@ import (
 	prifilog "github.com/lbarman/prifi/prifi-lib/log"
 	"github.com/lbarman/prifi/prifi-lib/net"
 
+	"github.com/lbarman/prifi/prifi-lib/scheduler"
 	socks "github.com/lbarman/prifi/prifi-socks"
 )
 
@@ -435,51 +436,12 @@ func (p *PriFiLibInstance) Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(msg ne
 	p.clientState.nClients = len(msg.EphPks)
 
 	//verify the signature
-	newBase := msg.Base
-	ephPubKeys := msg.EphPks
-	signatures := msg.TrusteesSigs
+	neff := new(scheduler.NeffShuffle)
+	mySlot, err := neff.ClientVerifySigAndRecognizeSlot(p.clientState.ephemeralPrivateKey, p.clientState.TrusteePublicKey, msg.Base, msg.EphPks, msg.TrusteesSigs)
 
-	G_bytes, _ := newBase.MarshalBinary()
-	var M []byte
-	M = append(M, G_bytes...)
-	for k := 0; k < len(ephPubKeys); k++ {
-		pkBytes, _ := ephPubKeys[k].MarshalBinary()
-		M = append(M, pkBytes...)
-	}
-
-	for j := 0; j < p.clientState.nTrustees; j++ {
-		err := crypto.SchnorrVerify(config.CryptoSuite, M, p.clientState.TrusteePublicKey[j], signatures[j])
-
-		if err != nil {
-			e := "Client " + strconv.Itoa(p.clientState.ID) + " : signature from trustee " + strconv.Itoa(j) + " is invalid "
-			log.Error(e)
-			return errors.New(e)
-		}
-	}
-
-	log.Lvl3("Client " + strconv.Itoa(p.clientState.ID) + "; all signatures Ok")
-
-	//now, using the ephemeral keys received (the output of the neff shuffle), identify our slot
-	myPrivKey := p.clientState.ephemeralPrivateKey
-	ephPubInNewBase := config.CryptoSuite.Point().Mul(newBase, myPrivKey)
-	mySlot := -1
-
-	for j := 0; j < len(ephPubKeys); j++ {
-		if ephPubKeys[j].Equal(ephPubInNewBase) {
-			mySlot = j
-		}
-	}
-
-	if mySlot == -1 {
-		e := "Client " + strconv.Itoa(p.clientState.ID) + "; Can't recognize our slot !"
+	if err != nil {
+		e := "Client " + strconv.Itoa(p.clientState.ID) + "; Can't recognize our slot ! err is " + err.Error()
 		log.Error(e)
-
-		mySlot = p.clientState.ID
-		log.Lvl3("Client " + strconv.Itoa(p.clientState.ID) + "; Our self-assigned slot is " + strconv.Itoa(mySlot) + " out of " + strconv.Itoa(len(ephPubKeys)) + " slots")
-
-		//return errors.New(e)
-	} else {
-		log.Lvl3("Client " + strconv.Itoa(p.clientState.ID) + "; Our slot is " + strconv.Itoa(mySlot) + " out of " + strconv.Itoa(len(ephPubKeys)) + " slots")
 	}
 
 	//prepare for commmunication
