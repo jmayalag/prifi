@@ -19,9 +19,6 @@ package prifi_lib
  * SendUpstreamData() <- it is called at the end of ProcessDownStreamData(). Hence, after getting some data down, we send some data up.
  *
  * TODO : traffic need to be encrypted
- * TODO : we need to test / sort out the downstream traffic data that is not for us
- * TODO : integrate a VPN / SOCKS somewhere, for now this client has nothing to say ! (except latency-test messages)
- * TODO : More fine-grained locking
  */
 
 import (
@@ -367,6 +364,7 @@ func (p *PriFiLibInstance) SendUpstreamData() error {
 		ClientID: p.clientState.ID,
 		RoundID:  p.clientState.RoundNo,
 		Data:     upstreamCell}
+	log.LLvlf1("Sending %+v", toSend)
 	p.messageSender.SendToRelayWithLog(toSend, "(round "+strconv.Itoa(int(p.clientState.RoundNo))+")")
 
 	//clean old buffered messages
@@ -410,7 +408,6 @@ func (p *PriFiLibInstance) Received_REL_CLI_TELL_TRUSTEES_PK(msg net.REL_CLI_TEL
 		return errors.New(e)
 	}
 
-	//TODO: this is redundant, we already know the number of trustees
 	//first, collect the public keys from the trustees, and derive the secrets
 	p.clientState.nTrustees = len(msg.Pks)
 
@@ -443,7 +440,7 @@ Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG handles REL_CLI_TELL_EPH_PKS_AND_
 These are sent after the Shuffle protocol has been done by the Trustees and the Relay.
 The relay is sending us the result, so we should check that the protocol went well :
 1) each trustee announced must have signed the shuffle
-2) we need to locate which is our slot <-- THIS IS BUGGY NOW
+2) we need to locate which is our slot
 When this is done, we are ready to communicate !
 As the client should send the first data, we do so; to keep this function simple, the first data is blank
 (the message has no content / this is a wasted message). The actual embedding of data happens only in the
@@ -542,6 +539,8 @@ func (p *PriFiLibInstance) Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(msg ne
 		RoundID:  p.clientState.RoundNo,
 		Data:     upstreamCell,
 	}
+	log.LLvlf1("Sending %+v", toSend)
+	log.LLvl1("ClientID", p.clientState.ID)
 	p.messageSender.SendToRelayWithLog(toSend, "(round "+strconv.Itoa(int(p.clientState.RoundNo))+")")
 
 	p.clientState.RoundNo++

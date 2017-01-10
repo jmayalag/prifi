@@ -1,7 +1,8 @@
-package prifi_lib
+package relay
 
 import (
 	"errors"
+	"fmt"
 )
 
 /**
@@ -101,6 +102,7 @@ func (b *BufferManager) CurrentRound() int32 {
  * Returns true iff we received exactly one cipher for every client and trustee for this round
  */
 func (b *BufferManager) HasAllCiphersForCurrentRound() bool {
+	fmt.Println("HasAllCiphersForCurrentRound called,", b.clientAckMap, ", ", b.trusteeAckMap)
 	for _, v := range b.clientAckMap {
 		if !v {
 			return false
@@ -138,20 +140,21 @@ func (b *BufferManager) MissingCiphersForCurrentRound() ([]int, []int) {
  * Finalizes this round, returning all ciphers stored, then increasing the round number.
  * Should only be called when HasAllCiphersForCurrentRound() == true
  */
-func (b *BufferManager) FinalizeRound() ([][]byte, error) {
+func (b *BufferManager) FinalizeRound() ([][]byte, [][]byte, error) {
 
 	if !b.HasAllCiphersForCurrentRound() {
-		return nil, errors.New("Cannot finalize round yet, missing ciphers")
+		return nil, nil, errors.New("Cannot finalize round yet, missing ciphers")
 	}
 
 	//prepare the output, discard those ciphers
-	out := make([][]byte, 0)
+	clientsOut := make([][]byte, 0)
 	for i := 0; i < b.nClients; i++ {
-		out = append(out, b.bufferedClientCiphers[i][b.currentRoundID])
+		clientsOut = append(clientsOut, b.bufferedClientCiphers[i][b.currentRoundID])
 		delete(b.bufferedClientCiphers[i], b.currentRoundID)
 	}
+	trusteesOut := make([][]byte, 0)
 	for i := 0; i < b.nTrustees; i++ {
-		out = append(out, b.bufferedTrusteeCiphers[i][b.currentRoundID])
+		trusteesOut = append(trusteesOut, b.bufferedTrusteeCiphers[i][b.currentRoundID])
 		delete(b.bufferedTrusteeCiphers[i], b.currentRoundID)
 	}
 
@@ -173,7 +176,7 @@ func (b *BufferManager) FinalizeRound() ([][]byte, error) {
 		}
 	}
 
-	return out, nil
+	return clientsOut, trusteesOut, nil
 }
 
 /**

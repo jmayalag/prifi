@@ -1,4 +1,4 @@
-package prifi_lib
+package relay
 
 import (
 	"bytes"
@@ -35,7 +35,7 @@ func TestBuffers(test *testing.T) {
 	if len(c) != 1 || len(t) != 1 {
 		test.Error("BufferManager did not compute correctly the missing ciphers")
 	}
-	_, err = b.FinalizeRound()
+	_, _, err = b.FinalizeRound()
 	if err == nil {
 		test.Error("BufferManager should not be able to finalize round")
 	}
@@ -56,7 +56,7 @@ func TestBuffers(test *testing.T) {
 	if len(c) != 1 || len(t) != 0 {
 		test.Error("BufferManager did not compute correctly the missing ciphers")
 	}
-	_, err = b.FinalizeRound()
+	_, _, err = b.FinalizeRound()
 	if err == nil {
 		test.Error("BufferManager should not be able to finalize round")
 	}
@@ -74,14 +74,14 @@ func TestBuffers(test *testing.T) {
 	if len(c) != 0 || len(t) != 0 {
 		test.Error("BufferManager did not compute correctly the missing ciphers")
 	}
-	slices, err := b.FinalizeRound()
+	clientSlices, trusteesSlices, err := b.FinalizeRound()
 	if err != nil {
 		test.Error("BufferManager should be able to finalize round")
 	}
-	if !bytes.Equal(slices[0], clientSlice) {
+	if !bytes.Equal(clientSlices[0], clientSlice) {
 		test.Error("Client slice should be the same")
 	}
-	if !bytes.Equal(slices[1], trusteeSlice) {
+	if !bytes.Equal(trusteesSlices[0], trusteeSlice) {
 		test.Error("Trustee slice should be the same")
 	}
 
@@ -152,14 +152,14 @@ func TestBuffers(test *testing.T) {
 	//r3[,t]
 	//add one trustee
 	b.AddTrusteeCipher(1, 0, trusteeSlice1)
-	slices, err = b.FinalizeRound()
+	clientSlices, trusteesSlices, err = b.FinalizeRound()
 	if err != nil {
 		test.Error("Should be able to finalize without error")
 	}
-	if !bytes.Equal(slices[0], clientSlice1) {
+	if !bytes.Equal(clientSlices[0], clientSlice1) {
 		test.Error("Client slice should be the same")
 	}
-	if !bytes.Equal(slices[1], trusteeSlice1) {
+	if !bytes.Equal(trusteesSlices[0], trusteeSlice1) {
 		test.Error("Trustee slice should be the same")
 	}
 
@@ -181,14 +181,14 @@ func TestBuffers(test *testing.T) {
 	//r3[,t]
 	//add one trustee
 	b.AddTrusteeCipher(2, 0, trusteeSlice2)
-	slices, err = b.FinalizeRound()
+	clientSlices, trusteesSlices, err = b.FinalizeRound()
 	if err != nil {
 		test.Error("Should be able to finalize without error")
 	}
-	if !bytes.Equal(slices[0], clientSlice2) {
+	if !bytes.Equal(clientSlices[0], clientSlice2) {
 		test.Error("Client slice should be the same")
 	}
-	if !bytes.Equal(slices[1], trusteeSlice2) {
+	if !bytes.Equal(trusteesSlices[0], trusteeSlice2) {
 		test.Error("Trustee slice should be the same")
 	}
 

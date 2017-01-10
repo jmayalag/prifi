@@ -108,6 +108,7 @@ func (s *ServiceState) StartRelay(group *config.Group) error {
 	relayID, trusteesIDs := mapIdentities(group)
 	s.relayIdentity = relayID //should not be used in the case of the relay
 
+	//creates the ChurnHandler, part of the Relay's Service, that will start/stop the protocol
 	s.churnHandler = new(churnHandler)
 	s.churnHandler.init(relayID, trusteesIDs)
 	s.churnHandler.isProtocolRunning = s.IsPriFiProtocolRunning
@@ -121,6 +122,7 @@ func (s *ServiceState) StartRelay(group *config.Group) error {
 		DownstreamChannel: make(chan []byte),
 	}
 
+	//the relay has a socks Client
 	go prifi_socks.StartSocksClient(socksServerConfig.Port, socksServerConfig.UpstreamChannel, socksServerConfig.DownstreamChannel)
 
 	return nil
@@ -142,6 +144,7 @@ func (s *ServiceState) StartClient(group *config.Group) error {
 		DownstreamChannel: make(chan []byte),
 	}
 
+	//the client has a socks server
 	log.Lvl1("Starting SOCKS server on port", socksClientConfig.Port)
 	go prifi_socks.StartSocksServer(socksClientConfig.Port, socksClientConfig.PayloadLength, socksClientConfig.UpstreamChannel, socksClientConfig.DownstreamChannel, s.prifiTomlConfig.DoLatencyTests)
 

@@ -6,6 +6,19 @@ package protocols
  * Caution : this is not the "PriFi protocol", which is really a "PriFi Library" which you need to import, and feed with some network methods.
  * This is the "PriFi-SDA-Wrapper" protocol, which imports the PriFi lib, gives it "SendToXXX()" methods and calls the "prifi_library.MessageReceived()"
  * methods (it build a map that converts the SDA tree into identities), and starts the PriFi Library.
+ *
+ * The call order is :
+ * 1) the sda/app is called by the user/scripts
+ * 2) the clients/trustees/relay start their services
+ * 3) the clients/trustees services use their autoconnect() function
+ * 4) when he decides so, the relay (via ChurnHandler) spawns a new protocol :
+ * 5) this file is called; in order :
+ * 5.1) init() that registers the messages
+ * 5.2) NewPriFiSDAWrapperProtocol() that creates a protocol (and contains the tree given by the service)
+ * 5.3) in the service, setConfigToPriFiProtocol() is called, which calls the protocol (this file) 's SetConfigFromPriFiService()
+ * 5.3.1) SetConfigFromPriFiService() calls both buildMessageSender() and registerHandlers()
+ * 6) the relay's service calls protocol.Start(), which happens here
+ * 7) on the other entities, steps 5-6) will be repeated when a new message from the prifi protocols comes
  */
 
 import (
@@ -21,43 +34,6 @@ import (
 // ProtocolName is the name used to register the SDA wrapper protocol with SDA.
 const ProtocolName = "PrifiProtocol"
 
-//the UDP channel we provide to PriFi. check udp.go for more details.
-var udpChan = newRealUDPChannel() // Cannot use localhost channel anymore for real deployment
-
-//PriFiRole is the type of the enum to qualify the role of a SDA node (Relay, Client, Trustee)
-type PriFiRole int
-
-//The possible states of a SDA node, of type PriFiRole
-const (
-	Relay PriFiRole = iota
-	Client
-	Trustee
-)
-
-//PriFiIdentity is the identity (role + ID)
-type PriFiIdentity struct {
-	Role     PriFiRole
-	ID       int
-	ServerID *network.ServerIdentity
-}
-
-//SOCKSConfig contains the port, payload, and up/down channels for data
-type SOCKSConfig struct {
-	Port              string
-	PayloadLength     int
-	UpstreamChannel   chan []byte
-	DownstreamChannel chan []byte
-}
-
-//PriFiSDAWrapperConfig is all the information the SDA-Protocols needs. It contains the network map of identities, our role, and the socks parameters if we are the corresponding role
-type PriFiSDAWrapperConfig struct {
-	net.ALL_ALL_PARAMETERS
-	Identities            map[string]PriFiIdentity
-	Role                  PriFiRole
-	ClientSideSocksConfig *SOCKSConfig
-	RelaySideSocksConfig  *SOCKSConfig
-}
-
 //PriFiSDAProtocol is the SDA-protocol struct. It contains the SDA-tree, and a chanel that stops the simulation when it receives a "true"
 type PriFiSDAProtocol struct {
 	*sda.TreeNodeInstance
@@ -67,25 +43,22 @@ type PriFiSDAProtocol struct {
 	ms            MessageSender
 	toHandler     func([]string, []string)
 	ResultChannel chan interface{}
-	// running is a pointer to the service's variable
-	// indicating if the protocol is running. It should
-	// be set to false when the protocol is stopped.
-	//IsRunning bool // TODO: We should use a lock before modifying it
 
 	//this is the actual "PriFi" (DC-net) protocol/library, defined in prifi-lib/prifi.go
 	prifiLibInstance *prifi_lib.PriFiLibInstance
-	HasStopped       bool //when set to true, the protocol has been stopped by PriFi-lib and should be destro
+	HasStopped       bool //when set to true, the protocol has been stopped by PriFi-lib and should be destroyed
 }
 
-//Start implements the sda.Protocol interface.
+//Start is called on the Relay by the service when ChurnHandler decides so
 func (p *PriFiSDAProtocol) Start() error {
 	if !p.configSet {
-		log.Fatal("Trying to start PriFi Library, but config not set !")
+		log.Fatal("Trying to start PriFi-lib, but config not set !")
 	}
 
-	log.Lvl3("Starting PriFi-SDA-Wrapper Protocol")
+	//At this point, we already have called SetConfig()
 
-	p.prifiLibInstance.ConnectToTrustees()
+	log.Lvl3("Starting PriFi-SDA-Wrapper Protocol")
+	p.prifiLibInstance.SendParameters()
 
 	return nil
 }
@@ -132,125 +105,6 @@ func init() {
 	sda.GlobalProtocolRegister(ProtocolName, NewPriFiSDAWrapperProtocol)
 }
 
-// SetConfig configures the PriFi node.
-// It **MUST** be called in service.newProtocol or before Start().
-func (p *PriFiSDAProtocol) SetConfig(config *PriFiSDAWrapperConfig) {
-	p.config = *config
-	p.role = config.Role
-
-	ms := p.buildMessageSender(config.Identities)
-	p.ms = ms
-
-	//sanity check
-	switch config.Role {
-	case Trustee:
-		if ms.relay == nil {
-			log.Fatal("Relay is not reachable (I'm a trustee, and I need it) !")
-		}
-	case Client:
-		if ms.relay == nil {
-			log.Fatal("Relay is not reachable (I'm a client, and I need it) !")
-		}
-	case Relay:
-		if len(ms.clients) < 1 {
-			log.Fatal("Less than one client reachable (I'm a relay, and there's no use starting the protocol) !")
-		}
-		if len(ms.trustees) < 1 {
-			log.Fatal("No trustee reachable (I'm a relay, and I cannot start the protocol) !")
-		}
-	}
-
-	nClients := len(ms.clients)
-	nTrustees := len(ms.trustees)
-	experimentResultChan := p.ResultChannel
-
-	switch config.Role {
-	case Relay:
-		relayState := prifi_lib.NewRelayState(
-			nTrustees,
-			nClients,
-			config.UpCellSize,
-			config.DownCellSize,
-			config.RelayWindowSize,
-			config.RelayUseDummyDataDown,
-			config.RelayReportingLimit,
-			experimentResultChan,
-			config.UseUDP,
-			config.RelayDataOutputEnabled,
-			config.RelaySideSocksConfig.DownstreamChannel,
-			config.RelaySideSocksConfig.UpstreamChannel)
-
-		p.prifiLibInstance = prifi_lib.NewPriFiRelayWithState(ms, relayState)
-
-		p.prifiLibInstance.SetTimeoutHandler(p.handleTimeout)
-
-	case Trustee:
-		id := config.Identities[p.ServerIdentity().Address.String()].ID
-		trusteeState := prifi_lib.NewTrusteeState(id, nClients, nTrustees, config.UpCellSize)
-		p.prifiLibInstance = prifi_lib.NewPriFiTrusteeWithState(ms, trusteeState)
-
-	case Client:
-		id := config.Identities[p.ServerIdentity().Address.String()].ID
-		clientState := prifi_lib.NewClientState(id,
-			nTrustees,
-			nClients,
-			config.UpCellSize,
-			config.DoLatencyTests,
-			config.UseUDP,
-			config.ClientDataOutputEnabled,
-			config.ClientSideSocksConfig.UpstreamChannel,
-			config.ClientSideSocksConfig.DownstreamChannel)
-		p.prifiLibInstance = prifi_lib.NewPriFiClientWithState(ms, clientState)
-	}
-
-	p.registerHandlers()
-
-	p.configSet = true
-}
-
-// SetTimeoutHandler sets the function that will be called on round timeout
-// if the protocol runs as the relay.
-func (p *PriFiSDAProtocol) SetTimeoutHandler(handler func([]string, []string)) {
-	p.toHandler = handler
-}
-
-// buildMessageSender creates a MessageSender struct
-// given a mep between server identities and PriFi identities.
-func (p *PriFiSDAProtocol) buildMessageSender(identities map[string]PriFiIdentity) MessageSender {
-	nodes := p.List() // Has type []*sda.TreeNode
-	trustees := make(map[int]*sda.TreeNode)
-	clients := make(map[int]*sda.TreeNode)
-	trusteeID := 0
-	clientID := 0
-	var relay *sda.TreeNode
-
-	for i := 0; i < len(nodes); i++ {
-		identifier := nodes[i].ServerIdentity.Address.String() + "=" + nodes[i].ServerIdentity.Public.String()
-		id, ok := identities[identifier]
-
-		if !ok {
-			log.Lvl3("Skipping unknow node with address", identifier)
-			continue
-		}
-		switch id.Role {
-		case Client:
-			clients[clientID] = nodes[i] //TODO : wrong
-			clientID++
-		case Trustee:
-			trustees[trusteeID] = nodes[i]
-			trusteeID++
-		case Relay:
-			if relay == nil {
-				relay = nodes[i]
-			} else {
-				log.Fatal("Multiple relays")
-			}
-		}
-	}
-
-	return MessageSender{p.TreeNodeInstance, relay, clients, trustees}
-}
-
 // handleTimeout translates ids int ServerIdentities
 // and calls the timeout handler.
 func (p *PriFiSDAProtocol) handleTimeout(clientsIds []int, trusteesIds []int) {
@@ -266,6 +120,18 @@ func (p *PriFiSDAProtocol) handleTimeout(clientsIds []int, trusteesIds []int) {
 	}
 
 	p.toHandler(clients, trustees)
+}
+
+// NewPriFiSDAWrapperProtocol creates a bare PrifiSDAWrapper struct.
+// SetConfig **MUST** be called on it before it can participate
+// to the protocol.
+func NewPriFiSDAWrapperProtocol(n *sda.TreeNodeInstance) (sda.ProtocolInstance, error) {
+	p := &PriFiSDAProtocol{
+		TreeNodeInstance: n,
+		ResultChannel:    make(chan interface{}),
+	}
+
+	return p, nil
 }
 
 // registerHandlers contains the verbose code
@@ -336,16 +202,4 @@ func (p *PriFiSDAProtocol) registerHandlers() error {
 	}
 
 	return nil
-}
-
-// NewPriFiSDAWrapperProtocol creates a bare PrifiSDAWrapper struct.
-// SetConfig **MUST** be called on it before it can participate
-// to the protocol.
-func NewPriFiSDAWrapperProtocol(n *sda.TreeNodeInstance) (sda.ProtocolInstance, error) {
-	p := &PriFiSDAProtocol{
-		TreeNodeInstance: n,
-		ResultChannel:    make(chan interface{}),
-	}
-
-	return p, nil
 }
