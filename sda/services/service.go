@@ -59,13 +59,11 @@ type Storage struct {
 // configuration, if desired. As we don't know when the service will exit,
 // we need to save the configuration on our own from time to time.
 func newService(c *sda.Context, path string) sda.Service {
-	log.LLvl4("Calling newService")
 	s := &ServiceState{
 		ServiceProcessor: sda.NewServiceProcessor(c),
 		path:             path,
 	}
 
-	log.LLvlf1("Registering messages on s %+v", &s)
 	c.RegisterProcessorFunc(network.TypeFromData(StopProtocol{}), s.HandleStop)
 	c.RegisterProcessorFunc(network.TypeFromData(ConnectionRequest{}), s.HandleConnection)
 	c.RegisterProcessorFunc(network.TypeFromData(DisconnectionRequest{}), s.HandleDisconnection)

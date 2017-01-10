@@ -296,7 +296,6 @@ func (p *PriFiLibInstance) Received_CLI_REL_UPSTREAM_DATA(msg net.CLI_REL_UPSTRE
 		// return errors.New(e)
 	}
 	log.Lvl3("Relay : received CLI_REL_UPSTREAM_DATA from client " + strconv.Itoa(msg.ClientID) + " for round " + strconv.Itoa(int(msg.RoundID)))
-	log.LLvlf1("%+v", msg)
 
 	p.relayState.bufferManager.AddClientCipher(msg.RoundID, msg.ClientID, msg.Data)
 
@@ -355,8 +354,8 @@ func (p *PriFiLibInstance) Received_TRU_REL_DC_CIPHER(msg net.TRU_REL_DC_CIPHER)
 		currentCapacity := TRUSTEE_WINDOW_SIZE - p.relayState.trusteeCipherTracker[msg.TrusteeID] // Get our remaining allowed capacity
 
 		if currentCapacity <= TRUSTEE_WINDOW_LOWER_LIMIT { // Check if the capacity is lower then allowed
-			toSend := &net.REL_TRU_TELL_RATE_CHANGE{WindowCapacity: currentCapacity}
-			p.messageSender.SendToTrusteeWithLog(msg.TrusteeID, toSend, "(trustee "+strconv.Itoa(msg.TrusteeID)+", round "+strconv.Itoa(int(p.relayState.currentDCNetRound.currentRound))+")")
+			//toSend := &net.REL_TRU_TELL_RATE_CHANGE{WindowCapacity: currentCapacity}
+			//p.messageSender.SendToTrusteeWithLog(msg.TrusteeID, toSend, "(trustee "+strconv.Itoa(msg.TrusteeID)+", round "+strconv.Itoa(int(p.relayState.currentDCNetRound.currentRound))+")")
 		}
 
 	}
@@ -771,13 +770,11 @@ func (p *PriFiLibInstance) checkIfRoundHasEndedAfterTimeOut_Phase1(roundID int32
 	time.Sleep(TIMEOUT_PHASE_1)
 
 	if p.relayState.currentDCNetRound.currentRound != roundID {
-		//everything went well, it's great !
-		return
+		return //everything went well, it's great !
 	}
 
 	if p.relayState.currentState == RELAY_STATE_SHUTDOWN {
-		//nothing to ensure in that case
-		return
+		return //nothing to ensure in that case
 	}
 
 	allGood := true

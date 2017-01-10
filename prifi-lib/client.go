@@ -161,7 +161,6 @@ func (p *PriFiLibInstance) Received_ALL_CLI_PARAMETERS(msg net.ALL_ALL_PARAMETER
 	//after receiving this message, we are done with the state CLIENT_STATE_BEFORE_INIT, and are ready for initializing
 	p.clientState.currentState = CLIENT_STATE_INITIALIZING
 
-	log.Lvlf5("%+v\n", p.clientState)
 	log.Lvl2("Client " + strconv.Itoa(p.clientState.ID) + " has been initialized by message. ")
 
 	return nil
@@ -343,7 +342,6 @@ func (p *PriFiLibInstance) SendUpstreamData() error {
 		ClientID: p.clientState.ID,
 		RoundID:  p.clientState.RoundNo,
 		Data:     upstreamCell}
-	log.LLvlf1("Sending %+v", toSend)
 	p.messageSender.SendToRelayWithLog(toSend, "(round "+strconv.Itoa(int(p.clientState.RoundNo))+")")
 
 	//clean old buffered messages
@@ -473,8 +471,6 @@ func (p *PriFiLibInstance) Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(msg ne
 		RoundID:  p.clientState.RoundNo,
 		Data:     upstreamCell,
 	}
-	log.LLvlf1("Sending %+v", toSend)
-	log.LLvl1("ClientID", p.clientState.ID)
 	p.messageSender.SendToRelayWithLog(toSend, "(round "+strconv.Itoa(int(p.clientState.RoundNo))+")")
 
 	p.clientState.RoundNo++

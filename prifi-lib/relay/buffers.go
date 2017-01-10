@@ -2,7 +2,6 @@ package relay
 
 import (
 	"errors"
-	"fmt"
 )
 
 /**
@@ -102,7 +101,6 @@ func (b *BufferManager) CurrentRound() int32 {
  * Returns true iff we received exactly one cipher for every client and trustee for this round
  */
 func (b *BufferManager) HasAllCiphersForCurrentRound() bool {
-	fmt.Println("HasAllCiphersForCurrentRound called,", b.clientAckMap, ", ", b.trusteeAckMap)
 	for _, v := range b.clientAckMap {
 		if !v {
 			return false
