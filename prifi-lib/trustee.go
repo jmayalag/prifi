@@ -17,21 +17,15 @@ TODO : debug the actual shuffle (the current code is a placeholder that does not
 
 import (
 	"errors"
-	"time"
-
-	"bytes"
-	"strconv"
-
-	"math/rand"
-
 	"github.com/dedis/cothority/log"
 	"github.com/dedis/crypto/abstract"
-	crypto_proof "github.com/dedis/crypto/proof"
-	"github.com/dedis/crypto/shuffle"
 	"github.com/lbarman/prifi/prifi-lib/config"
 	"github.com/lbarman/prifi/prifi-lib/crypto"
 	"github.com/lbarman/prifi/prifi-lib/dcnet"
 	"github.com/lbarman/prifi/prifi-lib/net"
+	"github.com/lbarman/prifi/prifi-lib/scheduler"
+	"strconv"
+	"time"
 )
 
 // Possible states the trustees are in. This restrict the kind of messages they can receive at a given point in time.
@@ -55,21 +49,21 @@ const TRUSTEE_BASE_SLEEP_TIME = 10 * time.Millisecond
 
 // TrusteeState contains the mutable state of the trustee.
 type TrusteeState struct {
-	CellCoder           dcnet.CellCoder
-	ClientPublicKeys    []abstract.Point
-	currentState        int16
-	ID                  int
-	MessageHistory      abstract.Cipher
-	Name                string
-	nClients            int
-	neffShuffleToVerify NeffShuffleResult
-	nTrustees           int
-	PayloadLength       int
-	privateKey          abstract.Scalar
-	PublicKey           abstract.Point
-	sendingRate         chan int16
-	sharedSecrets       []abstract.Point
-	TrusteeID           int
+	CellCoder        dcnet.CellCoder
+	ClientPublicKeys []abstract.Point
+	currentState     int16
+	ID               int
+	MessageHistory   abstract.Cipher
+	Name             string
+	nClients         int
+	neffShuffle      *scheduler.NeffShuffleTrustee
+	nTrustees        int
+	PayloadLength    int
+	privateKey       abstract.Scalar
+	PublicKey        abstract.Point
+	sendingRate      chan int16
+	sharedSecrets    []abstract.Point
+	TrusteeID        int
 }
 
 // NeffShuffleResult holds the result of the NeffShuffle,
@@ -91,19 +85,23 @@ func NewTrusteeState(trusteeID int, nClients int, nTrustees int, payloadLength i
 	params.Name = "Trustee-" + strconv.Itoa(trusteeID)
 	params.CellCoder = config.Factory()
 	params.nClients = nClients
-	params.neffShuffleToVerify = NeffShuffleResult{}
 	params.nTrustees = nTrustees
 	params.PayloadLength = payloadLength
 	params.sendingRate = make(chan int16, 10)
 	params.TrusteeID = trusteeID
 
-	//prepare the crypto parameters
-	rand := config.CryptoSuite.Cipher([]byte(params.Name))
-	base := config.CryptoSuite.Point().Base()
+	//gen the key
+	pub, priv := crypto.NewKeyPair()
 
 	//generate own parameters
-	params.privateKey = config.CryptoSuite.Scalar().Pick(rand)
-	params.PublicKey = config.CryptoSuite.Point().Mul(base, params.privateKey)
+	params.privateKey = priv
+	params.PublicKey = pub
+
+	//init the neff shuffle
+	neffShuffle := new(scheduler.NeffShuffle)
+	neffShuffle.Init()
+	params.neffShuffle = neffShuffle.TrusteeView
+	params.neffShuffle.Init(trusteeID, priv, pub)
 
 	//placeholders for pubkeys and secrets
 	params.ClientPublicKeys = make([]abstract.Point, nClients)
@@ -262,10 +260,8 @@ func (p *PriFiLibInstance) Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BAS
 	log.Lvl3("Trustee " + strconv.Itoa(p.trusteeState.ID) + " : Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE")
 
 	//begin parsing the message
-	randBytes := config.CryptoSuite.Cipher([]byte(p.trusteeState.Name)) //TODO: this should be random
 	clientsPks := msg.Pks
 	clientsEphemeralPks := msg.EphPks
-	base := msg.Base
 
 	//sanity check
 	if len(clientsPks) < 1 || len(clientsEphemeralPks) < 1 || len(clientsPks) != len(clientsEphemeralPks) {
@@ -286,55 +282,13 @@ func (p *PriFiLibInstance) Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BAS
 		p.trusteeState.sharedSecrets[i] = config.CryptoSuite.Point().Mul(clientsPks[i], p.trusteeState.privateKey)
 	}
 
-	secretCoeff := config.CryptoSuite.Scalar().Pick(randBytes)
-	base2 := config.CryptoSuite.Point().Mul(base, secretCoeff)
-
-	ephPublicKeys2 := clientsEphemeralPks
-
-	//transform the public keys with the secret coeff
-	for i := 0; i < len(clientsEphemeralPks); i++ {
-		ephPublicKeys2[i] = config.CryptoSuite.Point().Mul(clientsEphemeralPks[i], secretCoeff)
+	toSend, err := p.trusteeState.neffShuffle.ReceivedShuffleFromRelay(msg.Base, msg.EphPks, true)
+	if err != nil {
+		return errors.New("Could not do ReceivedShuffleFromRelay, error is " + err.Error())
 	}
-
-	//shuffle the array
-	ephPublicKeys3 := make([]abstract.Point, len(ephPublicKeys2))
-	perm := rand.Perm(len(ephPublicKeys2))
-	for i, v := range perm {
-		ephPublicKeys3[v] = ephPublicKeys2[i]
-	}
-	ephPublicKeys2 = ephPublicKeys3
-
-	proof := make([]byte, 50)
-
-	/*
-		//perform the neff-shuffle
-		H := p.trusteeState.PublicKey
-		X := clientsEphemeralPks
-		Y := X
-
-		_, _, prover := shuffle.Shuffle(config.CryptoSuite, nil, H, X, Y, rand)
-		_, err := crypto_proof.HashProve(config.CryptoSuite, "PairShuffle", rand, prover)
-		if err != nil {
-			e := "Could not neff-shuffle, error is " + err.Error()
-			log.Error(e)
-			return errors.New(e)
-		}
-
-		//base2, ephPublicKeys2, proof := NeffShuffle(base, ephPublicKey)
-		base2 := base
-		ephPublicKeys2 := clientsEphemeralPks
-		proof := make([]byte, 50)
-	*/
 
 	//send the answer
-	toSend := &net.TRU_REL_TELL_NEW_BASE_AND_EPH_PKS{
-		NewBase:   base2,
-		NewEphPks: ephPublicKeys2,
-		Proof:     proof}
 	p.messageSender.SendToRelayWithLog(toSend, "")
-
-	//remember our shuffle
-	p.trusteeState.neffShuffleToVerify = NeffShuffleResult{base2, ephPublicKeys2, proof}
 
 	//change state
 	p.trusteeState.currentState = TRUSTEE_STATE_SHUFFLE_DONE
@@ -376,101 +330,12 @@ func (p *PriFiLibInstance) Received_REL_TRU_TELL_TRANSCRIPT(msg net.REL_TRU_TELL
 	}
 	// END OF PATCH
 
-	//begin parsing the message
-	rand := config.CryptoSuite.Cipher([]byte(p.trusteeState.Name)) //TODO: this should be random
-	Gs := msg.Bases
-	ephPublicKeys := msg.EphPks
-	proofs := msg.Proofs
-
-	//Todo : verify each individual permutations
-	var err error
-	for j := 0; j < p.trusteeState.nTrustees; j++ {
-
-		verify := true
-		if j > 0 {
-			X := ephPublicKeys[j-1]
-			Y := ephPublicKeys[j-1]
-			Xbar := ephPublicKeys[j]
-			Ybar := ephPublicKeys[j]
-			if len(X) > 1 {
-				verifier := shuffle.Verifier(config.CryptoSuite, nil, X[0], X, Y, Xbar, Ybar)
-				err = crypto_proof.HashVerify(config.CryptoSuite, "PairShuffle", verifier, proofs[j])
-			}
-			if err != nil {
-				verify = false
-			}
-		}
-		verify = true // TODO: This shuffle needs to be fixed
-
-		if !verify {
-			var e string
-			if err != nil {
-				e = "Could not verify the " + strconv.Itoa(j) + "th neff shuffle, error is " + err.Error()
-			} else {
-				e = "Could not verify the " + strconv.Itoa(j) + "th neff shuffle, error is unknown."
-			}
-			log.Error(e)
-			return errors.New(e)
-		}
-	}
-	log.Lvl3("Trustee " + strconv.Itoa(p.trusteeState.ID) + " : Proofs verified...")
-
-	//we verify that our shuffle was included
-	ownPermutationFound := false
-	for j := 0; j < p.trusteeState.nTrustees; j++ {
-
-		if Gs[j].Equal(p.trusteeState.neffShuffleToVerify.base) && bytes.Equal(p.trusteeState.neffShuffleToVerify.proof, proofs[j]) {
-
-			log.Lvl3("Trustee " + strconv.Itoa(p.trusteeState.ID) + "; Find in transcript : Found indice " + strconv.Itoa(j) + " that seems to match, verifing all the keys...")
-
-			allKeyEqual := true
-			for k := 0; k < p.trusteeState.nClients; k++ {
-				if !p.trusteeState.neffShuffleToVerify.pks[k].Equal(ephPublicKeys[j][k]) {
-					log.Error("Trustee " + strconv.Itoa(p.trusteeState.ID) + "; Transcript invalid for trustee " + strconv.Itoa(j) + ". Aborting.")
-					allKeyEqual = false
-					break
-				}
-			}
-
-			if allKeyEqual {
-				ownPermutationFound = true
-			}
-		}
-	}
-
-	if !ownPermutationFound {
-		e := "Trustee " + strconv.Itoa(p.trusteeState.ID) + "; Can't find own transaction. Aborting."
-		log.Error(e)
-		return errors.New(e)
-	}
-	log.Lvl2("Trustee " + strconv.Itoa(p.trusteeState.ID) + " : We found our proof...")
-
-	//prepare the transcript signature. Since it is OK, we're gonna sign the latest permutation
-	var M []byte
-	G_s_j_bytes, err := Gs[p.trusteeState.nTrustees-1].MarshalBinary()
+	toSend, err := p.trusteeState.neffShuffle.ReceivedTranscriptFromRelay(msg.Bases, msg.EphPks, msg.Proofs)
 	if err != nil {
-		e := "Trustee " + strconv.Itoa(p.trusteeState.ID) + "; Can't marshall base, " + err.Error()
-		log.Error(e)
-		return errors.New(e)
+		return errors.New("Could not do ReceivedTranscriptFromRelay, error is " + err.Error())
 	}
-	M = append(M, G_s_j_bytes...)
-
-	for j := 0; j < p.trusteeState.nClients; j++ {
-		pkBytes, err := ephPublicKeys[p.trusteeState.nTrustees-1][j].MarshalBinary()
-		if err != nil {
-			e := "Trustee " + strconv.Itoa(p.trusteeState.ID) + "; Can't marshall public key, " + err.Error()
-			log.Error(e)
-			return errors.New(e)
-		}
-		M = append(M, pkBytes...)
-	}
-
-	sig := crypto.SchnorrSign(config.CryptoSuite, rand, M, p.trusteeState.privateKey)
-
-	log.Lvl2("Trustee " + strconv.Itoa(p.trusteeState.ID) + "; Sending signature of transcript")
 
 	//send the answer
-	toSend := &net.TRU_REL_SHUFFLE_SIG{TrusteeID: p.trusteeState.ID, Sig: sig}
 	p.messageSender.SendToRelayWithLog(toSend, "")
 
 	//we can forget our shuffle

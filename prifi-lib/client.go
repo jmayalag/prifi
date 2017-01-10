@@ -105,13 +105,8 @@ func NewClientState(clientID int, nTrustees int, nClients int, payloadLength int
 	params.StartStopReceiveBroadcast = make(chan bool)
 	params.statistics = prifilog.NewLatencyStatistics()
 
-	//prepare the crypto parameters
-	rand := config.CryptoSuite.Cipher([]byte(params.Name))
-	base := config.CryptoSuite.Point().Base()
-
-	//generate own parameters
-	params.privateKey = config.CryptoSuite.Scalar().Pick(rand)                 //NO, this should be kept by SDA
-	params.PublicKey = config.CryptoSuite.Point().Mul(base, params.privateKey) //NO, this should be kept by SDA
+	// Generate pk
+	params.PublicKey, params.privateKey = crypto.NewKeyPair()
 
 	//placeholders for pubkeys and secrets
 	params.TrusteePublicKey = make([]abstract.Point, nTrustees)
@@ -394,7 +389,7 @@ func (p *PriFiLibInstance) Received_REL_CLI_TELL_TRUSTEES_PK(msg net.REL_CLI_TEL
 	}
 
 	//then, generate our ephemeral keys (used for shuffling)
-	p.clientState.generateEphemeralKeys()
+	p.clientState.EphemeralPublicKey, p.clientState.ephemeralPrivateKey = crypto.NewKeyPair()
 
 	//send the keys to the relay
 	toSend := &net.CLI_REL_TELL_PK_AND_EPH_PK{
@@ -476,15 +471,6 @@ func (p *PriFiLibInstance) Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(msg ne
 	p.clientState.RoundNo++
 
 	return nil
-}
-
-// generateEphemeralKeys is an auxiliary function used by Received_REL_CLI_TELL_TRUSTEES_PK
-func (clientState *ClientState) generateEphemeralKeys() {
-
-	pub, priv := crypto.NewKeyPair()
-	clientState.EphemeralPublicKey = pub
-	clientState.ephemeralPrivateKey = priv
-
 }
 
 // MsTimeStamp returns the current timestamp, in milliseconds.

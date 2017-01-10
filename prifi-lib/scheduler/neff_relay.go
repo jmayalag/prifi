@@ -2,6 +2,7 @@ package scheduler
 
 import (
 	"errors"
+	"fmt"
 	"github.com/dedis/crypto/abstract"
 	"github.com/lbarman/prifi/prifi-lib/config"
 	"github.com/lbarman/prifi/prifi-lib/crypto"
@@ -143,6 +144,7 @@ func (r *NeffShuffleRelay) SendTranscript() (interface{}, error) {
 		return nil, errors.New("Cannot send a transcript of empty array of public keys")
 	}
 
+	fmt.Printf("%+v", r.ShuffledPublicKeys)
 	msg := &net.REL_TRU_TELL_TRANSCRIPT{
 		Bases:  r.Bases,
 		EphPks: r.ShuffledPublicKeys,

@@ -46,6 +46,7 @@ import (
 	"github.com/lbarman/prifi/prifi-lib/relay"
 	"github.com/lbarman/prifi/prifi-lib/scheduler"
 
+	"github.com/lbarman/prifi/prifi-lib/crypto"
 	socks "github.com/lbarman/prifi/prifi-socks"
 )
 
@@ -168,13 +169,8 @@ func NewRelayState(nTrustees int, nClients int, upstreamCellSize int, downstream
 	params.bufferManager = new(relay.BufferManager)
 	params.bufferManager.Init(nClients, nTrustees)
 
-	// Prepare the crypto parameters
-	rand := config.CryptoSuite.Cipher([]byte(params.Name))
-	base := config.CryptoSuite.Point().Base()
-
-	// Generate own parameters
-	params.privateKey = config.CryptoSuite.Scalar().Pick(rand)
-	params.PublicKey = config.CryptoSuite.Point().Mul(base, params.privateKey)
+	// Generate pk
+	params.PublicKey, params.privateKey = crypto.NewKeyPair()
 
 	// Sets the new state
 	params.currentState = RELAY_STATE_COLLECTING_TRUSTEES_PKS
