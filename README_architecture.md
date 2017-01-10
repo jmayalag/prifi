@@ -132,4 +132,32 @@ You could also decide not to use the SOCKS server we provide in `socks/`, and co
 
 This setting is decided globally by the relay, not on a per-client basis.
 
+### SDA call stack
+
+The call order is :
+
+1) the sda/app is called by the user/scripts
+
+2) the clients/trustees/relay start their services
+
+3) the clients/trustees services use their autoconnect() function
+
+4) when he decides so, the relay (via ChurnHandler) spawns a new protocol :
+
+5) this file is called; in order :
+
+5.1) init() that registers the messages
+
+5.2) NewPriFiSDAWrapperProtocol() that creates a protocol (and contains the tree given by the service)
+
+5.3) in the service, setConfigToPriFiProtocol() is called, which calls the protocol (this file) 's SetConfigFromPriFiService()
+
+5.3.1) SetConfigFromPriFiService() calls both buildMessageSender() and registerHandlers()
+
+5.3.2) SetConfigFromPriFiService() calls New[Relay|Client|Trustee]State(); at this point, the protocol is ready to run
+
+6) the relay's service calls protocol.Start(), which happens here
+
+7) on the other entities, steps 5-6) will be repeated when a new message from the prifi protocols comes
+
 [back to main README](README.md)
