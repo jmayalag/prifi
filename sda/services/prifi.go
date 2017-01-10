@@ -5,8 +5,8 @@ import (
 	"github.com/dedis/cothority/log"
 	"github.com/dedis/cothority/network"
 	prifi_protocol "github.com/lbarman/prifi/sda/protocols"
-	"time"
 	"github.com/lbarman/prifi/utils/timing"
+	"time"
 )
 
 // Packet send by relay when some node disconnected
