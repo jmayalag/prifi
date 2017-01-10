@@ -15,7 +15,7 @@
 dbg_lvl=3						# 1=less verbose, 3=more verbose. goes up to 5, but then prints the SDA's message (network framework)
 try_use_real_identities="false"	# if "true", will try to use "self-generated" public/private key as a replacement for the dummy keys
 								# we generated for you. It asks you if it does not find real keys. If false, will always use the dummy keys.
-colors="false"					# if "false", the output of PriFi (and this script) will be in black-n-white
+colors="true"					# if "false", the output of PriFi (and this script) will be in black-n-white
 
 socksServer1Port=8080			# the port for the SOCKS-Server-1 (part of the PriFi client)
 socksServer2Port=8090			# the port to attempt connect to (from the PriFi relay) for the SOCKS-Server-2
@@ -45,15 +45,15 @@ sleeptime_between_spawns=1 		# time in second between entities launch in all-loc
 cothorityBranchRequired="test_ism_2_699" # the branch required for the cothority (SDA) framework
 
 #pretty colored message
-highlightOn="$\e[97m"
-highlight0ff="\e[0m"
+highlightOn="\e[97m"
+highlightOff="\e[0m"
 shell="\e[35m[script]${highlightOff}"
-warningMsg="${highlightOn}\e[1m[warning]${highlightOff}\e[0m"
+warningMsg="${highlightOn}[warning]${highlightOff}"
 errorMsg="\e[31m\e[1m[error]${highlightOff}"
 okMsg="\e[32m[ok]${highlightOff}"
 if [ "$colors" = "false" ]; then
 	highlightOn=""
-	highlight0ff=""
+	highlightOff=""
 	shell="[script]"
 	warningMsg="[warning]"
 	errorMsg="[error]"
