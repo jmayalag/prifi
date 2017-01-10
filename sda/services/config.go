@@ -116,7 +116,7 @@ func (s *ServiceState) setConfigToPriFiProtocol(wrapper *prifi_protocol.PriFiSDA
 		RelaySideSocksConfig:  socksServerConfig,
 	}
 
-	wrapper.SetConfig(configMsg)
+	wrapper.SetConfigFromPriFiService(configMsg)
 
 	//when PriFi-protocol (via PriFi-lib) detects a slow client, call "handleTimeout"
 	wrapper.SetTimeoutHandler(s.handleTimeout)
