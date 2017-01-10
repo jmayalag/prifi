@@ -2,12 +2,15 @@ package relay
 
 import (
 	"errors"
+	"sync"
 )
 
 /**
  * Stores ciphers for different rounds
  */
 type BufferManager struct {
+	sync.Mutex
+
 	//immutable
 	nClients  int
 	nTrustees int
@@ -91,6 +94,9 @@ func addToBuffer(bufferPtr *map[int]map[int32][]byte, roundID int32, entityID in
  * Adds a trustee cipher for a given round
  */
 func (b *BufferManager) AddTrusteeCipher(roundID int32, trusteeID int, data []byte) error {
+	b.Lock()
+	defer b.Unlock()
+
 	if data == nil {
 		return errors.New("Can't accept a nil trustee cipher")
 	}
@@ -123,6 +129,9 @@ func (b *BufferManager) sendRateChangeIfNeeded(trusteeID int) {
  * Adds a client cipher for a given round
  */
 func (b *BufferManager) AddClientCipher(roundID int32, clientID int, data []byte) error {
+	b.Lock()
+	defer b.Unlock()
+
 	if data == nil {
 		return errors.New("Can't accept a nil client cipher")
 	}
@@ -149,6 +158,16 @@ func (b *BufferManager) CurrentRound() int32 {
  * Returns true iff we received exactly one cipher for every client and trustee for this round
  */
 func (b *BufferManager) HasAllCiphersForCurrentRound() bool {
+	b.Lock()
+	defer b.Unlock()
+	return b.hasAllCiphersForCurrentRound()
+}
+
+/**
+ * Returns true iff we received exactly one cipher for every client and trustee for this round
+ */
+func (b *BufferManager) hasAllCiphersForCurrentRound() bool {
+
 	for _, v := range b.clientAckMap {
 		if !v {
 			return false
@@ -173,6 +192,9 @@ func (b *BufferManager) NumberOfBufferedCiphers(trusteeID int) int {
  * Returns a pair of (clientIDs, trusteesIDs) where those entities did not send a cipher for this round
  */
 func (b *BufferManager) MissingCiphersForCurrentRound() ([]int, []int) {
+	b.Lock()
+	defer b.Unlock()
+
 	clientMissing := make([]int, 0)
 	for k, v := range b.clientAckMap {
 		if !v {
@@ -194,8 +216,10 @@ func (b *BufferManager) MissingCiphersForCurrentRound() ([]int, []int) {
  * Should only be called when HasAllCiphersForCurrentRound() == true
  */
 func (b *BufferManager) FinalizeRound() ([][]byte, [][]byte, error) {
+	b.Lock()
+	defer b.Unlock()
 
-	if !b.HasAllCiphersForCurrentRound() {
+	if !b.hasAllCiphersForCurrentRound() {
 		return nil, nil, errors.New("Cannot finalize round yet, missing ciphers")
 	}
 
