@@ -59,14 +59,11 @@ const TIMEOUT_PHASE_1 = 1 * time.Second
 //The timeout before kicking a client/trustee
 const TIMEOUT_PHASE_2 = 1 * time.Second
 
-// Number of ciphertexts buffered by trustees
-const TRUSTEE_WINDOW_SIZE = 10
+// Number of ciphertexts buffered by trustees. When <= TRUSTEE_CACHE_LOWBOUND, resume sending
+const TRUSTEE_CACHE_LOWBOUND = 1
 
-// Trustees stop sending when capacity <= TRUSTEE_WINDOW_LOWER_LIMIT
-const TRUSTEE_WINDOW_LOWER_LIMIT = 1
-
-// Trustees resume sending when capacity = TRUSTEE_WINDOW_LOWER_LIMIT + TRUSTEE_RESUME_SENDING_RATIO*(TRUSTEE_WINDOW_SIZE - TRUSTEE_WINDOW_LOWER_LIMIT)
-const TRUSTEE_RESUME_SENDING_RATIO = 0.9
+// Number of ciphertexts buffered by trustees. When >= TRUSTEE_CACHE_HIGHBOUND, stop sending
+const TRUSTEE_CACHE_HIGHBOUND = 10
 
 // Possible states the trustees are in. This restrict the kind of messages they can receive at a given point in time.
 const (
@@ -97,7 +94,6 @@ type DCNetRound struct {
 // RelayState contains the mutable state of the relay.
 type RelayState struct {
 	bufferManager                     *relay.BufferManager
-	trusteeCipherTracker              []int
 	CellCoder                         dcnet.CellCoder
 	clients                           []NodeRepresentation
 	currentDCNetRound                 DCNetRound
@@ -148,7 +144,6 @@ func NewRelayState(nTrustees int, nClients int, upstreamCellSize int, downstream
 	params.nTrustees = nTrustees
 	params.nTrusteesPkCollected = 0
 	params.ExperimentRoundLimit = experimentRoundLimit
-	params.trusteeCipherTracker = make([]int, nTrustees)
 	params.trustees = make([]NodeRepresentation, nTrustees)
 	params.UpstreamCellSize = upstreamCellSize
 	params.UseDummyDataDown = useDummyDataDown
@@ -224,6 +219,20 @@ func (p *PriFiLibInstance) Received_ALL_REL_PARAMETERS(msg net.ALL_ALL_PARAMETER
 
 	oldExperimentResultChan := p.relayState.ExperimentResultChannel
 	p.relayState = *NewRelayState(msg.NTrustees, msg.NClients, msg.UpCellSize, msg.DownCellSize, msg.RelayWindowSize, msg.RelayUseDummyDataDown, msg.RelayReportingLimit, oldExperimentResultChan, msg.UseUDP, msg.RelayDataOutputEnabled, make(chan []byte), make(chan []byte))
+
+	//this should be in NewRelayState, but we need p
+	if !p.relayState.bufferManager.DoSendStopResumeMessages {
+		//Add rate-limiting component to buffer manager
+		stopFn := func(trusteeID int) {
+			toSend := &net.REL_TRU_TELL_RATE_CHANGE{WindowCapacity: 0}
+			p.messageSender.SendToTrusteeWithLog(trusteeID, toSend, "(trustee "+strconv.Itoa(trusteeID)+")")
+		}
+		resumeFn := func(trusteeID int) {
+			toSend := &net.REL_TRU_TELL_RATE_CHANGE{WindowCapacity: 1}
+			p.messageSender.SendToTrusteeWithLog(trusteeID, toSend, "(trustee "+strconv.Itoa(trusteeID)+")")
+		}
+		p.relayState.bufferManager.AddRateLimiter(TRUSTEE_CACHE_LOWBOUND, TRUSTEE_CACHE_HIGHBOUND, stopFn, resumeFn)
+	}
 
 	log.Lvlf5("%+v\n", p.relayState)
 	log.Lvl1("Relay has been initialized by message. ")
@@ -343,18 +352,6 @@ func (p *PriFiLibInstance) Received_TRU_REL_DC_CIPHER(msg net.TRU_REL_DC_CIPHER)
 		}
 	}
 
-	if p.relayState.bufferManager.CurrentRound() != msg.RoundID {
-
-		// Here is the control to regulate the trustees ciphers in case they should stop sending
-		p.relayState.trusteeCipherTracker[msg.TrusteeID]++                                        // Increment the currently buffered ciphers for this trustee
-		currentCapacity := TRUSTEE_WINDOW_SIZE - p.relayState.trusteeCipherTracker[msg.TrusteeID] // Get our remaining allowed capacity
-
-		if currentCapacity <= TRUSTEE_WINDOW_LOWER_LIMIT { // Check if the capacity is lower then allowed
-			//toSend := &net.REL_TRU_TELL_RATE_CHANGE{WindowCapacity: currentCapacity}
-			//p.messageSender.SendToTrusteeWithLog(msg.TrusteeID, toSend, "(trustee "+strconv.Itoa(msg.TrusteeID)+", round "+strconv.Itoa(int(p.relayState.currentDCNetRound.currentRound))+")")
-		}
-
-	}
 	return nil
 }
 

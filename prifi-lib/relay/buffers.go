@@ -22,6 +22,13 @@ type BufferManager struct {
 	//hold the real data. map(trustee/clientID -> map( roundID -> data))
 	bufferedClientCiphers  map[int]map[int32][]byte
 	bufferedTrusteeCiphers map[int]map[int32][]byte
+
+	//stop/resume functions when we have too much/little ciphers
+	DoSendStopResumeMessages bool
+	LowBound                 int //restart sending at lowerbound
+	HighBound                int //stop sending at higherbound
+	stopFunction             func(int)
+	resumeFunction           func(int)
 }
 
 /**
@@ -42,6 +49,34 @@ func (b *BufferManager) Init(nClients, nTrustees int) error {
 
 	return nil
 }
+
+/**
+ * Adds a component to the BufferManager, that reacts to the # of buffered cipher (per trustees), and call stopFn()
+ * and resumeFn() when the bounds are reached
+ */
+func (b *BufferManager) AddRateLimiter(lowBound, highBound int, stopFunction, resumeFunction func(int)) error {
+	if lowBound < 0 || lowBound > highBound {
+		return errors.New("Lowbound must be > 0 and < highBound")
+	}
+	if highBound < lowBound {
+		return errors.New("Highbound must be > lowBound")
+	}
+	if stopFunction == nil {
+		return errors.New("Can't initiate a RateLimiter without a stop function")
+	}
+	if resumeFunction == nil {
+		return errors.New("Can't initiate a RateLimiter without a resume function")
+	}
+
+	b.DoSendStopResumeMessages = true
+	b.LowBound = lowBound
+	b.HighBound = highBound
+	b.stopFunction = stopFunction
+	b.resumeFunction = resumeFunction
+
+	return nil
+}
+
 func addToBuffer(bufferPtr *map[int]map[int32][]byte, roundID int32, entityID int, data []byte) {
 
 	buffer := *bufferPtr
@@ -68,7 +103,20 @@ func (b *BufferManager) AddTrusteeCipher(roundID int32, trusteeID int, data []by
 		b.trusteeAckMap[trusteeID] = true
 	}
 
+	b.sendRateChangeIfNeeded(trusteeID)
+
 	return nil
+}
+
+func (b *BufferManager) sendRateChangeIfNeeded(trusteeID int) {
+	if b.DoSendStopResumeMessages {
+		n := b.NumberOfBufferedCiphers(trusteeID)
+		if n >= b.HighBound {
+			b.stopFunction(trusteeID)
+		} else if n <= b.LowBound {
+			b.resumeFunction(trusteeID)
+		}
+	}
 }
 
 /**
@@ -112,6 +160,13 @@ func (b *BufferManager) HasAllCiphersForCurrentRound() bool {
 		}
 	}
 	return true
+}
+
+/**
+ * Returns the number of buffered ciphers for this trustee.
+ */
+func (b *BufferManager) NumberOfBufferedCiphers(trusteeID int) int {
+	return len(b.bufferedTrusteeCiphers[trusteeID])
 }
 
 /**
@@ -172,6 +227,11 @@ func (b *BufferManager) FinalizeRound() ([][]byte, [][]byte, error) {
 		if _, exists := b.bufferedTrusteeCiphers[i][b.currentRoundID]; exists {
 			b.trusteeAckMap[i] = true
 		}
+	}
+
+	//send rate changes if needed
+	for trusteeID := range b.bufferedTrusteeCiphers {
+		b.sendRateChangeIfNeeded(trusteeID)
 	}
 
 	return clientsOut, trusteesOut, nil

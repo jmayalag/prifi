@@ -215,9 +215,9 @@ or the trustee sends normally because the relay has emptied up enough capacity.
 */
 func (p *PriFiLibInstance) Received_REL_TRU_TELL_RATE_CHANGE(msg net.REL_TRU_TELL_RATE_CHANGE) error {
 
-	if msg.WindowCapacity <= TRUSTEE_WINDOW_LOWER_LIMIT { //Relay is at almost full capacity stop sending
+	if msg.WindowCapacity == 0 {
 		p.trusteeState.sendingRate <- TRUSTEE_RATE_STOPPED
-	} else { //Relay is operating at normal capacity to continue sending
+	} else {
 		p.trusteeState.sendingRate <- TRUSTEE_RATE_ACTIVE
 	}
 

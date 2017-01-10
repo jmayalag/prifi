@@ -39,6 +39,9 @@ func TestBuffers(test *testing.T) {
 	if err == nil {
 		test.Error("BufferManager should not be able to finalize round")
 	}
+	if b.NumberOfBufferedCiphers(0) != 0 {
+		test.Error("Number of ciphers for trustee 0 should be 0")
+	}
 
 	clientSlice := genDataSlice()
 	trusteeSlice := genDataSlice()
@@ -56,9 +59,15 @@ func TestBuffers(test *testing.T) {
 	if len(c) != 1 || len(t) != 0 {
 		test.Error("BufferManager did not compute correctly the missing ciphers")
 	}
+	if b.NumberOfBufferedCiphers(0) != 1 {
+		test.Error("Number of ciphers for trustee 0 should be 1")
+	}
 	_, _, err = b.FinalizeRound()
 	if err == nil {
 		test.Error("BufferManager should not be able to finalize round")
+	}
+	if b.NumberOfBufferedCiphers(0) != 1 {
+		test.Error("Number of ciphers for trustee 0 should be 1")
 	}
 
 	//add a slice from a client
@@ -86,6 +95,9 @@ func TestBuffers(test *testing.T) {
 	}
 
 	//post round
+	if b.NumberOfBufferedCiphers(0) != 0 {
+		test.Error("Number of ciphers for trustee 0 should be 0")
+	}
 	if b.CurrentRound() != 1 {
 		test.Error("BufferManager should now be in round 1")
 	}
@@ -214,4 +226,71 @@ func TestBuffers(test *testing.T) {
 	if err == nil {
 		test.Error("Shouldn't be able to add a nil slice")
 	}
+}
+
+func TestRateLimiter(test *testing.T) {
+
+	b := new(BufferManager)
+	low := 1
+	high := 3
+
+	stopCalled := false
+	resumeCalled := false
+
+	stopFn := func(int) {
+		stopCalled = true
+	}
+	resFn := func(int) {
+		resumeCalled = true
+	}
+
+	b.Init(0, 1)
+	b.AddRateLimiter(low, high, stopFn, resFn)
+	trusteeSlice := genDataSlice()
+
+	b.AddTrusteeCipher(0, 0, trusteeSlice)
+	if !resumeCalled {
+		test.Error("Resume should have been called")
+	}
+	resumeCalled = false
+
+	b.AddTrusteeCipher(1, 0, trusteeSlice)
+	b.AddTrusteeCipher(2, 0, trusteeSlice)
+	b.AddTrusteeCipher(3, 0, trusteeSlice)
+	if !stopCalled {
+		test.Error("Stop should have been called")
+	}
+	stopCalled = false
+	b.AddTrusteeCipher(4, 0, trusteeSlice)
+	if !stopCalled {
+		test.Error("Stop should have been called again")
+	}
+	stopCalled = false
+
+	b.AddClientCipher(0, 0, trusteeSlice)
+	b.FinalizeRound()
+	if !stopCalled {
+		test.Error("Stop should have been called again (2)")
+	}
+	stopCalled = false
+
+	b.AddClientCipher(1, 0, trusteeSlice)
+	b.FinalizeRound()
+	if !stopCalled {
+		test.Error("Stop should have been called again (3)")
+	}
+	stopCalled = false
+	b.AddClientCipher(2, 0, trusteeSlice)
+	b.FinalizeRound()
+	if stopCalled {
+		test.Error("Stop should not have been called")
+	}
+	b.AddClientCipher(3, 0, trusteeSlice)
+	b.FinalizeRound()
+
+	if !resumeCalled {
+		test.Error("Resume should have been called")
+	}
+	resumeCalled = false
+
 }
