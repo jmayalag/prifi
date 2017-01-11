@@ -235,7 +235,7 @@ func (p *PriFiLibRelayInstance) Received_ALL_REL_SHUTDOWN(msg net.ALL_ALL_SHUTDO
 Received_ALL_REL_PARAMETERS handles ALL_REL_PARAMETERS.
 It initializes the relay with the parameters contained in the message.
 */
-func (p *PriFiLibRelayInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARAMETERS) error {
+func (p *PriFiLibRelayInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARAMETERS_NEW) error {
 
 	// This can only happens in the state RELAY_STATE_BEFORE_INIT
 	if p.relayState.currentState != RELAY_STATE_BEFORE_INIT && !msg.ForceParams {
@@ -305,7 +305,7 @@ func (p *PriFiLibRelayInstance) SendParameters() error {
 	params["NTrustees"] = p.relayState.nTrustees
 	params["StartNow"] = true
 	params["UpCellSize"] = p.relayState.UpstreamCellSize
-	var msg = &net.ALL_ALL_PARAMETERS{
+	var msg = &net.ALL_ALL_PARAMETERS_NEW{
 		Params: params,
 		ForceParams:       true,
 	}
@@ -881,7 +881,7 @@ func (p *PriFiLibRelayInstance) ReceivedMessage(msg interface{}) error {
 	var err error
 
 	switch typedMsg := msg.(type) {
-	case net.ALL_ALL_PARAMETERS:
+	case net.ALL_ALL_PARAMETERS_NEW:
 		err = p.Received_ALL_ALL_PARAMETERS(typedMsg)
 	case net.ALL_ALL_SHUTDOWN:
 		err = p.Received_ALL_REL_SHUTDOWN(typedMsg)

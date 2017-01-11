@@ -41,9 +41,28 @@ type ALL_ALL_SHUTDOWN struct {
 }
 
 // ALL_ALL_PARAMETERS message contains all the parameters used by the protocol.
-type ALL_ALL_PARAMETERS struct {
+type ALL_ALL_PARAMETERS_NEW struct {
 	ForceParams bool
 	Params map[string]interface{}
+}
+
+// ALL_ALL_PARAMETERS message contains all the parameters used by the protocol.
+type ALL_ALL_PARAMETERS struct {
+	ClientDataOutputEnabled bool
+	DoLatencyTests          bool
+	DownCellSize            int
+	ForceParams             bool
+	NClients                int
+	NextFreeClientID        int
+	NextFreeTrusteeID       int
+	NTrustees               int
+	RelayDataOutputEnabled  bool
+	RelayReportingLimit     int
+	RelayUseDummyDataDown   bool
+	RelayWindowSize         int
+	StartNow                bool
+	UpCellSize              int
+	UseUDP                  bool
 }
 
 // CLI_REL_TELL_PK_AND_EPH_PK message contains the public key and ephemeral key of a client

@@ -138,7 +138,7 @@ func (prifi *PriFiLibInstance) ReceivedMessage(msg interface{}) error {
 	var err error
 
 	switch typedMsg := msg.(type) {
-	case net.ALL_ALL_PARAMETERS:
+	case net.ALL_ALL_PARAMETERS_NEW:
 		switch prifi.role {
 		case PRIFI_ROLE_CLIENT:
 			err = prifi.Received_ALL_CLI_PARAMETERS(typedMsg)

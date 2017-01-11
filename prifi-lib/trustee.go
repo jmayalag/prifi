@@ -132,7 +132,7 @@ func (p *PriFiLibInstance) Received_ALL_TRU_SHUTDOWN(msg net.ALL_ALL_SHUTDOWN) e
 Received_ALL_TRU_PARAMETERS handles ALL_REL_PARAMETERS.
 It initializes the trustee with the parameters contained in the message.
 */
-func (p *PriFiLibInstance) Received_ALL_TRU_PARAMETERS(msg net.ALL_ALL_PARAMETERS) error {
+func (p *PriFiLibInstance) Received_ALL_TRU_PARAMETERS(msg net.ALL_ALL_PARAMETERS_NEW) error {
 
 	//this can only happens in the state RELAY_STATE_BEFORE_INIT
 	if p.trusteeState.currentState != TRUSTEE_STATE_BEFORE_INIT && !msg.ForceParams {
