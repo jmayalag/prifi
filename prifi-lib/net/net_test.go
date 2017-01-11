@@ -152,3 +152,23 @@ func TestUDPMessage(t *testing.T) {
 		t.Error("REL_CLI_DOWNSTREAM_DATA_UDP should not allow to decode wrong-size messages")
 	}
 }
+
+func TestUtils(t *testing.T) {
+
+	m := make(map[string]interface{})
+	m["test"] = 123
+	m["test2"] = "abc"
+
+	if ValueOrElse(m, "test", 456) != 123 {
+		t.Error("ValueOrElse computed a wrong value")
+	}
+	if ValueOrElse(m, "test2", "def") != "abc" {
+		t.Error("ValueOrElse computed a wrong value")
+	}
+	if ValueOrElse(m, "test3", "newval") != "newval" {
+		t.Error("ValueOrElse computed a wrong value")
+	}
+	if ValueOrElse(m, "test4", float64(1.2)) != float64(1.2) {
+		t.Error("ValueOrElse computed a wrong value")
+	}
+}

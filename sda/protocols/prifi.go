@@ -82,7 +82,7 @@ func (p *PriFiSDAProtocol) SetConfigFromPriFiService(config *PriFiSDAWrapperConf
 		relayState := relay.NewRelayState(
 			nTrustees,
 			nClients,
-			config.UpCellSize,
+			config.Params.UpCellSize,
 			config.DownCellSize,
 			config.RelayWindowSize,
 			config.RelayUseDummyDataDown,

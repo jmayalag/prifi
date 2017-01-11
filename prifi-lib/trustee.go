@@ -144,9 +144,15 @@ func (p *PriFiLibInstance) Received_ALL_TRU_PARAMETERS(msg net.ALL_ALL_PARAMETER
 		log.Lvl3("Trustee : received ALL_ALL_PARAMETERS")
 	}
 
-	p.trusteeState = *NewTrusteeState(msg.NextFreeTrusteeID, msg.NClients, msg.NTrustees, msg.UpCellSize)
+	startNow := net.ValueOrElse(msg.Params, "StartNow", false).(bool)
+	nextFreeTrusteeID := net.ValueOrElse(msg.Params, "NextFreeTrusteeID", -1).(int)
+	nTrustees := net.ValueOrElse(msg.Params, "NTrustees", p.trusteeState.nTrustees).(int)
+	nClients := net.ValueOrElse(msg.Params, "nClients", p.trusteeState.nClients).(int)
+	upCellSize := net.ValueOrElse(msg.Params, "UpstreamCellSize", p.trusteeState.PayloadLength).(int) //todo: change this name
 
-	if msg.StartNow {
+	p.trusteeState = *NewTrusteeState(nextFreeTrusteeID, nClients, nTrustees, upCellSize)
+
+	if startNow {
 		// send our public key to the relay
 		p.Send_TRU_REL_PK()
 	}

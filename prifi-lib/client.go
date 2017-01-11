@@ -147,7 +147,18 @@ func (p *PriFiLibInstance) Received_ALL_CLI_PARAMETERS(msg net.ALL_ALL_PARAMETER
 		p.clientState.StartStopReceiveBroadcast <- false
 	}
 
-	p.clientState = *NewClientState(msg.NextFreeClientID, msg.NTrustees, msg.NClients, msg.UpCellSize, msg.DoLatencyTests, msg.UseUDP, msg.ClientDataOutputEnabled, make(chan []byte), make(chan []byte))
+	nextFreeClientID := net.ValueOrElse(msg.Params, "NextFreeClientID", -1).(int)
+	nTrustees := net.ValueOrElse(msg.Params, "NTrustees", p.clientState.nTrustees).(int)
+	nClients := net.ValueOrElse(msg.Params, "nClients", p.clientState.nClients).(int)
+	upCellSize := net.ValueOrElse(msg.Params, "UpstreamCellSize", p.clientState.PayloadLength).(int) //todo: change this name
+	useUDP := net.ValueOrElse(msg.Params, "UseUDP", p.clientState.UseUDP).(bool)
+	doLatencyTests := net.ValueOrElse(msg.Params, "DoLatencyTests", p.clientState.LatencyTest).(bool) //todo: change this name
+	clientDataOutputEnabled := net.ValueOrElse(msg.Params, "ClientDataOutputEnabled", p.clientState.DataOutputEnabled).(bool)
+
+	dataForDCNet := make(chan []byte)
+	dataFromDCNet := make(chan []byte)
+
+	p.clientState = *NewClientState(nextFreeClientID, nTrustees, nClients, upCellSize, doLatencyTests, useUDP, clientDataOutputEnabled, dataForDCNet, dataFromDCNet)
 
 	//start the broadcast-listener goroutine
 	log.Lvl2("Client " + strconv.Itoa(p.clientState.ID) + " : starting the broadcast-listener goroutine")

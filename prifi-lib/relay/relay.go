@@ -235,7 +235,7 @@ func (p *PriFiLibRelayInstance) Received_ALL_REL_SHUTDOWN(msg net.ALL_ALL_SHUTDO
 Received_ALL_REL_PARAMETERS handles ALL_REL_PARAMETERS.
 It initializes the relay with the parameters contained in the message.
 */
-func (p *PriFiLibRelayInstance) Received_ALL_REL_PARAMETERS(msg net.ALL_ALL_PARAMETERS) error {
+func (p *PriFiLibRelayInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARAMETERS) error {
 
 	// This can only happens in the state RELAY_STATE_BEFORE_INIT
 	if p.relayState.currentState != RELAY_STATE_BEFORE_INIT && !msg.ForceParams {
@@ -247,8 +247,27 @@ func (p *PriFiLibRelayInstance) Received_ALL_REL_PARAMETERS(msg net.ALL_ALL_PARA
 		log.Lvl3("Relay : received ALL_ALL_PARAMETERS")
 	}
 
-	oldExperimentResultChan := p.relayState.ExperimentResultChannel
-	p.relayState = *NewRelayState(msg.NTrustees, msg.NClients, msg.UpCellSize, msg.DownCellSize, msg.RelayWindowSize, msg.RelayUseDummyDataDown, msg.RelayReportingLimit, oldExperimentResultChan, msg.UseUDP, msg.RelayDataOutputEnabled, make(chan []byte), make(chan []byte), p.relayState.timeoutHandler)
+	startNow := net.ValueOrElse(msg.Params, "StartNow", false).(bool)
+	nTrustees := net.ValueOrElse(msg.Params, "NTrustees", p.relayState.nTrustees).(int)
+	nClients := net.ValueOrElse(msg.Params, "nClients", p.relayState.nClients).(int)
+	upCellSize := net.ValueOrElse(msg.Params, "UpstreamCellSize", p.relayState.UpstreamCellSize).(int)
+	downCellSize := net.ValueOrElse(msg.Params, "DownstreamCellSize", p.relayState.DownstreamCellSize).(int)
+	windowSize := net.ValueOrElse(msg.Params, "WindowSize", p.relayState.WindowSize).(int)
+	useDummyDown := net.ValueOrElse(msg.Params, "UseDummyDataDown", p.relayState.UseDummyDataDown).(bool)
+	reportingLimit := net.ValueOrElse(msg.Params, "ExperimentRoundLimit", p.relayState.ExperimentRoundLimit).(int)
+	useUDP := net.ValueOrElse(msg.Params, "UseUDP", p.relayState.UseUDP).(bool)
+	dataOutputEnabled := net.ValueOrElse(msg.Params, "DataOutputEnabled", p.relayState.DataOutputEnabled).(bool)
+
+	//this is never set in the message
+	dataForClients := make(chan []byte)
+	dataFromDCNet := make(chan []byte)
+	experimentResultChan := p.relayState.ExperimentResultChannel
+	timeoutHandler := p.relayState.timeoutHandler
+
+
+	p.relayState = *NewRelayState(nTrustees, nClients, upCellSize, downCellSize, windowSize,
+		useDummyDown, reportingLimit, experimentResultChan, useUDP, dataOutputEnabled,
+		dataForClients, dataFromDCNet, timeoutHandler)
 
 	//this should be in NewRelayState, but we need p
 	if !p.relayState.bufferManager.DoSendStopResumeMessages {
@@ -268,7 +287,7 @@ func (p *PriFiLibRelayInstance) Received_ALL_REL_PARAMETERS(msg net.ALL_ALL_PARA
 	log.Lvl1("Relay has been initialized by message. ")
 
 	// Broadcast those parameters to the other nodes, then tell the trustees which ID they are.
-	if msg.StartNow {
+	if startNow {
 		p.relayState.currentState = RELAY_STATE_COLLECTING_TRUSTEES_PKS
 		p.SendParameters()
 	}
@@ -281,13 +300,14 @@ func (p *PriFiLibRelayInstance) Received_ALL_REL_PARAMETERS(msg net.ALL_ALL_PARA
 func (p *PriFiLibRelayInstance) SendParameters() error {
 
 	// Craft default parameters
+	params := make(map[string]interface{})
+	params["NClients"] = p.relayState.nClients
+	params["NTrustees"] = p.relayState.nTrustees
+	params["StartNow"] = true
+	params["UpCellSize"] = p.relayState.UpstreamCellSize
 	var msg = &net.ALL_ALL_PARAMETERS{
-		NClients:          p.relayState.nClients,
-		NextFreeTrusteeID: 0,
-		NTrustees:         p.relayState.nTrustees,
-		StartNow:          true,
+		Params: params,
 		ForceParams:       true,
-		UpCellSize:        p.relayState.UpstreamCellSize,
 	}
 
 	log.Lvl1("Sending ALL_TRU_PARAMETERS 2")
@@ -297,7 +317,7 @@ func (p *PriFiLibRelayInstance) SendParameters() error {
 	for j := 0; j < p.relayState.nTrustees; j++ {
 
 		// The ID is unique !
-		msg.NextFreeTrusteeID = j
+		msg.Params["NextFreeTrusteeID"] = j
 		p.messageSender.SendToTrusteeWithLog(j, msg, "")
 	}
 
@@ -308,7 +328,7 @@ func (p *PriFiLibRelayInstance) SendParameters() error {
 	for j := 0; j < p.relayState.nClients; j++ {
 
 		// The ID is unique !
-		msg.NextFreeClientID = j
+		msg.Params["NextFreeClientID"] = j
 		p.messageSender.SendToClientWithLog(j, msg, "")
 	}
 
@@ -862,7 +882,7 @@ func (p *PriFiLibRelayInstance) ReceivedMessage(msg interface{}) error {
 
 	switch typedMsg := msg.(type) {
 	case net.ALL_ALL_PARAMETERS:
-		err = p.Received_ALL_REL_PARAMETERS(typedMsg)
+		err = p.Received_ALL_ALL_PARAMETERS(typedMsg)
 	case net.ALL_ALL_SHUTDOWN:
 		err = p.Received_ALL_REL_SHUTDOWN(typedMsg)
 	case net.CLI_REL_TELL_PK_AND_EPH_PK:
