@@ -59,7 +59,8 @@ func (p *PriFiSDAProtocol) Start() error {
 	//At the protocol is ready,
 
 	log.Lvl3("Starting PriFi-SDA-Wrapper Protocol")
-	p.prifiLibInstance.SendParameters()
+	p.prifiLibInstance.ReceivedMessage(net.ALL_ALL_PARAMETERS{StartNow: true, ForceParams: true})
+	//p.prifiLibInstance.SendParameters()
 
 	return nil
 }
@@ -69,11 +70,11 @@ func (p *PriFiSDAProtocol) Stop() {
 
 	switch p.role {
 	case Relay:
-		p.prifiLibInstance.Received_ALL_REL_SHUTDOWN(net.ALL_ALL_SHUTDOWN{})
+		p.prifiLibInstance.ReceivedMessage(net.ALL_ALL_SHUTDOWN{})
 	case Trustee:
-		p.prifiLibInstance.Received_ALL_TRU_SHUTDOWN(net.ALL_ALL_SHUTDOWN{})
+		p.prifiLibInstance.ReceivedMessage(net.ALL_ALL_SHUTDOWN{})
 	case Client:
-		p.prifiLibInstance.Received_ALL_CLI_SHUTDOWN(net.ALL_ALL_SHUTDOWN{})
+		p.prifiLibInstance.ReceivedMessage(net.ALL_ALL_SHUTDOWN{})
 	}
 
 	p.HasStopped = true
