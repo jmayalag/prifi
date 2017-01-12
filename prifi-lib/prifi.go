@@ -1,11 +1,11 @@
 package prifi_lib
 
 import (
-	"strconv"
-
 	"github.com/dedis/cothority/log"
 	"github.com/lbarman/prifi/prifi-lib/net"
 	"github.com/lbarman/prifi/prifi-lib/relay"
+	"github.com/lbarman/prifi/prifi-lib/trustee"
+	"github.com/lbarman/prifi/prifi-lib/client"
 )
 
 /*
@@ -20,10 +20,6 @@ Then, it runs the PriFi anonymous communication network among those entities.
 type PriFiLibInstance struct {
 	role          int16
 	messageSender *net.MessageSenderWrapper
-
-	clientState  ClientState
-	trusteeState TrusteeState
-
 	specializedLibInstance SpecializedLibInstance
 }
 
@@ -101,88 +97,25 @@ func NewPriFiTrustee(msgSender net.MessageSender) *PriFiLibInstance {
 }
 
 // NewPriFiClientWithState creates a new PriFi client entity state.
-func NewPriFiClientWithState(msgSender net.MessageSender, state *ClientState) *PriFiLibInstance {
+func NewPriFiClientWithState(msgSender net.MessageSender, state *client.ClientState) *PriFiLibInstance {
 	prifi := PriFiLibInstance{
 		role:          PRIFI_ROLE_CLIENT,
-		messageSender: newMessageSenderWrapper(msgSender),
-		clientState:   *state,
+		specializedLibInstance: client.NewPriFiClientWithState(newMessageSenderWrapper(msgSender), state),
 	}
-	log.Lvl1("Client has been initialized by function call. ")
-
-	log.Lvl2("Client " + strconv.Itoa(prifi.clientState.ID) + " : starting the broadcast-listener goroutine")
-	go prifi.messageSender.ClientSubscribeToBroadcast(prifi.clientState.Name, prifi.ReceivedMessage, prifi.clientState.StartStopReceiveBroadcast)
 	return &prifi
 }
 
 // NewPriFiTrusteeWithState creates a new PriFi trustee entity state.
-func NewPriFiTrusteeWithState(msgSender net.MessageSender, state *TrusteeState) *PriFiLibInstance {
+func NewPriFiTrusteeWithState(msgSender net.MessageSender, state *trustee.TrusteeState) *PriFiLibInstance {
 	prifi := PriFiLibInstance{
 		role:          PRIFI_ROLE_TRUSTEE,
-		messageSender: newMessageSenderWrapper(msgSender),
-		trusteeState:  *state,
+		specializedLibInstance: trustee.NewPriFiTrusteeWithState(newMessageSenderWrapper(msgSender), state),
 	}
-
-	log.Lvl1("Trustee has been initialized by function call. ")
 	return &prifi
 }
 
 // ReceivedMessage must be called when a PriFi host receives a message.
 // It takes care to call the correct message handler function.
-func (prifi *PriFiLibInstance) ReceivedMessage(msg interface{}) error {
-
-	if prifi == nil {
-		log.Print("Received a message ", msg)
-		panic("But prifi is nil !")
-	}
-
-	var err error
-
-	switch typedMsg := msg.(type) {
-	case net.ALL_ALL_PARAMETERS_NEW:
-		switch prifi.role {
-		case PRIFI_ROLE_CLIENT:
-			err = prifi.Received_ALL_CLI_PARAMETERS(typedMsg)
-		case PRIFI_ROLE_TRUSTEE:
-			err = prifi.Received_ALL_TRU_PARAMETERS(typedMsg)
-		default:
-			prifi.specializedLibInstance.ReceivedMessage(typedMsg)
-		}
-	case net.ALL_ALL_SHUTDOWN:
-		switch prifi.role {
-		case PRIFI_ROLE_CLIENT:
-			err = prifi.Received_ALL_CLI_SHUTDOWN(typedMsg)
-		case PRIFI_ROLE_TRUSTEE:
-			err = prifi.Received_ALL_TRU_SHUTDOWN(typedMsg)
-		default:
-			prifi.specializedLibInstance.ReceivedMessage(typedMsg)
-		}
-	case net.REL_CLI_DOWNSTREAM_DATA:
-		err = prifi.Received_REL_CLI_DOWNSTREAM_DATA(typedMsg)
-	/*
-	 * this message is a bit special. At this point, we don't care anymore that's it's UDP, and cast it back to REL_CLI_DOWNSTREAM_DATA.
-	 * the relay only handles REL_CLI_DOWNSTREAM_DATA
-	 */
-	case net.REL_CLI_DOWNSTREAM_DATA_UDP:
-		err = prifi.Received_REL_CLI_UDP_DOWNSTREAM_DATA(typedMsg.REL_CLI_DOWNSTREAM_DATA)
-	case net.REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG:
-		err = prifi.Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(typedMsg)
-	case net.REL_CLI_TELL_TRUSTEES_PK:
-		err = prifi.Received_REL_CLI_TELL_TRUSTEES_PK(typedMsg)
-	case net.REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE:
-		err = prifi.Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE(typedMsg)
-	case net.REL_TRU_TELL_TRANSCRIPT:
-		err = prifi.Received_REL_TRU_TELL_TRANSCRIPT(typedMsg)
-	case net.REL_TRU_TELL_RATE_CHANGE:
-		err = prifi.Received_REL_TRU_TELL_RATE_CHANGE(typedMsg)
-	default:
-		panic("unrecognized message !")
-	}
-
-	//no need to push the error further up. display it here !
-	if err != nil {
-		log.Error("ReceivedMessage: got an error, " + err.Error())
-		return err
-	}
-
-	return nil
+func (p *PriFiLibInstance) ReceivedMessage(msg interface{}) error {
+	return p.specializedLibInstance.ReceivedMessage(msg)
 }
