@@ -20,7 +20,7 @@ type Output interface {
 type PrintOutput struct{}
 
 // Print implements Output interface.
-func (o PrintOutput) Print(text string) {
+func (o *PrintOutput) Print(text string) {
 	fmt.Println(text)
 }
 
@@ -31,7 +31,7 @@ type LogOutput struct {
 }
 
 // Print implements Output interface.
-func (o LogOutput) Print(text string) {
+func (o *LogOutput) Print(text string) {
 	if o.Info {
 		log.Info(text)
 	} else {
@@ -56,4 +56,4 @@ func (o LogOutput) Print(text string) {
 type NullOutput struct{}
 
 // Print implements Output interface.
-func (o NullOutput) Print(text string) {}
+func (o *NullOutput) Print(text string) {}

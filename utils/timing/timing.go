@@ -18,7 +18,7 @@ import (
 
 var startTimes = make(map[string]time.Time)
 var mutex sync.Mutex
-var outputInterface output.Output = output.PrintOutput{}
+var outputInterface output.Output = &output.PrintOutput{}
 
 // StartMeasure starts a time measure identified by a name.
 func StartMeasure(name string) {
@@ -51,7 +51,7 @@ func StopMeasure(name string) time.Duration {
 		// Unlock before potentially expensive writing to output.
 		mutex.Unlock()
 
-		msg := fmt.Sprint("Measured time for ", name, " : ", duration)
+		msg := fmt.Sprint("Measured time for ", name, ": ", duration)
 		outputInterface.Print(msg)
 
 		return duration
