@@ -48,6 +48,7 @@ import (
 
 	"github.com/lbarman/prifi/prifi-lib/crypto"
 	socks "github.com/lbarman/prifi/prifi-socks"
+	"github.com/lbarman/prifi/utils/timing"
 )
 
 //The time slept between each round
@@ -622,6 +623,8 @@ func (p *PriFiLibInstance) Received_CLI_REL_TELL_PK_AND_EPH_PK(msg net.CLI_REL_T
 
 		// changing state
 		p.relayState.currentState = RELAY_STATE_COLLECTING_SHUFFLES
+
+		timing.StopMeasure("Resync")
 	}
 
 	return nil
