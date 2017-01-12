@@ -178,13 +178,13 @@ func (p *PriFiLibClientInstance) Received_ALL_CLI_PARAMETERS(msg net.ALL_ALL_PAR
 		p.clientState.StartStopReceiveBroadcast <- false
 	}
 
-	nextFreeClientID := net.ValueOrElse(msg.Params, "NextFreeClientID", -1).(int)
-	nTrustees := net.ValueOrElse(msg.Params, "NTrustees", p.clientState.nTrustees).(int)
-	nClients := net.ValueOrElse(msg.Params, "nClients", p.clientState.nClients).(int)
-	upCellSize := net.ValueOrElse(msg.Params, "UpstreamCellSize", p.clientState.PayloadLength).(int) //todo: change this name
-	useUDP := net.ValueOrElse(msg.Params, "UseUDP", p.clientState.UseUDP).(bool)
-	doLatencyTests := net.ValueOrElse(msg.Params, "DoLatencyTests", p.clientState.LatencyTest).(bool) //todo: change this name
-	clientDataOutputEnabled := net.ValueOrElse(msg.Params, "ClientDataOutputEnabled", p.clientState.DataOutputEnabled).(bool)
+	nextFreeClientID := msg.IntValueOrElse("NextFreeClientID", -1)
+	nTrustees := msg.IntValueOrElse("NTrustees", p.clientState.nTrustees)
+	nClients := msg.IntValueOrElse("nClients", p.clientState.nClients)
+	upCellSize := msg.IntValueOrElse("UpstreamCellSize", p.clientState.PayloadLength) //todo: change this name
+	useUDP := msg.BoolValueOrElse("UseUDP", p.clientState.UseUDP)
+	doLatencyTests := msg.BoolValueOrElse("DoLatencyTests", p.clientState.LatencyTest) //todo: change this name
+	clientDataOutputEnabled := msg.BoolValueOrElse("ClientDataOutputEnabled", p.clientState.DataOutputEnabled)
 
 	dataForDCNet := make(chan []byte)
 	dataFromDCNet := make(chan []byte)

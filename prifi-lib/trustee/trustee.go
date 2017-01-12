@@ -169,11 +169,11 @@ func (p *PriFiLibTrusteeInstance) Received_ALL_TRU_PARAMETERS(msg net.ALL_ALL_PA
 		log.Lvl3("Trustee : received ALL_ALL_PARAMETERS")
 	}
 
-	startNow := net.ValueOrElse(msg.Params, "StartNow", false).(bool)
-	nextFreeTrusteeID := net.ValueOrElse(msg.Params, "NextFreeTrusteeID", -1).(int)
-	nTrustees := net.ValueOrElse(msg.Params, "NTrustees", p.trusteeState.nTrustees).(int)
-	nClients := net.ValueOrElse(msg.Params, "nClients", p.trusteeState.nClients).(int)
-	upCellSize := net.ValueOrElse(msg.Params, "UpstreamCellSize", p.trusteeState.PayloadLength).(int) //todo: change this name
+	startNow := msg.BoolValueOrElse("StartNow", false)
+	nextFreeTrusteeID := msg.IntValueOrElse("NextFreeTrusteeID", -1)
+	nTrustees := msg.IntValueOrElse("NTrustees", p.trusteeState.nTrustees)
+	nClients := msg.IntValueOrElse("nClients", p.trusteeState.nClients)
+	upCellSize := msg.IntValueOrElse("UpstreamCellSize", p.trusteeState.PayloadLength) //todo: change this name
 
 	p.trusteeState = *NewTrusteeState(nextFreeTrusteeID, nClients, nTrustees, upCellSize)
 

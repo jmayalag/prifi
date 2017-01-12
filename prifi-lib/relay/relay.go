@@ -293,16 +293,16 @@ func (p *PriFiLibRelayInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARA
 		log.Lvl3("Relay : received ALL_ALL_PARAMETERS")
 	}
 
-	startNow := net.ValueOrElse(msg.Params, "StartNow", false).(bool)
-	nTrustees := net.ValueOrElse(msg.Params, "NTrustees", p.relayState.nTrustees).(int)
-	nClients := net.ValueOrElse(msg.Params, "nClients", p.relayState.nClients).(int)
-	upCellSize := net.ValueOrElse(msg.Params, "UpstreamCellSize", p.relayState.UpstreamCellSize).(int)
-	downCellSize := net.ValueOrElse(msg.Params, "DownstreamCellSize", p.relayState.DownstreamCellSize).(int)
-	windowSize := net.ValueOrElse(msg.Params, "WindowSize", p.relayState.WindowSize).(int)
-	useDummyDown := net.ValueOrElse(msg.Params, "UseDummyDataDown", p.relayState.UseDummyDataDown).(bool)
-	reportingLimit := net.ValueOrElse(msg.Params, "ExperimentRoundLimit", p.relayState.ExperimentRoundLimit).(int)
-	useUDP := net.ValueOrElse(msg.Params, "UseUDP", p.relayState.UseUDP).(bool)
-	dataOutputEnabled := net.ValueOrElse(msg.Params, "DataOutputEnabled", p.relayState.DataOutputEnabled).(bool)
+	startNow := msg.BoolValueOrElse("StartNow", false)
+	nTrustees := msg.IntValueOrElse("NTrustees", p.relayState.nTrustees)
+	nClients := msg.IntValueOrElse("nClients", p.relayState.nClients)
+	upCellSize := msg.IntValueOrElse("UpstreamCellSize", p.relayState.UpstreamCellSize)
+	downCellSize := msg.IntValueOrElse("DownstreamCellSize", p.relayState.DownstreamCellSize)
+	windowSize := msg.IntValueOrElse("WindowSize", p.relayState.WindowSize)
+	useDummyDown := msg.BoolValueOrElse("UseDummyDataDown", p.relayState.UseDummyDataDown)
+	reportingLimit := msg.IntValueOrElse("ExperimentRoundLimit", p.relayState.ExperimentRoundLimit)
+	useUDP := msg.BoolValueOrElse("UseUDP", p.relayState.UseUDP)
+	dataOutputEnabled := msg.BoolValueOrElse( "DataOutputEnabled", p.relayState.DataOutputEnabled)
 
 	//this is never set in the message
 	dataForClients := make(chan []byte)
@@ -345,23 +345,18 @@ func (p *PriFiLibRelayInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARA
 func (p *PriFiLibRelayInstance) SendParameters() error {
 
 	// Craft default parameters
-	params := make(map[string]interface{})
-	params["NClients"] = p.relayState.nClients
-	params["NTrustees"] = p.relayState.nTrustees
-	params["StartNow"] = true
-	params["UpCellSize"] = p.relayState.UpstreamCellSize
+	msgBuilder := net.NewALL_ALL_PARAMETERS_BUILDER()
+	msgBuilder.Add("NClients", p.relayState.nClients)
+	msgBuilder.Add("NTrustees", p.relayState.nTrustees)
+	msgBuilder.Add("StartNow", true)
+	msgBuilder.Add("UpCellSize", p.relayState.UpstreamCellSize)
 
 	// Send those parameters to all trustees
 	for j := 0; j < p.relayState.nTrustees; j++ {
 
 		// The ID is unique !
-		params["NextFreeTrusteeID"] = j
-		var msg = &net.ALL_ALL_PARAMETERS_NEW{
-			Params:      net.MapInterface(params),
-			ForceParams: true,
-		}
-		log.Error("SendToTrusteeWithLog", p.messageSender, p.messageSender.SendToClientWithLog)
-
+		msgBuilder.Add("NextFreeTrusteeID", j)
+		msg := msgBuilder.BuildMessage(true)
 		p.messageSender.SendToTrusteeWithLog(j, msg, "")
 	}
 
@@ -370,11 +365,8 @@ func (p *PriFiLibRelayInstance) SendParameters() error {
 	for j := 0; j < p.relayState.nClients; j++ {
 
 		// The ID is unique !
-		params["NextFreeClientID"] = j
-		var msg = &net.ALL_ALL_PARAMETERS_NEW{
-			Params:      net.MapInterface(params),
-			ForceParams: true,
-		}
+		msgBuilder.Add("NextFreeClientID", j)
+		msg := msgBuilder.BuildMessage(true)
 		p.messageSender.SendToClientWithLog(j, msg, "")
 	}
 

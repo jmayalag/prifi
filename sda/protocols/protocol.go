@@ -59,10 +59,12 @@ func (p *PriFiSDAProtocol) Start() error {
 	//At the protocol is ready,
 
 	log.Lvl3("Starting PriFi-SDA-Wrapper Protocol")
-	data := make(map[string]interface{})
-	data["StartNow"] = true
-	p.prifiLibInstance.ReceivedMessage(net.ALL_ALL_PARAMETERS_NEW{Params: net.MapInterface(data), ForceParams: true})
-	//p.prifiLibInstance.SendParameters()
+
+	//emulate the reception of a ALL_ALL_PARAMETERS with StartNow=true
+	builder := net.NewALL_ALL_PARAMETERS_BUILDER()
+	builder.Add("StartNow", true)
+	msg := builder.BuildMessage(true)
+	p.prifiLibInstance.ReceivedMessage(msg)
 
 	return nil
 }
