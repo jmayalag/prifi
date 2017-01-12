@@ -19,6 +19,43 @@ type MessageSender struct {
 	trustees map[int]*sda.TreeNode
 }
 
+// buildMessageSender creates a MessageSender struct
+// given a mep between server identities and PriFi identities.
+func (p *PriFiSDAProtocol) buildMessageSender(identities map[string]PriFiIdentity) MessageSender {
+	nodes := p.List() // Has type []*sda.TreeNode
+	trustees := make(map[int]*sda.TreeNode)
+	clients := make(map[int]*sda.TreeNode)
+	trusteeID := 0
+	clientID := 0
+	var relay *sda.TreeNode
+
+	for i := 0; i < len(nodes); i++ {
+		identifier := nodes[i].ServerIdentity.Public.String()
+		id, ok := identities[identifier]
+
+		if !ok {
+			log.Lvl3("Skipping unknow node with address", identifier)
+			continue
+		}
+		switch id.Role {
+		case Client:
+			clients[clientID] = nodes[i] //TODO : wrong
+			clientID++
+		case Trustee:
+			trustees[trusteeID] = nodes[i]
+			trusteeID++
+		case Relay:
+			if relay == nil {
+				relay = nodes[i]
+			} else {
+				log.Fatal("Multiple relays")
+			}
+		}
+	}
+
+	return MessageSender{p.TreeNodeInstance, relay, clients, trustees}
+}
+
 //SendToClient sends a message to client i, or fails if it is unknown
 func (ms MessageSender) SendToClient(i int, msg interface{}) error {
 

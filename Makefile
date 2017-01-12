@@ -35,10 +35,12 @@ coveralls:
 test_verbose:
 	go test -v -race -short ./...
 
-integration_test:
+it:
 	./prifi.sh integration-test
 
+clean:
+	rm -f profile.cov *.log
 
 test: test_fmt test_govet test_lint
 
-all: test coveralls integration_test
+all: test coveralls it

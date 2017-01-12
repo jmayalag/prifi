@@ -59,13 +59,11 @@ type Storage struct {
 // configuration, if desired. As we don't know when the service will exit,
 // we need to save the configuration on our own from time to time.
 func newService(c *sda.Context, path string) sda.Service {
-	log.LLvl4("Calling newService")
 	s := &ServiceState{
 		ServiceProcessor: sda.NewServiceProcessor(c),
 		path:             path,
 	}
 
-	log.LLvlf1("Registering messages on s %+v", &s)
 	c.RegisterProcessorFunc(network.TypeFromData(StopProtocol{}), s.HandleStop)
 	c.RegisterProcessorFunc(network.TypeFromData(ConnectionRequest{}), s.HandleConnection)
 	c.RegisterProcessorFunc(network.TypeFromData(DisconnectionRequest{}), s.HandleDisconnection)
@@ -108,6 +106,7 @@ func (s *ServiceState) StartRelay(group *config.Group) error {
 	relayID, trusteesIDs := mapIdentities(group)
 	s.relayIdentity = relayID //should not be used in the case of the relay
 
+	//creates the ChurnHandler, part of the Relay's Service, that will start/stop the protocol
 	s.churnHandler = new(churnHandler)
 	s.churnHandler.init(relayID, trusteesIDs)
 	s.churnHandler.isProtocolRunning = s.IsPriFiProtocolRunning
@@ -121,6 +120,7 @@ func (s *ServiceState) StartRelay(group *config.Group) error {
 		DownstreamChannel: make(chan []byte),
 	}
 
+	//the relay has a socks Client
 	go prifi_socks.StartSocksClient(socksServerConfig.Port, socksServerConfig.UpstreamChannel, socksServerConfig.DownstreamChannel)
 
 	return nil
@@ -142,6 +142,7 @@ func (s *ServiceState) StartClient(group *config.Group) error {
 		DownstreamChannel: make(chan []byte),
 	}
 
+	//the client has a socks server
 	log.Lvl1("Starting SOCKS server on port", socksClientConfig.Port)
 	go prifi_socks.StartSocksServer(socksClientConfig.Port, socksClientConfig.PayloadLength, socksClientConfig.UpstreamChannel, socksClientConfig.DownstreamChannel, s.prifiTomlConfig.DoLatencyTests)
 

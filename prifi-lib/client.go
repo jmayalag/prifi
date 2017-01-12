@@ -19,16 +19,12 @@ package prifi_lib
  * SendUpstreamData() <- it is called at the end of ProcessDownStreamData(). Hence, after getting some data down, we send some data up.
  *
  * TODO : traffic need to be encrypted
- * TODO : we need to test / sort out the downstream traffic data that is not for us
- * TODO : integrate a VPN / SOCKS somewhere, for now this client has nothing to say ! (except latency-test messages)
- * TODO : More fine-grained locking
  */
 
 import (
 	"encoding/binary"
 	"errors"
 	"strconv"
-	"sync"
 	"time"
 
 	"github.com/dedis/cothority/log"
@@ -39,6 +35,7 @@ import (
 	prifilog "github.com/lbarman/prifi/prifi-lib/log"
 	"github.com/lbarman/prifi/prifi-lib/net"
 
+	"github.com/lbarman/prifi/prifi-lib/scheduler"
 	socks "github.com/lbarman/prifi/prifi-socks"
 )
 
@@ -53,7 +50,6 @@ const (
 
 // ClientState contains the mutable state of the client.
 type ClientState struct {
-	mutex                     *sync.RWMutex
 	CellCoder                 dcnet.CellCoder
 	currentState              int16
 	DataForDCNet              chan []byte //Data to the relay : VPN / SOCKS should put data there !
@@ -108,15 +104,9 @@ func NewClientState(clientID int, nTrustees int, nClients int, payloadLength int
 	params.BufferedRoundData = make(map[int32]net.REL_CLI_DOWNSTREAM_DATA)
 	params.StartStopReceiveBroadcast = make(chan bool)
 	params.statistics = prifilog.NewLatencyStatistics()
-	params.mutex = &sync.RWMutex{}
 
-	//prepare the crypto parameters
-	rand := config.CryptoSuite.Cipher([]byte(params.Name))
-	base := config.CryptoSuite.Point().Base()
-
-	//generate own parameters
-	params.privateKey = config.CryptoSuite.Scalar().Pick(rand)                 //NO, this should be kept by SDA
-	params.PublicKey = config.CryptoSuite.Point().Mul(base, params.privateKey) //NO, this should be kept by SDA
+	// Generate pk
+	params.PublicKey, params.privateKey = crypto.NewKeyPair()
 
 	//placeholders for pubkeys and secrets
 	params.TrusteePublicKey = make([]abstract.Point, nTrustees)
@@ -133,9 +123,6 @@ func NewClientState(clientID int, nTrustees int, nClients int, payloadLength int
 func (p *PriFiLibInstance) Received_ALL_CLI_SHUTDOWN(msg net.ALL_ALL_SHUTDOWN) error {
 	log.Lvl1("Client " + strconv.Itoa(p.clientState.ID) + " : Received a SHUTDOWN message. ")
 
-	p.clientState.mutex.Lock()
-	defer p.clientState.mutex.Unlock()
-
 	p.clientState.currentState = CLIENT_STATE_SHUTDOWN
 
 	return nil
@@ -144,9 +131,6 @@ func (p *PriFiLibInstance) Received_ALL_CLI_SHUTDOWN(msg net.ALL_ALL_SHUTDOWN) e
 // Received_ALL_CLI_PARAMETERS handles ALL_CLI_PARAMETERS messages.
 // It uses the message's parameters to initialize the client.
 func (p *PriFiLibInstance) Received_ALL_CLI_PARAMETERS(msg net.ALL_ALL_PARAMETERS) error {
-
-	p.clientState.mutex.Lock()
-	defer p.clientState.mutex.Unlock()
 
 	//this can only happens in the state RELAY_STATE_BEFORE_INIT
 	if p.clientState.currentState != CLIENT_STATE_BEFORE_INIT && !msg.ForceParams {
@@ -172,7 +156,6 @@ func (p *PriFiLibInstance) Received_ALL_CLI_PARAMETERS(msg net.ALL_ALL_PARAMETER
 	//after receiving this message, we are done with the state CLIENT_STATE_BEFORE_INIT, and are ready for initializing
 	p.clientState.currentState = CLIENT_STATE_INITIALIZING
 
-	log.Lvlf5("%+v\n", p.clientState)
 	log.Lvl2("Client " + strconv.Itoa(p.clientState.ID) + " has been initialized by message. ")
 
 	return nil
@@ -188,9 +171,6 @@ If we're lucky (if this is our slot), we are allowed to embed some message (whic
 SOCKS/VPN data, or if we're running latency tests, we send a "ping" message to compute the latency. If we have nothing to say, we send 0's.
 */
 func (p *PriFiLibInstance) Received_REL_CLI_DOWNSTREAM_DATA(msg net.REL_CLI_DOWNSTREAM_DATA) error {
-
-	p.clientState.mutex.Lock()
-	defer p.clientState.mutex.Unlock()
 
 	//this can only happens in the state TRUSTEE_STATE_SHUFFLE_DONE
 	if p.clientState.currentState != CLIENT_STATE_READY {
@@ -226,16 +206,6 @@ If we're lucky (if this is our slot), we are allowed to embed some message (whic
 SOCKS/VPN data, or if we're running latency tests, we send a "ping" message to compute the latency. If we have nothing to say, we send 0's.
 */
 func (p *PriFiLibInstance) Received_REL_CLI_UDP_DOWNSTREAM_DATA(msg net.REL_CLI_DOWNSTREAM_DATA) error {
-
-	p.clientState.mutex.Lock()
-	defer p.clientState.mutex.Unlock()
-
-	/*
-		if msg.RoundId == 3 && p.clientState.Id == 1 {
-			log.Error("Client " + strconv.Itoa(p.clientState.Id) + " : simulating loss, dropping UDP message for round 3.")
-			return nil
-		}
-	*/
 
 	//this can only happens in the state TRUSTEE_STATE_SHUFFLE_DONE
 	if p.clientState.currentState != CLIENT_STATE_READY {
@@ -392,9 +362,6 @@ Once we receive this message, we need to reply with our Public Key (Used to deri
 */
 func (p *PriFiLibInstance) Received_REL_CLI_TELL_TRUSTEES_PK(msg net.REL_CLI_TELL_TRUSTEES_PK) error {
 
-	p.clientState.mutex.Lock()
-	defer p.clientState.mutex.Unlock()
-
 	//this can only happens in the state CLIENT_STATE_INITIALIZING
 	if p.clientState.currentState != CLIENT_STATE_INITIALIZING {
 		e := "Client " + strconv.Itoa(p.clientState.ID) + " : Received a REL_CLI_TELL_TRUSTEES_PK, but not in state CLIENT_STATE_INITIALIZING, in state " + strconv.Itoa(int(p.clientState.currentState))
@@ -410,7 +377,6 @@ func (p *PriFiLibInstance) Received_REL_CLI_TELL_TRUSTEES_PK(msg net.REL_CLI_TEL
 		return errors.New(e)
 	}
 
-	//TODO: this is redundant, we already know the number of trustees
 	//first, collect the public keys from the trustees, and derive the secrets
 	p.clientState.nTrustees = len(msg.Pks)
 
@@ -423,7 +389,7 @@ func (p *PriFiLibInstance) Received_REL_CLI_TELL_TRUSTEES_PK(msg net.REL_CLI_TEL
 	}
 
 	//then, generate our ephemeral keys (used for shuffling)
-	p.clientState.generateEphemeralKeys()
+	p.clientState.EphemeralPublicKey, p.clientState.ephemeralPrivateKey = crypto.NewKeyPair()
 
 	//send the keys to the relay
 	toSend := &net.CLI_REL_TELL_PK_AND_EPH_PK{
@@ -443,16 +409,13 @@ Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG handles REL_CLI_TELL_EPH_PKS_AND_
 These are sent after the Shuffle protocol has been done by the Trustees and the Relay.
 The relay is sending us the result, so we should check that the protocol went well :
 1) each trustee announced must have signed the shuffle
-2) we need to locate which is our slot <-- THIS IS BUGGY NOW
+2) we need to locate which is our slot
 When this is done, we are ready to communicate !
 As the client should send the first data, we do so; to keep this function simple, the first data is blank
 (the message has no content / this is a wasted message). The actual embedding of data happens only in the
 "round function", that is Received_REL_CLI_DOWNSTREAM_DATA().
 */
 func (p *PriFiLibInstance) Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(msg net.REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG) error {
-
-	p.clientState.mutex.Lock()
-	defer p.clientState.mutex.Unlock()
 
 	//this can only happens in the state CLIENT_STATE_EPH_KEYS_SENT
 	if p.clientState.currentState != CLIENT_STATE_EPH_KEYS_SENT {
@@ -466,51 +429,12 @@ func (p *PriFiLibInstance) Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(msg ne
 	p.clientState.nClients = len(msg.EphPks)
 
 	//verify the signature
-	newBase := msg.Base
-	ephPubKeys := msg.EphPks
-	signatures := msg.TrusteesSigs
+	neff := new(scheduler.NeffShuffle)
+	mySlot, err := neff.ClientVerifySigAndRecognizeSlot(p.clientState.ephemeralPrivateKey, p.clientState.TrusteePublicKey, msg.Base, msg.EphPks, msg.TrusteesSigs)
 
-	G_bytes, _ := newBase.MarshalBinary()
-	var M []byte
-	M = append(M, G_bytes...)
-	for k := 0; k < len(ephPubKeys); k++ {
-		pkBytes, _ := ephPubKeys[k].MarshalBinary()
-		M = append(M, pkBytes...)
-	}
-
-	for j := 0; j < p.clientState.nTrustees; j++ {
-		err := crypto.SchnorrVerify(config.CryptoSuite, M, p.clientState.TrusteePublicKey[j], signatures[j])
-
-		if err != nil {
-			e := "Client " + strconv.Itoa(p.clientState.ID) + " : signature from trustee " + strconv.Itoa(j) + " is invalid "
-			log.Error(e)
-			return errors.New(e)
-		}
-	}
-
-	log.Lvl3("Client " + strconv.Itoa(p.clientState.ID) + "; all signatures Ok")
-
-	//now, using the ephemeral keys received (the output of the neff shuffle), identify our slot
-	myPrivKey := p.clientState.ephemeralPrivateKey
-	ephPubInNewBase := config.CryptoSuite.Point().Mul(newBase, myPrivKey)
-	mySlot := -1
-
-	for j := 0; j < len(ephPubKeys); j++ {
-		if ephPubKeys[j].Equal(ephPubInNewBase) {
-			mySlot = j
-		}
-	}
-
-	if mySlot == -1 {
-		e := "Client " + strconv.Itoa(p.clientState.ID) + "; Can't recognize our slot !"
+	if err != nil {
+		e := "Client " + strconv.Itoa(p.clientState.ID) + "; Can't recognize our slot ! err is " + err.Error()
 		log.Error(e)
-
-		mySlot = p.clientState.ID
-		log.Lvl3("Client " + strconv.Itoa(p.clientState.ID) + "; Our self-assigned slot is " + strconv.Itoa(mySlot) + " out of " + strconv.Itoa(len(ephPubKeys)) + " slots")
-
-		//return errors.New(e)
-	} else {
-		log.Lvl3("Client " + strconv.Itoa(p.clientState.ID) + "; Our slot is " + strconv.Itoa(mySlot) + " out of " + strconv.Itoa(len(ephPubKeys)) + " slots")
 	}
 
 	//prepare for commmunication
@@ -547,15 +471,6 @@ func (p *PriFiLibInstance) Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(msg ne
 	p.clientState.RoundNo++
 
 	return nil
-}
-
-// generateEphemeralKeys is an auxiliary function used by Received_REL_CLI_TELL_TRUSTEES_PK
-func (clientState *ClientState) generateEphemeralKeys() {
-
-	pub, priv := crypto.NewKeyPair()
-	clientState.EphemeralPublicKey = pub
-	clientState.ephemeralPrivateKey = priv
-
 }
 
 // MsTimeStamp returns the current timestamp, in milliseconds.

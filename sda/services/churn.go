@@ -51,9 +51,8 @@ func idFromMsg(msg *network.Packet) string {
 	return idFromServerIdentity(msg.ServerIdentity)
 }
 func idFromServerIdentity(si *network.ServerIdentity) string {
-	addr := si.Address.String()
 	public := si.Public.String()
-	identifier := addr + "=" + public
+	identifier := public
 	return identifier
 }
 
