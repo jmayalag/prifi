@@ -35,6 +35,10 @@ func TestMessageSenderWrapper(t *testing.T) {
 	if err == nil {
 		t.Error("If logging=true, should provide a logging function")
 	}
+	_, err = NewMessageSenderWrapper(true, func(interface{}){}, nil, nil, nil)
+	if err == nil {
+		t.Error("If logging=true, should provide a logging function")
+	}
 
 	_, err = NewMessageSenderWrapper(false, nil, nil, nil, nil)
 	if err == nil {
@@ -84,10 +88,16 @@ func TestMessageSenderWrapperRelay(t *testing.T) {
 		t.Error("Should be able to create a MessageSenderWrapper")
 	}
 
-	success := msw.SendToRelayWithLog("hello", "")
+	success := msw.SendToTrusteeWithLog(0, "hello", "")
 	if !success || errorHandlerCalled {
 		t.Error("this call should not trigger an error")
 	}
+	errorHandlerCalled = false
+	success = msw.SendToRelayWithLog("hello", "")
+	if !success || errorHandlerCalled {
+		t.Error("this call should not trigger an error")
+	}
+	errorHandlerCalled = false
 	success = msw.SendToRelayWithLog("trigger-error", "")
 	if success || !errorHandlerCalled {
 		t.Error("this call should trigger an error")
@@ -137,6 +147,7 @@ func TestUDPMessage(t *testing.T) {
 
 	//this should fail, cannot read the size if len<4
 	void = new(REL_CLI_DOWNSTREAM_DATA_UDP)
+	void.Print()
 	_, err2 = void.FromBytes(msgBytes[0:3])
 
 	if err2 == nil {
@@ -150,25 +161,5 @@ func TestUDPMessage(t *testing.T) {
 
 	if err2 == nil {
 		t.Error("REL_CLI_DOWNSTREAM_DATA_UDP should not allow to decode wrong-size messages")
-	}
-}
-
-func TestUtils(t *testing.T) {
-
-	m := make(map[string]interface{})
-	m["test"] = 123
-	m["test2"] = "abc"
-
-	if ValueOrElse(m, "test", 456) != 123 {
-		t.Error("ValueOrElse computed a wrong value")
-	}
-	if ValueOrElse(m, "test2", "def") != "abc" {
-		t.Error("ValueOrElse computed a wrong value")
-	}
-	if ValueOrElse(m, "test3", "newval") != "newval" {
-		t.Error("ValueOrElse computed a wrong value")
-	}
-	if ValueOrElse(m, "test4", float64(1.2)) != float64(1.2) {
-		t.Error("ValueOrElse computed a wrong value")
 	}
 }
