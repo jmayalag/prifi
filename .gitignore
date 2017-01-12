@@ -31,7 +31,7 @@ dissent/client
 dissent/client.exe
 *.exe
 .idea*
-prifi_dev.iml
+prifi.iml
 profile.cov
 config/PriFiService
 config/CoSi
