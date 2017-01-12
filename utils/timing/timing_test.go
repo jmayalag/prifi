@@ -1,14 +1,14 @@
 package timing
 
 import (
+	"strings"
 	"testing"
 	"time"
-	"strings"
 )
 
 type TestOutput struct {
 	Expected string
-	test *testing.T
+	test     *testing.T
 }
 
 func (t TestOutput) Print(msg string) {
@@ -33,7 +33,7 @@ func TestTiming(t *testing.T) {
 	to.Expected = "Measured time for test: "
 	ret := StopMeasure("test")
 
-	if ret < 1 * time.Millisecond || ret > 1 * time.Millisecond + 500 * time.Microsecond {
+	if ret < 1*time.Millisecond || ret > 1*time.Millisecond+500*time.Microsecond {
 		t.Errorf("Invalid time measurment: %v", ret)
 	}
 
