@@ -3,6 +3,7 @@ package net
 import (
 	"errors"
 	"reflect"
+	"github.com/dedis/cothority/log"
 )
 
 // MessageSender is the interface that abstracts the network
@@ -88,6 +89,7 @@ func (m *MessageSenderWrapper) SendToClientWithLog(i int, msg interface{}, extra
  * will call networkErrorHappened on error
  */
 func (m *MessageSenderWrapper) SendToTrusteeWithLog(i int, msg interface{}, extraInfos string) bool {
+	log.Error("We are ici", msg)
 	return m.sendToWithLog(m.MessageSender.SendToTrustee, i, msg, extraInfos)
 }
 
@@ -121,6 +123,7 @@ func (m *MessageSenderWrapper) SendToRelayWithLog(msg interface{}, extraInfos st
 func (m *MessageSenderWrapper) sendToWithLog(sendingFunc func(int, interface{}) error, i int, msg interface{}, extraInfos string) bool {
 	err := sendingFunc(i, msg)
 	msgName := reflect.TypeOf(msg).String()
+	log.Error("We are here", msg)
 	if err != nil {
 		e := "Tried to send a " + msgName + ", but some network error occured. Err is: " + err.Error()
 		if m.networkErrorHappened != nil {

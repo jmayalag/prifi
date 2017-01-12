@@ -59,7 +59,9 @@ func (p *PriFiSDAProtocol) Start() error {
 	//At the protocol is ready,
 
 	log.Lvl3("Starting PriFi-SDA-Wrapper Protocol")
-	p.prifiLibInstance.ReceivedMessage(net.ALL_ALL_PARAMETERS{StartNow: true, ForceParams: true})
+	data := make(map[string]interface{})
+	data["StartNow"] = true
+	p.prifiLibInstance.ReceivedMessage(net.ALL_ALL_PARAMETERS_NEW{Params: net.MapInterface(data), ForceParams: true})
 	//p.prifiLibInstance.SendParameters()
 
 	return nil
@@ -91,6 +93,7 @@ func init() {
 
 	//register the prifi_lib's message with the network lib here
 	network.RegisterPacketType(net.ALL_ALL_PARAMETERS{})
+	network.RegisterPacketType(net.ALL_ALL_PARAMETERS_NEW{})
 	network.RegisterPacketType(net.CLI_REL_TELL_PK_AND_EPH_PK{})
 	network.RegisterPacketType(net.CLI_REL_UPSTREAM_DATA{})
 	network.RegisterPacketType(net.REL_CLI_DOWNSTREAM_DATA{})

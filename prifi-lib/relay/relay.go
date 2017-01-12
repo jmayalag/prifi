@@ -47,12 +47,13 @@ import (
 
 	"github.com/lbarman/prifi/prifi-lib/crypto"
 	socks "github.com/lbarman/prifi/prifi-socks"
+	"reflect"
 )
 
 // PriFiLibInstance contains the mutable state of a PriFi entity.
 type PriFiLibRelayInstance struct {
 	messageSender *net.MessageSenderWrapper
-	relayState   RelayState
+	relayState    RelayState
 }
 
 // NewPriFiRelay creates a new PriFi relay entity state.
@@ -230,6 +231,51 @@ func (p *PriFiLibRelayInstance) Received_ALL_REL_SHUTDOWN(msg net.ALL_ALL_SHUTDO
 
 	return err
 }
+/*
+Received_ALL_REL_PARAMETERS handles ALL_REL_PARAMETERS.
+It initializes the relay with the parameters contained in the message.
+*/
+func (p *PriFiLibRelayInstance) Received_ALL_REL_PARAMETERS_OLD(msg net.ALL_ALL_PARAMETERS) error {
+
+	// This can only happens in the state RELAY_STATE_BEFORE_INIT
+	if p.relayState.currentState != RELAY_STATE_BEFORE_INIT && !msg.ForceParams {
+		log.Lvl1("Relay : Received a ALL_ALL_PARAMETERS, but not in state RELAY_STATE_BEFORE_INIT, ignoring. ")
+		return nil
+	} else if p.relayState.currentState != RELAY_STATE_BEFORE_INIT && msg.ForceParams {
+		log.Lvl1("Relay : Received a ALL_ALL_PARAMETERS && ForceParams = true, processing. ")
+	} else {
+		log.Lvl3("Relay : received ALL_ALL_PARAMETERS")
+	}
+
+	oldExperimentResultChan := p.relayState.ExperimentResultChannel
+	p.relayState = *NewRelayState(msg.NTrustees, msg.NClients, msg.UpCellSize, msg.DownCellSize, msg.RelayWindowSize, msg.RelayUseDummyDataDown, msg.RelayReportingLimit, oldExperimentResultChan, msg.UseUDP, msg.RelayDataOutputEnabled, make(chan []byte), make(chan []byte), p.relayState.timeoutHandler)
+
+	//this should be in NewRelayState, but we need p
+	if !p.relayState.bufferManager.DoSendStopResumeMessages {
+		//Add rate-limiting component to buffer manager
+		stopFn := func(trusteeID int) {
+			toSend := &net.REL_TRU_TELL_RATE_CHANGE{WindowCapacity: 0}
+			p.messageSender.SendToTrusteeWithLog(trusteeID, toSend, "(trustee "+strconv.Itoa(trusteeID)+")")
+		}
+		resumeFn := func(trusteeID int) {
+			toSend := &net.REL_TRU_TELL_RATE_CHANGE{WindowCapacity: 1}
+			p.messageSender.SendToTrusteeWithLog(trusteeID, toSend, "(trustee "+strconv.Itoa(trusteeID)+")")
+		}
+		p.relayState.bufferManager.AddRateLimiter(TRUSTEE_CACHE_LOWBOUND, TRUSTEE_CACHE_HIGHBOUND, stopFn, resumeFn)
+	}
+
+	log.Lvlf1("%+v\n", msg)
+	log.Lvl1("Relay has been initialized by message ALL_REL_PARAMETERS_OLD. ")
+
+	// Broadcast those parameters to the other nodes, then tell the trustees which ID they are.
+	if msg.StartNow {
+		p.relayState.currentState = RELAY_STATE_COLLECTING_TRUSTEES_PKS
+		p.SendParameters()
+	}
+	log.Lvl1("Relay setup done, and setup sent to the trustees.")
+
+	return nil
+}
 
 /*
 Received_ALL_REL_PARAMETERS handles ALL_REL_PARAMETERS.
@@ -263,7 +309,6 @@ func (p *PriFiLibRelayInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARA
 	dataFromDCNet := make(chan []byte)
 	experimentResultChan := p.relayState.ExperimentResultChannel
 	timeoutHandler := p.relayState.timeoutHandler
-
 
 	p.relayState = *NewRelayState(nTrustees, nClients, upCellSize, downCellSize, windowSize,
 		useDummyDown, reportingLimit, experimentResultChan, useUDP, dataOutputEnabled,
@@ -305,30 +350,31 @@ func (p *PriFiLibRelayInstance) SendParameters() error {
 	params["NTrustees"] = p.relayState.nTrustees
 	params["StartNow"] = true
 	params["UpCellSize"] = p.relayState.UpstreamCellSize
-	var msg = &net.ALL_ALL_PARAMETERS_NEW{
-		Params: params,
-		ForceParams:       true,
-	}
-
-	log.Lvl1("Sending ALL_TRU_PARAMETERS 2")
-	log.Lvlf1("%+v\n", msg)
 
 	// Send those parameters to all trustees
 	for j := 0; j < p.relayState.nTrustees; j++ {
 
 		// The ID is unique !
-		msg.Params["NextFreeTrusteeID"] = j
+		params["NextFreeTrusteeID"] = j
+		var msg = &net.ALL_ALL_PARAMETERS_NEW{
+			Params:      net.MapInterface(params),
+			ForceParams: true,
+		}
+		log.Error("SendToTrusteeWithLog", p.messageSender, p.messageSender.SendToClientWithLog)
+
 		p.messageSender.SendToTrusteeWithLog(j, msg, "")
 	}
 
-	log.Lvl1("Sending ALL_CLI_PARAMETERS 2")
-	log.Lvlf1("%+v\n", msg)
 
 	// Send those parameters to all trustees
 	for j := 0; j < p.relayState.nClients; j++ {
 
 		// The ID is unique !
-		msg.Params["NextFreeClientID"] = j
+		params["NextFreeClientID"] = j
+		var msg = &net.ALL_ALL_PARAMETERS_NEW{
+			Params:      net.MapInterface(params),
+			ForceParams: true,
+		}
 		p.messageSender.SendToClientWithLog(j, msg, "")
 	}
 
@@ -881,6 +927,8 @@ func (p *PriFiLibRelayInstance) ReceivedMessage(msg interface{}) error {
 	var err error
 
 	switch typedMsg := msg.(type) {
+	case net.ALL_ALL_PARAMETERS:
+		err = p.Received_ALL_REL_PARAMETERS_OLD(typedMsg) //todo : should merge those
 	case net.ALL_ALL_PARAMETERS_NEW:
 		err = p.Received_ALL_ALL_PARAMETERS(typedMsg)
 	case net.ALL_ALL_SHUTDOWN:
@@ -898,7 +946,7 @@ func (p *PriFiLibRelayInstance) ReceivedMessage(msg interface{}) error {
 	case net.TRU_REL_TELL_PK:
 		err = p.Received_TRU_REL_TELL_PK(typedMsg)
 	default:
-		panic("unrecognized message !")
+		err = errors.New("Unrecognized message, type"+reflect.TypeOf(msg).String())
 	}
 
 	//no need to push the error further up. display it here !
@@ -909,7 +957,6 @@ func (p *PriFiLibRelayInstance) ReceivedMessage(msg interface{}) error {
 
 	return nil
 }
-
 
 func relayStateStr(state int16) string {
 	switch state {

@@ -40,10 +40,14 @@ import (
 type ALL_ALL_SHUTDOWN struct {
 }
 
+type Interface struct{
+	Data interface{}
+}
+
 // ALL_ALL_PARAMETERS message contains all the parameters used by the protocol.
 type ALL_ALL_PARAMETERS_NEW struct {
 	ForceParams bool
-	Params map[string]interface{}
+	Params      map[string]Interface
 }
 
 // ALL_ALL_PARAMETERS message contains all the parameters used by the protocol.
