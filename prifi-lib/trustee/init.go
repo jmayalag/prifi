@@ -1,13 +1,13 @@
 package trustee
+
 import (
+	"errors"
 	"github.com/dedis/crypto/abstract"
 	"github.com/lbarman/prifi/prifi-lib/dcnet"
 	"github.com/lbarman/prifi/prifi-lib/net"
 	"github.com/lbarman/prifi/prifi-lib/scheduler"
-	"github.com/dedis/cothority/log"
-	"time"
 	"reflect"
-	"errors"
+	"time"
 )
 
 // Possible states the trustees are in. This restrict the kind of messages they can receive at a given point in time.
@@ -82,7 +82,6 @@ type NeffShuffleResult struct {
 	proof []byte
 }
 
-
 // ReceivedMessage must be called when a PriFi host receives a message.
 // It takes care to call the correct message handler function.
 func (p *PriFiLibTrusteeInstance) ReceivedMessage(msg interface{}) error {
@@ -104,11 +103,5 @@ func (p *PriFiLibTrusteeInstance) ReceivedMessage(msg interface{}) error {
 		err = errors.New("Unrecognized message, type" + reflect.TypeOf(msg).String())
 	}
 
-	//no need to push the error further up. display it here !
-	if err != nil {
-		log.Error("ReceivedMessage: got an error, " + err.Error())
-		return err
-	}
-
-	return nil
+	return err
 }

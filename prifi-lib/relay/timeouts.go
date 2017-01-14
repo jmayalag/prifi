@@ -7,8 +7,6 @@ import (
 	"github.com/dedis/cothority/log"
 )
 
-
-
 /*
 This first timeout happens after a short delay. Clients will not be considered disconnected yet,
 but if we use UDP, it can mean that a client missed a broadcast, and we re-sent the message.

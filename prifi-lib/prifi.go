@@ -117,9 +117,9 @@ func NewPriFiTrusteeWithState(msgSender net.MessageSender, state *trustee.Truste
 // ReceivedMessage must be called when a PriFi host receives a message.
 // It takes care to call the correct message handler function.
 func (p *PriFiLibInstance) ReceivedMessage(msg interface{}) error {
-	log.Error("ReceivedMessage ", msg)
 	err := p.specializedLibInstance.ReceivedMessage(msg)
 	if err != nil {
+		log.Error(err)
 		os.Exit(1) //todo we can cleanly call shutdown, and keep the service
 	}
 	return nil

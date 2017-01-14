@@ -231,13 +231,7 @@ func (p *PriFiLibRelayInstance) ReceivedMessage(msg interface{}) error {
 		err = errors.New("Unrecognized message, type" + reflect.TypeOf(msg).String())
 	}
 
-	//no need to push the error further up. display it here !
-	if err != nil {
-		log.Error("ReceivedMessage: got an error, " + err.Error())
-		return err
-	}
-
-	return nil
+	return err
 }
 
 func relayStateStr(state int16) string {

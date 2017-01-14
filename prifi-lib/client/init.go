@@ -71,7 +71,7 @@ type ClientState struct {
 	StartStopReceiveBroadcast chan bool
 	statistics                *prifilog.LatencyStatistics
 
-					      //concurrent stuff
+	//concurrent stuff
 	RoundNo           int32
 	BufferedRoundData map[int32]net.REL_CLI_DOWNSTREAM_DATA
 }
@@ -171,11 +171,5 @@ func (p *PriFiLibClientInstance) ReceivedMessage(msg interface{}) error {
 		err = errors.New("Unrecognized message, type" + reflect.TypeOf(msg).String())
 	}
 
-	//no need to push the error further up. display it here !
-	if err != nil {
-		log.Error("ReceivedMessage: got an error, " + err.Error())
-		return err
-	}
-
-	return nil
+	return err
 }

@@ -36,7 +36,6 @@ import (
 	socks "github.com/lbarman/prifi/prifi-socks"
 )
 
-
 // Received_ALL_CLI_SHUTDOWN handles ALL_CLI_SHUTDOWN messages.
 // When we receive this message, we should clean up resources.
 func (p *PriFiLibClientInstance) Received_ALL_ALL_SHUTDOWN(msg net.ALL_ALL_SHUTDOWN) error {
