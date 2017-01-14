@@ -60,23 +60,42 @@ func (p *PriFiLibClientInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PAR
 		log.Lvl3("Client : received ALL_ALL_PARAMETERS")
 	}
 
-	//if by chance we had a broadcast-listener goroutine, kill it
-	if p.clientState.StartStopReceiveBroadcast != nil {
-		p.clientState.StartStopReceiveBroadcast <- false
-	}
-
-	nextFreeClientID := msg.IntValueOrElse("NextFreeClientID", -1)
+	clientID := msg.IntValueOrElse("NextFreeClientID", -1)
 	nTrustees := msg.IntValueOrElse("NTrustees", p.clientState.nTrustees)
 	nClients := msg.IntValueOrElse("nClients", p.clientState.nClients)
 	upCellSize := msg.IntValueOrElse("UpstreamCellSize", p.clientState.PayloadLength) //todo: change this name
 	useUDP := msg.BoolValueOrElse("UseUDP", p.clientState.UseUDP)
-	doLatencyTests := msg.BoolValueOrElse("DoLatencyTests", p.clientState.LatencyTest) //todo: change this name
-	clientDataOutputEnabled := msg.BoolValueOrElse("ClientDataOutputEnabled", p.clientState.DataOutputEnabled)
 
-	dataForDCNet := make(chan []byte)
-	dataFromDCNet := make(chan []byte)
+	//sanity checks
+	if clientID < -1 {
+		return errors.New("ClientID cannot be negative")
+	}
+	if nTrustees < 1 {
+		return errors.New("nTrustees cannot be smaller than 1")
+	}
+	if nClients < 1 {
+		return errors.New("nClients cannot be smaller than 1")
+	}
+	if upCellSize < 1 {
+		return errors.New("UpCellSize cannot be 0")
+	}
 
-	p.clientState = *NewClientState(nextFreeClientID, nTrustees, nClients, upCellSize, doLatencyTests, useUDP, clientDataOutputEnabled, dataForDCNet, dataFromDCNet)
+	//set the received parameters
+	p.clientState.ID = clientID
+	p.clientState.Name = "Client-" + strconv.Itoa(clientID)
+	p.clientState.MySlot = -1
+	p.clientState.nClients = nClients
+	p.clientState.nTrustees = nTrustees
+	p.clientState.PayloadLength = upCellSize
+	p.clientState.UsablePayloadLength = p.clientState.CellCoder.ClientCellSize(upCellSize)
+	p.clientState.UseUDP = useUDP
+	p.clientState.TrusteePublicKey = make([]abstract.Point, nTrustees)
+	p.clientState.sharedSecrets = make([]abstract.Point, nTrustees)
+
+	//if by chance we had a broadcast-listener goroutine, kill it
+	if p.clientState.StartStopReceiveBroadcast != nil {
+		p.clientState.StartStopReceiveBroadcast <- false
+	}
 
 	//start the broadcast-listener goroutine
 	log.Lvl2("Client " + strconv.Itoa(p.clientState.ID) + " : starting the broadcast-listener goroutine")

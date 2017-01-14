@@ -62,13 +62,12 @@ func newMessageSenderWrapper(msgSender net.MessageSender) *net.MessageSenderWrap
 // Note: the returned state is not sufficient for the PrFi protocol
 // to start; this entity will expect a ALL_ALL_PARAMETERS message as
 // first received message to complete it's state.
-func NewPriFiClient(msgSender net.MessageSender) *PriFiLibInstance {
-	prifi := PriFiLibInstance{
-		role:          PRIFI_ROLE_CLIENT,
-		messageSender: newMessageSenderWrapper(msgSender),
-	}
-	return &prifi
+func NewPriFiClient(doLatencyTest bool, dataOutputEnabled bool, dataForDCNet chan []byte, dataFromDCNet chan []byte, msgSender net.MessageSender) SpecializedLibInstance {
+	msw := newMessageSenderWrapper(msgSender)
+	c := client.NewClient(doLatencyTest, dataOutputEnabled, dataForDCNet, dataFromDCNet, msw)
+	return c
 }
+
 func NewPriFiRelay(msgSender net.MessageSender) *PriFiLibInstance {
 	prifi := PriFiLibInstance{
 		role: PRIFI_ROLE_RELAY,
@@ -92,15 +91,6 @@ func NewPriFiTrustee(msgSender net.MessageSender) *PriFiLibInstance {
 	prifi := PriFiLibInstance{
 		role:          PRIFI_ROLE_TRUSTEE,
 		messageSender: newMessageSenderWrapper(msgSender),
-	}
-	return &prifi
-}
-
-// NewPriFiClientWithState creates a new PriFi client entity state.
-func NewPriFiClientWithState(msgSender net.MessageSender, state *client.ClientState) *PriFiLibInstance {
-	prifi := PriFiLibInstance{
-		role: PRIFI_ROLE_CLIENT,
-		specializedLibInstance: client.NewPriFiClientWithState(newMessageSenderWrapper(msgSender), state),
 	}
 	return &prifi
 }

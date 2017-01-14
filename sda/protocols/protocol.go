@@ -46,7 +46,7 @@ type PriFiSDAProtocol struct {
 	ResultChannel chan interface{}
 
 	//this is the actual "PriFi" (DC-net) protocol/library, defined in prifi-lib/prifi.go
-	prifiLibInstance *prifi_lib.PriFiLibInstance
+	prifiLibInstance prifi_lib.SpecializedLibInstance
 	HasStopped       bool //when set to true, the protocol has been stopped by PriFi-lib and should be destroyed
 }
 

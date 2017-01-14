@@ -4,7 +4,6 @@ import (
 	"github.com/dedis/cothority/log"
 	"github.com/dedis/cothority/network"
 	prifi_lib "github.com/lbarman/prifi/prifi-lib"
-	"github.com/lbarman/prifi/prifi-lib/client"
 	"github.com/lbarman/prifi/prifi-lib/net"
 	"github.com/lbarman/prifi/prifi-lib/relay"
 	"github.com/lbarman/prifi/prifi-lib/trustee"
@@ -79,8 +78,6 @@ func (p *PriFiSDAProtocol) SetConfigFromPriFiService(config *PriFiSDAWrapperConf
 	nTrustees := len(ms.trustees)
 	experimentResultChan := p.ResultChannel
 
-	log.Error("NClients", nClients, "NTrustees", nTrustees)
-
 	switch config.Role {
 	case Relay:
 		relayState := relay.NewRelayState(
@@ -106,17 +103,7 @@ func (p *PriFiSDAProtocol) SetConfigFromPriFiService(config *PriFiSDAWrapperConf
 		p.prifiLibInstance = prifi_lib.NewPriFiTrusteeWithState(ms, trusteeState)
 
 	case Client:
-		id := config.Identities[p.ServerIdentity().Address.String()].ID
-		clientState := client.NewClientState(id,
-			nTrustees,
-			nClients,
-			config.UpCellSize,
-			config.DoLatencyTests,
-			config.UseUDP,
-			config.ClientDataOutputEnabled,
-			config.ClientSideSocksConfig.UpstreamChannel,
-			config.ClientSideSocksConfig.DownstreamChannel)
-		p.prifiLibInstance = prifi_lib.NewPriFiClientWithState(ms, clientState)
+		p.prifiLibInstance = prifi_lib.NewPriFiClient(config.DoLatencyTests, config.ClientDataOutputEnabled, config.ClientSideSocksConfig.UpstreamChannel, config.ClientSideSocksConfig.DownstreamChannel, ms)
 	}
 
 	p.registerHandlers()
