@@ -9,7 +9,10 @@ test_fmt:
 	}
 
 build:
-	go build sda/app/prifi.go && rm -f prifi
+	@echo Testing build...
+	@{ \
+		go build sda/app/prifi.go && rm -f prifi; \
+	}
 
 test_govet:
 	@echo Running go vet...
