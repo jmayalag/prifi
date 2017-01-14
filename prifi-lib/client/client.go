@@ -529,7 +529,7 @@ func (p *PriFiLibClientInstance) ReceivedMessage(msg interface{}) error {
 
 	switch typedMsg := msg.(type) {
 	case net.ALL_ALL_PARAMETERS_NEW:
-		err = p.Received_ALL_CLI_PARAMETERS(typedMsg)
+		err = p.Received_ALL_CLI_PARAMETERS(typedMsg) //todo change this name
 	case net.ALL_ALL_SHUTDOWN:
 		err = p.Received_ALL_CLI_SHUTDOWN(typedMsg)
 	case net.REL_CLI_DOWNSTREAM_DATA:
@@ -545,7 +545,7 @@ func (p *PriFiLibClientInstance) ReceivedMessage(msg interface{}) error {
 	case net.REL_CLI_TELL_TRUSTEES_PK:
 		err = p.Received_REL_CLI_TELL_TRUSTEES_PK(typedMsg)
 	default:
-		err = errors.New("Unrecognized message, type"+reflect.TypeOf(msg).String())
+		err = errors.New("Unrecognized message, type" + reflect.TypeOf(msg).String())
 	}
 
 	//no need to push the error further up. display it here !

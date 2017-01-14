@@ -1,7 +1,8 @@
 package net
 
+import ()
 
-type Interface struct{
+type Interface struct {
 	Data interface{}
 }
 
@@ -80,6 +81,7 @@ func (m *ALL_ALL_PARAMETERS_NEW) IntValueOrElse(key string, elseVal int) int {
 	}
 	return elseVal
 }
+
 /**
  * From the message, returns the "data[key]" if it exists, or "elseVal"
  */

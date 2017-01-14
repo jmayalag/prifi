@@ -35,7 +35,7 @@ func TestMessageSenderWrapper(t *testing.T) {
 	if err == nil {
 		t.Error("If logging=true, should provide a logging function")
 	}
-	_, err = NewMessageSenderWrapper(true, func(interface{}){}, nil, nil, nil)
+	_, err = NewMessageSenderWrapper(true, func(interface{}) {}, nil, nil, nil)
 	if err == nil {
 		t.Error("If logging=true, should provide a logging function")
 	}

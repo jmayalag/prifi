@@ -231,6 +231,7 @@ func (p *PriFiLibRelayInstance) Received_ALL_REL_SHUTDOWN(msg net.ALL_ALL_SHUTDO
 
 	return err
 }
+
 /*
 Received_ALL_REL_PARAMETERS handles ALL_REL_PARAMETERS.
 It initializes the relay with the parameters contained in the message.
@@ -302,7 +303,7 @@ func (p *PriFiLibRelayInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARA
 	useDummyDown := msg.BoolValueOrElse("UseDummyDataDown", p.relayState.UseDummyDataDown)
 	reportingLimit := msg.IntValueOrElse("ExperimentRoundLimit", p.relayState.ExperimentRoundLimit)
 	useUDP := msg.BoolValueOrElse("UseUDP", p.relayState.UseUDP)
-	dataOutputEnabled := msg.BoolValueOrElse( "DataOutputEnabled", p.relayState.DataOutputEnabled)
+	dataOutputEnabled := msg.BoolValueOrElse("DataOutputEnabled", p.relayState.DataOutputEnabled)
 
 	//this is never set in the message
 	dataForClients := make(chan []byte)
@@ -359,7 +360,6 @@ func (p *PriFiLibRelayInstance) SendParameters() error {
 		msg := msgBuilder.BuildMessage(true)
 		p.messageSender.SendToTrusteeWithLog(j, msg, "")
 	}
-
 
 	// Send those parameters to all trustees
 	for j := 0; j < p.relayState.nClients; j++ {
@@ -921,8 +921,8 @@ func (p *PriFiLibRelayInstance) ReceivedMessage(msg interface{}) error {
 	switch typedMsg := msg.(type) {
 	case net.ALL_ALL_PARAMETERS:
 		err = p.Received_ALL_REL_PARAMETERS_OLD(typedMsg) //todo : should merge those
-	case net.ALL_ALL_PARAMETERS_NEW:
-		err = p.Received_ALL_ALL_PARAMETERS(typedMsg)
+	case *net.ALL_ALL_PARAMETERS_NEW:
+		err = p.Received_ALL_ALL_PARAMETERS(*typedMsg)
 	case net.ALL_ALL_SHUTDOWN:
 		err = p.Received_ALL_REL_SHUTDOWN(typedMsg)
 	case net.CLI_REL_TELL_PK_AND_EPH_PK:
@@ -938,7 +938,7 @@ func (p *PriFiLibRelayInstance) ReceivedMessage(msg interface{}) error {
 	case net.TRU_REL_TELL_PK:
 		err = p.Received_TRU_REL_TELL_PK(typedMsg)
 	default:
-		err = errors.New("Unrecognized message, type"+reflect.TypeOf(msg).String())
+		err = errors.New("Unrecognized message, type" + reflect.TypeOf(msg).String())
 	}
 
 	//no need to push the error further up. display it here !

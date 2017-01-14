@@ -149,6 +149,10 @@ func (p *PriFiSDAProtocol) registerHandlers() error {
 	if err != nil {
 		return errors.New("couldn't register handler: " + err.Error())
 	}
+	err = p.RegisterHandler(p.Received_ALL_ALL_PARAMETERS_NEW)
+	if err != nil {
+		return errors.New("couldn't register handler: " + err.Error())
+	}
 	err = p.RegisterHandler(p.Received_ALL_ALL_SHUTDOWN)
 	if err != nil {
 		return errors.New("couldn't register handler: " + err.Error())

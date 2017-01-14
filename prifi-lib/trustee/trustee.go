@@ -22,9 +22,9 @@ import (
 	"github.com/lbarman/prifi/prifi-lib/dcnet"
 	"github.com/lbarman/prifi/prifi-lib/net"
 	"github.com/lbarman/prifi/prifi-lib/scheduler"
+	"reflect"
 	"strconv"
 	"time"
-	"reflect"
 )
 
 // Possible states the trustees are in. This restrict the kind of messages they can receive at a given point in time.
@@ -389,7 +389,7 @@ func (p *PriFiLibTrusteeInstance) ReceivedMessage(msg interface{}) error {
 
 	switch typedMsg := msg.(type) {
 	case net.ALL_ALL_PARAMETERS_NEW:
-		err = p.Received_ALL_TRU_PARAMETERS(typedMsg)
+		err = p.Received_ALL_TRU_PARAMETERS(typedMsg) //todo change this name
 	case net.ALL_ALL_SHUTDOWN:
 		err = p.Received_ALL_TRU_SHUTDOWN(typedMsg)
 	case net.REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE:
@@ -399,7 +399,7 @@ func (p *PriFiLibTrusteeInstance) ReceivedMessage(msg interface{}) error {
 	case net.REL_TRU_TELL_RATE_CHANGE:
 		err = p.Received_REL_TRU_TELL_RATE_CHANGE(typedMsg)
 	default:
-		err = errors.New("Unrecognized message, type"+reflect.TypeOf(msg).String())
+		err = errors.New("Unrecognized message, type" + reflect.TypeOf(msg).String())
 	}
 
 	//no need to push the error further up. display it here !
