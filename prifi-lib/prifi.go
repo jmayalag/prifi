@@ -18,12 +18,13 @@ Then, it runs the PriFi anonymous communication network among those entities.
 */
 
 // PriFiLibInstance contains the mutable state of a PriFi entity.
-type PriFiLibInstance struct {
+type PriFiLibInstance struct { //todo remove this, like it was done for client
 	role                   int16
 	messageSender          *net.MessageSenderWrapper
 	specializedLibInstance SpecializedLibInstance
 }
 
+//Prifi's "Relay", "Client" and "Trustee" instance all can receive a message
 type SpecializedLibInstance interface {
 	ReceivedMessage(msg interface{}) error
 }
@@ -68,6 +69,7 @@ func NewPriFiClient(doLatencyTest bool, dataOutputEnabled bool, dataForDCNet cha
 	return c
 }
 
+//Creates a new PriFi relay //todo do like client
 func NewPriFiRelay(msgSender net.MessageSender) *PriFiLibInstance {
 	prifi := PriFiLibInstance{
 		role: PRIFI_ROLE_RELAY,
@@ -75,6 +77,8 @@ func NewPriFiRelay(msgSender net.MessageSender) *PriFiLibInstance {
 	}
 	return &prifi
 }
+
+//Creates a new PriFi trustee //todo do like client
 func NewPriFiRelayWithState(msgSender net.MessageSender, state *relay.RelayState) *PriFiLibInstance {
 	prifi := PriFiLibInstance{
 		role: PRIFI_ROLE_RELAY,

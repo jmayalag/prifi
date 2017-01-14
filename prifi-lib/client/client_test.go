@@ -85,22 +85,47 @@ func TestPrifi(t *testing.T) {
 	b := net.NewALL_ALL_PARAMETERS_BUILDER()
 	b.Add("NClients", 3)
 	b.Add("NTrustees", 2)
-	b.Add("StartNow", true)
 	b.Add("UpCellSize", 1500)
 	b.Add("NextFreeClientID", 3)
+	b.Add("UseUDP", true)
 	msg := b.BuildMessage(true)
 
 	if err := client.ReceivedMessage(*msg); err != nil {
 		t.Error("Client should be able to receive this message:", err)
 	}
 
+	if cs.nClients != 3 {
+		t.Error("NClients should be 3")
+	}
+	if cs.nTrustees != 2 {
+		t.Error("nTrustees should be 2")
+	}
+	if cs.PayloadLength != 1500 {
+		t.Error("PayloadLength should be 1500")
+	}
+	if cs.ID != 3 {
+		t.Error("ID should be 3")
+	}
 	if cs.RoundNo != 0 {
 		t.Error("RoundNumber should be 0")
 	}
 	if cs.StartStopReceiveBroadcast == nil {
 		t.Error("StartStopReceiveBroadcast should now have been set")
 	}
+	if cs.UseUDP != true {
+		t.Error("UseUDP should now have been set to true")
+	}
+	if len(cs.TrusteePublicKey) != 2 {
+		t.Error("Len(TrusteePKs) should be equal to NTrustees")
+	}
+	if len(cs.sharedSecrets) != 2 {
+		t.Error("Len(SharedSecrets) should be equal to NTrustees")
+	}
+	if cs.currentState != CLIENT_STATE_INITIALIZING {
+		t.Error("Client should be in state CLIENT_STATE_INITIALIZING")
+	}
 
+	//Should receive a Received_REL_CLI_TELL_TRUSTEES_PK
 
-	t.SkipNow()
+	t.SkipNow() //we started a goroutine, let's kill everything, we're good
 }

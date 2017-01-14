@@ -1,8 +1,6 @@
 package net
 
-import (
-)
-
+//A wrapper around the interface{} type, since protobuf can't handle map[]interface{}
 type Interface struct {
 	Data interface{}
 }
@@ -13,6 +11,7 @@ type ALL_ALL_PARAMETERS_NEW struct {
 	Params      map[string]Interface
 }
 
+//A builder for ALL_ALL_PARAMETERS messages. You can call Add(key, val) and BuildMessage()
 type ALL_ALL_PARAMETERS_BUILDER struct {
 	data map[string]Interface
 }
