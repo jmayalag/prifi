@@ -87,9 +87,7 @@ func NewClient(doLatencyTest bool, dataOutputEnabled bool, dataForDCNet chan []b
 	//instantiates the static stuff
 	clientState.statistics = prifilog.NewLatencyStatistics()
 	clientState.PublicKey, clientState.privateKey = crypto.NewKeyPair()
-	clientState.RoundNo = int32(0)
-	clientState.BufferedRoundData = make(map[int32]net.REL_CLI_DOWNSTREAM_DATA)
-	clientState.StartStopReceiveBroadcast = make(chan bool)
+	//clientState.StartStopReceiveBroadcast = make(chan bool) //this should stay nil, !=nil -> we have a listener goroutine active
 	clientState.LatencyTest = doLatencyTest
 	clientState.CellCoder = config.Factory()
 	clientState.DataForDCNet = dataForDCNet
@@ -112,7 +110,7 @@ func (p *PriFiLibClientInstance) ReceivedMessage(msg interface{}) error {
 
 	switch typedMsg := msg.(type) {
 	case net.ALL_ALL_PARAMETERS_NEW:
-		err = p.Received_ALL_ALL_PARAMETERS(typedMsg) //todo change this name
+		err = p.Received_ALL_ALL_PARAMETERS(typedMsg)
 	case net.ALL_ALL_SHUTDOWN:
 		err = p.Received_ALL_ALL_SHUTDOWN(typedMsg)
 	case net.REL_CLI_DOWNSTREAM_DATA:

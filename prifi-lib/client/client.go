@@ -62,8 +62,8 @@ func (p *PriFiLibClientInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PAR
 
 	clientID := msg.IntValueOrElse("NextFreeClientID", -1)
 	nTrustees := msg.IntValueOrElse("NTrustees", p.clientState.nTrustees)
-	nClients := msg.IntValueOrElse("nClients", p.clientState.nClients)
-	upCellSize := msg.IntValueOrElse("UpstreamCellSize", p.clientState.PayloadLength) //todo: change this name
+	nClients := msg.IntValueOrElse("NClients", p.clientState.nClients)
+	upCellSize := msg.IntValueOrElse("UpCellSize", p.clientState.PayloadLength) //todo: change this name
 	useUDP := msg.BoolValueOrElse("UseUDP", p.clientState.UseUDP)
 
 	//sanity checks
@@ -91,11 +91,14 @@ func (p *PriFiLibClientInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PAR
 	p.clientState.UseUDP = useUDP
 	p.clientState.TrusteePublicKey = make([]abstract.Point, nTrustees)
 	p.clientState.sharedSecrets = make([]abstract.Point, nTrustees)
+	p.clientState.RoundNo = int32(0)
+	p.clientState.BufferedRoundData = make(map[int32]net.REL_CLI_DOWNSTREAM_DATA)
 
 	//if by chance we had a broadcast-listener goroutine, kill it
 	if p.clientState.StartStopReceiveBroadcast != nil {
 		p.clientState.StartStopReceiveBroadcast <- false
 	}
+	p.clientState.StartStopReceiveBroadcast = make(chan bool)
 
 	//start the broadcast-listener goroutine
 	log.Lvl2("Client " + strconv.Itoa(p.clientState.ID) + " : starting the broadcast-listener goroutine")

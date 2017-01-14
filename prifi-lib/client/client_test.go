@@ -1,10 +1,10 @@
 package client
 
 import (
-	"testing"
 	"errors"
-	"github.com/lbarman/prifi/prifi-lib/net"
 	"github.com/dedis/cothority/log"
+	"github.com/lbarman/prifi/prifi-lib/net"
+	"testing"
 )
 
 /**
@@ -19,7 +19,9 @@ func (t *TestMessageSender) SendToClient(i int, msg interface{}) error {
 func (t *TestMessageSender) SendToTrustee(i int, msg interface{}) error {
 	return errors.New("Clients should never sent to other trustees")
 }
+
 var sentToRelay []interface{}
+
 func (t *TestMessageSender) SendToRelay(msg interface{}) error {
 	sentToRelay = append(sentToRelay, msg)
 	return nil
@@ -75,4 +77,30 @@ func TestPrifi(t *testing.T) {
 	if cs.statistics == nil {
 		t.Error("Statistics should have been set")
 	}
+	if cs.StartStopReceiveBroadcast != nil {
+		t.Error("StartStopReceiveBroadcast should *not* have been set")
+	}
+
+	//we start by receiving a ALL_ALL_PARAMETERS from relay
+	b := net.NewALL_ALL_PARAMETERS_BUILDER()
+	b.Add("NClients", 3)
+	b.Add("NTrustees", 2)
+	b.Add("StartNow", true)
+	b.Add("UpCellSize", 1500)
+	b.Add("NextFreeClientID", 3)
+	msg := b.BuildMessage(true)
+
+	if err := client.ReceivedMessage(*msg); err != nil {
+		t.Error("Client should be able to receive this message:", err)
+	}
+
+	if cs.RoundNo != 0 {
+		t.Error("RoundNumber should be 0")
+	}
+	if cs.StartStopReceiveBroadcast == nil {
+		t.Error("StartStopReceiveBroadcast should now have been set")
+	}
+
+
+	t.SkipNow()
 }

@@ -1,6 +1,7 @@
 package net
 
-import ()
+import (
+)
 
 type Interface struct {
 	Data interface{}
@@ -13,18 +14,7 @@ type ALL_ALL_PARAMETERS_NEW struct {
 }
 
 type ALL_ALL_PARAMETERS_BUILDER struct {
-	data map[string]interface{}
-}
-
-/**
- * Converts from map[string]interface{} to map[string]Interface
- */
-func mapInterface(data map[string]interface{}) map[string]Interface {
-	res := make(map[string]Interface)
-	for k, v := range data {
-		res[k] = Interface{Data: v}
-	}
-	return res
+	data map[string]Interface
 }
 
 /**
@@ -32,7 +22,7 @@ func mapInterface(data map[string]interface{}) map[string]Interface {
  */
 func NewALL_ALL_PARAMETERS_BUILDER() *ALL_ALL_PARAMETERS_BUILDER {
 	builder := ALL_ALL_PARAMETERS_BUILDER{}
-	builder.data = make(map[string]interface{})
+	builder.data = make(map[string]Interface)
 	return &builder
 }
 
@@ -40,15 +30,14 @@ func NewALL_ALL_PARAMETERS_BUILDER() *ALL_ALL_PARAMETERS_BUILDER {
  * Adds a (key, val) to the ALL_ALL_PARAMS message builder
  */
 func (b *ALL_ALL_PARAMETERS_BUILDER) Add(key string, val interface{}) {
-	b.data[key] = val
+	b.data[key] = Interface{Data: val}
 }
 
 /**
  * Creates a ALL_ALL_PARAMETERS message
  */
 func (b *ALL_ALL_PARAMETERS_BUILDER) BuildMessage(forceParams bool) *ALL_ALL_PARAMETERS_NEW {
-	data := mapInterface(b.data)
-	msg := ALL_ALL_PARAMETERS_NEW{Params: data, ForceParams: forceParams}
+	msg := ALL_ALL_PARAMETERS_NEW{Params: b.data, ForceParams: forceParams}
 	return &msg
 }
 
