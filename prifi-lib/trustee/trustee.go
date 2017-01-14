@@ -139,10 +139,10 @@ func NewTrusteeState(trusteeID int, nClients int, nTrustees int, payloadLength i
 }
 
 /*
-Received_ALL_TRU_SHUTDOWN handles ALL_REL_SHUTDOWN messages.
+Received_ALL_ALL_SHUTDOWN handles ALL_ALL_SHUTDOWN messages.
 When we receive this message we should  clean up resources.
 */
-func (p *PriFiLibTrusteeInstance) Received_ALL_TRU_SHUTDOWN(msg net.ALL_ALL_SHUTDOWN) error {
+func (p *PriFiLibTrusteeInstance) Received_ALL_ALL_SHUTDOWN(msg net.ALL_ALL_SHUTDOWN) error {
 	log.Lvl1("Trustee " + strconv.Itoa(p.trusteeState.ID) + " : Received a SHUTDOWN message. ")
 
 	//stop the sending process
@@ -154,10 +154,10 @@ func (p *PriFiLibTrusteeInstance) Received_ALL_TRU_SHUTDOWN(msg net.ALL_ALL_SHUT
 }
 
 /*
-Received_ALL_TRU_PARAMETERS handles ALL_REL_PARAMETERS.
+Received_ALL_ALL_PARAMETERS handles ALL_ALL_PARAMETERS.
 It initializes the trustee with the parameters contained in the message.
 */
-func (p *PriFiLibTrusteeInstance) Received_ALL_TRU_PARAMETERS(msg net.ALL_ALL_PARAMETERS_NEW) error {
+func (p *PriFiLibTrusteeInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARAMETERS_NEW) error {
 
 	//this can only happens in the state RELAY_STATE_BEFORE_INIT
 	if p.trusteeState.currentState != TRUSTEE_STATE_BEFORE_INIT && !msg.ForceParams {
@@ -389,9 +389,9 @@ func (p *PriFiLibTrusteeInstance) ReceivedMessage(msg interface{}) error {
 
 	switch typedMsg := msg.(type) {
 	case net.ALL_ALL_PARAMETERS_NEW:
-		err = p.Received_ALL_TRU_PARAMETERS(typedMsg) //todo change this name
+		err = p.Received_ALL_ALL_PARAMETERS(typedMsg) //todo change this name
 	case net.ALL_ALL_SHUTDOWN:
-		err = p.Received_ALL_TRU_SHUTDOWN(typedMsg)
+		err = p.Received_ALL_ALL_SHUTDOWN(typedMsg)
 	case net.REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE:
 		err = p.Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE(typedMsg)
 	case net.REL_TRU_TELL_TRANSCRIPT:

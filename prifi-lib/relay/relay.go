@@ -208,7 +208,7 @@ func NewRelayState(nTrustees int, nClients int, upstreamCellSize int, downstream
 Received_ALL_REL_SHUTDOWN handles ALL_REL_SHUTDOWN messages.
 When we receive this message, we should warn other protocol participants and clean resources.
 */
-func (p *PriFiLibRelayInstance) Received_ALL_REL_SHUTDOWN(msg net.ALL_ALL_SHUTDOWN) error {
+func (p *PriFiLibRelayInstance) Received_ALL_ALL_SHUTDOWN(msg net.ALL_ALL_SHUTDOWN) error {
 	log.Lvl1("Relay : Received a SHUTDOWN message. ")
 
 	p.relayState.currentState = RELAY_STATE_SHUTDOWN
@@ -236,7 +236,7 @@ func (p *PriFiLibRelayInstance) Received_ALL_REL_SHUTDOWN(msg net.ALL_ALL_SHUTDO
 Received_ALL_REL_PARAMETERS handles ALL_REL_PARAMETERS.
 It initializes the relay with the parameters contained in the message.
 */
-func (p *PriFiLibRelayInstance) Received_ALL_REL_PARAMETERS_OLD(msg net.ALL_ALL_PARAMETERS) error {
+func (p *PriFiLibRelayInstance) Received_ALL_ALL_PARAMETERS_OLD(msg net.ALL_ALL_PARAMETERS) error {
 
 	// This can only happens in the state RELAY_STATE_BEFORE_INIT
 	if p.relayState.currentState != RELAY_STATE_BEFORE_INIT && !msg.ForceParams {
@@ -615,7 +615,7 @@ func (p *PriFiLibRelayInstance) roundFinished() error {
 
 		// shut down everybody
 		msg := net.ALL_ALL_SHUTDOWN{}
-		p.Received_ALL_REL_SHUTDOWN(msg)
+		p.Received_ALL_ALL_SHUTDOWN(msg)
 	}
 
 	return nil
@@ -920,11 +920,11 @@ func (p *PriFiLibRelayInstance) ReceivedMessage(msg interface{}) error {
 
 	switch typedMsg := msg.(type) {
 	case net.ALL_ALL_PARAMETERS:
-		err = p.Received_ALL_REL_PARAMETERS_OLD(typedMsg) //todo : should merge those
+		err = p.Received_ALL_ALL_PARAMETERS_OLD(typedMsg) //todo : should merge those
 	case *net.ALL_ALL_PARAMETERS_NEW:
 		err = p.Received_ALL_ALL_PARAMETERS(*typedMsg)
 	case net.ALL_ALL_SHUTDOWN:
-		err = p.Received_ALL_REL_SHUTDOWN(typedMsg)
+		err = p.Received_ALL_ALL_SHUTDOWN(typedMsg)
 	case net.CLI_REL_TELL_PK_AND_EPH_PK:
 		err = p.Received_CLI_REL_TELL_PK_AND_EPH_PK(typedMsg)
 	case net.CLI_REL_UPSTREAM_DATA:
