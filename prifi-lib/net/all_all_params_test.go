@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func aTestUtils(t *testing.T) {
+func TestUtils(t *testing.T) {
 
 	b := NewALL_ALL_PARAMETERS_BUILDER()
 
