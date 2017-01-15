@@ -65,6 +65,7 @@ func TestUtils(t *testing.T) {
 	}
 }
 
+//todo : re-enable those 3 tests, after they have been corrected
 func ignoreTestEncodeDecodeStdMessage(t *testing.T) {
 
 	//create fake message
