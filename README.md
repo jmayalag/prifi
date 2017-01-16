@@ -24,7 +24,6 @@ go get github.com/lbarman/prifi/sda/app
 cd $GOPATH/src/github.com/lbarman/prifi
 ./prifi.sh install
 ```
-Ignore the `No buildable source` after the first step, that's OK. This script gets all the dependencies (via `go get`), and make sure everything is correctly set.
 
 ## Running PriFi
 
