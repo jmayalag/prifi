@@ -38,9 +38,12 @@ test_verbose:
 it:
 	./prifi.sh integration-test
 
+it2:
+	./prifi.sh integration-test2
+
 clean:
 	rm -f profile.cov *.log
 
 test: test_fmt test_govet test_lint
 
-all: test coveralls it
+all: test coveralls it it2

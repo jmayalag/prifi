@@ -514,6 +514,66 @@ case $1 in
         fi
 		;;
 
+	integration-test2)
+
+        pkill prifi 2>/dev/null
+        kill -TERM $(pidof "go run run-server.go") 2>/dev/null
+
+		thisScript="$0"	
+		"$thisScript" clean
+
+        rm -f relay.log 2>/dev/null # just to be sure...
+
+		echo -n "Starting relay...			"
+		"$thisScript" relay > relay.log 2>&1 &
+		echo -e "$okMsg"
+
+		sleep $sleeptime_between_spawns
+
+		echo -n "Starting trustee 0...			"
+		"$thisScript" trustee 0 > trustee0.log 2>&1 &
+		echo -e "$okMsg"
+
+		sleep $sleeptime_between_spawns
+
+		echo -n "Starting client 0... (SOCKS on :8081)	"
+		"$thisScript" client 0 8081 > client0.log 2>&1 &
+		echo -e "$okMsg"
+
+        if [ "$all_localhost_n_clients" -gt 1 ]; then
+            sleep $sleeptime_between_spawns
+
+            echo -n "Starting client 1... (SOCKS on :8082)	"
+            "$thisScript" client 1 8082 > client1.log 2>&1 &
+            echo -e "$okMsg"
+		fi
+
+        if [ "$all_localhost_n_clients" -gt 2 ]; then
+            sleep $sleeptime_between_spawns
+
+            echo -n "Starting client 2... (SOCKS on :8083)	"
+            "$thisScript" client 2 8083 > client2.log 2>&1 &
+            echo -e "$okMsg"
+		fi
+
+		#let it boot
+		sleep 20
+
+		curl google.com --socks5 127.0.0.1:8081 --max-time 10 1>/dev/null 2>&1
+		res=$?
+
+        pkill prifi 2>/dev/null
+        kill -TERM $(pidof "go run run-server.go")  2>/dev/null
+
+        if [ $res -eq 0 ]; then
+        	echo "Test succeeded"
+        	exit 0
+        else
+        	echo "Test failed"
+        	exit 1
+        fi
+		;;
+
 	relay-d)
 
 		#test for proper setup
