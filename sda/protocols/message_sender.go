@@ -127,13 +127,13 @@ func (ms MessageSender) ClientSubscribeToBroadcast(clientName string, messageRec
 			lastSeenMessage++
 
 			if err != nil {
-				log.Error(clientName, " an error occured : ", err)
+				log.Error(clientName, " an error occurred : ", err)
 			}
 
 			log.Lvl3(clientName, " Received an UDP message n°"+strconv.Itoa(lastSeenMessage))
 
 			if err != nil {
-				log.Error(clientName, " an error occured : ", err)
+				log.Error(clientName, " an error occurred : ", err)
 			}
 
 			//forward to PriFi

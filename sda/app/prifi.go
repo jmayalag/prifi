@@ -375,7 +375,7 @@ func readPriFiConfigFile(c *cli.Context) (*prifi_protocol.PrifiTomlConfig, error
 		return nil, err
 	}
 
-	//ports can be overriden by the command line params
+	//ports can be overridden by the command line params
 	if c.GlobalIsSet("port") {
 		tomlConfig.SocksServerPort = c.GlobalInt("port")
 	}

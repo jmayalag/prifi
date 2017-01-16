@@ -99,7 +99,7 @@ func (m *MessageSenderWrapper) SendToRelayWithLog(msg interface{}, extraInfos st
 	err := m.MessageSender.SendToRelay(msg)
 	msgName := reflect.TypeOf(msg).String()
 	if err != nil {
-		e := "Tried to send a " + msgName + ", but some network error occured. Err is: " + err.Error()
+		e := "Tried to send a " + msgName + ", but some network error occurred. Err is: " + err.Error()
 		if m.networkErrorHappened != nil {
 			m.networkErrorHappened(errors.New(e))
 		}
@@ -122,7 +122,7 @@ func (m *MessageSenderWrapper) sendToWithLog(sendingFunc func(int, interface{}) 
 	err := sendingFunc(i, msg)
 	msgName := reflect.TypeOf(msg).String()
 	if err != nil {
-		e := "Tried to send a " + msgName + ", but some network error occured. Err is: " + err.Error()
+		e := "Tried to send a " + msgName + ", but some network error occurred. Err is: " + err.Error()
 		if m.networkErrorHappened != nil {
 			m.networkErrorHappened(errors.New(e))
 		}

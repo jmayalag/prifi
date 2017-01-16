@@ -305,13 +305,13 @@ func createSocksReply(replyCode int, addr net.Addr) []byte {
 		// Check address type
 		if host4 != nil { //IPv4
 
-			buf[3] = addrIPv4             // Insert Addres Type
+			buf[3] = addrIPv4             // Insert Address Type
 			buf = append(buf, host4...)   // Add IPv6 Address
 			buf = append(buf, port[:]...) // Add Port
 
 		} else if host6 != nil { // IPv6
 
-			buf[3] = addrIPv6             // Insert Addres Type
+			buf[3] = addrIPv6             // Insert Address Type
 			buf = append(buf, host6...)   // Add IPv6 Address
 			buf = append(buf, port[:]...) // Add Port
 
