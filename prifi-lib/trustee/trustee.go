@@ -53,7 +53,7 @@ func (p *PriFiLibTrusteeInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PA
 	} else {
 		log.Lvl3("Trustee : received ALL_ALL_PARAMETERS")
 	}
-
+	log.LLvlf1("%+v", msg)
 	startNow := msg.BoolValueOrElse("StartNow", false)
 	trusteeID := msg.IntValueOrElse("NextFreeTrusteeID", -1)
 	nTrustees := msg.IntValueOrElse("NTrustees", p.trusteeState.nTrustees)

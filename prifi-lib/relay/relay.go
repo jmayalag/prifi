@@ -89,7 +89,7 @@ func (p *PriFiLibRelayInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARA
 
 	startNow := msg.BoolValueOrElse("StartNow", false)
 	nTrustees := msg.IntValueOrElse("NTrustees", p.relayState.nTrustees)
-	nClients := msg.IntValueOrElse("nClients", p.relayState.nClients)
+	nClients := msg.IntValueOrElse("NClients", p.relayState.nClients)
 	upCellSize := msg.IntValueOrElse("UpstreamCellSize", p.relayState.UpstreamCellSize)
 	downCellSize := msg.IntValueOrElse("DownstreamCellSize", p.relayState.DownstreamCellSize)
 	windowSize := msg.IntValueOrElse("WindowSize", p.relayState.WindowSize)
@@ -129,12 +129,12 @@ func (p *PriFiLibRelayInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARA
 	}
 
 	log.Lvlf3("%+v\n", p.relayState)
-	log.Lvl1("Relay has been initialized by message. ")
+	log.Lvl1("Relay has been initialized by message; StartNow is", startNow)
 
 	// Broadcast those parameters to the other nodes, then tell the trustees which ID they are.
 	if startNow {
 		p.relayState.currentState = RELAY_STATE_COLLECTING_TRUSTEES_PKS
-		p.SendParameters()
+		p.BroadcastParameters()
 	}
 	log.Lvl1("Relay setup done, and setup sent to the trustees.")
 
@@ -142,7 +142,7 @@ func (p *PriFiLibRelayInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARA
 }
 
 // ConnectToTrustees connects to the trustees and initializes them with default parameters.
-func (p *PriFiLibRelayInstance) SendParameters() error {
+func (p *PriFiLibRelayInstance) BroadcastParameters() error {
 
 	// Craft default parameters
 	msgBuilder := net.NewALL_ALL_PARAMETERS_BUILDER()
@@ -150,6 +150,8 @@ func (p *PriFiLibRelayInstance) SendParameters() error {
 	msgBuilder.Add("NTrustees", p.relayState.nTrustees)
 	msgBuilder.Add("StartNow", true)
 	msgBuilder.Add("UpCellSize", p.relayState.UpstreamCellSize)
+
+	log.Error("Gonna send...")
 
 	// Send those parameters to all trustees
 	for j := 0; j < p.relayState.nTrustees; j++ {
@@ -166,8 +168,11 @@ func (p *PriFiLibRelayInstance) SendParameters() error {
 		// The ID is unique !
 		msgBuilder.Add("NextFreeClientID", j)
 		msg := msgBuilder.BuildMessage(true)
+		log.LLvlf1("%+v", msg)
 		p.messageSender.SendToClientWithLog(j, msg, "")
 	}
+
+	log.Error("Done sending")
 
 	return nil
 }

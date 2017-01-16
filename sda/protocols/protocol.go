@@ -63,6 +63,8 @@ func (p *PriFiSDAProtocol) Start() error {
 	//emulate the reception of a ALL_ALL_PARAMETERS with StartNow=true
 	builder := net.NewALL_ALL_PARAMETERS_BUILDER()
 	builder.Add("StartNow", true)
+	builder.Add("NTrustees", len(p.ms.trustees))
+	builder.Add("NClients", len(p.ms.clients))
 	msg := builder.BuildMessage(true)
 	p.prifiLibInstance.ReceivedMessage(msg)
 
