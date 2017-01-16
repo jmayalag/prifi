@@ -6,6 +6,8 @@ import (
 	"github.com/lbarman/prifi/prifi-lib/dcnet"
 	"github.com/lbarman/prifi/prifi-lib/net"
 	"github.com/lbarman/prifi/prifi-lib/scheduler"
+	"github.com/lbarman/prifi/prifi-lib/config"
+	"github.com/lbarman/prifi/prifi-lib/crypto"
 	"reflect"
 	"time"
 )
@@ -32,25 +34,25 @@ const TRUSTEE_BASE_SLEEP_TIME = 10 * time.Millisecond
 // PriFiLibTrusteeInstance contains the mutable state of a PriFi entity.
 type PriFiLibTrusteeInstance struct {
 	messageSender *net.MessageSenderWrapper
-	trusteeState  TrusteeState
-}
-
-// NewPriFiClient creates a new PriFi client entity state.
-// Note: the returned state is not sufficient for the PrFi protocol
-// to start; this entity will expect a ALL_ALL_PARAMETERS message as
-// first received message to complete it's state.
-func NewPriFiTrustee(msgSender *net.MessageSenderWrapper) *PriFiLibTrusteeInstance {
-	prifi := PriFiLibTrusteeInstance{
-		messageSender: msgSender,
-	}
-	return &prifi
+	trusteeState  *TrusteeState
 }
 
 // NewPriFiClientWithState creates a new PriFi client entity state.
-func NewPriFiTrusteeWithState(msgSender *net.MessageSenderWrapper, state *TrusteeState) *PriFiLibTrusteeInstance {
+func NewTrustee(msgSender *net.MessageSenderWrapper) *PriFiLibTrusteeInstance {
+
+	trusteeState := new(TrusteeState)
+
+	//init the static stuff
+	trusteeState.sendingRate = make(chan int16, 10)
+	trusteeState.CellCoder = config.Factory()
+	trusteeState.PublicKey, trusteeState.privateKey = crypto.NewKeyPair()
+	neffShuffle := new(scheduler.NeffShuffle)
+	neffShuffle.Init()
+	trusteeState.neffShuffle = neffShuffle.TrusteeView
+
 	prifi := PriFiLibTrusteeInstance{
 		messageSender: msgSender,
-		trusteeState:  *state,
+		trusteeState:  trusteeState,
 	}
 	return &prifi
 }

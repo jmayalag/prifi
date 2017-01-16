@@ -91,21 +91,10 @@ func NewPriFiRelayWithState(msgSender net.MessageSender, state *relay.RelayState
 // Note: the returned state is not sufficient for the PrFi protocol
 // to start; this entity will expect a ALL_ALL_PARAMETERS message as
 // first received message to complete it's state.
-func NewPriFiTrustee(msgSender net.MessageSender) *PriFiLibInstance {
-	prifi := PriFiLibInstance{
-		role:          PRIFI_ROLE_TRUSTEE,
-		messageSender: newMessageSenderWrapper(msgSender),
-	}
-	return &prifi
-}
-
-// NewPriFiTrusteeWithState creates a new PriFi trustee entity state.
-func NewPriFiTrusteeWithState(msgSender net.MessageSender, state *trustee.TrusteeState) *PriFiLibInstance {
-	prifi := PriFiLibInstance{
-		role: PRIFI_ROLE_TRUSTEE,
-		specializedLibInstance: trustee.NewPriFiTrusteeWithState(newMessageSenderWrapper(msgSender), state),
-	}
-	return &prifi
+func NewPriFiTrustee(msgSender net.MessageSender) SpecializedLibInstance {
+	msw := newMessageSenderWrapper(msgSender)
+	t := trustee.NewTrustee(msw)
+	return t
 }
 
 // ReceivedMessage must be called when a PriFi host receives a message.

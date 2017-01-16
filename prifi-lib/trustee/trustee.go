@@ -18,51 +18,10 @@ import (
 	"github.com/dedis/cothority/log"
 	"github.com/dedis/crypto/abstract"
 	"github.com/lbarman/prifi/prifi-lib/config"
-	"github.com/lbarman/prifi/prifi-lib/crypto"
 	"github.com/lbarman/prifi/prifi-lib/net"
-	"github.com/lbarman/prifi/prifi-lib/scheduler"
 	"strconv"
 	"time"
 )
-
-/*
-NewTrusteeState initializes the state of the trustee.
-It must be called before anything else.
-*/
-func NewTrusteeState(trusteeID int, nClients int, nTrustees int, payloadLength int) *TrusteeState {
-	params := new(TrusteeState)
-
-	params.ID = trusteeID
-	params.Name = "Trustee-" + strconv.Itoa(trusteeID)
-	params.CellCoder = config.Factory()
-	params.nClients = nClients
-	params.nTrustees = nTrustees
-	params.PayloadLength = payloadLength
-	params.sendingRate = make(chan int16, 10)
-	params.TrusteeID = trusteeID
-
-	//gen the key
-	pub, priv := crypto.NewKeyPair()
-
-	//generate own parameters
-	params.privateKey = priv
-	params.PublicKey = pub
-
-	//init the neff shuffle
-	neffShuffle := new(scheduler.NeffShuffle)
-	neffShuffle.Init()
-	params.neffShuffle = neffShuffle.TrusteeView
-	params.neffShuffle.Init(trusteeID, priv, pub)
-
-	//placeholders for pubkeys and secrets
-	params.ClientPublicKeys = make([]abstract.Point, nClients)
-	params.sharedSecrets = make([]abstract.Point, nClients)
-
-	//sets the new state
-	params.currentState = TRUSTEE_STATE_INITIALIZING
-
-	return params
-}
 
 /*
 Received_ALL_ALL_SHUTDOWN handles ALL_ALL_SHUTDOWN messages.
@@ -96,12 +55,36 @@ func (p *PriFiLibTrusteeInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PA
 	}
 
 	startNow := msg.BoolValueOrElse("StartNow", false)
-	nextFreeTrusteeID := msg.IntValueOrElse("NextFreeTrusteeID", -1)
+	trusteeID := msg.IntValueOrElse("NextFreeTrusteeID", -1)
 	nTrustees := msg.IntValueOrElse("NTrustees", p.trusteeState.nTrustees)
 	nClients := msg.IntValueOrElse("nClients", p.trusteeState.nClients)
-	upCellSize := msg.IntValueOrElse("UpstreamCellSize", p.trusteeState.PayloadLength) //todo: change this name
+	cellSize := msg.IntValueOrElse("UpstreamCellSize", p.trusteeState.PayloadLength) //todo: change this name
 
-	p.trusteeState = *NewTrusteeState(nextFreeTrusteeID, nClients, nTrustees, upCellSize)
+	//sanity checks
+	if trusteeID < -1 {
+		return errors.New("trusteeID cannot be negative")
+	}
+	if nTrustees < 1 {
+		return errors.New("nTrustees cannot be smaller than 1")
+	}
+	if nClients < 1 {
+		return errors.New("nClients cannot be smaller than 1")
+	}
+	if cellSize < 1 {
+		return errors.New("UpCellSize cannot be 0")
+	}
+
+	p.trusteeState.ID = trusteeID
+	p.trusteeState.Name = "Trustee-" + strconv.Itoa(trusteeID)
+	p.trusteeState.nClients = nClients
+	p.trusteeState.nTrustees = nTrustees
+	p.trusteeState.PayloadLength = cellSize
+	p.trusteeState.TrusteeID = trusteeID
+	p.trusteeState.neffShuffle.Init(trusteeID, p.trusteeState.privateKey, p.trusteeState.PublicKey)
+
+	//placeholders for pubkeys and secrets
+	p.trusteeState.ClientPublicKeys = make([]abstract.Point, nClients)
+	p.trusteeState.sharedSecrets = make([]abstract.Point, nClients)
 
 	if startNow {
 		// send our public key to the relay

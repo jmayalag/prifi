@@ -6,7 +6,6 @@ import (
 	prifi_lib "github.com/lbarman/prifi/prifi-lib"
 	"github.com/lbarman/prifi/prifi-lib/net"
 	"github.com/lbarman/prifi/prifi-lib/relay"
-	"github.com/lbarman/prifi/prifi-lib/trustee"
 )
 
 //the UDP channel we provide to PriFi. check udp.go for more details.
@@ -98,9 +97,7 @@ func (p *PriFiSDAProtocol) SetConfigFromPriFiService(config *PriFiSDAWrapperConf
 		p.prifiLibInstance = prifi_lib.NewPriFiRelayWithState(ms, relayState)
 
 	case Trustee:
-		id := config.Identities[p.ServerIdentity().Address.String()].ID
-		trusteeState := trustee.NewTrusteeState(id, nClients, nTrustees, config.UpCellSize)
-		p.prifiLibInstance = prifi_lib.NewPriFiTrusteeWithState(ms, trusteeState)
+		p.prifiLibInstance = prifi_lib.NewPriFiTrustee(ms)
 
 	case Client:
 		p.prifiLibInstance = prifi_lib.NewPriFiClient(config.DoLatencyTests, config.ClientDataOutputEnabled, config.ClientSideSocksConfig.UpstreamChannel, config.ClientSideSocksConfig.DownstreamChannel, ms)
