@@ -67,6 +67,11 @@ func TestMessageSenderWrapper(t *testing.T) {
 	var loggingFunctionCalled bool = false
 	logging := func(e interface{}) { loggingFunctionCalled = true }
 	msw, err = NewMessageSenderWrapper(true, logging, logging, errHandling, msgSender)
+
+	if err != nil {
+		t.Error("Shouldn't have an error here," + err.Error())
+	}
+
 	success = msw.SendToClientWithLog(0, "hello", "")
 	if success || !errorHandlerCalled {
 		t.Error("this call should trigger an error")

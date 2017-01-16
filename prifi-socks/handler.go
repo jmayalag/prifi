@@ -452,7 +452,6 @@ func ipMaskerade(buf []byte, addr net.Addr) []byte {
 		} else { // Unknown...
 
 			fmt.Println("SOCKS: neither IPv4 nor IPv6 addr?")
-			addr = nil
 			buf[1] = byte(repAddressTypeNotSupported)
 
 		}

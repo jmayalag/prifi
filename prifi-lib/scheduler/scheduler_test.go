@@ -175,6 +175,10 @@ func NeffShuffleTestHelper(t *testing.T, nClients int, nTrustees int, shuffleKey
 		//and answers, the relay receives it
 		isDone, err = n.RelayView.ReceivedShuffleFromTrustee(parsed2.NewBase, parsed2.NewEphPks, parsed2.Proof)
 
+		if err != nil {
+			t.Error("Shouldn't have an error here," + err.Error())
+		}
+
 		i++
 	}
 
@@ -198,6 +202,9 @@ func NeffShuffleTestHelper(t *testing.T, nClients int, nTrustees int, shuffleKey
 		}
 		if !done && j == nTrustees-1 {
 			t.Error("Relay collecting signature, but is not done, yet we have all signatures")
+		}
+		if err != nil {
+			t.Error("Shouldn't have an error here," + err.Error())
 		}
 	}
 

@@ -164,6 +164,14 @@ func TestNeffShuffle(t *testing.T) {
 		for i := 0; i < repetition; i++ {
 			shuffledKeys, newBase, secretCoeff, proof, err = NeffShuffle(clientPks, base, config.CryptoSuite, true)
 
+			if err != nil {
+				t.Error("Shouldn't have an error here," + err.Error())
+			}
+
+			//todo : check the proofs !
+			_ = proof
+			_ = secretCoeff
+
 			mapping := make([]int, nClients)
 			transformedKeys := make([]abstract.Point, nClients)
 			for i := 0; i < nClients; i++ {
