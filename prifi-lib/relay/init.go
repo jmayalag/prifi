@@ -36,7 +36,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/dedis/cothority/log"
 	"github.com/dedis/crypto/abstract"
 	"github.com/lbarman/prifi/prifi-lib/config"
 	"github.com/lbarman/prifi/prifi-lib/dcnet"
@@ -51,33 +50,39 @@ import (
 // PriFiLibInstance contains the mutable state of a PriFi entity.
 type PriFiLibRelayInstance struct {
 	messageSender *net.MessageSenderWrapper
-	relayState    RelayState
+	relayState    *RelayState
 }
 
 // NewPriFiRelay creates a new PriFi relay entity state.
 // Note: the returned state is not sufficient for the PrFi protocol
 // to start; this entity will expect a ALL_ALL_PARAMETERS message as
 // first received message to complete it's state.
-func NewPriFiRelay(msgSender *net.MessageSenderWrapper) *PriFiLibRelayInstance {
+func NewRelay(dataOutputEnabled bool, dataForClients chan []byte, dataFromDCNet chan []byte, experimentResultChan chan interface{}, timeoutHandler func([]int, []int), msgSender *net.MessageSenderWrapper) *PriFiLibRelayInstance {
+	relayState := new(RelayState)
+
+	//init the static stuff
+	relayState.CellCoder = config.Factory()
+	relayState.DataForClients = dataForClients
+	relayState.DataFromDCNet = dataFromDCNet
+	relayState.DataOutputEnabled = dataOutputEnabled
+	relayState.timeoutHandler = timeoutHandler
+	relayState.ExperimentResultChannel = experimentResultChan
+	relayState.PriorityDataForClients = make(chan []byte, 10) // This is used for relay's control message (like latency-tests)
+	relayState.statistics = prifilog.NewBitRateStatistics()
+	relayState.PublicKey, relayState.privateKey = crypto.NewKeyPair()
+	relayState.bufferManager = new(BufferManager)
+	neffShuffle := new(scheduler.NeffShuffle)
+	neffShuffle.Init()
+	relayState.neffShuffle = neffShuffle.RelayView
+	relayState.Name = "Relay"
+
+
 	prifi := PriFiLibRelayInstance{
 		messageSender: msgSender,
+		relayState:  relayState,
 	}
-
-	log.Lvl1("Relay (but not its state) has been initialized by function call. ")
 	return &prifi
 }
-
-// NewPriFiRelayWithState creates a new PriFi relay entity state.
-func NewPriFiRelayWithState(msgSender *net.MessageSenderWrapper, state *RelayState) *PriFiLibRelayInstance {
-	prifi := PriFiLibRelayInstance{
-		messageSender: msgSender,
-		relayState:    *state,
-	}
-
-	log.Lvl1("Relay (and its state) has been initialized by function call. ")
-	return &prifi
-}
-
 //The time slept between each round
 const PROCESSING_LOOP_SLEEP_TIME = 0 * time.Millisecond
 
@@ -153,55 +158,6 @@ type RelayState struct {
 	statistics                        *prifilog.BitrateStatistics
 }
 
-/*
-NewRelayState initializes the state of this relay.
-It must be called before anything else.
-*/
-func NewRelayState(nTrustees int, nClients int, upstreamCellSize int, downstreamCellSize int, windowSize int, useDummyDataDown bool, experimentRoundLimit int, experimentResultChan chan interface{}, useUDP bool, dataOutputEnabled bool, dataForClients chan []byte, dataFromDCNet chan []byte, timeoutHandler func([]int, []int)) *RelayState {
-	params := new(RelayState)
-	params.Name = "Relay"
-	params.CellCoder = config.Factory()
-	params.clients = make([]NodeRepresentation, 0)
-	params.DataForClients = dataForClients
-	params.PriorityDataForClients = make(chan []byte, 10) // This is used for relay's control message (like latency-tests)
-	params.DataFromDCNet = dataFromDCNet
-	params.DataOutputEnabled = dataOutputEnabled
-	params.DownstreamCellSize = downstreamCellSize
-	params.nClients = nClients
-	params.ExperimentResultChannel = experimentResultChan
-	params.nTrustees = nTrustees
-	params.nTrusteesPkCollected = 0
-	params.ExperimentRoundLimit = experimentRoundLimit
-	params.trustees = make([]NodeRepresentation, nTrustees)
-	params.UpstreamCellSize = upstreamCellSize
-	params.UseDummyDataDown = useDummyDataDown
-	params.UseUDP = useUDP
-	params.WindowSize = windowSize
-	params.nextDownStreamRoundToSend = int32(1) //since first round is half-round
-	params.numberOfNonAckedDownstreamPackets = 0
-	params.timeoutHandler = timeoutHandler
-
-	//init the statistics
-	params.statistics = prifilog.NewBitRateStatistics()
-
-	//init the neff shuffle
-	neffShuffle := new(scheduler.NeffShuffle)
-	neffShuffle.Init()
-	params.neffShuffle = neffShuffle.RelayView
-
-	//init the buffer manager
-	params.bufferManager = new(BufferManager)
-	params.bufferManager.Init(nClients, nTrustees)
-
-	// Generate pk
-	params.PublicKey, params.privateKey = crypto.NewKeyPair()
-
-	// Sets the new state
-	params.currentState = RELAY_STATE_COLLECTING_TRUSTEES_PKS
-
-	return params
-}
-
 // ReceivedMessage must be called when a PriFi host receives a message.
 // It takes care to call the correct message handler function.
 func (p *PriFiLibRelayInstance) ReceivedMessage(msg interface{}) error {
@@ -209,8 +165,6 @@ func (p *PriFiLibRelayInstance) ReceivedMessage(msg interface{}) error {
 	var err error
 
 	switch typedMsg := msg.(type) {
-	case net.ALL_ALL_PARAMETERS:
-		err = p.Received_ALL_ALL_PARAMETERS_OLD(typedMsg) //todo : should merge those
 	case *net.ALL_ALL_PARAMETERS_NEW:
 		err = p.Received_ALL_ALL_PARAMETERS(*typedMsg)
 	case net.ALL_ALL_SHUTDOWN:

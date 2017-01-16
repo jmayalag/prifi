@@ -75,52 +75,6 @@ func (p *PriFiLibRelayInstance) Received_ALL_ALL_SHUTDOWN(msg net.ALL_ALL_SHUTDO
 Received_ALL_REL_PARAMETERS handles ALL_REL_PARAMETERS.
 It initializes the relay with the parameters contained in the message.
 */
-func (p *PriFiLibRelayInstance) Received_ALL_ALL_PARAMETERS_OLD(msg net.ALL_ALL_PARAMETERS) error {
-
-	// This can only happens in the state RELAY_STATE_BEFORE_INIT
-	if p.relayState.currentState != RELAY_STATE_BEFORE_INIT && !msg.ForceParams {
-		log.Lvl1("Relay : Received a ALL_ALL_PARAMETERS, but not in state RELAY_STATE_BEFORE_INIT, ignoring. ")
-		return nil
-	} else if p.relayState.currentState != RELAY_STATE_BEFORE_INIT && msg.ForceParams {
-		log.Lvl1("Relay : Received a ALL_ALL_PARAMETERS && ForceParams = true, processing. ")
-	} else {
-		log.Lvl3("Relay : received ALL_ALL_PARAMETERS")
-	}
-
-	oldExperimentResultChan := p.relayState.ExperimentResultChannel
-	p.relayState = *NewRelayState(msg.NTrustees, msg.NClients, msg.UpCellSize, msg.DownCellSize, msg.RelayWindowSize, msg.RelayUseDummyDataDown, msg.RelayReportingLimit, oldExperimentResultChan, msg.UseUDP, msg.RelayDataOutputEnabled, make(chan []byte), make(chan []byte), p.relayState.timeoutHandler)
-
-	//this should be in NewRelayState, but we need p
-	if !p.relayState.bufferManager.DoSendStopResumeMessages {
-		//Add rate-limiting component to buffer manager
-		stopFn := func(trusteeID int) {
-			toSend := &net.REL_TRU_TELL_RATE_CHANGE{WindowCapacity: 0}
-			p.messageSender.SendToTrusteeWithLog(trusteeID, toSend, "(trustee "+strconv.Itoa(trusteeID)+")")
-		}
-		resumeFn := func(trusteeID int) {
-			toSend := &net.REL_TRU_TELL_RATE_CHANGE{WindowCapacity: 1}
-			p.messageSender.SendToTrusteeWithLog(trusteeID, toSend, "(trustee "+strconv.Itoa(trusteeID)+")")
-		}
-		p.relayState.bufferManager.AddRateLimiter(TRUSTEE_CACHE_LOWBOUND, TRUSTEE_CACHE_HIGHBOUND, stopFn, resumeFn)
-	}
-
-	log.Lvlf1("%+v\n", msg)
-	log.Lvl1("Relay has been initialized by message ALL_REL_PARAMETERS_OLD. ")
-
-	// Broadcast those parameters to the other nodes, then tell the trustees which ID they are.
-	if msg.StartNow {
-		p.relayState.currentState = RELAY_STATE_COLLECTING_TRUSTEES_PKS
-		p.SendParameters()
-	}
-	log.Lvl1("Relay setup done, and setup sent to the trustees.")
-
-	return nil
-}
-
-/*
-Received_ALL_REL_PARAMETERS handles ALL_REL_PARAMETERS.
-It initializes the relay with the parameters contained in the message.
-*/
 func (p *PriFiLibRelayInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARAMETERS_NEW) error {
 
 	// This can only happens in the state RELAY_STATE_BEFORE_INIT
@@ -142,17 +96,23 @@ func (p *PriFiLibRelayInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARA
 	useDummyDown := msg.BoolValueOrElse("UseDummyDataDown", p.relayState.UseDummyDataDown)
 	reportingLimit := msg.IntValueOrElse("ExperimentRoundLimit", p.relayState.ExperimentRoundLimit)
 	useUDP := msg.BoolValueOrElse("UseUDP", p.relayState.UseUDP)
-	dataOutputEnabled := msg.BoolValueOrElse("DataOutputEnabled", p.relayState.DataOutputEnabled)
 
-	//this is never set in the message
-	dataForClients := make(chan []byte)
-	dataFromDCNet := make(chan []byte)
-	experimentResultChan := p.relayState.ExperimentResultChannel
-	timeoutHandler := p.relayState.timeoutHandler
 
-	p.relayState = *NewRelayState(nTrustees, nClients, upCellSize, downCellSize, windowSize,
-		useDummyDown, reportingLimit, experimentResultChan, useUDP, dataOutputEnabled,
-		dataForClients, dataFromDCNet, timeoutHandler)
+	p.relayState.clients = make([]NodeRepresentation, nClients)
+	p.relayState.trustees = make([]NodeRepresentation, nTrustees)
+	p.relayState.nClients = nClients
+	p.relayState.nTrustees = nTrustees
+	p.relayState.nTrusteesPkCollected = 0
+	p.relayState.ExperimentRoundLimit = reportingLimit
+	p.relayState.UpstreamCellSize = upCellSize
+	p.relayState.DownstreamCellSize = downCellSize
+	p.relayState.UseDummyDataDown = useDummyDown
+	p.relayState.UseUDP = useUDP
+	p.relayState.bufferManager.Init(nClients, nTrustees)
+	p.relayState.nextDownStreamRoundToSend = int32(1) //since first round is half-round
+	p.relayState.WindowSize = windowSize
+	p.relayState.numberOfNonAckedDownstreamPackets = 0
+
 
 	//this should be in NewRelayState, but we need p
 	if !p.relayState.bufferManager.DoSendStopResumeMessages {

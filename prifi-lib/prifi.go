@@ -70,21 +70,10 @@ func NewPriFiClient(doLatencyTest bool, dataOutputEnabled bool, dataForDCNet cha
 }
 
 //Creates a new PriFi relay //todo do like client
-func NewPriFiRelay(msgSender net.MessageSender) *PriFiLibInstance {
-	prifi := PriFiLibInstance{
-		role: PRIFI_ROLE_RELAY,
-		specializedLibInstance: relay.NewPriFiRelay(newMessageSenderWrapper(msgSender)),
-	}
-	return &prifi
-}
-
-//Creates a new PriFi trustee //todo do like client
-func NewPriFiRelayWithState(msgSender net.MessageSender, state *relay.RelayState) *PriFiLibInstance {
-	prifi := PriFiLibInstance{
-		role: PRIFI_ROLE_RELAY,
-		specializedLibInstance: relay.NewPriFiRelayWithState(newMessageSenderWrapper(msgSender), state),
-	}
-	return &prifi
+func NewPriFiRelay(dataOutputEnabled bool, dataForClients chan []byte, dataFromDCNet chan []byte, experimentResultChan chan interface{}, timeoutHandler func([]int, []int), msgSender net.MessageSender) SpecializedLibInstance {
+	msw := newMessageSenderWrapper(msgSender)
+	r := relay.NewRelay(dataOutputEnabled, dataForClients, dataFromDCNet, experimentResultChan, timeoutHandler, msw)
+	return r
 }
 
 // NewPriFiTrustee creates a new PriFi trustee entity state.

@@ -5,7 +5,6 @@ import (
 	"github.com/dedis/cothority/network"
 	prifi_lib "github.com/lbarman/prifi/prifi-lib"
 	"github.com/lbarman/prifi/prifi-lib/net"
-	"github.com/lbarman/prifi/prifi-lib/relay"
 )
 
 //the UDP channel we provide to PriFi. check udp.go for more details.
@@ -73,32 +72,13 @@ func (p *PriFiSDAProtocol) SetConfigFromPriFiService(config *PriFiSDAWrapperConf
 		}
 	}
 
-	nClients := len(ms.clients)
-	nTrustees := len(ms.trustees)
 	experimentResultChan := p.ResultChannel
 
 	switch config.Role {
 	case Relay:
-		relayState := relay.NewRelayState(
-			nTrustees,
-			nClients,
-			config.UpCellSize,
-			config.DownCellSize,
-			config.RelayWindowSize,
-			config.RelayUseDummyDataDown,
-			config.RelayReportingLimit,
-			experimentResultChan,
-			config.UseUDP,
-			config.RelayDataOutputEnabled,
-			config.RelaySideSocksConfig.DownstreamChannel,
-			config.RelaySideSocksConfig.UpstreamChannel,
-			p.handleTimeout)
-
-		p.prifiLibInstance = prifi_lib.NewPriFiRelayWithState(ms, relayState)
-
+		p.prifiLibInstance = prifi_lib.NewPriFiRelay(config.RelayDataOutputEnabled, config.RelaySideSocksConfig.DownstreamChannel, config.RelaySideSocksConfig.UpstreamChannel, experimentResultChan, p.handleTimeout, ms)
 	case Trustee:
 		p.prifiLibInstance = prifi_lib.NewPriFiTrustee(ms)
-
 	case Client:
 		p.prifiLibInstance = prifi_lib.NewPriFiClient(config.DoLatencyTests, config.ClientDataOutputEnabled, config.ClientSideSocksConfig.UpstreamChannel, config.ClientSideSocksConfig.DownstreamChannel, ms)
 	}
