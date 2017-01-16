@@ -22,6 +22,7 @@ import (
 	"github.com/dedis/crypto/abstract"
 	cryptoconfig "github.com/dedis/crypto/config"
 	prifi_service "github.com/lbarman/prifi/sda/services"
+	prifi_protocol "github.com/lbarman/prifi/sda/protocols"
 	"gopkg.in/urfave/cli.v1"
 	"net"
 	"strconv"
@@ -353,7 +354,7 @@ func startCothorityNode(c *cli.Context) (*sda.Conode, error) {
  * CONFIG
  */
 
-func readPriFiConfigFile(c *cli.Context) (*prifi_service.PrifiTomlConfig, error) {
+func readPriFiConfigFile(c *cli.Context) (*prifi_protocol.PrifiTomlConfig, error) {
 
 	cfile := c.GlobalString("prifi_config")
 
@@ -367,7 +368,7 @@ func readPriFiConfigFile(c *cli.Context) (*prifi_service.PrifiTomlConfig, error)
 		log.Error("Could not read file \"", cfile, "\" (specified by flag prifi_config)")
 	}
 
-	tomlConfig := &prifi_service.PrifiTomlConfig{}
+	tomlConfig := &prifi_protocol.PrifiTomlConfig{}
 	_, err = toml.Decode(string(tomlRawData), tomlConfig)
 	if err != nil {
 		log.Error("Could not parse toml file", cfile)

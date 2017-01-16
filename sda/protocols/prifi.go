@@ -4,7 +4,6 @@ import (
 	"github.com/dedis/cothority/log"
 	"github.com/dedis/cothority/network"
 	prifi_lib "github.com/lbarman/prifi/prifi-lib"
-	"github.com/lbarman/prifi/prifi-lib/net"
 )
 
 //the UDP channel we provide to PriFi. check udp.go for more details.
@@ -35,9 +34,24 @@ type SOCKSConfig struct {
 	DownstreamChannel chan []byte
 }
 
+//The configuration read in prifi.toml
+type PrifiTomlConfig struct {
+	ClientDataOutputEnabled bool
+	RelayDataOutputEnabled  bool
+	CellSizeUp            int
+	CellSizeDown          int
+	RelayWindowSize       int
+	RelayUseDummyDataDown bool
+	RelayReportingLimit   int
+	UseUDP                bool
+	DoLatencyTests        bool
+	SocksServerPort       int
+	SocksClientPort       int
+}
+
 //PriFiSDAWrapperConfig is all the information the SDA-Protocols needs. It contains the network map of identities, our role, and the socks parameters if we are the corresponding role
 type PriFiSDAWrapperConfig struct {
-	net.ALL_ALL_PARAMETERS
+	Toml 		      *PrifiTomlConfig
 	Identities            map[string]PriFiIdentity
 	Role                  PriFiRole
 	ClientSideSocksConfig *SOCKSConfig
@@ -76,11 +90,18 @@ func (p *PriFiSDAProtocol) SetConfigFromPriFiService(config *PriFiSDAWrapperConf
 
 	switch config.Role {
 	case Relay:
-		p.prifiLibInstance = prifi_lib.NewPriFiRelay(config.RelayDataOutputEnabled, config.RelaySideSocksConfig.DownstreamChannel, config.RelaySideSocksConfig.UpstreamChannel, experimentResultChan, p.handleTimeout, ms)
+		relayOutputEnabled := config.Toml.RelayDataOutputEnabled
+		p.prifiLibInstance = prifi_lib.NewPriFiRelay(relayOutputEnabled,
+			config.RelaySideSocksConfig.DownstreamChannel, config.RelaySideSocksConfig.UpstreamChannel,
+			experimentResultChan, p.handleTimeout, ms)
 	case Trustee:
 		p.prifiLibInstance = prifi_lib.NewPriFiTrustee(ms)
+
 	case Client:
-		p.prifiLibInstance = prifi_lib.NewPriFiClient(config.DoLatencyTests, config.ClientDataOutputEnabled, config.ClientSideSocksConfig.UpstreamChannel, config.ClientSideSocksConfig.DownstreamChannel, ms)
+		doLatencyTests := config.Toml.DoLatencyTests
+		clientDataOutputEnabled := config.Toml.ClientDataOutputEnabled
+		p.prifiLibInstance = prifi_lib.NewPriFiClient(doLatencyTests, clientDataOutputEnabled,
+			config.ClientSideSocksConfig.UpstreamChannel, config.ClientSideSocksConfig.DownstreamChannel, ms)
 	}
 
 	p.registerHandlers()

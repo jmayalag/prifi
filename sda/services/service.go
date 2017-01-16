@@ -36,7 +36,7 @@ type ServiceState struct {
 	// We need to embed the ServiceProcessor, so that incoming messages
 	// are correctly handled.
 	*sda.ServiceProcessor
-	prifiTomlConfig *PrifiTomlConfig
+	prifiTomlConfig *prifi_protocol.PrifiTomlConfig
 	Storage         *Storage
 	path            string
 	role            prifi_protocol.PriFiRole

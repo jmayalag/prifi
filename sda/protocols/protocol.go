@@ -94,7 +94,6 @@ func (p *PriFiSDAProtocol) Stop() {
 func init() {
 
 	//register the prifi_lib's message with the network lib here
-	network.RegisterPacketType(net.ALL_ALL_PARAMETERS{})
 	network.RegisterPacketType(net.ALL_ALL_PARAMETERS_NEW{})
 	network.RegisterPacketType(net.CLI_REL_TELL_PK_AND_EPH_PK{})
 	network.RegisterPacketType(net.CLI_REL_UPSTREAM_DATA{})
