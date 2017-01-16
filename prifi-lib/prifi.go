@@ -20,7 +20,7 @@ Then, it runs the PriFi anonymous communication network among those entities.
 // PriFiLibInstance contains the mutable state of a PriFi entity.
 type PriFiLibInstance struct { //todo remove this, like it was done for client
 	role                   int16
-	messageSender          *net.MessageSenderWrapper
+	messageSender          net.MessageSender
 	specializedLibInstance SpecializedLibInstance
 }
 
@@ -39,12 +39,53 @@ const (
 	PRIFI_ROLE_TRUSTEE
 )
 
-/*
-call the functions below on the appropriate machine on the network.
-if you call *without state* (one of the first 3 methods), IT IS NOT SUFFICIENT FOR PRIFI to start; this entity will expect a ALL_ALL_PARAMETERS as a
-first message to finish initializing itself (this is handy if only the Relay has access to the configuration file).
-Otherwise, the 3 last methods fully initialize the entity.
-*/
+// NewPriFiClient creates a new PriFi client
+func NewPriFiClient(doLatencyTest bool, dataOutputEnabled bool, dataForDCNet chan []byte, dataFromDCNet chan []byte, msgSender net.MessageSender) *PriFiLibInstance {
+	msw := newMessageSenderWrapper(msgSender)
+	c := client.NewClient(doLatencyTest, dataOutputEnabled, dataForDCNet, dataFromDCNet, msw)
+	p := &PriFiLibInstance{
+		role: PRIFI_ROLE_CLIENT,
+		specializedLibInstance: c,
+		messageSender: msgSender,
+	}
+	return p
+}
+
+// NewPriFiRelay creates a new PriFi relay
+func NewPriFiRelay(dataOutputEnabled bool, dataForClients chan []byte, dataFromDCNet chan []byte, experimentResultChan chan interface{}, timeoutHandler func([]int, []int), msgSender net.MessageSender) *PriFiLibInstance {
+	msw := newMessageSenderWrapper(msgSender)
+	r := relay.NewRelay(dataOutputEnabled, dataForClients, dataFromDCNet, experimentResultChan, timeoutHandler, msw)
+	p := &PriFiLibInstance{
+		role: PRIFI_ROLE_RELAY,
+		specializedLibInstance: r,
+		messageSender: msgSender,
+	}
+	return p
+}
+
+// NewPriFiTrustee creates a new PriFi trustee
+func NewPriFiTrustee(msgSender net.MessageSender) *PriFiLibInstance {
+	msw := newMessageSenderWrapper(msgSender)
+	t := trustee.NewTrustee(msw)
+	p := &PriFiLibInstance{
+		role: PRIFI_ROLE_TRUSTEE,
+		specializedLibInstance: t,
+		messageSender: msgSender,
+	}
+	return p
+}
+
+// ReceivedMessage must be called when a PriFi host receives a message.
+// It takes care to call the correct message handler function.
+func (p *PriFiLibInstance) ReceivedMessage(msg interface{}) error {
+	err := p.specializedLibInstance.ReceivedMessage(msg)
+	if err != nil {
+		log.Error(err)
+		os.Exit(1) //todo we can cleanly call shutdown, and keep the service
+	}
+	return nil
+}
+
 
 func newMessageSenderWrapper(msgSender net.MessageSender) *net.MessageSenderWrapper {
 
@@ -57,42 +98,4 @@ func newMessageSenderWrapper(msgSender net.MessageSender) *net.MessageSenderWrap
 		log.Fatal("Could not create a MessageSenderWrapper, error is", err)
 	}
 	return msw
-}
-
-// NewPriFiClient creates a new PriFi client entity state.
-// Note: the returned state is not sufficient for the PrFi protocol
-// to start; this entity will expect a ALL_ALL_PARAMETERS message as
-// first received message to complete it's state.
-func NewPriFiClient(doLatencyTest bool, dataOutputEnabled bool, dataForDCNet chan []byte, dataFromDCNet chan []byte, msgSender net.MessageSender) SpecializedLibInstance {
-	msw := newMessageSenderWrapper(msgSender)
-	c := client.NewClient(doLatencyTest, dataOutputEnabled, dataForDCNet, dataFromDCNet, msw)
-	return c
-}
-
-//Creates a new PriFi relay //todo do like client
-func NewPriFiRelay(dataOutputEnabled bool, dataForClients chan []byte, dataFromDCNet chan []byte, experimentResultChan chan interface{}, timeoutHandler func([]int, []int), msgSender net.MessageSender) SpecializedLibInstance {
-	msw := newMessageSenderWrapper(msgSender)
-	r := relay.NewRelay(dataOutputEnabled, dataForClients, dataFromDCNet, experimentResultChan, timeoutHandler, msw)
-	return r
-}
-
-// NewPriFiTrustee creates a new PriFi trustee entity state.
-// Note: the returned state is not sufficient for the PrFi protocol
-// to start; this entity will expect a ALL_ALL_PARAMETERS message as
-// first received message to complete it's state.
-func NewPriFiTrustee(msgSender net.MessageSender) SpecializedLibInstance {
-	msw := newMessageSenderWrapper(msgSender)
-	t := trustee.NewTrustee(msw)
-	return t
-}
-
-// ReceivedMessage must be called when a PriFi host receives a message.
-// It takes care to call the correct message handler function.
-func (p *PriFiLibInstance) ReceivedMessage(msg interface{}) error {
-	err := p.specializedLibInstance.ReceivedMessage(msg)
-	if err != nil {
-		log.Error(err)
-		os.Exit(1) //todo we can cleanly call shutdown, and keep the service
-	}
-	return nil
 }

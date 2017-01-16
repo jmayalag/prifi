@@ -11,12 +11,6 @@ type Struct_ALL_ALL_SHUTDOWN struct {
 	net.ALL_ALL_SHUTDOWN
 }
 
-//Struct_ALL_ALL_PARAMETERS is a wrapper for ALL_ALL_PARAMETERS (but also contains a *sda.TreeNode)
-type Struct_ALL_ALL_PARAMETERS struct {
-	*sda.TreeNode
-	net.ALL_ALL_PARAMETERS
-}
-
 //Struct_ALL_ALL_PARAMETERS is a wrapper for ALL_ALL_PARAMETERS_NEW (but also contains a *sda.TreeNode)
 type Struct_ALL_ALL_PARAMETERS_NEW struct {
 	*sda.TreeNode

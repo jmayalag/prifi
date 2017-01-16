@@ -145,11 +145,7 @@ func NewPriFiSDAWrapperProtocol(n *sda.TreeNodeInstance) (sda.ProtocolInstance, 
 // that registers handlers for all prifi messages.
 func (p *PriFiSDAProtocol) registerHandlers() error {
 	//register handlers
-	err := p.RegisterHandler(p.Received_ALL_ALL_PARAMETERS)
-	if err != nil {
-		return errors.New("couldn't register handler: " + err.Error())
-	}
-	err = p.RegisterHandler(p.Received_ALL_ALL_PARAMETERS_NEW)
+	err := p.RegisterHandler(p.Received_ALL_ALL_PARAMETERS_NEW)
 	if err != nil {
 		return errors.New("couldn't register handler: " + err.Error())
 	}
