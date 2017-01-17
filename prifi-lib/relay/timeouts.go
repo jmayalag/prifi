@@ -21,7 +21,7 @@ func (p *PriFiLibRelayInstance) checkIfRoundHasEndedAfterTimeOut_Phase1(roundID 
 		return //everything went well, it's great !
 	}
 
-	if p.relayState.currentState == RELAY_STATE_SHUTDOWN {
+	if p.stateMachine.State() == "SHUTDOWN" {
 		return //nothing to ensure in that case
 	}
 
@@ -66,7 +66,7 @@ func (p *PriFiLibRelayInstance) checkIfRoundHasEndedAfterTimeOut_Phase2(roundID 
 		return
 	}
 
-	if p.relayState.currentState == RELAY_STATE_SHUTDOWN {
+	if p.stateMachine.State() == "SHUTDOWN" {
 		//nothing to ensure in that case
 		return
 	}
