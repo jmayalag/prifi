@@ -74,7 +74,7 @@ func TestPrifi(t *testing.T) {
 	if cs.CellCoder == nil {
 		t.Error("CellCoder should have been created")
 	}
-	if cs.currentState != CLIENT_STATE_BEFORE_INIT {
+	if client.stateMachine.State() != "BEFORE_INIT" {
 		t.Error("State was not set correctly")
 	}
 	if cs.privateKey == nil || cs.PublicKey == nil {
@@ -130,7 +130,7 @@ func TestPrifi(t *testing.T) {
 	if len(cs.sharedSecrets) != nTrustees {
 		t.Error("Len(SharedSecrets) should be equal to NTrustees")
 	}
-	if cs.currentState != CLIENT_STATE_INITIALIZING {
+	if client.stateMachine.State() != "INITIALIZING" {
 		t.Error("Client should be in state CLIENT_STATE_INITIALIZING")
 	}
 
@@ -161,7 +161,7 @@ func TestPrifi(t *testing.T) {
 	if cs.ephemeralPrivateKey == nil {
 		t.Error("Ephemeral priv key shouldn't be nil")
 	}
-	if cs.currentState != CLIENT_STATE_EPH_KEYS_SENT {
+	if client.stateMachine.State() != "EPH_KEYS_SENT" {
 		t.Error("Client should be in state CLIENT_STATE_INITIALIZING")
 	}
 
@@ -431,14 +431,14 @@ func TestPrifi(t *testing.T) {
 	if len(sentToRelay) > 0 {
 		t.Error("should not have sent anything")
 	}
-	if cs.currentState != CLIENT_STATE_INITIALIZING {
+	if client.stateMachine.State() != "INITIALIZING" {
 		t.Error("Should be in state CLIENT_STATE_INITIALIZING")
 	}
 
 	//if we send a shutdown
 	shutdownMsg := net.ALL_ALL_SHUTDOWN{}
 	client.ReceivedMessage(shutdownMsg)
-	if cs.currentState != CLIENT_STATE_SHUTDOWN {
+	if client.stateMachine.State() != "SHUTDOWN" {
 		t.Error("Should be in SHUTDOWN state after receiving this message")
 	}
 

@@ -41,7 +41,7 @@ import (
 func (p *PriFiLibClientInstance) Received_ALL_ALL_SHUTDOWN(msg net.ALL_ALL_SHUTDOWN) error {
 	log.Lvl1("Client " + strconv.Itoa(p.clientState.ID) + " : Received a SHUTDOWN message. ")
 
-	p.clientState.currentState = CLIENT_STATE_SHUTDOWN
+	p.stateMachine.ChangeState("SHUTDOWN")
 
 	return nil
 }
@@ -49,16 +49,6 @@ func (p *PriFiLibClientInstance) Received_ALL_ALL_SHUTDOWN(msg net.ALL_ALL_SHUTD
 // Received_ALL_CLI_PARAMETERS handles ALL_CLI_PARAMETERS messages.
 // It uses the message's parameters to initialize the client.
 func (p *PriFiLibClientInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARAMETERS_NEW) error {
-
-	//this can only happens in the state RELAY_STATE_BEFORE_INIT
-	if p.clientState.currentState != CLIENT_STATE_BEFORE_INIT && !msg.ForceParams {
-		log.Lvl1("Client " + strconv.Itoa(p.clientState.ID) + " : Received a ALL_ALL_PARAMETERS, but not in state CLIENT_STATE_BEFORE_INIT, ignoring. ")
-		return nil
-	} else if p.clientState.currentState != CLIENT_STATE_BEFORE_INIT && msg.ForceParams {
-		log.Lvl2("Client " + strconv.Itoa(p.clientState.ID) + " : Received a ALL_ALL_PARAMETERS && ForceParams = true, processing. ")
-	} else {
-		log.Lvl3("Client : received ALL_ALL_PARAMETERS")
-	}
 
 	clientID := msg.IntValueOrElse("NextFreeClientID", -1)
 	nTrustees := msg.IntValueOrElse("NTrustees", p.clientState.nTrustees)
@@ -107,7 +97,7 @@ func (p *PriFiLibClientInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PAR
 	}
 
 	//after receiving this message, we are done with the state CLIENT_STATE_BEFORE_INIT, and are ready for initializing
-	p.clientState.currentState = CLIENT_STATE_INITIALIZING
+	p.stateMachine.ChangeState("INITIALIZING")
 
 	log.Lvl2("Client " + strconv.Itoa(p.clientState.ID) + " has been initialized by message. ")
 
@@ -124,14 +114,6 @@ If we're lucky (if this is our slot), we are allowed to embed some message (whic
 SOCKS/VPN data, or if we're running latency tests, we send a "ping" message to compute the latency. If we have nothing to say, we send 0's.
 */
 func (p *PriFiLibClientInstance) Received_REL_CLI_DOWNSTREAM_DATA(msg net.REL_CLI_DOWNSTREAM_DATA) error {
-
-	//this can only happens in the state TRUSTEE_STATE_SHUFFLE_DONE
-	if p.clientState.currentState != CLIENT_STATE_READY {
-		e := "Client " + strconv.Itoa(p.clientState.ID) + " : Received a REL_CLI_DOWNSTREAM_DATA, but not in state CLIENT_STATE_READY, in state " + strconv.Itoa(int(p.clientState.currentState))
-		log.Error(e)
-		return errors.New(e)
-	}
-	log.Lvl3("Client " + strconv.Itoa(p.clientState.ID) + " : Received a REL_CLI_DOWNSTREAM_DATA for round " + strconv.Itoa(int(msg.RoundID)))
 
 	//check if it is in-order
 	if msg.RoundID == p.clientState.RoundNo {
@@ -157,14 +139,6 @@ If we're lucky (if this is our slot), we are allowed to embed some message (whic
 SOCKS/VPN data, or if we're running latency tests, we send a "ping" message to compute the latency. If we have nothing to say, we send 0's.
 */
 func (p *PriFiLibClientInstance) Received_REL_CLI_UDP_DOWNSTREAM_DATA(msg net.REL_CLI_DOWNSTREAM_DATA_UDP) error {
-
-	//this can only happens in the state TRUSTEE_STATE_SHUFFLE_DONE
-	if p.clientState.currentState != CLIENT_STATE_READY {
-		e := "Client " + strconv.Itoa(p.clientState.ID) + " : Received a REL_CLI_UDP_DOWNSTREAM_DATA, but not in state CLIENT_STATE_READY, in state " + strconv.Itoa(int(p.clientState.currentState))
-		log.Error(e)
-		return errors.New(e)
-	}
-	log.Lvl3("Client " + strconv.Itoa(p.clientState.ID) + " : Received a REL_CLI_UDP_DOWNSTREAM_DATA for round " + strconv.Itoa(int(msg.RoundID)))
 
 	return p.Received_REL_CLI_DOWNSTREAM_DATA(msg.REL_CLI_DOWNSTREAM_DATA)
 }
@@ -209,7 +183,7 @@ func (p *PriFiLibClientInstance) ProcessDownStreamData(msg net.REL_CLI_DOWNSTREA
 	if msg.FlagResync == true {
 
 		log.Lvl1("Client " + strconv.Itoa(p.clientState.ID) + " : Relay wants to resync, going to state CLIENT_STATE_INITIALIZING ")
-		p.clientState.currentState = CLIENT_STATE_INITIALIZING
+		p.stateMachine.ChangeState("INITIALIZING")
 
 		//TODO : regenerate ephemeral keys ?
 
@@ -299,14 +273,6 @@ Once we receive this message, we need to reply with our Public Key (Used to deri
 */
 func (p *PriFiLibClientInstance) Received_REL_CLI_TELL_TRUSTEES_PK(msg net.REL_CLI_TELL_TRUSTEES_PK) error {
 
-	//this can only happens in the state CLIENT_STATE_INITIALIZING
-	if p.clientState.currentState != CLIENT_STATE_INITIALIZING {
-		e := "Client " + strconv.Itoa(p.clientState.ID) + " : Received a REL_CLI_TELL_TRUSTEES_PK, but not in state CLIENT_STATE_INITIALIZING, in state " + strconv.Itoa(int(p.clientState.currentState))
-		log.Error(e)
-		return errors.New(e)
-	}
-	log.Lvl3("Client " + strconv.Itoa(p.clientState.ID) + " : Received a REL_CLI_TELL_TRUSTEES_PK")
-
 	//sanity check
 	if len(msg.Pks) < 1 {
 		e := "Client " + strconv.Itoa(p.clientState.ID) + " : len(msg.Pks) must be >= 1"
@@ -333,8 +299,7 @@ func (p *PriFiLibClientInstance) Received_REL_CLI_TELL_TRUSTEES_PK(msg net.REL_C
 	}
 	p.messageSender.SendToRelayWithLog(toSend, "")
 
-	//change state
-	p.clientState.currentState = CLIENT_STATE_EPH_KEYS_SENT
+	p.stateMachine.ChangeState("EPH_KEYS_SENT")
 
 	return nil
 }
@@ -351,14 +316,6 @@ As the client should send the first data, we do so; to keep this function simple
 "round function", that is Received_REL_CLI_DOWNSTREAM_DATA().
 */
 func (p *PriFiLibClientInstance) Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(msg net.REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG) error {
-
-	//this can only happens in the state CLIENT_STATE_EPH_KEYS_SENT
-	if p.clientState.currentState != CLIENT_STATE_EPH_KEYS_SENT {
-		e := "Client " + strconv.Itoa(p.clientState.ID) + " : Received a REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG, but not in state CLIENT_STATE_EPH_KEYS_SENT, in state " + strconv.Itoa(int(p.clientState.currentState))
-		log.Error(e)
-		return errors.New(e)
-	}
-	log.Lvl3("Client " + strconv.Itoa(p.clientState.ID) + " : REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG") //TODO: this should be client
 
 	//verify the signature
 	neff := new(scheduler.NeffShuffle)
@@ -386,7 +343,7 @@ func (p *PriFiLibClientInstance) Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(
 	}
 
 	//change state
-	p.clientState.currentState = CLIENT_STATE_READY
+	p.stateMachine.ChangeState("READY")
 	log.Lvl3("Client " + strconv.Itoa(p.clientState.ID) + " is ready to communicate.")
 
 	//produce a blank cell (we could embed data, but let's keep the code simple, one wasted message is not much)

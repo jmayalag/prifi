@@ -23,22 +23,15 @@ package client
 
 import (
 	"errors"
+	"github.com/dedis/cothority/log"
 	"github.com/dedis/crypto/abstract"
 	"github.com/lbarman/prifi/prifi-lib/config"
 	"github.com/lbarman/prifi/prifi-lib/crypto"
 	"github.com/lbarman/prifi/prifi-lib/dcnet"
 	prifilog "github.com/lbarman/prifi/prifi-lib/log"
 	"github.com/lbarman/prifi/prifi-lib/net"
+	"github.com/lbarman/prifi/prifi-lib/utils"
 	"reflect"
-)
-
-// Possible states of the clients. This restrict the kind of messages they can receive at a given point in time.
-const (
-	CLIENT_STATE_BEFORE_INIT int16 = iota
-	CLIENT_STATE_INITIALIZING
-	CLIENT_STATE_EPH_KEYS_SENT
-	CLIENT_STATE_READY
-	CLIENT_STATE_SHUTDOWN
 )
 
 // ClientState contains the mutable state of the client.
@@ -77,6 +70,7 @@ type ClientState struct {
 type PriFiLibClientInstance struct {
 	messageSender *net.MessageSenderWrapper
 	clientState   *ClientState
+	stateMachine  *utils.StateMachine
 }
 
 // NewClient creates a new PriFi client entity state.
@@ -94,9 +88,21 @@ func NewClient(doLatencyTest bool, dataOutputEnabled bool, dataForDCNet chan []b
 	clientState.DataFromDCNet = dataFromDCNet
 	clientState.DataOutputEnabled = dataOutputEnabled
 
+	//init the state machine
+	states := []string{"BEFORE_INIT", "INITIALIZING", "EPH_KEYS_SENT", "READY", "SHUTDOWN"}
+	sm := new(utils.StateMachine)
+	logFn := func(s interface{}) {
+		log.Lvl2(s)
+	}
+	errFn := func(s interface{}) {
+		log.Error(s)
+	}
+	sm.Init(states, logFn, errFn)
+
 	prifi := PriFiLibClientInstance{
 		messageSender: msgSender,
 		clientState:   clientState,
+		stateMachine:  sm,
 	}
 
 	return &prifi
@@ -110,17 +116,27 @@ func (p *PriFiLibClientInstance) ReceivedMessage(msg interface{}) error {
 
 	switch typedMsg := msg.(type) {
 	case net.ALL_ALL_PARAMETERS_NEW:
-		err = p.Received_ALL_ALL_PARAMETERS(typedMsg)
+		if typedMsg.ForceParams || p.stateMachine.AssertState("BEFORE_INIT") {
+			err = p.Received_ALL_ALL_PARAMETERS(typedMsg)
+		}
 	case net.ALL_ALL_SHUTDOWN:
 		err = p.Received_ALL_ALL_SHUTDOWN(typedMsg)
 	case net.REL_CLI_DOWNSTREAM_DATA:
-		err = p.Received_REL_CLI_DOWNSTREAM_DATA(typedMsg)
+		if p.stateMachine.AssertState("READY") {
+			err = p.Received_REL_CLI_DOWNSTREAM_DATA(typedMsg)
+		}
 	case net.REL_CLI_DOWNSTREAM_DATA_UDP:
-		err = p.Received_REL_CLI_UDP_DOWNSTREAM_DATA(typedMsg)
-	case net.REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG:
-		err = p.Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(typedMsg)
+		if p.stateMachine.AssertState("READY") {
+			err = p.Received_REL_CLI_UDP_DOWNSTREAM_DATA(typedMsg)
+		}
 	case net.REL_CLI_TELL_TRUSTEES_PK:
-		err = p.Received_REL_CLI_TELL_TRUSTEES_PK(typedMsg)
+		if p.stateMachine.AssertState("INITIALIZING") {
+			err = p.Received_REL_CLI_TELL_TRUSTEES_PK(typedMsg)
+		}
+	case net.REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG:
+		if p.stateMachine.AssertState("EPH_KEYS_SENT") {
+			err = p.Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(typedMsg)
+		}
 	default:
 		err = errors.New("Unrecognized message, type" + reflect.TypeOf(msg).String())
 	}

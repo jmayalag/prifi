@@ -44,9 +44,9 @@ func NewTrustee(msgSender *net.MessageSenderWrapper) *PriFiLibTrusteeInstance {
 	neffShuffle.Init()
 	trusteeState.neffShuffle = neffShuffle.TrusteeView
 
+	//init the state machine
 	states := []string{"BEFORE_INIT", "INITIALIZING", "SHUFFLE_DONE", "READY", "SHUTDOWN"}
 	sm := new(utils.StateMachine)
-
 	logFn := func(s interface{}) {
 		log.Lvl2(s)
 	}
