@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Source: https://github.com/h12w/gosweep/blob/master/gosweep.sh
 
-DIR_SOURCE="$(find . -maxdepth 10 -type f -not -path '*/vendor*' -name '*.go' | xargs -I {} dirname {} | sort | uniq)"
+DIR_SOURCE="$(find . -maxdepth 10 -type f -not -path '*/vendor*' -name '*.go' | grep prifi-lib | xargs -I {} dirname {} | sort | uniq)"
 
 # Run test coverage on each subdirectories and merge the coverage profile.
 all_tests_passed=true
