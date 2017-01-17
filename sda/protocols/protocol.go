@@ -65,6 +65,12 @@ func (p *PriFiSDAProtocol) Start() error {
 	msg.Add("StartNow", true)
 	msg.Add("NTrustees", len(p.ms.trustees))
 	msg.Add("NClients", len(p.ms.clients))
+	msg.Add("UpstreamCellSize", p.config.Toml.CellSizeUp)
+	msg.Add("DownstreamCellSize", p.config.Toml.CellSizeDown)
+	msg.Add("WindowSize", p.config.Toml.RelayWindowSize)
+	msg.Add("UseDummyDataDown", p.config.Toml.RelayUseDummyDataDown)
+	msg.Add("ExperimentRoundLimit", p.config.Toml.RelayReportingLimit)
+	msg.Add("UseUDP", p.config.Toml.UseUDP)
 	msg.ForceParams = true
 	p.prifiLibInstance.ReceivedMessage(msg)
 

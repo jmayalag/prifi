@@ -147,7 +147,7 @@ func (p *PriFiLibRelayInstance) BroadcastParameters() error {
 	msg.Add("NClients", p.relayState.nClients)
 	msg.Add("NTrustees", p.relayState.nTrustees)
 	msg.Add("StartNow", true)
-	msg.Add("UpCellSize", p.relayState.UpstreamCellSize)
+	msg.Add("UpstreamCellSize", p.relayState.UpstreamCellSize)
 	msg.ForceParams = true
 
 	log.Error("Gonna send...")
@@ -477,15 +477,12 @@ func (p *PriFiLibRelayInstance) Received_CLI_REL_TELL_PK_AND_EPH_PK(msg net.CLI_
 	}
 	log.Lvl3("Relay : received CLI_REL_TELL_PK_AND_EPH_PK")
 
-	// collect this client information
-	nextID := len(p.relayState.clients)
-	newClient := NodeRepresentation{nextID, true, msg.Pk, msg.EphPk}
-
-	p.relayState.clients = append(p.relayState.clients, newClient)
+	newClient := NodeRepresentation{msg.ClientID, true, msg.Pk, msg.EphPk}
+	p.relayState.clients[msg.ClientID] = newClient
 
 	// TODO : sanity check that we don't have twice the same client
 
-	log.Lvl3("Relay : Received a CLI_REL_TELL_PK_AND_EPH_PK, registered client ID" + strconv.Itoa(nextID))
+	log.Lvl3("Relay : Received a CLI_REL_TELL_PK_AND_EPH_PK, registered client ID" + strconv.Itoa(msg.ClientID))
 
 	log.Lvl2("Relay : received CLI_REL_TELL_PK_AND_EPH_PK (" + strconv.Itoa(len(p.relayState.clients)) + "/" + strconv.Itoa(p.relayState.nClients) + ")")
 

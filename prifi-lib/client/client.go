@@ -60,10 +60,11 @@ func (p *PriFiLibClientInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PAR
 		log.Lvl3("Client : received ALL_ALL_PARAMETERS")
 	}
 
+	log.LLvlf1("%+v", msg)
 	clientID := msg.IntValueOrElse("NextFreeClientID", -1)
 	nTrustees := msg.IntValueOrElse("NTrustees", p.clientState.nTrustees)
 	nClients := msg.IntValueOrElse("NClients", p.clientState.nClients)
-	upCellSize := msg.IntValueOrElse("UpCellSize", p.clientState.PayloadLength) //todo: change this name
+	upCellSize := msg.IntValueOrElse("UpstreamCellSize", p.clientState.PayloadLength) //todo: change this name
 	useUDP := msg.BoolValueOrElse("UseUDP", p.clientState.UseUDP)
 
 	//sanity checks
@@ -346,8 +347,9 @@ func (p *PriFiLibClientInstance) Received_REL_CLI_TELL_TRUSTEES_PK(msg net.REL_C
 
 	//send the keys to the relay
 	toSend := &net.CLI_REL_TELL_PK_AND_EPH_PK{
-		Pk:    p.clientState.PublicKey,
-		EphPk: p.clientState.EphemeralPublicKey,
+		ClientID: p.clientState.ID,
+		Pk:       p.clientState.PublicKey,
+		EphPk:    p.clientState.EphemeralPublicKey,
 	}
 	p.messageSender.SendToRelayWithLog(toSend, "")
 
