@@ -76,13 +76,13 @@ func NewRelay(dataOutputEnabled bool, dataForClients chan []byte, dataFromDCNet 
 	relayState.neffShuffle = neffShuffle.RelayView
 	relayState.Name = "Relay"
 
-
 	prifi := PriFiLibRelayInstance{
 		messageSender: msgSender,
-		relayState:  relayState,
+		relayState:    relayState,
 	}
 	return &prifi
 }
+
 //The time slept between each round
 const PROCESSING_LOOP_SLEEP_TIME = 0 * time.Millisecond
 

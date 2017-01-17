@@ -38,20 +38,20 @@ type SOCKSConfig struct {
 type PrifiTomlConfig struct {
 	ClientDataOutputEnabled bool
 	RelayDataOutputEnabled  bool
-	CellSizeUp            int
-	CellSizeDown          int
-	RelayWindowSize       int
-	RelayUseDummyDataDown bool
-	RelayReportingLimit   int
-	UseUDP                bool
-	DoLatencyTests        bool
-	SocksServerPort       int
-	SocksClientPort       int
+	CellSizeUp              int
+	CellSizeDown            int
+	RelayWindowSize         int
+	RelayUseDummyDataDown   bool
+	RelayReportingLimit     int
+	UseUDP                  bool
+	DoLatencyTests          bool
+	SocksServerPort         int
+	SocksClientPort         int
 }
 
 //PriFiSDAWrapperConfig is all the information the SDA-Protocols needs. It contains the network map of identities, our role, and the socks parameters if we are the corresponding role
 type PriFiSDAWrapperConfig struct {
-	Toml 		      *PrifiTomlConfig
+	Toml                  *PrifiTomlConfig
 	Identities            map[string]PriFiIdentity
 	Role                  PriFiRole
 	ClientSideSocksConfig *SOCKSConfig

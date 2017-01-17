@@ -46,7 +46,7 @@ func NewPriFiClient(doLatencyTest bool, dataOutputEnabled bool, dataForDCNet cha
 	p := &PriFiLibInstance{
 		role: PRIFI_ROLE_CLIENT,
 		specializedLibInstance: c,
-		messageSender: msgSender,
+		messageSender:          msgSender,
 	}
 	return p
 }
@@ -58,7 +58,7 @@ func NewPriFiRelay(dataOutputEnabled bool, dataForClients chan []byte, dataFromD
 	p := &PriFiLibInstance{
 		role: PRIFI_ROLE_RELAY,
 		specializedLibInstance: r,
-		messageSender: msgSender,
+		messageSender:          msgSender,
 	}
 	return p
 }
@@ -70,7 +70,7 @@ func NewPriFiTrustee(msgSender net.MessageSender) *PriFiLibInstance {
 	p := &PriFiLibInstance{
 		role: PRIFI_ROLE_TRUSTEE,
 		specializedLibInstance: t,
-		messageSender: msgSender,
+		messageSender:          msgSender,
 	}
 	return p
 }
@@ -85,7 +85,6 @@ func (p *PriFiLibInstance) ReceivedMessage(msg interface{}) error {
 	}
 	return nil
 }
-
 
 func newMessageSenderWrapper(msgSender net.MessageSender) *net.MessageSenderWrapper {
 

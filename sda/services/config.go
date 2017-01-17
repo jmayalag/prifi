@@ -77,9 +77,9 @@ func (s *ServiceState) setConfigToPriFiProtocol(wrapper *prifi_protocol.PriFiSDA
 	}
 
 	configMsg := &prifi_protocol.PriFiSDAWrapperConfig{
-		Toml: s.prifiTomlConfig,
-		Identities:         identitiesMap,
-		Role:               s.role,
+		Toml:       s.prifiTomlConfig,
+		Identities: identitiesMap,
+		Role:       s.role,
 		ClientSideSocksConfig: socksClientConfig,
 		RelaySideSocksConfig:  socksServerConfig,
 	}

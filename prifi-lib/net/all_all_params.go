@@ -1,61 +1,43 @@
 package net
 
-//A wrapper around the interface{} type, since protobuf can't handle map[]interface{}
-type Interface struct {
-	Data interface{}
-}
-
 // ALL_ALL_PARAMETERS message contains all the parameters used by the protocol.
 type ALL_ALL_PARAMETERS_NEW struct {
 	ForceParams bool
-	Params      map[string]Interface
-}
-
-//A builder for ALL_ALL_PARAMETERS messages. You can call Add(key, val) and BuildMessage()
-type ALL_ALL_PARAMETERS_BUILDER struct {
-	data map[string]Interface
+	ParamsInt   map[string]int
+	ParamsStr   map[string]string
+	ParamsBool  map[string]bool
 }
 
 /**
- * Creates a builder for ALL_ALL_PARAMETERS
+ * Adds a (key, val) to the ALL_ALL_PARAMS message
  */
-func NewALL_ALL_PARAMETERS_BUILDER() *ALL_ALL_PARAMETERS_BUILDER {
-	builder := ALL_ALL_PARAMETERS_BUILDER{}
-	builder.data = make(map[string]Interface)
-	return &builder
-}
-
-/**
- * Adds a (key, val) to the ALL_ALL_PARAMS message builder
- */
-func (b *ALL_ALL_PARAMETERS_BUILDER) Add(key string, val interface{}) {
-	b.data[key] = Interface{Data: val}
-}
-
-/**
- * Creates a ALL_ALL_PARAMETERS message
- */
-func (b *ALL_ALL_PARAMETERS_BUILDER) BuildMessage(forceParams bool) *ALL_ALL_PARAMETERS_NEW {
-	msg := ALL_ALL_PARAMETERS_NEW{Params: b.data, ForceParams: forceParams}
-	return &msg
-}
-
-/**
- * From the message, returns the "data[key]" if it exists, or "elseVal"
- */
-func (m *ALL_ALL_PARAMETERS_NEW) ValueOrElse(key string, elseVal interface{}) interface{} {
-	if val, ok := m.Params[key]; ok {
-		return val.Data
+func (m *ALL_ALL_PARAMETERS_NEW) Add(key string, val interface{}) {
+	switch typedVal := val.(type) {
+	case int:
+		if m.ParamsInt == nil {
+			m.ParamsInt = make(map[string]int)
+		}
+		m.ParamsInt[key] = typedVal
+	case string:
+		if m.ParamsStr == nil {
+			m.ParamsStr = make(map[string]string)
+		}
+		m.ParamsStr[key] = typedVal
+	case bool:
+		if m.ParamsBool == nil {
+			m.ParamsBool = make(map[string]bool)
+		}
+		m.ParamsBool[key] = typedVal
 	}
-	return elseVal
+
 }
 
 /**
  * From the message, returns the "data[key]" if it exists, or "elseVal"
  */
 func (m *ALL_ALL_PARAMETERS_NEW) BoolValueOrElse(key string, elseVal bool) bool {
-	if val, ok := m.Params[key]; ok {
-		return val.Data.(bool)
+	if val, ok := m.ParamsBool[key]; ok {
+		return val
 	}
 	return elseVal
 }
@@ -64,8 +46,8 @@ func (m *ALL_ALL_PARAMETERS_NEW) BoolValueOrElse(key string, elseVal bool) bool 
  * From the message, returns the "data[key]" if it exists, or "elseVal"
  */
 func (m *ALL_ALL_PARAMETERS_NEW) IntValueOrElse(key string, elseVal int) int {
-	if val, ok := m.Params[key]; ok {
-		return val.Data.(int)
+	if val, ok := m.ParamsInt[key]; ok {
+		return val
 	}
 	return elseVal
 }
@@ -74,8 +56,8 @@ func (m *ALL_ALL_PARAMETERS_NEW) IntValueOrElse(key string, elseVal int) int {
  * From the message, returns the "data[key]" if it exists, or "elseVal"
  */
 func (m *ALL_ALL_PARAMETERS_NEW) StringValueOrElse(key string, elseVal string) string {
-	if val, ok := m.Params[key]; ok {
-		return val.Data.(string)
+	if val, ok := m.ParamsStr[key]; ok {
+		return val
 	}
 	return elseVal
 }

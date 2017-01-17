@@ -3,6 +3,8 @@ package client
 import (
 	"errors"
 	"github.com/dedis/cothority/log"
+	"github.com/dedis/crypto/abstract"
+	"github.com/lbarman/prifi/prifi-lib/crypto"
 	"github.com/lbarman/prifi/prifi-lib/net"
 	"testing"
 )
@@ -82,13 +84,13 @@ func TestPrifi(t *testing.T) {
 	}
 
 	//we start by receiving a ALL_ALL_PARAMETERS from relay
-	b := net.NewALL_ALL_PARAMETERS_BUILDER()
-	b.Add("NClients", 3)
-	b.Add("NTrustees", 2)
-	b.Add("UpCellSize", 1500)
-	b.Add("NextFreeClientID", 3)
-	b.Add("UseUDP", true)
-	msg := b.BuildMessage(true)
+	msg := new(net.ALL_ALL_PARAMETERS_NEW)
+	msg.ForceParams = true
+	msg.Add("NClients", 3)
+	msg.Add("NTrustees", 2)
+	msg.Add("UpCellSize", 1500)
+	msg.Add("NextFreeClientID", 3)
+	msg.Add("UseUDP", true)
 
 	if err := client.ReceivedMessage(*msg); err != nil {
 		t.Error("Client should be able to receive this message:", err)
@@ -126,6 +128,16 @@ func TestPrifi(t *testing.T) {
 	}
 
 	//Should receive a Received_REL_CLI_TELL_TRUSTEES_PK
+	nTrustees := 3
+	trusteesPubKeys := make([]abstract.Point, nTrustees)
+	trusteesPrivKeys := make([]abstract.Scalar, nTrustees)
+	for i := 0; i < nTrustees; i++ {
+		trusteesPubKeys[i], trusteesPrivKeys[i] = crypto.NewKeyPair()
+	}
+	msg2 := net.REL_CLI_TELL_TRUSTEES_PK{Pks: trusteesPubKeys}
+	if err := client.ReceivedMessage(msg2); err != nil {
+		t.Error("Should be able to receive this message,", err.Error())
+	}
 
 	t.SkipNow() //we started a goroutine, let's kill everything, we're good
 }

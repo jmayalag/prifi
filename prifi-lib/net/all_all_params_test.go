@@ -7,34 +7,19 @@ import (
 
 func TestUtils(t *testing.T) {
 
-	b := NewALL_ALL_PARAMETERS_BUILDER()
+	m := new(ALL_ALL_PARAMETERS_NEW)
 
-	b.Add("key1", "val1")
-	b.Add("key2", 123)
-	b.Add("key3", true)
+	m.Add("key1", "val1")
+	m.Add("key2", 123)
+	m.Add("key3", true)
 
-	if b.data["key1"].Data.(string) != "val1" {
+	if m.ParamsStr["key1"] != "val1" {
 		t.Error("key1 should equals val1")
 	}
-	if b.data["key2"].Data.(int) != 123 {
+	if m.ParamsInt["key2"] != 123 {
 		t.Error("key2 should equals 123")
 	}
-	if b.data["key3"].Data.(bool) != true {
-		t.Error("key3 should equals true")
-	}
-
-	m := b.BuildMessage(true)
-
-	if m.ForceParams != true {
-		t.Error("ForceParams should be true")
-	}
-	if m.Params["key1"].Data != "val1" {
-		t.Error("key1 should equals val1")
-	}
-	if m.Params["key2"].Data != 123 {
-		t.Error("key2 should equals 123")
-	}
-	if m.Params["key3"].Data != true {
+	if m.ParamsBool["key3"] != true {
 		t.Error("key3 should equals true")
 	}
 
@@ -47,13 +32,7 @@ func TestUtils(t *testing.T) {
 	if m.BoolValueOrElse("key3", false) != true {
 		t.Error("key3 should equals true")
 	}
-	if m.ValueOrElse("key1", Interface{}) != "val1" {
-		t.Error("key1 should equals val1")
-	}
-	emptyInterface := Interface{}
-	if m.ValueOrElse("key5", Interface{}) != emptyInterface {
-		t.Error("should return the empty interface")
-	}
+
 	if m.StringValueOrElse("key5", "else") != "else" {
 		t.Error("non-existent key should return elseVal")
 	}
@@ -65,14 +44,13 @@ func TestUtils(t *testing.T) {
 	}
 }
 
-//todo : re-enable those 3 tests, after they have been corrected
-func ignoreTestEncodeDecodeStdMessage(t *testing.T) {
+func TestEncodeDecodeStdMessage(t *testing.T) {
 
 	//create fake message
 	msg := &REL_CLI_DOWNSTREAM_DATA{RoundID: 1, Data: make([]byte, 0), FlagResync: true}
 
 	//encode it
-	bytes, err := protobuf.Encode(&msg)
+	bytes, err := protobuf.Encode(msg)
 
 	if err != nil {
 		t.Error("Could not encode, " + err.Error())
@@ -82,7 +60,7 @@ func ignoreTestEncodeDecodeStdMessage(t *testing.T) {
 
 	//decode it
 	emptyMsg := &REL_CLI_DOWNSTREAM_DATA{}
-	err = protobuf.Decode(bytes, &emptyMsg)
+	err = protobuf.Decode(bytes, emptyMsg)
 	if err != nil {
 		t.Error("Could not decode," + err.Error())
 	}
@@ -95,17 +73,17 @@ func ignoreTestEncodeDecodeStdMessage(t *testing.T) {
 	}
 }
 
-func ignoreTestEncodeDecode(t *testing.T) {
+func TestEncodeDecode(t *testing.T) {
 
 	//create fake message
-	b := NewALL_ALL_PARAMETERS_BUILDER()
-	b.Add("key1", "val1")
-	b.Add("key2", 123)
-	b.Add("key3", true)
-	msg := b.BuildMessage(true)
+	msg := new(ALL_ALL_PARAMETERS_NEW)
+	msg.ForceParams = true
+	msg.Add("key1", "val1")
+	msg.Add("key2", 123)
+	msg.Add("key3", true)
 
 	//encode it
-	bytes, err := protobuf.Encode(&msg)
+	bytes, err := protobuf.Encode(msg)
 
 	if err != nil {
 		t.Error("Could not encode," + err.Error())
@@ -113,7 +91,7 @@ func ignoreTestEncodeDecode(t *testing.T) {
 
 	//decode it
 	emptyMsg := &ALL_ALL_PARAMETERS_NEW{}
-	err = protobuf.Decode(bytes, &emptyMsg)
+	err = protobuf.Decode(bytes, emptyMsg)
 	if err != nil {
 		t.Error("Could not decode," + err.Error())
 	}
@@ -132,22 +110,22 @@ func ignoreTestEncodeDecode(t *testing.T) {
 	}
 }
 
-func ignoreTestEncodeDecodeEmpty(t *testing.T) {
+func TestEncodeDecodeEmpty(t *testing.T) {
 
 	//create fake message
-	b := NewALL_ALL_PARAMETERS_BUILDER()
-	msg := b.BuildMessage(true)
+	msg := new(ALL_ALL_PARAMETERS_NEW)
+	msg.ForceParams = true
 
 	//encode it
-	bytes, err := protobuf.Encode(&msg)
+	bytes, err := protobuf.Encode(msg)
 
 	if err != nil {
 		t.Error("Could not encode, " + err.Error())
 	}
 
 	//decode it
-	emptyMsg := &ALL_ALL_PARAMETERS_NEW{}
-	err = protobuf.Decode(bytes, &emptyMsg)
+	emptyMsg := new(ALL_ALL_PARAMETERS_NEW)
+	err = protobuf.Decode(bytes, emptyMsg)
 	if err != nil {
 		t.Error("Could not decode," + err.Error())
 	}

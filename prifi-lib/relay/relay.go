@@ -97,7 +97,6 @@ func (p *PriFiLibRelayInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARA
 	reportingLimit := msg.IntValueOrElse("ExperimentRoundLimit", p.relayState.ExperimentRoundLimit)
 	useUDP := msg.BoolValueOrElse("UseUDP", p.relayState.UseUDP)
 
-
 	p.relayState.clients = make([]NodeRepresentation, nClients)
 	p.relayState.trustees = make([]NodeRepresentation, nTrustees)
 	p.relayState.nClients = nClients
@@ -112,7 +111,6 @@ func (p *PriFiLibRelayInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARA
 	p.relayState.nextDownStreamRoundToSend = int32(1) //since first round is half-round
 	p.relayState.WindowSize = windowSize
 	p.relayState.numberOfNonAckedDownstreamPackets = 0
-
 
 	//this should be in NewRelayState, but we need p
 	if !p.relayState.bufferManager.DoSendStopResumeMessages {
@@ -145,11 +143,12 @@ func (p *PriFiLibRelayInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARA
 func (p *PriFiLibRelayInstance) BroadcastParameters() error {
 
 	// Craft default parameters
-	msgBuilder := net.NewALL_ALL_PARAMETERS_BUILDER()
-	msgBuilder.Add("NClients", p.relayState.nClients)
-	msgBuilder.Add("NTrustees", p.relayState.nTrustees)
-	msgBuilder.Add("StartNow", true)
-	msgBuilder.Add("UpCellSize", p.relayState.UpstreamCellSize)
+	msg := new(net.ALL_ALL_PARAMETERS_NEW)
+	msg.Add("NClients", p.relayState.nClients)
+	msg.Add("NTrustees", p.relayState.nTrustees)
+	msg.Add("StartNow", true)
+	msg.Add("UpCellSize", p.relayState.UpstreamCellSize)
+	msg.ForceParams = true
 
 	log.Error("Gonna send...")
 
@@ -157,8 +156,7 @@ func (p *PriFiLibRelayInstance) BroadcastParameters() error {
 	for j := 0; j < p.relayState.nTrustees; j++ {
 
 		// The ID is unique !
-		msgBuilder.Add("NextFreeTrusteeID", j)
-		msg := msgBuilder.BuildMessage(true)
+		msg.Add("NextFreeTrusteeID", j)
 		p.messageSender.SendToTrusteeWithLog(j, msg, "")
 	}
 
@@ -166,8 +164,7 @@ func (p *PriFiLibRelayInstance) BroadcastParameters() error {
 	for j := 0; j < p.relayState.nClients; j++ {
 
 		// The ID is unique !
-		msgBuilder.Add("NextFreeClientID", j)
-		msg := msgBuilder.BuildMessage(true)
+		msg.Add("NextFreeClientID", j)
 		log.LLvlf1("%+v", msg)
 		p.messageSender.SendToClientWithLog(j, msg, "")
 	}
