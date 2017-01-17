@@ -60,7 +60,6 @@ func (p *PriFiLibClientInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PAR
 		log.Lvl3("Client : received ALL_ALL_PARAMETERS")
 	}
 
-	log.LLvlf1("%+v", msg)
 	clientID := msg.IntValueOrElse("NextFreeClientID", -1)
 	nTrustees := msg.IntValueOrElse("NTrustees", p.clientState.nTrustees)
 	nClients := msg.IntValueOrElse("NClients", p.clientState.nClients)

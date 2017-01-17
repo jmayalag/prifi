@@ -140,7 +140,7 @@ type RelayState struct {
 	MessageHistory                    abstract.Cipher
 	Name                              string
 	nClients                          int
-	nClientsPkCollected              int
+	nClientsPkCollected               int
 	nTrustees                         int
 	nTrusteesPkCollected              int
 	privateKey                        abstract.Scalar

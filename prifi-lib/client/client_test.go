@@ -88,7 +88,7 @@ func TestPrifi(t *testing.T) {
 	msg.ForceParams = true
 	msg.Add("NClients", 3)
 	msg.Add("NTrustees", 2)
-	msg.Add("UpCellSize", 1500)
+	msg.Add("UpstreamCellSize", 1500)
 	msg.Add("NextFreeClientID", 3)
 	msg.Add("UseUDP", true)
 
