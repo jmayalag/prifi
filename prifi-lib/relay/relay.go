@@ -51,7 +51,7 @@ When we receive this message, we should warn other protocol participants and cle
 func (p *PriFiLibRelayInstance) Received_ALL_ALL_SHUTDOWN(msg net.ALL_ALL_SHUTDOWN) error {
 	log.Lvl1("Relay : Received a SHUTDOWN message. ")
 
-	p.relayState.currentState = RELAY_STATE_SHUTDOWN
+	p.stateMachine.ChangeState("SHUTDOWN")
 
 	msg2 := &net.ALL_ALL_SHUTDOWN{}
 
@@ -77,16 +77,6 @@ Received_ALL_REL_PARAMETERS handles ALL_REL_PARAMETERS.
 It initializes the relay with the parameters contained in the message.
 */
 func (p *PriFiLibRelayInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARAMETERS_NEW) error {
-
-	// This can only happens in the state RELAY_STATE_BEFORE_INIT
-	if p.relayState.currentState != RELAY_STATE_BEFORE_INIT && !msg.ForceParams {
-		log.Lvl1("Relay : Received a ALL_ALL_PARAMETERS, but not in state RELAY_STATE_BEFORE_INIT, ignoring. ")
-		return nil
-	} else if p.relayState.currentState != RELAY_STATE_BEFORE_INIT && msg.ForceParams {
-		log.Lvl1("Relay : Received a ALL_ALL_PARAMETERS && ForceParams = true, processing. ")
-	} else {
-		log.Lvl3("Relay : received ALL_ALL_PARAMETERS")
-	}
 
 	startNow := msg.BoolValueOrElse("StartNow", false)
 	nTrustees := msg.IntValueOrElse("NTrustees", p.relayState.nTrustees)
@@ -133,7 +123,7 @@ func (p *PriFiLibRelayInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARA
 
 	// Broadcast those parameters to the other nodes, then tell the trustees which ID they are.
 	if startNow {
-		p.relayState.currentState = RELAY_STATE_COLLECTING_TRUSTEES_PKS
+		p.stateMachine.ChangeState("COLLECTING_TRUSTEES_PKS")
 		p.BroadcastParameters()
 	}
 	log.Lvl1("Relay setup done, and setup sent to the trustees.")
@@ -165,7 +155,6 @@ func (p *PriFiLibRelayInstance) BroadcastParameters() error {
 
 		// The ID is unique !
 		msg.Add("NextFreeClientID", j)
-		log.LLvlf1("%+v", msg)
 		p.messageSender.SendToClientWithLog(j, msg, "")
 	}
 
@@ -181,13 +170,6 @@ If we finished a round (we had collected all data, and called DecodeCell()), we 
 Either we send something from the SOCKS/VPN buffer, or we answer the latency-test message if we received any, or we send 1 bit.
 */
 func (p *PriFiLibRelayInstance) Received_CLI_REL_UPSTREAM_DATA(msg net.CLI_REL_UPSTREAM_DATA) error {
-	// This can only happens in the state RELAY_STATE_COMMUNICATING
-	if p.relayState.currentState != RELAY_STATE_COMMUNICATING {
-		e := "Relay : Received a CLI_REL_UPSTREAM_DATA, but not in state RELAY_STATE_COMMUNICATING, in state " + relayStateStr(p.relayState.currentState)
-		log.Error(e)
-		// return errors.New(e)
-	}
-	log.Lvl3("Relay : received CLI_REL_UPSTREAM_DATA from client " + strconv.Itoa(msg.ClientID) + " for round " + strconv.Itoa(int(msg.RoundID)))
 
 	p.relayState.bufferManager.AddClientCipher(msg.RoundID, msg.ClientID, msg.Data)
 
@@ -216,14 +198,6 @@ If it's for this round, we call decode on it, and remember we received it.
 If for a future round we need to Buffer it.
 */
 func (p *PriFiLibRelayInstance) Received_TRU_REL_DC_CIPHER(msg net.TRU_REL_DC_CIPHER) error {
-
-	// this can only happens in the state RELAY_STATE_COMMUNICATING
-	if p.relayState.currentState != RELAY_STATE_COMMUNICATING && p.relayState.currentState != RELAY_STATE_COLLECTING_SHUFFLE_SIGNATURES {
-		e := "Relay : Received a TRU_REL_DC_CIPHER, but not in state RELAY_STATE_COMMUNICATING, in state " + relayStateStr(p.relayState.currentState)
-		log.Error(e)
-		return errors.New(e)
-	}
-	log.Lvl3("Relay : received TRU_REL_DC_CIPHER for round " + strconv.Itoa(int(msg.RoundID)) + " from trustee " + strconv.Itoa(msg.TrusteeID))
 
 	p.relayState.bufferManager.AddTrusteeCipher(msg.RoundID, msg.TrusteeID, msg.Data)
 
@@ -426,14 +400,6 @@ We do nothing, until we have received one per trustee; Then, we pack them in one
 */
 func (p *PriFiLibRelayInstance) Received_TRU_REL_TELL_PK(msg net.TRU_REL_TELL_PK) error {
 
-	// this can only happens in the state RELAY_STATE_COLLECTING_TRUSTEES_PKS
-	if p.relayState.currentState != RELAY_STATE_COLLECTING_TRUSTEES_PKS {
-		e := "Relay : Received a TRU_REL_TELL_PK, but not in state RELAY_STATE_COLLECTING_TRUSTEES_PKS, in state " + relayStateStr(p.relayState.currentState)
-		log.Error(e)
-		return errors.New(e)
-	}
-	log.Lvl3("Relay : received TRU_REL_TELL_PK")
-
 	p.relayState.trustees[msg.TrusteeID] = NodeRepresentation{msg.TrusteeID, true, msg.Pk, msg.Pk}
 	p.relayState.nTrusteesPkCollected++
 
@@ -454,7 +420,7 @@ func (p *PriFiLibRelayInstance) Received_TRU_REL_TELL_PK(msg net.TRU_REL_TELL_PK
 			p.messageSender.SendToClientWithLog(i, toSend, "(client "+strconv.Itoa(i)+")")
 		}
 
-		p.relayState.currentState = RELAY_STATE_COLLECTING_CLIENT_PKS
+		p.stateMachine.ChangeState("COLLECTING_CLIENT_PKS")
 	}
 	return nil
 }
@@ -467,21 +433,8 @@ and send them to the first trustee for it to Neff-Shuffle them.
 */
 func (p *PriFiLibRelayInstance) Received_CLI_REL_TELL_PK_AND_EPH_PK(msg net.CLI_REL_TELL_PK_AND_EPH_PK) error {
 
-	// this can only happens in the state RELAY_STATE_COLLECTING_CLIENT_PKS
-	if p.relayState.currentState != RELAY_STATE_COLLECTING_CLIENT_PKS {
-		e := "Relay : Received a CLI_REL_TELL_PK_AND_EPH_PK, but not in state RELAY_STATE_COLLECTING_CLIENT_PKS, in state " + relayStateStr(p.relayState.currentState)
-		log.Error(e)
-		return errors.New(e)
-	}
-	log.Lvl3("Relay : received CLI_REL_TELL_PK_AND_EPH_PK")
-
-	log.LLvlf1("%+v", msg)
 	p.relayState.clients[msg.ClientID] = NodeRepresentation{msg.ClientID, true, msg.Pk, msg.EphPk}
 	p.relayState.nClientsPkCollected++
-
-	// TODO : sanity check that we don't have twice the same client
-
-	log.Lvl3("Relay : Received a CLI_REL_TELL_PK_AND_EPH_PK, registered client ID" + strconv.Itoa(msg.ClientID))
 
 	log.Lvl2("Relay : received CLI_REL_TELL_PK_AND_EPH_PK (" + strconv.Itoa(p.relayState.nClientsPkCollected) + "/" + strconv.Itoa(p.relayState.nClients) + ")")
 
@@ -505,8 +458,7 @@ func (p *PriFiLibRelayInstance) Received_CLI_REL_TELL_PK_AND_EPH_PK(msg net.CLI_
 		// send to the 1st trustee
 		p.messageSender.SendToTrusteeWithLog(trusteeID, toSend, "(0-th iteration)")
 
-		// changing state
-		p.relayState.currentState = RELAY_STATE_COLLECTING_SHUFFLES
+		p.stateMachine.ChangeState("COLLECTING_SHUFFLES")
 
 		timing.StopMeasure("Resync")
 	}
@@ -522,14 +474,6 @@ We do nothing until the last trustee sends us this message.
 When this happens, we pack a transcript, and broadcast it to all the trustees who will sign it.
 */
 func (p *PriFiLibRelayInstance) Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS(msg net.TRU_REL_TELL_NEW_BASE_AND_EPH_PKS) error {
-
-	// this can only happens in the state RELAY_STATE_COLLECTING_SHUFFLES
-	if p.relayState.currentState != RELAY_STATE_COLLECTING_SHUFFLES {
-		e := "Relay : Received a TRU_REL_TELL_NEW_BASE_AND_EPH_PKS, but not in state RELAY_STATE_COLLECTING_SHUFFLES, in state " + relayStateStr(p.relayState.currentState)
-		log.Error(e)
-		return errors.New(e)
-	}
-	log.Lvl3("Relay : received TRU_REL_TELL_NEW_BASE_AND_EPH_PKS")
 
 	done, err := p.relayState.neffShuffle.ReceivedShuffleFromTrustee(msg.NewBase, msg.NewEphPks, msg.Proof)
 	if err != nil {
@@ -574,8 +518,7 @@ func (p *PriFiLibRelayInstance) Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS(msg n
 		p.relayState.currentDCNetRound = DCNetRound{currentRound: 0, dataAlreadySent: net.REL_CLI_DOWNSTREAM_DATA{}, startTime: time.Now()}
 		p.relayState.CellCoder.DecodeStart(p.relayState.UpstreamCellSize, p.relayState.MessageHistory)
 
-		// changing state
-		p.relayState.currentState = RELAY_STATE_COLLECTING_SHUFFLE_SIGNATURES
+		p.stateMachine.ChangeState("COLLECTING_SHUFFLE_SIGNATURES")
 
 	}
 
@@ -590,14 +533,6 @@ in one message with the result of the Neff-Shuffle and send them to the clients.
 When this is done, we are finally ready to communicate. We wait for the client's messages.
 */
 func (p *PriFiLibRelayInstance) Received_TRU_REL_SHUFFLE_SIG(msg net.TRU_REL_SHUFFLE_SIG) error {
-
-	// this can only happens in the state RELAY_STATE_COLLECTING_SHUFFLE_SIGNATURES
-	if p.relayState.currentState != RELAY_STATE_COLLECTING_SHUFFLE_SIGNATURES {
-		e := "Relay : Received a TRU_REL_SHUFFLE_SIG, but not in state RELAY_STATE_COLLECTING_SHUFFLE_SIGNATURES, in state " + relayStateStr(p.relayState.currentState)
-		log.Error(e)
-		return errors.New(e)
-	}
-	log.Lvl3("Relay : received TRU_REL_SHUFFLE_SIG")
 
 	done, err := p.relayState.neffShuffle.ReceivedSignatureFromTrustee(msg.TrusteeID, msg.Sig)
 	if err != nil {
@@ -624,7 +559,7 @@ func (p *PriFiLibRelayInstance) Received_TRU_REL_SHUFFLE_SIG(msg net.TRU_REL_SHU
 		msg := toSend5.(*net.REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG)
 		// changing state
 		log.Lvl2("Relay : ready to communicate.")
-		p.relayState.currentState = RELAY_STATE_COMMUNICATING
+		p.stateMachine.ChangeState("COMMUNICATING")
 
 		// broadcast to all clients
 		for i := 0; i < p.relayState.nClients; i++ {

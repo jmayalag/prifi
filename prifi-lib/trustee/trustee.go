@@ -33,7 +33,7 @@ func (p *PriFiLibTrusteeInstance) Received_ALL_ALL_SHUTDOWN(msg net.ALL_ALL_SHUT
 	//stop the sending process
 	p.trusteeState.sendingRate <- TRUSTEE_KILL_SEND_PROCESS
 
-	p.trusteeState.currentState = TRUSTEE_STATE_SHUTDOWN
+	p.stateMachine.ChangeState("SHUTDOWN")
 
 	return nil
 }
@@ -44,16 +44,6 @@ It initializes the trustee with the parameters contained in the message.
 */
 func (p *PriFiLibTrusteeInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARAMETERS_NEW) error {
 
-	//this can only happens in the state RELAY_STATE_BEFORE_INIT
-	if p.trusteeState.currentState != TRUSTEE_STATE_BEFORE_INIT && !msg.ForceParams {
-		log.Lvl1("Trustee " + strconv.Itoa(p.trusteeState.ID) + " : Received a ALL_ALL_PARAMETERS, but not in state TRUSTEE_STATE_BEFORE_INIT, ignoring. ")
-		return nil
-	} else if p.trusteeState.currentState != TRUSTEE_STATE_BEFORE_INIT && msg.ForceParams {
-		log.Lvl1("Trustee " + strconv.Itoa(p.trusteeState.ID) + " : Received a ALL_ALL_PARAMETERS && ForceParams = true, processing. ")
-	} else {
-		log.Lvl3("Trustee : received ALL_ALL_PARAMETERS")
-	}
-	log.LLvlf1("%+v", msg)
 	startNow := msg.BoolValueOrElse("StartNow", false)
 	trusteeID := msg.IntValueOrElse("NextFreeTrusteeID", -1)
 	nTrustees := msg.IntValueOrElse("NTrustees", p.trusteeState.nTrustees)
@@ -91,7 +81,7 @@ func (p *PriFiLibTrusteeInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PA
 		p.Send_TRU_REL_PK()
 	}
 
-	p.trusteeState.currentState = TRUSTEE_STATE_INITIALIZING
+	p.stateMachine.ChangeState("INITIALIZING")
 
 	log.Lvlf5("%+v\n", p.trusteeState)
 	log.Lvl2("Trustee " + strconv.Itoa(p.trusteeState.ID) + " has been initialized by message. ")
@@ -191,14 +181,6 @@ this shuffle in order to check the correctness of the chain of shuffle afterward
 */
 func (p *PriFiLibTrusteeInstance) Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE(msg net.REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE) error {
 
-	//this can only happens in the state TRUSTEE_STATE_INITIALIZING
-	if p.trusteeState.currentState != TRUSTEE_STATE_INITIALIZING {
-		e := "Trustee " + strconv.Itoa(p.trusteeState.ID) + " : Received a REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE, but not in state TRUSTEE_STATE_INITIALIZING, in state " + strconv.Itoa(int(p.trusteeState.currentState))
-		log.Error(e)
-		return errors.New(e)
-	}
-	log.Lvl3("Trustee " + strconv.Itoa(p.trusteeState.ID) + " : Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE")
-
 	//begin parsing the message
 	clientsPks := msg.Pks
 	clientsEphemeralPks := msg.EphPks
@@ -230,8 +212,7 @@ func (p *PriFiLibTrusteeInstance) Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_
 	//send the answer
 	p.messageSender.SendToRelayWithLog(toSend, "")
 
-	//change state
-	p.trusteeState.currentState = TRUSTEE_STATE_SHUFFLE_DONE
+	p.stateMachine.ChangeState("SHUFFLE_DONE")
 
 	return nil
 }
@@ -244,14 +225,6 @@ shuffle (which will be used by the clients), and sends it back to the relay.
 If everything succeed, starts the goroutine for sending DC-net ciphers to the relay.
 */
 func (p *PriFiLibTrusteeInstance) Received_REL_TRU_TELL_TRANSCRIPT(msg net.REL_TRU_TELL_TRANSCRIPT) error {
-
-	//this can only happens in the state TRUSTEE_STATE_SHUFFLE_DONE
-	if p.trusteeState.currentState != TRUSTEE_STATE_SHUFFLE_DONE {
-		e := "Trustee " + strconv.Itoa(p.trusteeState.ID) + " : Received a REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE, but not in state TRUSTEE_STATE_SHUFFLE_DONE, in state " + strconv.Itoa(int(p.trusteeState.currentState))
-		log.Error(e)
-		return errors.New(e)
-	}
-	log.Lvl3("Trustee " + strconv.Itoa(p.trusteeState.ID) + " : Received_REL_TRU_TELL_TRANSCRIPT")
 
 	// PROTOBUF FLATTENS MY 2-DIMENSIONAL ARRAY. THIS IS A PATCH
 	a := msg.EphPks
@@ -281,8 +254,7 @@ func (p *PriFiLibTrusteeInstance) Received_REL_TRU_TELL_TRANSCRIPT(msg net.REL_T
 	//we can forget our shuffle
 	//p.trusteeState.neffShuffleToVerify = NeffShuffleResult{base2, ephPublicKeys2, proof}
 
-	//change state
-	p.trusteeState.currentState = TRUSTEE_STATE_READY
+	p.stateMachine.ChangeState("READY")
 
 	//everything is ready, we start sending
 	go p.Send_TRU_REL_DC_CIPHER(p.trusteeState.sendingRate)

@@ -33,15 +33,16 @@ considered disconnected
 
 import (
 	"errors"
-	"strconv"
 	"time"
 
+	"github.com/dedis/cothority/log"
 	"github.com/dedis/crypto/abstract"
 	"github.com/lbarman/prifi/prifi-lib/config"
 	"github.com/lbarman/prifi/prifi-lib/dcnet"
 	prifilog "github.com/lbarman/prifi/prifi-lib/log"
 	"github.com/lbarman/prifi/prifi-lib/net"
 	"github.com/lbarman/prifi/prifi-lib/scheduler"
+	"github.com/lbarman/prifi/prifi-lib/utils"
 
 	"github.com/lbarman/prifi/prifi-lib/crypto"
 	"reflect"
@@ -51,6 +52,7 @@ import (
 type PriFiLibRelayInstance struct {
 	messageSender *net.MessageSenderWrapper
 	relayState    *RelayState
+	stateMachine  *utils.StateMachine
 }
 
 // NewPriFiRelay creates a new PriFi relay entity state.
@@ -76,9 +78,21 @@ func NewRelay(dataOutputEnabled bool, dataForClients chan []byte, dataFromDCNet 
 	relayState.neffShuffle = neffShuffle.RelayView
 	relayState.Name = "Relay"
 
+	//init the state machine
+	states := []string{"BEFORE_INIT", "COLLECTING_TRUSTEES_PKS", "COLLECTING_CLIENT_PKS", "COLLECTING_SHUFFLES", "COLLECTING_SHUFFLE_SIGNATURES", "COMMUNICATING", "SHUTDOWN"}
+	sm := new(utils.StateMachine)
+	logFn := func(s interface{}) {
+		log.Lvl2(s)
+	}
+	errFn := func(s interface{}) {
+		log.Error(s)
+	}
+	sm.Init(states, logFn, errFn)
+
 	prifi := PriFiLibRelayInstance{
 		messageSender: msgSender,
 		relayState:    relayState,
+		stateMachine:  sm,
 	}
 	return &prifi
 }
@@ -97,17 +111,6 @@ const TRUSTEE_CACHE_LOWBOUND = 1
 
 // Number of ciphertexts buffered by trustees. When >= TRUSTEE_CACHE_HIGHBOUND, stop sending
 const TRUSTEE_CACHE_HIGHBOUND = 10
-
-// Possible states the trustees are in. This restrict the kind of messages they can receive at a given point in time.
-const (
-	RELAY_STATE_BEFORE_INIT int16 = iota
-	RELAY_STATE_COLLECTING_TRUSTEES_PKS
-	RELAY_STATE_COLLECTING_CLIENT_PKS
-	RELAY_STATE_COLLECTING_SHUFFLES
-	RELAY_STATE_COLLECTING_SHUFFLE_SIGNATURES
-	RELAY_STATE_COMMUNICATING
-	RELAY_STATE_SHUTDOWN
-)
 
 // NodeRepresentation regroups the information about one client or trustee.
 type NodeRepresentation struct {
@@ -167,45 +170,38 @@ func (p *PriFiLibRelayInstance) ReceivedMessage(msg interface{}) error {
 
 	switch typedMsg := msg.(type) {
 	case *net.ALL_ALL_PARAMETERS_NEW:
-		err = p.Received_ALL_ALL_PARAMETERS(*typedMsg)
+		if typedMsg.ForceParams || p.stateMachine.AssertState("BEFORE_INIT") {
+			err = p.Received_ALL_ALL_PARAMETERS(*typedMsg)
+		}
 	case net.ALL_ALL_SHUTDOWN:
 		err = p.Received_ALL_ALL_SHUTDOWN(typedMsg)
-	case net.CLI_REL_TELL_PK_AND_EPH_PK:
-		err = p.Received_CLI_REL_TELL_PK_AND_EPH_PK(typedMsg)
 	case net.CLI_REL_UPSTREAM_DATA:
-		err = p.Received_CLI_REL_UPSTREAM_DATA(typedMsg)
+		if p.stateMachine.AssertState("COMMUNICATING") {
+			err = p.Received_CLI_REL_UPSTREAM_DATA(typedMsg)
+		}
 	case net.TRU_REL_DC_CIPHER:
-		err = p.Received_TRU_REL_DC_CIPHER(typedMsg)
-	case net.TRU_REL_SHUFFLE_SIG:
-		err = p.Received_TRU_REL_SHUFFLE_SIG(typedMsg)
-	case net.TRU_REL_TELL_NEW_BASE_AND_EPH_PKS:
-		err = p.Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS(typedMsg)
+		if p.stateMachine.AssertState("COMMUNICATING") {
+			err = p.Received_TRU_REL_DC_CIPHER(typedMsg)
+		}
 	case net.TRU_REL_TELL_PK:
-		err = p.Received_TRU_REL_TELL_PK(typedMsg)
+		if p.stateMachine.AssertState("COLLECTING_TRUSTEES_PKS") {
+			err = p.Received_TRU_REL_TELL_PK(typedMsg)
+		}
+	case net.CLI_REL_TELL_PK_AND_EPH_PK:
+		if p.stateMachine.AssertState("COLLECTING_CLIENT_PKS") {
+			err = p.Received_CLI_REL_TELL_PK_AND_EPH_PK(typedMsg)
+		}
+	case net.TRU_REL_TELL_NEW_BASE_AND_EPH_PKS:
+		if p.stateMachine.AssertState("COLLECTING_SHUFFLES") {
+			err = p.Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS(typedMsg)
+		}
+	case net.TRU_REL_SHUFFLE_SIG:
+		if p.stateMachine.AssertState("COLLECTING_SHUFFLE_SIGNATURES") {
+			err = p.Received_TRU_REL_SHUFFLE_SIG(typedMsg)
+		}
 	default:
 		err = errors.New("Unrecognized message, type" + reflect.TypeOf(msg).String())
 	}
 
 	return err
-}
-
-func relayStateStr(state int16) string {
-	switch state {
-	case RELAY_STATE_BEFORE_INIT:
-		return "RELAY_STATE_BEFORE_INIT"
-	case RELAY_STATE_COLLECTING_TRUSTEES_PKS:
-		return "RELAY_STATE_COLLECTING_TRUSTEES_PKS"
-	case RELAY_STATE_COLLECTING_CLIENT_PKS:
-		return "RELAY_STATE_COLLECTING_CLIENT_PKS"
-	case RELAY_STATE_COLLECTING_SHUFFLES:
-		return "RELAY_STATE_COLLECTING_SHUFFLES"
-	case RELAY_STATE_COLLECTING_SHUFFLE_SIGNATURES:
-		return "RELAY_STATE_COLLECTING_SHUFFLE_SIGNATURES"
-	case RELAY_STATE_COMMUNICATING:
-		return "RELAY_STATE_COMMUNICATING"
-	case RELAY_STATE_SHUTDOWN:
-		return "RELAY_STATE_SHUTDOWN"
-	default:
-		return "unknown state (" + strconv.Itoa(int(state)) + ")"
-	}
 }
