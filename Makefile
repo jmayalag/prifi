@@ -46,4 +46,4 @@ clean:
 
 test: test_fmt test_govet test_lint
 
-all: test coveralls it it2
+all: test coveralls it
