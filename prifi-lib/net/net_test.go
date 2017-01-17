@@ -35,6 +35,10 @@ func TestMessageSenderWrapper(t *testing.T) {
 	if err == nil {
 		t.Error("If logging=true, should provide a logging function")
 	}
+	_, err = NewMessageSenderWrapper(true, func(interface{}) {}, nil, nil, nil)
+	if err == nil {
+		t.Error("If logging=true, should provide a logging function")
+	}
 
 	_, err = NewMessageSenderWrapper(false, nil, nil, nil, nil)
 	if err == nil {
@@ -63,6 +67,11 @@ func TestMessageSenderWrapper(t *testing.T) {
 	var loggingFunctionCalled bool = false
 	logging := func(e interface{}) { loggingFunctionCalled = true }
 	msw, err = NewMessageSenderWrapper(true, logging, logging, errHandling, msgSender)
+
+	if err != nil {
+		t.Error("Shouldn't have an error here," + err.Error())
+	}
+
 	success = msw.SendToClientWithLog(0, "hello", "")
 	if success || !errorHandlerCalled {
 		t.Error("this call should trigger an error")
@@ -84,10 +93,16 @@ func TestMessageSenderWrapperRelay(t *testing.T) {
 		t.Error("Should be able to create a MessageSenderWrapper")
 	}
 
-	success := msw.SendToRelayWithLog("hello", "")
+	success := msw.SendToTrusteeWithLog(0, "hello", "")
 	if !success || errorHandlerCalled {
 		t.Error("this call should not trigger an error")
 	}
+	errorHandlerCalled = false
+	success = msw.SendToRelayWithLog("hello", "")
+	if !success || errorHandlerCalled {
+		t.Error("this call should not trigger an error")
+	}
+	errorHandlerCalled = false
 	success = msw.SendToRelayWithLog("trigger-error", "")
 	if success || !errorHandlerCalled {
 		t.Error("this call should trigger an error")
@@ -137,6 +152,7 @@ func TestUDPMessage(t *testing.T) {
 
 	//this should fail, cannot read the size if len<4
 	void = new(REL_CLI_DOWNSTREAM_DATA_UDP)
+	void.Print()
 	_, err2 = void.FromBytes(msgBytes[0:3])
 
 	if err2 == nil {

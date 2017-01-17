@@ -46,7 +46,7 @@ type PriFiSDAProtocol struct {
 	ResultChannel chan interface{}
 
 	//this is the actual "PriFi" (DC-net) protocol/library, defined in prifi-lib/prifi.go
-	prifiLibInstance *prifi_lib.PriFiLibInstance
+	prifiLibInstance prifi_lib.SpecializedLibInstance
 	HasStopped       bool //when set to true, the protocol has been stopped by PriFi-lib and should be destroyed
 }
 
@@ -59,7 +59,20 @@ func (p *PriFiSDAProtocol) Start() error {
 	//At the protocol is ready,
 
 	log.Lvl3("Starting PriFi-SDA-Wrapper Protocol")
-	p.prifiLibInstance.SendParameters()
+
+	//emulate the reception of a ALL_ALL_PARAMETERS with StartNow=true
+	msg := new(net.ALL_ALL_PARAMETERS_NEW)
+	msg.Add("StartNow", true)
+	msg.Add("NTrustees", len(p.ms.trustees))
+	msg.Add("NClients", len(p.ms.clients))
+	msg.Add("UpstreamCellSize", p.config.Toml.CellSizeUp)
+	msg.Add("DownstreamCellSize", p.config.Toml.CellSizeDown)
+	msg.Add("WindowSize", p.config.Toml.RelayWindowSize)
+	msg.Add("UseDummyDataDown", p.config.Toml.RelayUseDummyDataDown)
+	msg.Add("ExperimentRoundLimit", p.config.Toml.RelayReportingLimit)
+	msg.Add("UseUDP", p.config.Toml.UseUDP)
+	msg.ForceParams = true
+	p.prifiLibInstance.ReceivedMessage(msg)
 
 	return nil
 }
@@ -69,11 +82,11 @@ func (p *PriFiSDAProtocol) Stop() {
 
 	switch p.role {
 	case Relay:
-		p.prifiLibInstance.Received_ALL_REL_SHUTDOWN(net.ALL_ALL_SHUTDOWN{})
+		p.prifiLibInstance.ReceivedMessage(net.ALL_ALL_SHUTDOWN{})
 	case Trustee:
-		p.prifiLibInstance.Received_ALL_TRU_SHUTDOWN(net.ALL_ALL_SHUTDOWN{})
+		p.prifiLibInstance.ReceivedMessage(net.ALL_ALL_SHUTDOWN{})
 	case Client:
-		p.prifiLibInstance.Received_ALL_CLI_SHUTDOWN(net.ALL_ALL_SHUTDOWN{})
+		p.prifiLibInstance.ReceivedMessage(net.ALL_ALL_SHUTDOWN{})
 	}
 
 	p.HasStopped = true
@@ -89,7 +102,7 @@ func (p *PriFiSDAProtocol) Stop() {
 func init() {
 
 	//register the prifi_lib's message with the network lib here
-	network.RegisterPacketType(net.ALL_ALL_PARAMETERS{})
+	network.RegisterPacketType(net.ALL_ALL_PARAMETERS_NEW{})
 	network.RegisterPacketType(net.CLI_REL_TELL_PK_AND_EPH_PK{})
 	network.RegisterPacketType(net.CLI_REL_UPSTREAM_DATA{})
 	network.RegisterPacketType(net.REL_CLI_DOWNSTREAM_DATA{})
@@ -139,7 +152,7 @@ func NewPriFiSDAWrapperProtocol(n *sda.TreeNodeInstance) (sda.ProtocolInstance, 
 // that registers handlers for all prifi messages.
 func (p *PriFiSDAProtocol) registerHandlers() error {
 	//register handlers
-	err := p.RegisterHandler(p.Received_ALL_ALL_PARAMETERS)
+	err := p.RegisterHandler(p.Received_ALL_ALL_PARAMETERS_NEW)
 	if err != nil {
 		return errors.New("couldn't register handler: " + err.Error())
 	}

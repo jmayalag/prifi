@@ -291,6 +291,4 @@ func TestRateLimiter(test *testing.T) {
 	if !resumeCalled {
 		test.Error("Resume should have been called")
 	}
-	resumeCalled = false
-
 }

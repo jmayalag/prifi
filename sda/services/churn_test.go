@@ -522,7 +522,7 @@ func TestChurn(t *testing.T) {
 		t.Error("nTrustees should be 0, is", nTrustees)
 	}
 	if !stopProtocolCalled {
-		t.Error("Protocol should have been stopped at that point, network error occured")
+		t.Error("Protocol should have been stopped at that point, network error occurred")
 	}
 	if startProtocolCalled {
 		t.Error("Protocol should not have re-started at that point, no client have tried to connect yet")

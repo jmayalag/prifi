@@ -21,6 +21,7 @@ import (
 	"github.com/dedis/cothority/sda"
 	"github.com/dedis/crypto/abstract"
 	cryptoconfig "github.com/dedis/crypto/config"
+	prifi_protocol "github.com/lbarman/prifi/sda/protocols"
 	prifi_service "github.com/lbarman/prifi/sda/services"
 	"gopkg.in/urfave/cli.v1"
 	"net"
@@ -353,7 +354,7 @@ func startCothorityNode(c *cli.Context) (*sda.Conode, error) {
  * CONFIG
  */
 
-func readPriFiConfigFile(c *cli.Context) (*prifi_service.PrifiTomlConfig, error) {
+func readPriFiConfigFile(c *cli.Context) (*prifi_protocol.PrifiTomlConfig, error) {
 
 	cfile := c.GlobalString("prifi_config")
 
@@ -367,14 +368,14 @@ func readPriFiConfigFile(c *cli.Context) (*prifi_service.PrifiTomlConfig, error)
 		log.Error("Could not read file \"", cfile, "\" (specified by flag prifi_config)")
 	}
 
-	tomlConfig := &prifi_service.PrifiTomlConfig{}
+	tomlConfig := &prifi_protocol.PrifiTomlConfig{}
 	_, err = toml.Decode(string(tomlRawData), tomlConfig)
 	if err != nil {
 		log.Error("Could not parse toml file", cfile)
 		return nil, err
 	}
 
-	//ports can be overriden by the command line params
+	//ports can be overridden by the command line params
 	if c.GlobalIsSet("port") {
 		tomlConfig.SocksServerPort = c.GlobalInt("port")
 	}

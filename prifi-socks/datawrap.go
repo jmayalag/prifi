@@ -59,7 +59,7 @@ func NewSocksPacket(Type uint16, ID uint32, MessageLength uint16, PacketLength u
 }
 
 /*
-socksTrimAndPadPayload checks for consistency withing the data in the packet and fixes any inconsistencies
+socksTrimAndPadPayload checks for consistency within the data in the packet and fixes any inconsistencies
 
 Properties:
 	- Actual message length cannot exceed the maximum possible length (which is PacketLength - HeaderLength)

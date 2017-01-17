@@ -67,7 +67,7 @@ func (s *ServiceState) handleTimeout(lateClients []string, lateTrustees []string
 }
 
 // This is a handler passed to the SDA when starting a host. The SDA usually handle all the network by itself,
-// but in our case it is useful to know when a network RESET occured, so we can kill protocols (otherwise they
+// but in our case it is useful to know when a network RESET occurred, so we can kill protocols (otherwise they
 // remain in some weird state)
 func (s *ServiceState) NetworkErrorHappened(e error) {
 

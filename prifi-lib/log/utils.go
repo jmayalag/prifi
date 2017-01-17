@@ -60,6 +60,7 @@ func Confidence95Percentiles(data []int64) float64 {
 }
 
 //performGETRequest performs a GET request and ignores all errors
-func performGETRequest(url string) {
-	_, _ = http.Get(url)
+func performGETRequest(url string) error {
+	_, err := http.Get(url)
+	return err
 }

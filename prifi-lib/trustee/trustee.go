@@ -1,4 +1,4 @@
-package prifi_lib
+package trustee
 
 /*
 PriFi Trustee
@@ -9,10 +9,8 @@ Then, this file simple handle the answer to the different message kind :
 
 - ALL_ALL_PARAMETERS - (specialized into ALL_TRU_PARAMETERS) - used to initialize the relay over the network / overwrite its configuration
 - REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE - the client's identities (and ephemeral ones), and a base. We react by Neff-Shuffling and sending the result
-- REL_TRU_TELL_TRANSCRIPT - the Neff-Shuffle's results. We perform some checks, sign the last one, send it to the relay, and follow by continously sending ciphers.
+- REL_TRU_TELL_TRANSCRIPT - the Neff-Shuffle's results. We perform some checks, sign the last one, send it to the relay, and follow by continuously sending ciphers.
 - REL_TRU_TELL_RATE_CHANGE - Received when the relay requests a sending rate change, the message contains the necessary information needed to perform this change
-
-TODO : debug the actual shuffle (the current code is a placeholder that does not shuffle, but takes the same time)
 */
 
 import (
@@ -20,104 +18,16 @@ import (
 	"github.com/dedis/cothority/log"
 	"github.com/dedis/crypto/abstract"
 	"github.com/lbarman/prifi/prifi-lib/config"
-	"github.com/lbarman/prifi/prifi-lib/crypto"
-	"github.com/lbarman/prifi/prifi-lib/dcnet"
 	"github.com/lbarman/prifi/prifi-lib/net"
-	"github.com/lbarman/prifi/prifi-lib/scheduler"
 	"strconv"
 	"time"
 )
 
-// Possible states the trustees are in. This restrict the kind of messages they can receive at a given point in time.
-const (
-	TRUSTEE_STATE_BEFORE_INIT int16 = iota
-	TRUSTEE_STATE_INITIALIZING
-	TRUSTEE_STATE_SHUFFLE_DONE
-	TRUSTEE_STATE_READY
-	TRUSTEE_STATE_SHUTDOWN
-)
-
-// Possible sending rates for the trustees.
-const (
-	TRUSTEE_KILL_SEND_PROCESS int16 = iota // kills the goroutine responsible for sending messages
-	TRUSTEE_RATE_ACTIVE
-	TRUSTEE_RATE_STOPPED
-)
-
-// TRUSTEE_BASE_SLEEP_TIME is the base unit for how much time the trustee sleeps between sending ciphers to the relay.
-const TRUSTEE_BASE_SLEEP_TIME = 10 * time.Millisecond
-
-// TrusteeState contains the mutable state of the trustee.
-type TrusteeState struct {
-	CellCoder        dcnet.CellCoder
-	ClientPublicKeys []abstract.Point
-	currentState     int16
-	ID               int
-	MessageHistory   abstract.Cipher
-	Name             string
-	nClients         int
-	neffShuffle      *scheduler.NeffShuffleTrustee
-	nTrustees        int
-	PayloadLength    int
-	privateKey       abstract.Scalar
-	PublicKey        abstract.Point
-	sendingRate      chan int16
-	sharedSecrets    []abstract.Point
-	TrusteeID        int
-}
-
-// NeffShuffleResult holds the result of the NeffShuffle,
-// since it needs to be verified when we receive REL_TRU_TELL_TRANSCRIPT.
-type NeffShuffleResult struct {
-	base  abstract.Point
-	pks   []abstract.Point
-	proof []byte
-}
-
 /*
-NewTrusteeState initializes the state of the trustee.
-It must be called before anything else.
-*/
-func NewTrusteeState(trusteeID int, nClients int, nTrustees int, payloadLength int) *TrusteeState {
-	params := new(TrusteeState)
-
-	params.ID = trusteeID
-	params.Name = "Trustee-" + strconv.Itoa(trusteeID)
-	params.CellCoder = config.Factory()
-	params.nClients = nClients
-	params.nTrustees = nTrustees
-	params.PayloadLength = payloadLength
-	params.sendingRate = make(chan int16, 10)
-	params.TrusteeID = trusteeID
-
-	//gen the key
-	pub, priv := crypto.NewKeyPair()
-
-	//generate own parameters
-	params.privateKey = priv
-	params.PublicKey = pub
-
-	//init the neff shuffle
-	neffShuffle := new(scheduler.NeffShuffle)
-	neffShuffle.Init()
-	params.neffShuffle = neffShuffle.TrusteeView
-	params.neffShuffle.Init(trusteeID, priv, pub)
-
-	//placeholders for pubkeys and secrets
-	params.ClientPublicKeys = make([]abstract.Point, nClients)
-	params.sharedSecrets = make([]abstract.Point, nClients)
-
-	//sets the new state
-	params.currentState = TRUSTEE_STATE_INITIALIZING
-
-	return params
-}
-
-/*
-Received_ALL_TRU_SHUTDOWN handles ALL_REL_SHUTDOWN messages.
+Received_ALL_ALL_SHUTDOWN handles ALL_ALL_SHUTDOWN messages.
 When we receive this message we should  clean up resources.
 */
-func (p *PriFiLibInstance) Received_ALL_TRU_SHUTDOWN(msg net.ALL_ALL_SHUTDOWN) error {
+func (p *PriFiLibTrusteeInstance) Received_ALL_ALL_SHUTDOWN(msg net.ALL_ALL_SHUTDOWN) error {
 	log.Lvl1("Trustee " + strconv.Itoa(p.trusteeState.ID) + " : Received a SHUTDOWN message. ")
 
 	//stop the sending process
@@ -129,10 +39,10 @@ func (p *PriFiLibInstance) Received_ALL_TRU_SHUTDOWN(msg net.ALL_ALL_SHUTDOWN) e
 }
 
 /*
-Received_ALL_TRU_PARAMETERS handles ALL_REL_PARAMETERS.
+Received_ALL_ALL_PARAMETERS handles ALL_ALL_PARAMETERS.
 It initializes the trustee with the parameters contained in the message.
 */
-func (p *PriFiLibInstance) Received_ALL_TRU_PARAMETERS(msg net.ALL_ALL_PARAMETERS) error {
+func (p *PriFiLibTrusteeInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARAMETERS_NEW) error {
 
 	//this can only happens in the state RELAY_STATE_BEFORE_INIT
 	if p.trusteeState.currentState != TRUSTEE_STATE_BEFORE_INIT && !msg.ForceParams {
@@ -143,10 +53,40 @@ func (p *PriFiLibInstance) Received_ALL_TRU_PARAMETERS(msg net.ALL_ALL_PARAMETER
 	} else {
 		log.Lvl3("Trustee : received ALL_ALL_PARAMETERS")
 	}
+	log.LLvlf1("%+v", msg)
+	startNow := msg.BoolValueOrElse("StartNow", false)
+	trusteeID := msg.IntValueOrElse("NextFreeTrusteeID", -1)
+	nTrustees := msg.IntValueOrElse("NTrustees", p.trusteeState.nTrustees)
+	nClients := msg.IntValueOrElse("NClients", p.trusteeState.nClients)
+	cellSize := msg.IntValueOrElse("UpstreamCellSize", p.trusteeState.PayloadLength) //todo: change this name
 
-	p.trusteeState = *NewTrusteeState(msg.NextFreeTrusteeID, msg.NClients, msg.NTrustees, msg.UpCellSize)
+	//sanity checks
+	if trusteeID < -1 {
+		return errors.New("trusteeID cannot be negative")
+	}
+	if nTrustees < 1 {
+		return errors.New("nTrustees cannot be smaller than 1")
+	}
+	if nClients < 1 {
+		return errors.New("nClients cannot be smaller than 1")
+	}
+	if cellSize < 1 {
+		return errors.New("UpCellSize cannot be 0")
+	}
 
-	if msg.StartNow {
+	p.trusteeState.ID = trusteeID
+	p.trusteeState.Name = "Trustee-" + strconv.Itoa(trusteeID)
+	p.trusteeState.nClients = nClients
+	p.trusteeState.nTrustees = nTrustees
+	p.trusteeState.PayloadLength = cellSize
+	p.trusteeState.TrusteeID = trusteeID
+	p.trusteeState.neffShuffle.Init(trusteeID, p.trusteeState.privateKey, p.trusteeState.PublicKey)
+
+	//placeholders for pubkeys and secrets
+	p.trusteeState.ClientPublicKeys = make([]abstract.Point, nClients)
+	p.trusteeState.sharedSecrets = make([]abstract.Point, nClients)
+
+	if startNow {
 		// send our public key to the relay
 		p.Send_TRU_REL_PK()
 	}
@@ -163,7 +103,7 @@ Send_TRU_REL_PK tells the relay's public key to the relay
 (this, of course, provides no security, but this is an early version of the protocol).
 This is the first action of the trustee.
 */
-func (p *PriFiLibInstance) Send_TRU_REL_PK() error {
+func (p *PriFiLibTrusteeInstance) Send_TRU_REL_PK() error {
 	toSend := &net.TRU_REL_TELL_PK{TrusteeID: p.trusteeState.ID, Pk: p.trusteeState.PublicKey}
 	p.messageSender.SendToRelayWithLog(toSend, "")
 	return nil
@@ -173,7 +113,7 @@ func (p *PriFiLibInstance) Send_TRU_REL_PK() error {
 Send_TRU_REL_DC_CIPHER sends DC-net ciphers to the relay continuously once started.
 One can control the rate by sending flags to "rateChan".
 */
-func (p *PriFiLibInstance) Send_TRU_REL_DC_CIPHER(rateChan chan int16) {
+func (p *PriFiLibTrusteeInstance) Send_TRU_REL_DC_CIPHER(rateChan chan int16) {
 
 	stop := false
 	currentRate := TRUSTEE_RATE_ACTIVE
@@ -213,7 +153,7 @@ by changing the cipher sending rate.
 Either the trustee must stop sending because the relay is at full capacity
 or the trustee sends normally because the relay has emptied up enough capacity.
 */
-func (p *PriFiLibInstance) Received_REL_TRU_TELL_RATE_CHANGE(msg net.REL_TRU_TELL_RATE_CHANGE) error {
+func (p *PriFiLibTrusteeInstance) Received_REL_TRU_TELL_RATE_CHANGE(msg net.REL_TRU_TELL_RATE_CHANGE) error {
 
 	if msg.WindowCapacity == 0 {
 		p.trusteeState.sendingRate <- TRUSTEE_RATE_STOPPED
@@ -228,7 +168,7 @@ func (p *PriFiLibInstance) Received_REL_TRU_TELL_RATE_CHANGE(msg net.REL_TRU_TEL
 sendData is an auxiliary function used by Send_TRU_REL_DC_CIPHER. It computes the DC-net's cipher and sends it.
 It returns the new round number (previous + 1).
 */
-func sendData(p *PriFiLibInstance, roundID int32) (int32, error) {
+func sendData(p *PriFiLibTrusteeInstance, roundID int32) (int32, error) {
 	data := p.trusteeState.CellCoder.TrusteeEncode(p.trusteeState.PayloadLength)
 
 	//send the data
@@ -249,7 +189,7 @@ and a base given by the relay. In addition to deriving the secrets,
 the trustee uses the ephemeral keys to perform a Neff shuffle. It remembers
 this shuffle in order to check the correctness of the chain of shuffle afterwards.
 */
-func (p *PriFiLibInstance) Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE(msg net.REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE) error {
+func (p *PriFiLibTrusteeInstance) Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE(msg net.REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE) error {
 
 	//this can only happens in the state TRUSTEE_STATE_INITIALIZING
 	if p.trusteeState.currentState != TRUSTEE_STATE_INITIALIZING {
@@ -303,7 +243,7 @@ their own shuffle has been included in the chain of shuffles. If that's the case
 shuffle (which will be used by the clients), and sends it back to the relay.
 If everything succeed, starts the goroutine for sending DC-net ciphers to the relay.
 */
-func (p *PriFiLibInstance) Received_REL_TRU_TELL_TRANSCRIPT(msg net.REL_TRU_TELL_TRANSCRIPT) error {
+func (p *PriFiLibTrusteeInstance) Received_REL_TRU_TELL_TRANSCRIPT(msg net.REL_TRU_TELL_TRANSCRIPT) error {
 
 	//this can only happens in the state TRUSTEE_STATE_SHUFFLE_DONE
 	if p.trusteeState.currentState != TRUSTEE_STATE_SHUFFLE_DONE {

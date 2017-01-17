@@ -3,7 +3,7 @@ package scheduler
 /**
  * Holds all the components to do a Neff Shuffle. Both the Relay and the Trustee have one instance of it, but uses only
  * their part in it.
- * The struct is aware of net/ and messages, but only to craft them. Sending the messages is the responsability of the
+ * The struct is aware of net/ and messages, but only to craft them. Sending the messages is the responsibility of the
  * caller
  */
 type NeffShuffle struct {

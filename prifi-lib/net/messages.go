@@ -40,30 +40,12 @@ import (
 type ALL_ALL_SHUTDOWN struct {
 }
 
-// ALL_ALL_PARAMETERS message contains all the parameters used by the protocol.
-type ALL_ALL_PARAMETERS struct {
-	ClientDataOutputEnabled bool
-	DoLatencyTests          bool
-	DownCellSize            int
-	ForceParams             bool
-	NClients                int
-	NextFreeClientID        int
-	NextFreeTrusteeID       int
-	NTrustees               int
-	RelayDataOutputEnabled  bool
-	RelayReportingLimit     int
-	RelayUseDummyDataDown   bool
-	RelayWindowSize         int
-	StartNow                bool
-	UpCellSize              int
-	UseUDP                  bool
-}
-
 // CLI_REL_TELL_PK_AND_EPH_PK message contains the public key and ephemeral key of a client
 // and is sent to the relay.
 type CLI_REL_TELL_PK_AND_EPH_PK struct {
-	Pk    abstract.Point
-	EphPk abstract.Point
+	ClientID int
+	Pk       abstract.Point
+	EphPk    abstract.Point
 }
 
 // CLI_REL_UPSTREAM_DATA message contains the upstream data of a client for a given round
@@ -210,7 +192,7 @@ func (m *REL_CLI_DOWNSTREAM_DATA_UDP) FromBytes(buffer []byte) (interface{}, err
 		flagResync = true
 	}
 
-	innerMessage := REL_CLI_DOWNSTREAM_DATA{roundID, data, flagResync} //This wrapping feels wierd
+	innerMessage := REL_CLI_DOWNSTREAM_DATA{roundID, data, flagResync} //This wrapping feels weird
 	resultMessage := REL_CLI_DOWNSTREAM_DATA_UDP{innerMessage}
 
 	return resultMessage, nil

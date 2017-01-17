@@ -8,6 +8,12 @@ test_fmt:
 		fi; \
 	}
 
+build:
+	@echo Testing build...
+	@{ \
+		go build sda/app/prifi.go && rm -f prifi; \
+	}
+
 test_govet:
 	@echo Running go vet...
 	@{ \
@@ -28,7 +34,7 @@ test_lint:
 		exit 1; \
 		fi \
 	}
-	
+
 coveralls:
 	./coveralls.sh
 
@@ -44,6 +50,6 @@ it2:
 clean:
 	rm -f profile.cov *.log
 
-test: test_fmt test_govet test_lint
+test: build test_fmt test_govet test_lint
 
 all: test coveralls it

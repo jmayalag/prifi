@@ -2,7 +2,6 @@ package services
 
 import (
 	"fmt"
-	prifi_net "github.com/lbarman/prifi/prifi-lib/net"
 	"io/ioutil"
 	"os"
 
@@ -15,21 +14,8 @@ import (
 var socksClientConfig *prifi_protocol.SOCKSConfig
 var socksServerConfig *prifi_protocol.SOCKSConfig
 
-//The configuration read in prifi.toml
-type PrifiTomlConfig struct {
-	CellSizeUp            int
-	CellSizeDown          int
-	RelayWindowSize       int
-	RelayUseDummyDataDown bool
-	RelayReportingLimit   int
-	UseUDP                bool
-	DoLatencyTests        bool
-	SocksServerPort       int
-	SocksClientPort       int
-}
-
 //Set the config, from the prifi.toml. Is called by sda/app.
-func (s *ServiceState) SetConfigFromToml(config *PrifiTomlConfig) {
+func (s *ServiceState) SetConfigFromToml(config *prifi_protocol.PrifiTomlConfig) {
 	log.Lvl3("Setting PriFi configuration...")
 	log.Lvlf3("%+v\n", config)
 	s.prifiTomlConfig = config
@@ -90,28 +76,10 @@ func (s *ServiceState) setConfigToPriFiProtocol(wrapper *prifi_protocol.PriFiSDA
 		identitiesMap = s.churnHandler.createIdentitiesMap()
 	}
 
-	prifiParams := prifi_net.ALL_ALL_PARAMETERS{
-		ClientDataOutputEnabled: true,
-		DoLatencyTests:          s.prifiTomlConfig.DoLatencyTests,
-		DownCellSize:            s.prifiTomlConfig.CellSizeDown,
-		ForceParams:             true,
-		NClients:                -1, //computer later
-		NextFreeClientID:        0,
-		NextFreeTrusteeID:       0,
-		NTrustees:               -1, //computer later
-		RelayDataOutputEnabled:  true,
-		RelayReportingLimit:     s.prifiTomlConfig.RelayReportingLimit,
-		RelayUseDummyDataDown:   s.prifiTomlConfig.RelayUseDummyDataDown,
-		RelayWindowSize:         s.prifiTomlConfig.RelayWindowSize,
-		StartNow:                false,
-		UpCellSize:              s.prifiTomlConfig.CellSizeUp,
-		UseUDP:                  s.prifiTomlConfig.UseUDP,
-	}
-
 	configMsg := &prifi_protocol.PriFiSDAWrapperConfig{
-		ALL_ALL_PARAMETERS: prifiParams,
-		Identities:         identitiesMap,
-		Role:               s.role,
+		Toml:       s.prifiTomlConfig,
+		Identities: identitiesMap,
+		Role:       s.role,
 		ClientSideSocksConfig: socksClientConfig,
 		RelaySideSocksConfig:  socksServerConfig,
 	}

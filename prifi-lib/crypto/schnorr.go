@@ -73,7 +73,7 @@ func SchnorrVerify(suite abstract.Suite, message []byte, publicKey abstract.Poin
 	T.Add(T.Mul(nil, r), P.Mul(publicKey, c))
 
 	// Verify that the hash based on the message and T
-	// matches the challange c from the signature
+	// matches the challenge c from the signature
 	c = hashSchnorr(suite, message, T)
 	if !c.Equal(sig.C) {
 		return errors.New("invalid signature")

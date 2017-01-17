@@ -69,9 +69,9 @@ func StartSocksClient(serverAddress string, upstreamChan chan []byte, downstream
 
 		// Check the type of the packet
 		switch packet.Type {
-		case SocksConnect: // Indicates a new connection established (this is important to identify if a connection ID overlap has occured)
+		case SocksConnect: // Indicates a new connection established (this is important to identify if a connection ID overlap has occurred)
 
-			// If no channel exists yet, create one and setup a channel handler (this means no connection ID overlap occured)
+			// If no channel exists yet, create one and setup a channel handler (this means no connection ID overlap occurred)
 			if socksConnection == nil {
 
 				// Create a new connection with the SOCKS server
@@ -92,7 +92,7 @@ func StartSocksClient(serverAddress string, upstreamChan chan []byte, downstream
 					newConn.Write(packetPayload)
 				}
 
-			} else { // Otherwise a connection ID overlap has occured, reject the connection
+			} else { // Otherwise a connection ID overlap has occurred, reject the connection
 
 				// Create Socks Error message and send it back to the client
 				newData := NewSocksPacket(SocksError, packet.ID, 0, 0, []byte{})
@@ -439,20 +439,19 @@ func ipMaskerade(buf []byte, addr net.Addr) []byte {
 		// Check address type
 		if host4 != nil { //IPv4
 
-			buf[3] = addrIPv4             // Insert Addres Type
+			buf[3] = addrIPv4             // Insert Address Type
 			buf = append(buf, host4...)   // Add IPv6 Address
 			buf = append(buf, port[:]...) // Add Port
 
 		} else if host6 != nil { // IPv6
 
-			buf[3] = addrIPv6             // Insert Addres Type
+			buf[3] = addrIPv6             // Insert Address Type
 			buf = append(buf, host6...)   // Add IPv6 Address
 			buf = append(buf, port[:]...) // Add Port
 
 		} else { // Unknown...
 
 			fmt.Println("SOCKS: neither IPv4 nor IPv6 addr?")
-			addr = nil
 			buf[1] = byte(repAddressTypeNotSupported)
 
 		}

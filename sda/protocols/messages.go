@@ -11,10 +11,10 @@ type Struct_ALL_ALL_SHUTDOWN struct {
 	net.ALL_ALL_SHUTDOWN
 }
 
-//Struct_ALL_ALL_PARAMETERS is a wrapper for ALL_ALL_PARAMETERS (but also contains a *sda.TreeNode)
-type Struct_ALL_ALL_PARAMETERS struct {
+//Struct_ALL_ALL_PARAMETERS is a wrapper for ALL_ALL_PARAMETERS_NEW (but also contains a *sda.TreeNode)
+type Struct_ALL_ALL_PARAMETERS_NEW struct {
 	*sda.TreeNode
-	net.ALL_ALL_PARAMETERS
+	net.ALL_ALL_PARAMETERS_NEW
 }
 
 //Struct_CLI_REL_TELL_PK_AND_EPH_PK is a wrapper for CLI_REL_TELL_PK_AND_EPH_PK (but also contains a *sda.TreeNode)

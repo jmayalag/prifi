@@ -8,8 +8,8 @@ func (p *PriFiSDAProtocol) Received_ALL_ALL_SHUTDOWN(msg Struct_ALL_ALL_SHUTDOWN
 }
 
 //Received_ALL_ALL_PARAMETERS forwards an ALL_ALL_PARAMETERS message to PriFi's lib
-func (p *PriFiSDAProtocol) Received_ALL_ALL_PARAMETERS(msg Struct_ALL_ALL_PARAMETERS) error {
-	return p.prifiLibInstance.ReceivedMessage(msg.ALL_ALL_PARAMETERS)
+func (p *PriFiSDAProtocol) Received_ALL_ALL_PARAMETERS_NEW(msg Struct_ALL_ALL_PARAMETERS_NEW) error {
+	return p.prifiLibInstance.ReceivedMessage(msg.ALL_ALL_PARAMETERS_NEW)
 }
 
 //Received_REL_CLI_DOWNSTREAM_DATA forwards an REL_CLI_DOWNSTREAM_DATA message to PriFi's lib

@@ -1,10 +1,12 @@
 package prifi_lib
 
 import (
-	"strconv"
-
 	"github.com/dedis/cothority/log"
+	"github.com/lbarman/prifi/prifi-lib/client"
 	"github.com/lbarman/prifi/prifi-lib/net"
+	"github.com/lbarman/prifi/prifi-lib/relay"
+	"github.com/lbarman/prifi/prifi-lib/trustee"
+	"os"
 )
 
 /*
@@ -16,13 +18,15 @@ Then, it runs the PriFi anonymous communication network among those entities.
 */
 
 // PriFiLibInstance contains the mutable state of a PriFi entity.
-type PriFiLibInstance struct {
-	role          int16
-	messageSender *net.MessageSenderWrapper
-	// TODO: combine states into a single interface
-	clientState  ClientState  //only one of those will be set
-	relayState   RelayState   //only one of those will be set
-	trusteeState TrusteeState //only one of those will be set
+type PriFiLibInstance struct { //todo remove this, like it was done for client
+	role                   int16
+	messageSender          net.MessageSender
+	specializedLibInstance SpecializedLibInstance
+}
+
+//Prifi's "Relay", "Client" and "Trustee" instance all can receive a message
+type SpecializedLibInstance interface {
+	ReceivedMessage(msg interface{}) error
 }
 
 // Possible role of PriFi entities.
@@ -35,12 +39,52 @@ const (
 	PRIFI_ROLE_TRUSTEE
 )
 
-/*
-call the functions below on the appropriate machine on the network.
-if you call *without state* (one of the first 3 methods), IT IS NOT SUFFICIENT FOR PRIFI to start; this entity will expect a ALL_ALL_PARAMETERS as a
-first message to finish initializing itself (this is handy if only the Relay has access to the configuration file).
-Otherwise, the 3 last methods fully initialize the entity.
-*/
+// NewPriFiClient creates a new PriFi client
+func NewPriFiClient(doLatencyTest bool, dataOutputEnabled bool, dataForDCNet chan []byte, dataFromDCNet chan []byte, msgSender net.MessageSender) *PriFiLibInstance {
+	msw := newMessageSenderWrapper(msgSender)
+	c := client.NewClient(doLatencyTest, dataOutputEnabled, dataForDCNet, dataFromDCNet, msw)
+	p := &PriFiLibInstance{
+		role: PRIFI_ROLE_CLIENT,
+		specializedLibInstance: c,
+		messageSender:          msgSender,
+	}
+	return p
+}
+
+// NewPriFiRelay creates a new PriFi relay
+func NewPriFiRelay(dataOutputEnabled bool, dataForClients chan []byte, dataFromDCNet chan []byte, experimentResultChan chan interface{}, timeoutHandler func([]int, []int), msgSender net.MessageSender) *PriFiLibInstance {
+	msw := newMessageSenderWrapper(msgSender)
+	r := relay.NewRelay(dataOutputEnabled, dataForClients, dataFromDCNet, experimentResultChan, timeoutHandler, msw)
+	p := &PriFiLibInstance{
+		role: PRIFI_ROLE_RELAY,
+		specializedLibInstance: r,
+		messageSender:          msgSender,
+	}
+	return p
+}
+
+// NewPriFiTrustee creates a new PriFi trustee
+func NewPriFiTrustee(msgSender net.MessageSender) *PriFiLibInstance {
+	msw := newMessageSenderWrapper(msgSender)
+	t := trustee.NewTrustee(msw)
+	p := &PriFiLibInstance{
+		role: PRIFI_ROLE_TRUSTEE,
+		specializedLibInstance: t,
+		messageSender:          msgSender,
+	}
+	return p
+}
+
+// ReceivedMessage must be called when a PriFi host receives a message.
+// It takes care to call the correct message handler function.
+func (p *PriFiLibInstance) ReceivedMessage(msg interface{}) error {
+	err := p.specializedLibInstance.ReceivedMessage(msg)
+	if err != nil {
+		log.Error(err)
+		os.Exit(1) //todo we can cleanly call shutdown, and keep the service
+	}
+	return nil
+}
 
 func newMessageSenderWrapper(msgSender net.MessageSender) *net.MessageSenderWrapper {
 
@@ -53,156 +97,4 @@ func newMessageSenderWrapper(msgSender net.MessageSender) *net.MessageSenderWrap
 		log.Fatal("Could not create a MessageSenderWrapper, error is", err)
 	}
 	return msw
-}
-
-// NewPriFiRelay creates a new PriFi relay entity state.
-// Note: the returned state is not sufficient for the PrFi protocol
-// to start; this entity will expect a ALL_ALL_PARAMETERS message as
-// first received message to complete it's state.
-func NewPriFiRelay(msgSender net.MessageSender) *PriFiLibInstance {
-	prifi := PriFiLibInstance{
-		role:          PRIFI_ROLE_RELAY,
-		messageSender: newMessageSenderWrapper(msgSender),
-	}
-
-	return &prifi
-}
-
-// NewPriFiClient creates a new PriFi client entity state.
-// Note: the returned state is not sufficient for the PrFi protocol
-// to start; this entity will expect a ALL_ALL_PARAMETERS message as
-// first received message to complete it's state.
-func NewPriFiClient(msgSender net.MessageSender) *PriFiLibInstance {
-	prifi := PriFiLibInstance{
-		role:          PRIFI_ROLE_CLIENT,
-		messageSender: newMessageSenderWrapper(msgSender),
-	}
-	return &prifi
-}
-
-// NewPriFiTrustee creates a new PriFi trustee entity state.
-// Note: the returned state is not sufficient for the PrFi protocol
-// to start; this entity will expect a ALL_ALL_PARAMETERS message as
-// first received message to complete it's state.
-func NewPriFiTrustee(msgSender net.MessageSender) *PriFiLibInstance {
-	prifi := PriFiLibInstance{
-		role:          PRIFI_ROLE_TRUSTEE,
-		messageSender: newMessageSenderWrapper(msgSender),
-	}
-	return &prifi
-}
-
-// NewPriFiRelayWithState creates a new PriFi relay entity state.
-func NewPriFiRelayWithState(msgSender net.MessageSender, state *RelayState) *PriFiLibInstance {
-	prifi := PriFiLibInstance{
-		role:          PRIFI_ROLE_RELAY,
-		messageSender: newMessageSenderWrapper(msgSender),
-		relayState:    *state,
-	}
-
-	log.Lvl1("Relay has been initialized by function call. ")
-	return &prifi
-}
-
-// NewPriFiClientWithState creates a new PriFi client entity state.
-func NewPriFiClientWithState(msgSender net.MessageSender, state *ClientState) *PriFiLibInstance {
-	prifi := PriFiLibInstance{
-		role:          PRIFI_ROLE_CLIENT,
-		messageSender: newMessageSenderWrapper(msgSender),
-		clientState:   *state,
-	}
-	log.Lvl1("Client has been initialized by function call. ")
-
-	log.Lvl2("Client " + strconv.Itoa(prifi.clientState.ID) + " : starting the broadcast-listener goroutine")
-	go prifi.messageSender.ClientSubscribeToBroadcast(prifi.clientState.Name, prifi.ReceivedMessage, prifi.clientState.StartStopReceiveBroadcast)
-	return &prifi
-}
-
-// NewPriFiTrusteeWithState creates a new PriFi trustee entity state.
-func NewPriFiTrusteeWithState(msgSender net.MessageSender, state *TrusteeState) *PriFiLibInstance {
-	prifi := PriFiLibInstance{
-		role:          PRIFI_ROLE_TRUSTEE,
-		messageSender: newMessageSenderWrapper(msgSender),
-		trusteeState:  *state,
-	}
-
-	log.Lvl1("Trustee has been initialized by function call. ")
-	return &prifi
-}
-
-// ReceivedMessage must be called when a PriFi host receives a message.
-// It takes care to call the correct message handler function.
-func (prifi *PriFiLibInstance) ReceivedMessage(msg interface{}) error {
-
-	if prifi == nil {
-		log.Print("Received a message ", msg)
-		panic("But prifi is nil !")
-	}
-
-	var err error
-
-	switch typedMsg := msg.(type) {
-	case net.ALL_ALL_PARAMETERS:
-		switch prifi.role {
-		case PRIFI_ROLE_RELAY:
-			prifi.Received_ALL_REL_PARAMETERS(typedMsg)
-		case PRIFI_ROLE_CLIENT:
-			err = prifi.Received_ALL_CLI_PARAMETERS(typedMsg)
-		case PRIFI_ROLE_TRUSTEE:
-			err = prifi.Received_ALL_TRU_PARAMETERS(typedMsg)
-		default:
-			panic("Received parameters, but we have no role yet !")
-		}
-	case net.ALL_ALL_SHUTDOWN:
-		switch prifi.role {
-		case PRIFI_ROLE_RELAY:
-			prifi.Received_ALL_REL_SHUTDOWN(typedMsg)
-		case PRIFI_ROLE_CLIENT:
-			err = prifi.Received_ALL_CLI_SHUTDOWN(typedMsg)
-		case PRIFI_ROLE_TRUSTEE:
-			err = prifi.Received_ALL_TRU_SHUTDOWN(typedMsg)
-		default:
-			panic("Received SHUTDOWN, but we have no role yet !")
-		}
-	case net.CLI_REL_TELL_PK_AND_EPH_PK:
-		prifi.Received_CLI_REL_TELL_PK_AND_EPH_PK(typedMsg)
-	case net.CLI_REL_UPSTREAM_DATA:
-		prifi.Received_CLI_REL_UPSTREAM_DATA(typedMsg)
-	case net.REL_CLI_DOWNSTREAM_DATA:
-		err = prifi.Received_REL_CLI_DOWNSTREAM_DATA(typedMsg)
-	/*
-	 * this message is a bit special. At this point, we don't care anymore that's it's UDP, and cast it back to REL_CLI_DOWNSTREAM_DATA.
-	 * the relay only handles REL_CLI_DOWNSTREAM_DATA
-	 */
-	case net.REL_CLI_DOWNSTREAM_DATA_UDP:
-		err = prifi.Received_REL_CLI_UDP_DOWNSTREAM_DATA(typedMsg.REL_CLI_DOWNSTREAM_DATA)
-	case net.REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG:
-		err = prifi.Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(typedMsg)
-	case net.REL_CLI_TELL_TRUSTEES_PK:
-		err = prifi.Received_REL_CLI_TELL_TRUSTEES_PK(typedMsg)
-	case net.REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE:
-		err = prifi.Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE(typedMsg)
-	case net.REL_TRU_TELL_TRANSCRIPT:
-		err = prifi.Received_REL_TRU_TELL_TRANSCRIPT(typedMsg)
-	case net.TRU_REL_DC_CIPHER:
-		prifi.Received_TRU_REL_DC_CIPHER(typedMsg)
-	case net.TRU_REL_SHUFFLE_SIG:
-		prifi.Received_TRU_REL_SHUFFLE_SIG(typedMsg)
-	case net.TRU_REL_TELL_NEW_BASE_AND_EPH_PKS:
-		prifi.Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS(typedMsg)
-	case net.TRU_REL_TELL_PK:
-		prifi.Received_TRU_REL_TELL_PK(typedMsg)
-	case net.REL_TRU_TELL_RATE_CHANGE:
-		err = prifi.Received_REL_TRU_TELL_RATE_CHANGE(typedMsg)
-	default:
-		panic("unrecognized message !")
-	}
-
-	//no need to push the error further up. display it here !
-	if err != nil {
-		log.Error("ReceivedMessage: got an error, " + err.Error())
-		return err
-	}
-
-	return nil
 }
