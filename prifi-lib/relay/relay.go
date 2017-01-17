@@ -102,6 +102,7 @@ func (p *PriFiLibRelayInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARA
 	p.relayState.nClients = nClients
 	p.relayState.nTrustees = nTrustees
 	p.relayState.nTrusteesPkCollected = 0
+	p.relayState.nClientsPkCollected = 0
 	p.relayState.ExperimentRoundLimit = reportingLimit
 	p.relayState.UpstreamCellSize = upCellSize
 	p.relayState.DownstreamCellSize = downCellSize
@@ -150,8 +151,6 @@ func (p *PriFiLibRelayInstance) BroadcastParameters() error {
 	msg.Add("UpstreamCellSize", p.relayState.UpstreamCellSize)
 	msg.ForceParams = true
 
-	log.Error("Gonna send...")
-
 	// Send those parameters to all trustees
 	for j := 0; j < p.relayState.nTrustees; j++ {
 
@@ -168,8 +167,6 @@ func (p *PriFiLibRelayInstance) BroadcastParameters() error {
 		log.LLvlf1("%+v", msg)
 		p.messageSender.SendToClientWithLog(j, msg, "")
 	}
-
-	log.Error("Done sending")
 
 	return nil
 }
@@ -477,17 +474,18 @@ func (p *PriFiLibRelayInstance) Received_CLI_REL_TELL_PK_AND_EPH_PK(msg net.CLI_
 	}
 	log.Lvl3("Relay : received CLI_REL_TELL_PK_AND_EPH_PK")
 
-	newClient := NodeRepresentation{msg.ClientID, true, msg.Pk, msg.EphPk}
-	p.relayState.clients[msg.ClientID] = newClient
+	log.LLvlf1("%+v", msg)
+	p.relayState.clients[msg.ClientID] = NodeRepresentation{msg.ClientID, true, msg.Pk, msg.EphPk}
+	p.relayState.nClientsPkCollected++
 
 	// TODO : sanity check that we don't have twice the same client
 
 	log.Lvl3("Relay : Received a CLI_REL_TELL_PK_AND_EPH_PK, registered client ID" + strconv.Itoa(msg.ClientID))
 
-	log.Lvl2("Relay : received CLI_REL_TELL_PK_AND_EPH_PK (" + strconv.Itoa(len(p.relayState.clients)) + "/" + strconv.Itoa(p.relayState.nClients) + ")")
+	log.Lvl2("Relay : received CLI_REL_TELL_PK_AND_EPH_PK (" + strconv.Itoa(p.relayState.nClientsPkCollected) + "/" + strconv.Itoa(p.relayState.nClients) + ")")
 
 	// if we have collected all clients, continue
-	if len(p.relayState.clients) == p.relayState.nClients {
+	if p.relayState.nClientsPkCollected == p.relayState.nClients {
 
 		p.relayState.neffShuffle.Init(p.relayState.nTrustees)
 
