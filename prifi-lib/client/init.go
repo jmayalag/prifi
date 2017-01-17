@@ -115,12 +115,8 @@ func (p *PriFiLibClientInstance) ReceivedMessage(msg interface{}) error {
 		err = p.Received_ALL_ALL_SHUTDOWN(typedMsg)
 	case net.REL_CLI_DOWNSTREAM_DATA:
 		err = p.Received_REL_CLI_DOWNSTREAM_DATA(typedMsg)
-	/*
-	 * this message is a bit special. At this point, we don't care anymore that's it's UDP, and cast it back to REL_CLI_DOWNSTREAM_DATA.
-	 * the relay only handles REL_CLI_DOWNSTREAM_DATA
-	 */
 	case net.REL_CLI_DOWNSTREAM_DATA_UDP:
-		err = p.Received_REL_CLI_UDP_DOWNSTREAM_DATA(typedMsg.REL_CLI_DOWNSTREAM_DATA)
+		err = p.Received_REL_CLI_UDP_DOWNSTREAM_DATA(typedMsg)
 	case net.REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG:
 		err = p.Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(typedMsg)
 	case net.REL_CLI_TELL_TRUSTEES_PK:

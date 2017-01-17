@@ -98,7 +98,7 @@ func (p *PriFiLibClientInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PAR
 	if p.clientState.StartStopReceiveBroadcast != nil {
 		p.clientState.StartStopReceiveBroadcast <- false
 	}
-	p.clientState.StartStopReceiveBroadcast = make(chan bool)
+	p.clientState.StartStopReceiveBroadcast = make(chan bool, 10)
 
 	//start the broadcast-listener goroutine
 	if useUDP {
@@ -136,13 +136,11 @@ func (p *PriFiLibClientInstance) Received_REL_CLI_DOWNSTREAM_DATA(msg net.REL_CL
 	//check if it is in-order
 	if msg.RoundID == p.clientState.RoundNo {
 		//process downstream data
-
 		return p.ProcessDownStreamData(msg)
 	} else if msg.RoundID < p.clientState.RoundNo {
 		log.Lvl3("Client " + strconv.Itoa(p.clientState.ID) + " : Received a REL_CLI_DOWNSTREAM_DATA for round " + strconv.Itoa(int(msg.RoundID)) + " but we are in round " + strconv.Itoa(int(p.clientState.RoundNo)) + ", discarding.")
-	} else if msg.RoundID < p.clientState.RoundNo {
+	} else if msg.RoundID > p.clientState.RoundNo {
 		log.Lvl3("Client " + strconv.Itoa(p.clientState.ID) + " : Received a REL_CLI_DOWNSTREAM_DATA for round " + strconv.Itoa(int(msg.RoundID)) + " but we are in round " + strconv.Itoa(int(p.clientState.RoundNo)) + ", buffering.")
-
 		p.clientState.BufferedRoundData[msg.RoundID] = msg
 	}
 
@@ -158,7 +156,7 @@ Once we received some data from the relay, we need to reply with a DC-net cell (
 If we're lucky (if this is our slot), we are allowed to embed some message (which will be the output produced by the relay). Either we send something from the
 SOCKS/VPN data, or if we're running latency tests, we send a "ping" message to compute the latency. If we have nothing to say, we send 0's.
 */
-func (p *PriFiLibClientInstance) Received_REL_CLI_UDP_DOWNSTREAM_DATA(msg net.REL_CLI_DOWNSTREAM_DATA) error {
+func (p *PriFiLibClientInstance) Received_REL_CLI_UDP_DOWNSTREAM_DATA(msg net.REL_CLI_DOWNSTREAM_DATA_UDP) error {
 
 	//this can only happens in the state TRUSTEE_STATE_SHUFFLE_DONE
 	if p.clientState.currentState != CLIENT_STATE_READY {
@@ -168,20 +166,7 @@ func (p *PriFiLibClientInstance) Received_REL_CLI_UDP_DOWNSTREAM_DATA(msg net.RE
 	}
 	log.Lvl3("Client " + strconv.Itoa(p.clientState.ID) + " : Received a REL_CLI_UDP_DOWNSTREAM_DATA for round " + strconv.Itoa(int(msg.RoundID)))
 
-	//check if it is in-order
-	if msg.RoundID == p.clientState.RoundNo {
-		//process downstream data
-
-		return p.ProcessDownStreamData(msg)
-	} else if msg.RoundID < p.clientState.RoundNo {
-		log.Lvl3("Client " + strconv.Itoa(p.clientState.ID) + " : Received a REL_CLI_UDP_DOWNSTREAM_DATA for round " + strconv.Itoa(int(msg.RoundID)) + " but we are in round " + strconv.Itoa(int(p.clientState.RoundNo)) + ", discarding.")
-	} else if msg.RoundID < p.clientState.RoundNo {
-		log.Lvl3("Client " + strconv.Itoa(p.clientState.ID) + " : Received a REL_CLI_UDP_DOWNSTREAM_DATA for round " + strconv.Itoa(int(msg.RoundID)) + " but we are in round " + strconv.Itoa(int(p.clientState.RoundNo)) + ", buffering.")
-
-		p.clientState.BufferedRoundData[msg.RoundID] = msg
-	}
-
-	return nil
+	return p.Received_REL_CLI_DOWNSTREAM_DATA(msg.REL_CLI_DOWNSTREAM_DATA)
 }
 
 /*
@@ -284,7 +269,6 @@ func (p *PriFiLibClientInstance) SendUpstreamData() error {
 
 	//produce the next upstream cell
 	upstreamCell := p.clientState.CellCoder.ClientEncode(upstreamCellContent, p.clientState.PayloadLength, p.clientState.MessageHistory)
-
 	//send the data to the relay
 	toSend := &net.CLI_REL_UPSTREAM_DATA{
 		ClientID: p.clientState.ID,
@@ -329,9 +313,6 @@ func (p *PriFiLibClientInstance) Received_REL_CLI_TELL_TRUSTEES_PK(msg net.REL_C
 		log.Error(e)
 		return errors.New(e)
 	}
-
-	//first, collect the public keys from the trustees, and derive the secrets
-	p.clientState.nTrustees = len(msg.Pks)
 
 	p.clientState.TrusteePublicKey = make([]abstract.Point, p.clientState.nTrustees)
 	p.clientState.sharedSecrets = make([]abstract.Point, p.clientState.nTrustees)
@@ -378,9 +359,6 @@ func (p *PriFiLibClientInstance) Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(
 		return errors.New(e)
 	}
 	log.Lvl3("Client " + strconv.Itoa(p.clientState.ID) + " : REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG") //TODO: this should be client
-
-	//only at this moment we really learn the number of clients
-	p.clientState.nClients = len(msg.EphPks)
 
 	//verify the signature
 	neff := new(scheduler.NeffShuffle)
