@@ -45,12 +45,12 @@ sleeptime_between_spawns=1 		# time in second between entities launch in all-loc
 cothorityBranchRequired="test_ism_2_699" # the branch required for the cothority (SDA) framework
 
 #pretty colored message
-highlightOn="\e[33m"
-highlightOff="\e[0m"
-shell="\e[35m[script]${highlightOff}"
+highlightOn="\033[33m"
+highlightOff="\033[0m"
+shell="\033[35m[script]${highlightOff}"
 warningMsg="${highlightOn}[warning]${highlightOff}"
-errorMsg="\e[31m\e[1m[error]${highlightOff}"
-okMsg="\e[32m[ok]${highlightOff}"
+errorMsg="\033[31m\033[1m[error]${highlightOff}"
+okMsg="\033[32m[ok]${highlightOff}"
 if [ "$colors" = "false" ]; then
 	echo "Colors off"
 	highlightOn=""
