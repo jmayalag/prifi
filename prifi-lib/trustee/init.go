@@ -2,23 +2,16 @@ package trustee
 
 import (
 	"errors"
+	"github.com/dedis/cothority/log"
 	"github.com/dedis/crypto/abstract"
 	"github.com/lbarman/prifi/prifi-lib/config"
 	"github.com/lbarman/prifi/prifi-lib/crypto"
 	"github.com/lbarman/prifi/prifi-lib/dcnet"
 	"github.com/lbarman/prifi/prifi-lib/net"
 	"github.com/lbarman/prifi/prifi-lib/scheduler"
+	"github.com/lbarman/prifi/prifi-lib/utils"
 	"reflect"
 	"time"
-)
-
-// Possible states the trustees are in. This restrict the kind of messages they can receive at a given point in time.
-const (
-	TRUSTEE_STATE_BEFORE_INIT int16 = iota
-	TRUSTEE_STATE_INITIALIZING
-	TRUSTEE_STATE_SHUFFLE_DONE
-	TRUSTEE_STATE_READY
-	TRUSTEE_STATE_SHUTDOWN
 )
 
 // Possible sending rates for the trustees.
@@ -35,6 +28,7 @@ const TRUSTEE_BASE_SLEEP_TIME = 10 * time.Millisecond
 type PriFiLibTrusteeInstance struct {
 	messageSender *net.MessageSenderWrapper
 	trusteeState  *TrusteeState
+	stateMachine  *utils.StateMachine
 }
 
 // NewPriFiClientWithState creates a new PriFi client entity state.
@@ -50,9 +44,21 @@ func NewTrustee(msgSender *net.MessageSenderWrapper) *PriFiLibTrusteeInstance {
 	neffShuffle.Init()
 	trusteeState.neffShuffle = neffShuffle.TrusteeView
 
+	states := []string{"BEFORE_INIT", "INITIALIZING", "SHUFFLE_DONE", "READY", "SHUTDOWN"}
+	sm := new(utils.StateMachine)
+
+	logFn := func(s interface{}) {
+		log.Lvl2(s)
+	}
+	errFn := func(s interface{}) {
+		log.Error(s)
+	}
+	sm.Init(states, logFn, errFn)
+
 	prifi := PriFiLibTrusteeInstance{
 		messageSender: msgSender,
 		trusteeState:  trusteeState,
+		stateMachine:  sm,
 	}
 	return &prifi
 }
@@ -61,7 +67,6 @@ func NewTrustee(msgSender *net.MessageSenderWrapper) *PriFiLibTrusteeInstance {
 type TrusteeState struct {
 	CellCoder        dcnet.CellCoder
 	ClientPublicKeys []abstract.Point
-	currentState     int16
 	ID               int
 	MessageHistory   abstract.Cipher
 	Name             string
@@ -92,15 +97,23 @@ func (p *PriFiLibTrusteeInstance) ReceivedMessage(msg interface{}) error {
 
 	switch typedMsg := msg.(type) {
 	case net.ALL_ALL_PARAMETERS_NEW:
-		err = p.Received_ALL_ALL_PARAMETERS(typedMsg) //todo change this name
+		if typedMsg.ForceParams || p.stateMachine.AssertState("BEFORE_INIT") {
+			err = p.Received_ALL_ALL_PARAMETERS(typedMsg) //todo change this name
+		}
 	case net.ALL_ALL_SHUTDOWN:
 		err = p.Received_ALL_ALL_SHUTDOWN(typedMsg)
 	case net.REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE:
-		err = p.Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE(typedMsg)
+		if p.stateMachine.AssertState("INITIALIZING") {
+			err = p.Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE(typedMsg)
+		}
 	case net.REL_TRU_TELL_TRANSCRIPT:
-		err = p.Received_REL_TRU_TELL_TRANSCRIPT(typedMsg)
+		if p.stateMachine.AssertState("SHUFFLE_DONE") {
+			err = p.Received_REL_TRU_TELL_TRANSCRIPT(typedMsg)
+		}
 	case net.REL_TRU_TELL_RATE_CHANGE:
-		err = p.Received_REL_TRU_TELL_RATE_CHANGE(typedMsg)
+		if p.stateMachine.AssertState("READY") {
+			err = p.Received_REL_TRU_TELL_RATE_CHANGE(typedMsg)
+		}
 	default:
 		err = errors.New("Unrecognized message, type" + reflect.TypeOf(msg).String())
 	}
