@@ -41,6 +41,7 @@ import (
 	"github.com/dedis/crypto/abstract"
 	"github.com/lbarman/prifi/prifi-lib/net"
 	socks "github.com/lbarman/prifi/prifi-socks"
+	"github.com/lbarman/prifi/utils/timing"
 )
 
 /*
@@ -506,6 +507,8 @@ func (p *PriFiLibRelayInstance) Received_CLI_REL_TELL_PK_AND_EPH_PK(msg net.CLI_
 
 		// changing state
 		p.relayState.currentState = RELAY_STATE_COLLECTING_SHUFFLES
+
+		timing.StopMeasure("Resync")
 	}
 
 	return nil

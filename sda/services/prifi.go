@@ -5,6 +5,7 @@ import (
 	"github.com/dedis/cothority/log"
 	"github.com/dedis/cothority/network"
 	prifi_protocol "github.com/lbarman/prifi/sda/protocols"
+	"github.com/lbarman/prifi/utils/timing"
 	"time"
 )
 
@@ -92,6 +93,8 @@ func (s *ServiceState) startPriFiCommunicateProtocol() {
 		log.Error("Trying to start PriFi protocol from a non-relay node.")
 		return
 	}
+
+	timing.StartMeasure("Resync")
 
 	var wrapper *prifi_protocol.PriFiSDAProtocol
 	roster := s.churnHandler.createRoster()

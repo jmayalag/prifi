@@ -44,6 +44,9 @@ test_verbose:
 it:
 	./prifi.sh integration-test
 
+it2:
+	./prifi.sh integration-test2
+
 clean:
 	rm -f profile.cov *.log
 

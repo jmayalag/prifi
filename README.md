@@ -1,4 +1,4 @@
-# PriFi: A Low-Latency, Tracking-Resistant Protocol for Local-Area Anonymity [![Build Status](https://travis-ci.org/lbarman/prifi.svg?branch=master)](https://travis-ci.org/lbarman/prifi)
+# PriFi: A Low-Latency, Tracking-Resistant Protocol for Local-Area Anonymity [![Build Status](https://travis-ci.org/lbarman/prifi.svg?branch=master)](https://travis-ci.org/lbarman/prifi) [![Go Report Card](https://goreportcard.com/badge/github.com/lbarman/prifi)](https://goreportcard.com/report/github.com/lbarman/prifi)
 
 ## Introduction
 
@@ -24,7 +24,6 @@ go get github.com/lbarman/prifi/sda/app
 cd $GOPATH/src/github.com/lbarman/prifi
 ./prifi.sh install
 ```
-Ignore the `No buildable source` after the first step, that's OK. This script gets all the dependencies (via `go get`), and make sure everything is correctly set.
 
 ## Running PriFi
 

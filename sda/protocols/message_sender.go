@@ -30,7 +30,7 @@ func (p *PriFiSDAProtocol) buildMessageSender(identities map[string]PriFiIdentit
 	var relay *sda.TreeNode
 
 	for i := 0; i < len(nodes); i++ {
-		identifier := nodes[i].ServerIdentity.Address.String() + "=" + nodes[i].ServerIdentity.Public.String()
+		identifier := nodes[i].ServerIdentity.Public.String()
 		id, ok := identities[identifier]
 
 		if !ok {
