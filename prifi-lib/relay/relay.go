@@ -518,7 +518,7 @@ func (p *PriFiLibRelayInstance) Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS(msg n
 		p.relayState.currentDCNetRound = DCNetRound{currentRound: 0, dataAlreadySent: net.REL_CLI_DOWNSTREAM_DATA{}, startTime: time.Now()}
 		p.relayState.CellCoder.DecodeStart(p.relayState.UpstreamCellSize, p.relayState.MessageHistory)
 
-		p.stateMachine.ChangeState("SHUFFLE_SIGNATURES")
+		p.stateMachine.ChangeState("COLLECTING_SHUFFLE_SIGNATURES")
 
 	}
 
