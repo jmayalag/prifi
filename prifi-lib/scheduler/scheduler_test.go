@@ -189,7 +189,7 @@ func NeffShuffleTestHelper(t *testing.T, nClients int, nTrustees int, shuffleKey
 	parsed3 := toSend3.(*net.REL_TRU_TELL_TRANSCRIPT)
 
 	for j := 0; j < nTrustees; j++ {
-		toSend4, err := trustees[j].TrusteeView.ReceivedTranscriptFromRelay(parsed3.Bases, parsed3.EphPks, parsed3.Proofs)
+		toSend4, err := trustees[j].TrusteeView.ReceivedTranscriptFromRelay(parsed3.Bases, parsed3.GetKeys(), parsed3.Proofs)
 		if err != nil {
 			t.Error(err)
 		}
@@ -376,14 +376,14 @@ func TestWholeNeffShuffleRelayErrors(t *testing.T) {
 
 	// cannot send transcript when inner state is invalid
 	n.RelayView.Bases = make([]abstract.Point, 1)
-	n.RelayView.ShuffledPublicKeys = make([][]abstract.Point, 0)
+	n.RelayView.ShuffledPublicKeys = make([]net.PublicKeyArray, 0)
 	n.RelayView.Proofs = make([][]byte, 2)
 	_, err = n.RelayView.SendTranscript()
 	if err == nil {
 		t.Error("Relay shouldn't try to send obviously wrong transcript")
 	}
 	n.RelayView.Bases = make([]abstract.Point, 0)
-	n.RelayView.ShuffledPublicKeys = make([][]abstract.Point, 0)
+	n.RelayView.ShuffledPublicKeys = make([]net.PublicKeyArray, 0)
 	n.RelayView.Proofs = make([][]byte, 0)
 	_, err = n.RelayView.SendTranscript()
 	if err == nil {
@@ -405,7 +405,7 @@ func TestWholeNeffShuffleRelayErrors(t *testing.T) {
 	if err == nil {
 		t.Error("Relay shouldn't accept to verify without trustees public keys")
 	}
-	n.RelayView.ShuffledPublicKeys = make([][]abstract.Point, 1)
+	n.RelayView.ShuffledPublicKeys = make([]net.PublicKeyArray, 1)
 	n.RelayView.Signatures = make([][]byte, 2)
 	_, err = n.RelayView.VerifySigsAndSendToClients(make([]abstract.Point, 3))
 	if err == nil {
