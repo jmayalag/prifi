@@ -9,6 +9,7 @@ import (
 	"github.com/lbarman/prifi/prifi-lib/net"
 	"strconv"
 	"testing"
+	"time"
 )
 
 /**
@@ -375,5 +376,41 @@ func TestClient(t *testing.T) {
 	}
 	if err := relay.ReceivedMessage(msg18); err != nil {
 		t.Error("Relay should be able to receive this message, but", err)
+	}
+
+	//wait to trigger the timeouts
+	time.Sleep(5 * time.Second)
+
+	msg19 := net.TRU_REL_DC_CIPHER{
+		TrusteeID: 0,
+		RoundID:   1,
+		Data:      make([]byte, upCellSize),
+	}
+	if err := relay.ReceivedMessage(msg19); err != nil {
+		t.Error("Relay should be able to receive this message, but", err)
+	}
+
+	//this time the client message finishes the round
+	msg20 := net.CLI_REL_UPSTREAM_DATA{
+		ClientID: 0,
+		RoundID:  0,
+		Data:     make([]byte, upCellSize),
+	}
+	if err := relay.ReceivedMessage(msg20); err != nil {
+		t.Error("Relay should be able to receive this message, but", err)
+	}
+
+	//suppose we receive a ALL_ALL_SHUTDOWN
+	randomMsg := net.REL_CLI_TELL_TRUSTEES_PK{}
+	if err := relay.ReceivedMessage(randomMsg); err == nil {
+		t.Error("Should not accept this REL_CLI_TELL_TRUSTEES_PK message")
+	}
+
+	shutdownMsg := net.ALL_ALL_SHUTDOWN{}
+	if err := relay.ReceivedMessage(shutdownMsg); err != nil {
+		t.Error("Should handle this ALL_ALL_SHUTDOWN message, but", err)
+	}
+	if relay.stateMachine.State() != "SHUTDOWN" {
+		t.Error("RELAY should be in state SHUTDOWN")
 	}
 }
