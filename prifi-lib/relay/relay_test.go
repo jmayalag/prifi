@@ -3,8 +3,11 @@ package relay
 import (
 	"errors"
 	"github.com/dedis/cothority/log"
+	"github.com/dedis/crypto/random"
+	"github.com/lbarman/prifi/prifi-lib/config"
 	"github.com/lbarman/prifi/prifi-lib/crypto"
 	"github.com/lbarman/prifi/prifi-lib/net"
+	"strconv"
 	"testing"
 )
 
@@ -285,7 +288,6 @@ func TestClient(t *testing.T) {
 	}
 
 	//should receive a TRU_REL_TELL_NEW_BASE_AND_EPH_PKS
-
 	msg12 := net.TRU_REL_TELL_NEW_BASE_AND_EPH_PKS{
 		NewBase:   msg11.Base,
 		NewEphPks: msg11.EphPks,
@@ -305,6 +307,52 @@ func TestClient(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	_ = msg13.(*net.REL_TRU_TELL_TRANSCRIPT)
+	transcript := msg13.(*net.REL_TRU_TELL_TRANSCRIPT)
+
+	// should receive a TRU_REL_SHUFFLE_SIG. This should fail with the wrong sig
+	msg14 := net.TRU_REL_SHUFFLE_SIG{
+		TrusteeID: 0,
+		Sig:       make([]byte, 0)}
+	if err := relay.ReceivedMessage(msg14); err == nil {
+		t.Error("Relay should not continue if the signature is not valid !")
+	}
+	rs.neffShuffle.SignatureCount = 0
+
+	//prepare the transcript signature. Since it is OK, we're gonna sign only the latest permutation
+	var blob []byte
+
+	lastSharesByte, err := transcript.Bases[0].MarshalBinary()
+	if err != nil {
+		t.Error("Can't marshall the last shares...")
+	}
+	blob = append(blob, lastSharesByte...)
+
+	for j := 0; j < nClients; j++ {
+		pkBytes, err := transcript.EphPks[0].Keys[j].MarshalBinary()
+		if err != nil {
+			t.Error("Can't marshall shuffled public key" + strconv.Itoa(j))
+		}
+		blob = append(blob, pkBytes...)
+	}
+	signature := crypto.SchnorrSign(config.CryptoSuite, random.Stream, blob, trusteePriv)
+
+	msg15 := net.TRU_REL_SHUFFLE_SIG{
+		TrusteeID: 0,
+		Sig:       signature}
+	if err := relay.ReceivedMessage(msg15); err != nil {
+		t.Error("Relay should be able to receive this message, but", err)
+	}
+	if relay.stateMachine.State() != "COMMUNICATING" {
+		t.Error("In wrong state ! we should be in COMMUNICATING, but are in ", relay.stateMachine.State())
+	}
+
+	// should send REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG to clients
+	msg16, err := getClientMessage("REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG")
+	if err != nil {
+		t.Error(err)
+	}
+	_ = msg16.(*net.REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG)
+
+	// should receive a CLI_REL_DATA_UPSTREAM
 
 }
