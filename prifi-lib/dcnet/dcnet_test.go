@@ -225,3 +225,27 @@ func CellCoderTest(t *testing.T, suite abstract.Suite, factory CellFactory) {
 		float64(end.Sub(beg))/1000000000.0,
 		ncells, nbytes, nclients, ntrustees)
 }
+
+func TestOthers(t *testing.T) {
+	cellCoder := new(ownedCoder)
+	cellCoder.suite = nist.NewAES128SHA256P256()
+	cellCoder.random = cellCoder.suite.Cipher([]byte{0, 1, 2})
+
+	if size := cellCoder.ClientCellSize(1500); size != 1565 {
+		t.Error("Size should be", size)
+	}
+	if size := cellCoder.ClientCellSize(0); size != 65 {
+		t.Error("Size should be", size)
+	}
+	if size := cellCoder.TrusteeCellSize(1500); size != 1500 {
+		t.Error("Size should be", 1500)
+	}
+	if size := cellCoder.TrusteeCellSize(0); size != 0 {
+		t.Error("Size should be", 0)
+	}
+
+	data := make([]byte, 1500)
+	p := cellCoder.suite.Point().Base()
+	cellCoder.inlineEncode(data, p)
+
+}
