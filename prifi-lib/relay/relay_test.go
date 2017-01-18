@@ -354,5 +354,26 @@ func TestClient(t *testing.T) {
 	_ = msg16.(*net.REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG)
 
 	// should receive a CLI_REL_DATA_UPSTREAM
+	msg17 := net.CLI_REL_UPSTREAM_DATA{
+		ClientID: 0,
+		RoundID:  0,
+		Data:     make([]byte, upCellSize),
+	}
+	if err := relay.ReceivedMessage(msg17); err != nil {
+		t.Error("Relay should be able to receive this message, but", err)
+	}
 
+	//not enough to change round !
+	if rs.currentDCNetRound.currentRound != 0 {
+		t.Error("Should still be in round 0, no data from relay")
+	}
+
+	msg18 := net.TRU_REL_DC_CIPHER{
+		TrusteeID: 0,
+		RoundID:   0,
+		Data:      make([]byte, upCellSize),
+	}
+	if err := relay.ReceivedMessage(msg18); err != nil {
+		t.Error("Relay should be able to receive this message, but", err)
+	}
 }
