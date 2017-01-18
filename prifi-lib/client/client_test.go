@@ -56,7 +56,7 @@ func newTestMessageSenderWrapper(msgSender net.MessageSender) *net.MessageSender
 	return msw
 }
 
-func TestPrifi(t *testing.T) {
+func TestClient(t *testing.T) {
 
 	msgSender := new(TestMessageSender)
 	msw := newTestMessageSenderWrapper(msgSender)
@@ -205,7 +205,7 @@ func TestPrifi(t *testing.T) {
 	toSend3, _ := n.RelayView.SendTranscript()
 	parsed3 := toSend3.(*net.REL_TRU_TELL_TRANSCRIPT)
 	for j := 0; j < nTrustees; j++ {
-		toSend4, _ := trustees[j].TrusteeView.ReceivedTranscriptFromRelay(parsed3.Bases, parsed3.EphPks, parsed3.Proofs)
+		toSend4, _ := trustees[j].TrusteeView.ReceivedTranscriptFromRelay(parsed3.Bases, parsed3.GetKeys(), parsed3.Proofs)
 		parsed4 := toSend4.(*net.TRU_REL_SHUFFLE_SIG)
 		n.RelayView.ReceivedSignatureFromTrustee(parsed4.TrusteeID, parsed4.Sig)
 	}

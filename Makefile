@@ -42,7 +42,7 @@ test_verbose:
 	go test -v -race -short ./...
 
 it:
-	./prifi.sh integration-test
+	./prifi.sh integration-test || cat relay.log
 
 it2:
 	./prifi.sh integration-test2

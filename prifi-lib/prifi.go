@@ -6,7 +6,6 @@ import (
 	"github.com/lbarman/prifi/prifi-lib/net"
 	"github.com/lbarman/prifi/prifi-lib/relay"
 	"github.com/lbarman/prifi/prifi-lib/trustee"
-	"os"
 )
 
 /*
@@ -81,7 +80,7 @@ func (p *PriFiLibInstance) ReceivedMessage(msg interface{}) error {
 	err := p.specializedLibInstance.ReceivedMessage(msg)
 	if err != nil {
 		log.Error(err)
-		os.Exit(1) //todo we can cleanly call shutdown, and keep the service
+		return err
 	}
 	return nil
 }

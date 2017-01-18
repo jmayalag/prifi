@@ -192,12 +192,6 @@ func (p *PriFiLibTrusteeInstance) Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_
 		return errors.New(e)
 	}
 
-	//only at this moment we really learn the number of clients
-	nClients := len(clientsPks)
-	p.trusteeState.nClients = nClients
-	p.trusteeState.ClientPublicKeys = make([]abstract.Point, nClients)
-	p.trusteeState.sharedSecrets = make([]abstract.Point, nClients)
-
 	//fill in the clients keys
 	for i := 0; i < len(clientsPks); i++ {
 		p.trusteeState.ClientPublicKeys[i] = clientsPks[i]
@@ -226,24 +220,7 @@ If everything succeed, starts the goroutine for sending DC-net ciphers to the re
 */
 func (p *PriFiLibTrusteeInstance) Received_REL_TRU_TELL_TRANSCRIPT(msg net.REL_TRU_TELL_TRANSCRIPT) error {
 
-	// PROTOBUF FLATTENS MY 2-DIMENSIONAL ARRAY. THIS IS A PATCH
-	a := msg.EphPks
-	b := make([][]abstract.Point, p.trusteeState.nTrustees)
-	if len(a) > p.trusteeState.nTrustees {
-		for i := 0; i < p.trusteeState.nTrustees; i++ {
-			b[i] = make([]abstract.Point, p.trusteeState.nClients)
-			for j := 0; j < p.trusteeState.nClients; j++ {
-				v := a[i*p.trusteeState.nTrustees+j][0]
-				b[i][j] = v
-			}
-		}
-		msg.EphPks = b
-	} else {
-		log.Print("Probably the Protobuf lib has been patched ! you might remove this code.")
-	}
-	// END OF PATCH
-
-	toSend, err := p.trusteeState.neffShuffle.ReceivedTranscriptFromRelay(msg.Bases, msg.EphPks, msg.Proofs)
+	toSend, err := p.trusteeState.neffShuffle.ReceivedTranscriptFromRelay(msg.Bases, msg.GetKeys(), msg.Proofs)
 	if err != nil {
 		return errors.New("Could not do ReceivedTranscriptFromRelay, error is " + err.Error())
 	}

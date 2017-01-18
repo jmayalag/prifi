@@ -18,7 +18,7 @@ type NeffShuffleRelay struct {
 
 	//this is the transcript, i.e. we keep everything
 	Bases              []abstract.Point
-	ShuffledPublicKeys [][]abstract.Point
+	ShuffledPublicKeys []net.PublicKeyArray
 	Proofs             [][]byte
 	Signatures         [][]byte
 	SignatureCount     int
@@ -41,7 +41,7 @@ func (r *NeffShuffleRelay) Init(nTrustees int) error {
 
 	// prepare the empty transcript
 	r.Bases = make([]abstract.Point, nTrustees)
-	r.ShuffledPublicKeys = make([][]abstract.Point, nTrustees)
+	r.ShuffledPublicKeys = make([]net.PublicKeyArray, nTrustees)
 	r.Proofs = make([][]byte, nTrustees)
 	r.Signatures = make([][]byte, nTrustees)
 	r.currentTrusteeShuffling = 0
@@ -118,7 +118,7 @@ func (r *NeffShuffleRelay) ReceivedShuffleFromTrustee(newBase abstract.Point, ne
 
 	// store this shuffle's result in our transcript
 	j := r.currentTrusteeShuffling
-	r.ShuffledPublicKeys[j] = newPublicKeys
+	r.ShuffledPublicKeys[j] = net.PublicKeyArray{Keys: newPublicKeys}
 	r.Proofs[j] = proof
 	r.Bases[j] = newBase
 
@@ -241,14 +241,14 @@ func (r *NeffShuffleRelay) VerifySigsAndSendToClients(trusteesPublicKeys []abstr
 	ephPubKeys := r.ShuffledPublicKeys[lastPermutationIndex]
 	signatures := r.Signatures
 
-	success, err := multiSigVerify(trusteesPublicKeys, lastBase, ephPubKeys, signatures)
+	success, err := multiSigVerify(trusteesPublicKeys, lastBase, ephPubKeys.Keys, signatures)
 	if success != true {
 		return nil, err
 	}
 
 	msg := &net.REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG{
 		Base:         lastBase,
-		EphPks:       ephPubKeys,
+		EphPks:       ephPubKeys.Keys,
 		TrusteesSigs: signatures}
 	return msg, nil
 }
