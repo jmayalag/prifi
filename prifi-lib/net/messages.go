@@ -86,11 +86,25 @@ type REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE struct {
 	Base   abstract.Point
 }
 
+//protobuf can't handle [][]abstract.Point, so we do []PublicKeyArray
+type PublicKeyArray struct {
+	Keys []abstract.Point
+}
+
+//Converts []PublicKeyArray -> [][]abstract.Point and returns it
+func (m *REL_TRU_TELL_TRANSCRIPT) GetKeys() [][]abstract.Point {
+	out := make([][]abstract.Point, 0)
+	for k := range m.EphPks {
+		out = append(out, m.EphPks[k].Keys)
+	}
+	return out
+}
+
 // REL_TRU_TELL_TRANSCRIPT message contains all the shuffles perfomrmed in a Neff shuffle round.
 // It is sent by the relay to the trustees to be verified.
 type REL_TRU_TELL_TRANSCRIPT struct {
 	Bases  []abstract.Point
-	EphPks [][]abstract.Point
+	EphPks []PublicKeyArray
 	Proofs [][]byte
 }
 

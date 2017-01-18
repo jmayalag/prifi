@@ -56,7 +56,7 @@ func newTestMessageSenderWrapper(msgSender net.MessageSender) *net.MessageSender
 	return msw
 }
 
-func TestPrifi(t *testing.T) {
+func TestClient(t *testing.T) {
 
 	msgSender := new(TestMessageSender)
 	msw := newTestMessageSenderWrapper(msgSender)
