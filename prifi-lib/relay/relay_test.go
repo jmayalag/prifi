@@ -138,7 +138,7 @@ func TestClient(t *testing.T) {
 	msg.Add("WindowSize", 1)
 	msg.Add("UseUDP", true)
 	msg.Add("UseDummyDataDown", true)
-	msg.Add("ExperimentRoundLimit", -1)
+	msg.Add("ExperimentRoundLimit", 2)
 
 	if err := relay.ReceivedMessage(msg); err != nil {
 		t.Error("Relay should be able to receive this message, but", err)
@@ -155,7 +155,7 @@ func TestClient(t *testing.T) {
 	if rs.nClientsPkCollected != 0 {
 		t.Error("nClientsPkCollected was not set correctly")
 	}
-	if rs.ExperimentRoundLimit != -1 {
+	if rs.ExperimentRoundLimit != 2 {
 		t.Error("ExperimentRoundLimit was not set correctly")
 	}
 	if rs.UpstreamCellSize != upCellSize {
@@ -379,7 +379,7 @@ func TestClient(t *testing.T) {
 	}
 
 	//wait to trigger the timeouts
-	time.Sleep(5 * time.Second)
+	time.Sleep(3 * time.Second)
 
 	msg19 := net.TRU_REL_DC_CIPHER{
 		TrusteeID: 0,
@@ -395,6 +395,16 @@ func TestClient(t *testing.T) {
 		ClientID: 0,
 		RoundID:  0,
 		Data:     make([]byte, upCellSize),
+	}
+	if err := relay.ReceivedMessage(msg20); err != nil {
+		t.Error("Relay should be able to receive this message, but", err)
+	}
+
+	// do another round
+	msg20.RoundID = 2
+	msg18.RoundID = 2
+	if err := relay.ReceivedMessage(msg18); err != nil {
+		t.Error("Relay should be able to receive this message, but", err)
 	}
 	if err := relay.ReceivedMessage(msg20); err != nil {
 		t.Error("Relay should be able to receive this message, but", err)
