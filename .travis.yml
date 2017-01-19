@@ -2,11 +2,8 @@ language: go
 go:
 - 1.7
 install:
-- "echo done"
 - "./prifi.sh install"
-- "echo done"
 - go get golang.org/x/tools/cmd/cover
-- "echo done"
 - go get github.com/mattn/goveralls
 env:
   global:

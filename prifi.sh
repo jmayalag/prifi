@@ -181,8 +181,6 @@ case $1 in
 		test_cothority 
 		echo -e "$okMsg"
 
-		echo "were done here"
-
 		;;
 
 	relay|Relay|RELAY)
