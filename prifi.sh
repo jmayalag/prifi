@@ -13,7 +13,7 @@
 # variables that you might change often
 
 dbg_lvl=3						# 1=less verbose, 3=more verbose. goes up to 5, but then prints the SDA's message (network framework)
-try_use_real_identities="false"	# if "true", will try to use "self-generated" public/private key as a replacement for the dummy keys
+try_use_real_identities="true"	# if "true", will try to use "self-generated" public/private key as a replacement for the dummy keys
 								# we generated for you. It asks you if it does not find real keys. If false, will always use the dummy keys.
 colors="true"					# if "false", the output of PriFi (and this script) will be in black-n-white
 
@@ -114,10 +114,14 @@ test_cothority() {
 		exit 1
 	fi
 
+	echo "Halfway through...c"
+	echo $(cd $GOPATH/src/github.com/dedis/cothority; git status --porcelain)
+
 	if [ ! -z "$(cd $GOPATH/src/github.com/dedis/cothority; git status --porcelain)" ]; then
 		echo -e "$errorMsg \"$GOPATH/src/github.com/dedis/cothority\" is on the correct branch \"$cothorityBranchRequired\", but is dirty. Please stash/clean your changes."
 		exit 1
-	fi
+	
+	echo "finished !"
 }
 
 # test if $1 is a digit, if not, prints "argument $2 invalid" and exit.
