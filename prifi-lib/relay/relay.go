@@ -361,11 +361,7 @@ func (p *PriFiLibRelayInstance) roundFinished() error {
 
 	//prepare for the next round
 	nextRound := p.relayState.currentDCNetRound.CurrentRound() + 1
-	nilMessage := &net.REL_CLI_DOWNSTREAM_DATA{
-		RoundID:    -1,
-		Data:       make([]byte, 0),
-		FlagResync: false}
-	p.relayState.currentDCNetRound = NewDCNetRound(nextRound, nilMessage)
+	p.relayState.currentDCNetRound.ChangeRound(nextRound)
 	p.relayState.CellCoder.DecodeStart(p.relayState.UpstreamCellSize, p.relayState.MessageHistory) //this empties the buffer, making them ready for a new round
 
 	//we just sent the data down, initiating a round. Let's prevent being blocked by a dead client
@@ -514,7 +510,7 @@ func (p *PriFiLibRelayInstance) Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS(msg n
 		}
 
 		// prepare to collect the ciphers
-		p.relayState.currentDCNetRound = NewDCNetRound(0, &net.REL_CLI_DOWNSTREAM_DATA{})
+		p.relayState.currentDCNetRound.ChangeRound(0)
 		p.relayState.CellCoder.DecodeStart(p.relayState.UpstreamCellSize, p.relayState.MessageHistory)
 
 		p.stateMachine.ChangeState("COLLECTING_SHUFFLE_SIGNATURES")

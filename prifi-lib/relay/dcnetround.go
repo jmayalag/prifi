@@ -24,6 +24,14 @@ func NewDCNetRound(currentRound int32, dataAlreadySent *net.REL_CLI_DOWNSTREAM_D
 }
 
 //Check if we are still in the given round
+func (dc *DCNetRound) ChangeRound(newRound int32) {
+	dc.Lock()
+	defer dc.Unlock()
+	dc.currentRound = newRound
+	dc.dataAlreadySent = nil
+}
+
+//Check if we are still in the given round
 func (dc *DCNetRound) isStillInRound(round int32) bool {
 	dc.Lock()
 	defer dc.Unlock()
