@@ -17,7 +17,7 @@ func (p *PriFiLibRelayInstance) checkIfRoundHasEndedAfterTimeOut_Phase1(roundID 
 
 	time.Sleep(TIMEOUT_PHASE_1)
 
-	if p.relayState.currentDCNetRound.currentRound != roundID {
+	if !p.relayState.currentDCNetRound.isStillInRound(roundID) {
 		return //everything went well, it's great !
 	}
 
@@ -36,8 +36,8 @@ func (p *PriFiLibRelayInstance) checkIfRoundHasEndedAfterTimeOut_Phase1(roundID 
 		if p.relayState.UseUDP {
 			for clientID := range missingClientCiphers {
 				log.Error("Relay : Client " + strconv.Itoa(clientID) + " didn't sent us is cipher for round " + strconv.Itoa(int(roundID)) + ". Phase 1 timeout. Re-sending...")
-				extraInfo := "(client " + strconv.Itoa(clientID) + ", round " + strconv.Itoa(int(p.relayState.currentDCNetRound.currentRound)) + ")"
-				p.messageSender.SendToClientWithLog(clientID, &p.relayState.currentDCNetRound.dataAlreadySent, extraInfo)
+				extraInfo := "(client " + strconv.Itoa(clientID) + ", round " + strconv.Itoa(int(p.relayState.currentDCNetRound.CurrentRound())) + ")"
+				p.messageSender.SendToClientWithLog(clientID, p.relayState.currentDCNetRound.GetDataAlreadySent(), extraInfo)
 			}
 		}
 
@@ -61,7 +61,7 @@ func (p *PriFiLibRelayInstance) checkIfRoundHasEndedAfterTimeOut_Phase2(roundID 
 
 	time.Sleep(TIMEOUT_PHASE_2)
 
-	if p.relayState.currentDCNetRound.currentRound != roundID {
+	if !p.relayState.currentDCNetRound.isStillInRound(roundID) {
 		//everything went well, it's great !
 		return
 	}

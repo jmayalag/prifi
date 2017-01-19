@@ -175,7 +175,7 @@ func (p *PriFiLibRelayInstance) Received_CLI_REL_UPSTREAM_DATA(msg net.CLI_REL_U
 
 	if p.relayState.bufferManager.HasAllCiphersForCurrentRound() {
 
-		log.Lvl2("Relay has collected all ciphers for round", p.relayState.currentDCNetRound.currentRound, ", decoding...")
+		log.Lvl2("Relay has collected all ciphers for round", p.relayState.currentDCNetRound.CurrentRound(), ", decoding...")
 		p.finalizeUpstreamData()
 
 		//one round has just passed !
@@ -203,7 +203,7 @@ func (p *PriFiLibRelayInstance) Received_TRU_REL_DC_CIPHER(msg net.TRU_REL_DC_CI
 
 	if p.relayState.bufferManager.HasAllCiphersForCurrentRound() {
 
-		log.Lvl2("Relay has collected all ciphers for round", p.relayState.currentDCNetRound.currentRound, ", decoding...")
+		log.Lvl2("Relay has collected all ciphers for round", p.relayState.currentDCNetRound.CurrentRound(), ", decoding...")
 		p.finalizeUpstreamData()
 
 		// send the data down
@@ -328,7 +328,7 @@ func (p *PriFiLibRelayInstance) sendDownstreamData() error {
 		RoundID:    p.relayState.nextDownStreamRoundToSend,
 		Data:       downstreamCellContent,
 		FlagResync: flagResync}
-	p.relayState.currentDCNetRound.dataAlreadySent = *toSend
+	p.relayState.currentDCNetRound.SetDataAlreadySent(toSend)
 
 	if !p.relayState.UseUDP {
 		// broadcast to all clients
@@ -356,21 +356,20 @@ func (p *PriFiLibRelayInstance) roundFinished() error {
 
 	p.relayState.numberOfNonAckedDownstreamPackets--
 
-	timeSpent := time.Since(p.relayState.currentDCNetRound.startTime)
-	log.Lvl2("Relay finished round "+strconv.Itoa(int(p.relayState.currentDCNetRound.currentRound))+" (after", timeSpent, ").")
+	log.Lvl2("Relay finished round "+strconv.Itoa(int(p.relayState.currentDCNetRound.CurrentRound()))+" (after", p.relayState.currentDCNetRound.TimeSpentInRound(), ").")
 	p.relayState.statistics.Report()
 
 	//prepare for the next round
-	nextRound := p.relayState.currentDCNetRound.currentRound + 1
+	nextRound := p.relayState.currentDCNetRound.CurrentRound() + 1
 	nilMessage := &net.REL_CLI_DOWNSTREAM_DATA{
 		RoundID:    -1,
 		Data:       make([]byte, 0),
 		FlagResync: false}
-	p.relayState.currentDCNetRound = DCNetRound{currentRound: nextRound, dataAlreadySent: *nilMessage, startTime: time.Now()}
+	p.relayState.currentDCNetRound = NewDCNetRound(nextRound, nilMessage)
 	p.relayState.CellCoder.DecodeStart(p.relayState.UpstreamCellSize, p.relayState.MessageHistory) //this empties the buffer, making them ready for a new round
 
 	//we just sent the data down, initiating a round. Let's prevent being blocked by a dead client
-	go p.checkIfRoundHasEndedAfterTimeOut_Phase1(p.relayState.currentDCNetRound.currentRound)
+	go p.checkIfRoundHasEndedAfterTimeOut_Phase1(p.relayState.currentDCNetRound.CurrentRound())
 
 	// Test if we are doing an experiment, and if we need to stop at some point.
 	if nextRound == int32(p.relayState.ExperimentRoundLimit) {
@@ -515,7 +514,7 @@ func (p *PriFiLibRelayInstance) Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS(msg n
 		}
 
 		// prepare to collect the ciphers
-		p.relayState.currentDCNetRound = DCNetRound{currentRound: 0, dataAlreadySent: net.REL_CLI_DOWNSTREAM_DATA{}, startTime: time.Now()}
+		p.relayState.currentDCNetRound = NewDCNetRound(0, &net.REL_CLI_DOWNSTREAM_DATA{})
 		p.relayState.CellCoder.DecodeStart(p.relayState.UpstreamCellSize, p.relayState.MessageHistory)
 
 		p.stateMachine.ChangeState("COLLECTING_SHUFFLE_SIGNATURES")
