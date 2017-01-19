@@ -201,9 +201,10 @@ case $1 in
 		fi
 
 		#specialize the config file (we use the dummy folder, and maybe we replace with the real folder after)
-		prifi_file2="$configdir/$prifi_file"
-		identity_file2="$configdir/$defaultIdentitiesDir/relay/$identity_file"
-		group_file2="$configdir/$defaultIdentitiesDir/relay/$group_file"
+		BASEDIR=$(dirname "$0")
+		prifi_file2="$BASEDIR/$configdir/$prifi_file"
+		identity_file2="$BASEDIR/$configdir/$defaultIdentitiesDir/relay/$identity_file"
+		group_file2="$BASEDIR/$configdir/$defaultIdentitiesDir/relay/$group_file"
 
 		#we we want to, try to replace with the real folder
 		if [ "$try_use_real_identities" = "true" ]; then
@@ -240,9 +241,10 @@ case $1 in
 		test_digit $trusteeId 2
 
 		#specialize the config file (we use the dummy folder, and maybe we replace with the real folder after)
-		prifi_file2="$configdir/$prifi_file"
-		identity_file2="$configdir/$defaultIdentitiesDir/trustee$trusteeId/$identity_file"
-		group_file2="$configdir/$defaultIdentitiesDir/trustee$trusteeId/$group_file"
+		BASEDIR=$(dirname "$0")
+		prifi_file2="$BASEDIR/$configdir/$prifi_file"
+		identity_file2="$BASEDIR/$configdir/$defaultIdentitiesDir/trustee$trusteeId/$identity_file"
+		group_file2="$BASEDIR/$configdir/$defaultIdentitiesDir/trustee$trusteeId/$group_file"
 
 		#we we want to, try to replace with the real folder
 		if [ "$try_use_real_identities" = "true" ]; then
@@ -285,9 +287,10 @@ case $1 in
 		fi
 
 		#specialize the config file (we use the dummy folder, and maybe we replace with the real folder after)
-		prifi_file2="$configdir/$prifi_file"
-		identity_file2="$configdir/$defaultIdentitiesDir/client$clientId/$identity_file"
-		group_file2="$configdir/$defaultIdentitiesDir/client$clientId/$group_file"
+		BASEDIR=$(dirname "$0")
+		prifi_file2="$BASEDIR/$configdir/$prifi_file"
+		identity_file2="$BASEDIR/$configdir/$defaultIdentitiesDir/client$clientId/$identity_file"
+		group_file2="$BASEDIR/$configdir/$defaultIdentitiesDir/client$clientId/$group_file"
 
 		#we we want to, try to replace with the real folder
 		if [ "$try_use_real_identities" = "true" ]; then
@@ -328,9 +331,10 @@ case $1 in
 		fi
 
 		#specialize the config file, and test all files
-		prifi_file2="$configdir/$prifi_file"
-		identity_file2="$configdir/$defaultIdentitiesDir/relay/$identity_file"
-		group_file2="$configdir/$defaultIdentitiesDir/relay/$group_file"
+		BASEDIR=$(dirname "$0")
+		prifi_file2="$BASEDIR/$configdir/$prifi_file"
+		identity_file2="$BASEDIR/$configdir/$defaultIdentitiesDir/relay/$identity_file"
+		group_file2="$BASEDIR/$configdir/$defaultIdentitiesDir/relay/$group_file"
 		test_files
 
 		#run PriFi in relay mode
@@ -441,8 +445,9 @@ case $1 in
 				;;
 		esac
 
-		pathReal="$configdir/$realIdentitiesDir/$path/"
-		pathDefault="$configdir/$defaultIdentitiesDir/$path/"
+		BASEDIR=$(dirname "$0")
+		pathReal="$BASEDIR/$configdir/$realIdentitiesDir/$path/"
+		pathDefault="$BASEDIR/$configdir/$defaultIdentitiesDir/$path/"
 		echo -e "Gonna generate ${highlightOn}identity.toml${highlightOff} in ${highlightOn}$pathReal${highlightOff}"
 
 		#generate identity.toml
