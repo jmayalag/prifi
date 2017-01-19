@@ -158,6 +158,10 @@ test_files() {
 #     MAIN SWITCH
 # ------------------------
 
+# on kill, kill all spawed subprocesses
+trap "exit" INT TERM
+trap "kill 0" EXIT
+
 # $1 is operation : "install", "relay", "client", "trustee", "sockstest", "all-localhost", "clean", "gen-id"
 case $1 in
 
@@ -360,7 +364,6 @@ case $1 in
 		if [ "$socks" -ne 1 ]; then
 			echo -n "Socks proxy not running, starting it... "
 			cd socks && ./run-socks-proxy.sh "$socksServer2Port" > ../socks.log 2>&1 &
-			SOCKSPID=$!
 			echo -e "$okMsg"
 		fi
 
@@ -400,7 +403,7 @@ case $1 in
 
 		read -p "PriFi deployed. Press [enter] to kill all..." key
 
-		kill -TERM -- -$THISPGID
+		kill -TERM -- -$THISPGID 2>/dev/null 1>/dev/null
 		;;
 
 	gen-id|Gen-Id|GEN-ID)
