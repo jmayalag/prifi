@@ -446,14 +446,33 @@ case $1 in
 		echo -e "Gonna generate ${highlightOn}identity.toml${highlightOff} in ${highlightOn}$pathReal${highlightOff}"
 
 		#generate identity.toml
+		echo
 		DEBUG_COLOR=$colors go run $bin_file --default_path "$pathReal" gen-id
+		echo
 
 		#now group.toml
 		echo -n "Done ! now copying group.toml from identities_default/ to identity_real/..."
-		cp "${pathDefault}/group.toml" "${pathReal}group.toml"
-		echo -e "$okMsg"
+		if [ -f "${pathReal}group.toml" ]; then
+			echo ""
+			echo -e "$warningMsg File \"${pathReal}group.toml\" already exists"
+			read -p "overwrite ? [y/n] " key2
 
-		echo -e "Please edit ${highlightOn}$pathReal/group.toml${highlightOff} to the correct values."
+				case "$key2" in
+					y|Y)
+						echo -n "Copying group.toml from identities_default/ to identity_real/..."
+						cp "${pathDefault}/group.toml" "${pathReal}group.toml"
+						echo -e "$okMsg"
+						;;
+					*)
+						echo -e "$okMsg File ${pathReal}group.toml not changed."
+						;;
+				esac
+		else
+			cp "${pathDefault}/group.toml" "${pathReal}group.toml"
+			echo -e "$okMsg"
+		fi
+
+		echo -e "Please edit ${highlightOn}${pathReal}group.toml${highlightOff} to the correct values."
 		;;
 
 	integration-test)
