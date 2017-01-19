@@ -64,12 +64,21 @@ type REL_CLI_DOWNSTREAM_DATA struct {
 	FlagResync bool
 }
 
+//Converts []ByteArray -> [][]byte and returns it
+func (m *REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG) GetSignatures() [][]byte {
+	out := make([][]byte, 0)
+	for k := range m.TrusteesSigs {
+		out = append(out, m.TrusteesSigs[k].Bytes)
+	}
+	return out
+}
+
 // REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG message contains the ephemeral public keys and the signatures
 // of the trustees and is sent by the relay to the client.
 type REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG struct {
 	Base         abstract.Point
 	EphPks       []abstract.Point
-	TrusteesSigs [][]byte
+	TrusteesSigs []ByteArray
 }
 
 // REL_CLI_TELL_TRUSTEES_PK message contains the public keys of the trustees
@@ -91,6 +100,11 @@ type PublicKeyArray struct {
 	Keys []abstract.Point
 }
 
+//protobuf can't handle [][]byte, so we do []ByteArray
+type ByteArray struct {
+	Bytes []byte
+}
+
 //Converts []PublicKeyArray -> [][]abstract.Point and returns it
 func (m *REL_TRU_TELL_TRANSCRIPT) GetKeys() [][]abstract.Point {
 	out := make([][]abstract.Point, 0)
@@ -100,12 +114,21 @@ func (m *REL_TRU_TELL_TRANSCRIPT) GetKeys() [][]abstract.Point {
 	return out
 }
 
+//Converts []ByteArray -> [][]byte and returns it
+func (m *REL_TRU_TELL_TRANSCRIPT) GetProofs() [][]byte {
+	out := make([][]byte, 0)
+	for k := range m.Proofs {
+		out = append(out, m.Proofs[k].Bytes)
+	}
+	return out
+}
+
 // REL_TRU_TELL_TRANSCRIPT message contains all the shuffles perfomrmed in a Neff shuffle round.
 // It is sent by the relay to the trustees to be verified.
 type REL_TRU_TELL_TRANSCRIPT struct {
 	Bases  []abstract.Point
 	EphPks []PublicKeyArray
-	Proofs [][]byte
+	Proofs []ByteArray
 }
 
 // TRU_REL_DC_CIPHER message contains the DC-net cipher of a trustee for a given round and is sent to the relay.
