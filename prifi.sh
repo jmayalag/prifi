@@ -120,6 +120,7 @@ test_cothority() {
 	if [ ! -z "$(cd $GOPATH/src/github.com/dedis/cothority; git status --porcelain)" ]; then
 		echo -e "$errorMsg \"$GOPATH/src/github.com/dedis/cothority\" is on the correct branch \"$cothorityBranchRequired\", but is dirty. Please stash/clean your changes."
 		exit 1
+	fi
 	
 	echo "finished !"
 }
