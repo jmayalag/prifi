@@ -581,7 +581,7 @@ case $1 in
 		test_go
 		test_cothority
 
-		thisScript="$0"	&
+		thisScript="$0"
 
 		echo -n "Starting relay...			"
 		"$thisScript" relay > relay.log 2>&1 &
