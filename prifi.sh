@@ -113,6 +113,11 @@ test_cothority() {
 		echo -e "$errorMsg Make sure \"$GOPATH/src/github.com/dedis/cothority\" is a git repo, on branch \"$cothorityBranchRequired\". Try running \"./prifi.sh install\""
 		exit 1
 	fi
+
+	if [ ! -z "$(cd $GOPATH/src/github.com/dedis/cothority; git status --porcelain)" ]; then
+		echo -e "$errorMsg \"$GOPATH/src/github.com/dedis/cothority\" is on the correct branch \"$cothorityBranchRequired\", but is dirty. Please stash/clean your changes."
+		exit 1
+	fi
 }
 
 # test if $1 is a digit, if not, prints "argument $2 invalid" and exit.
