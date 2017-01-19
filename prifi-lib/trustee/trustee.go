@@ -220,7 +220,7 @@ If everything succeed, starts the goroutine for sending DC-net ciphers to the re
 */
 func (p *PriFiLibTrusteeInstance) Received_REL_TRU_TELL_TRANSCRIPT(msg net.REL_TRU_TELL_TRANSCRIPT) error {
 
-	toSend, err := p.trusteeState.neffShuffle.ReceivedTranscriptFromRelay(msg.Bases, msg.GetKeys(), msg.Proofs)
+	toSend, err := p.trusteeState.neffShuffle.ReceivedTranscriptFromRelay(msg.Bases, msg.GetKeys(), msg.GetProofs())
 	if err != nil {
 		return errors.New("Could not do ReceivedTranscriptFromRelay, error is " + err.Error())
 	}

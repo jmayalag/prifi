@@ -19,8 +19,8 @@ type NeffShuffleRelay struct {
 	//this is the transcript, i.e. we keep everything
 	Bases              []abstract.Point
 	ShuffledPublicKeys []net.PublicKeyArray
-	Proofs             [][]byte
-	Signatures         [][]byte
+	Proofs             []net.ByteArray
+	Signatures         []net.ByteArray
 	SignatureCount     int
 
 	//this is the mutable state, i.e. it change with every shuffling from trustee
@@ -42,8 +42,8 @@ func (r *NeffShuffleRelay) Init(nTrustees int) error {
 	// prepare the empty transcript
 	r.Bases = make([]abstract.Point, nTrustees)
 	r.ShuffledPublicKeys = make([]net.PublicKeyArray, nTrustees)
-	r.Proofs = make([][]byte, nTrustees)
-	r.Signatures = make([][]byte, nTrustees)
+	r.Proofs = make([]net.ByteArray, nTrustees)
+	r.Signatures = make([]net.ByteArray, nTrustees)
 	r.currentTrusteeShuffling = 0
 	r.NTrustees = nTrustees
 
@@ -119,7 +119,7 @@ func (r *NeffShuffleRelay) ReceivedShuffleFromTrustee(newBase abstract.Point, ne
 	// store this shuffle's result in our transcript
 	j := r.currentTrusteeShuffling
 	r.ShuffledPublicKeys[j] = net.PublicKeyArray{Keys: newPublicKeys}
-	r.Proofs[j] = proof
+	r.Proofs[j] = net.ByteArray{Bytes: proof}
 	r.Bases[j] = newBase
 
 	//will be used by next trustee
@@ -163,7 +163,7 @@ func (r *NeffShuffleRelay) ReceivedSignatureFromTrustee(trusteeID int, signature
 	}
 
 	// store this shuffle's signature in our transcript
-	r.Signatures[trusteeID] = signature
+	r.Signatures[trusteeID] = net.ByteArray{Bytes: signature}
 	r.SignatureCount++
 
 	return r.SignatureCount == r.NTrustees, nil
@@ -241,7 +241,12 @@ func (r *NeffShuffleRelay) VerifySigsAndSendToClients(trusteesPublicKeys []abstr
 	ephPubKeys := r.ShuffledPublicKeys[lastPermutationIndex]
 	signatures := r.Signatures
 
-	success, err := multiSigVerify(trusteesPublicKeys, lastBase, ephPubKeys.Keys, signatures)
+	sigArray := make([][]byte, 0)
+	for k := range r.Signatures {
+		sigArray = append(sigArray, r.Signatures[k].Bytes)
+	}
+
+	success, err := multiSigVerify(trusteesPublicKeys, lastBase, ephPubKeys.Keys, sigArray)
 	if success != true {
 		return nil, err
 	}

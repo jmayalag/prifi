@@ -189,7 +189,7 @@ func NeffShuffleTestHelper(t *testing.T, nClients int, nTrustees int, shuffleKey
 	parsed3 := toSend3.(*net.REL_TRU_TELL_TRANSCRIPT)
 
 	for j := 0; j < nTrustees; j++ {
-		toSend4, err := trustees[j].TrusteeView.ReceivedTranscriptFromRelay(parsed3.Bases, parsed3.GetKeys(), parsed3.Proofs)
+		toSend4, err := trustees[j].TrusteeView.ReceivedTranscriptFromRelay(parsed3.Bases, parsed3.GetKeys(), parsed3.GetProofs())
 		if err != nil {
 			t.Error(err)
 		}
@@ -223,7 +223,7 @@ func NeffShuffleTestHelper(t *testing.T, nClients int, nTrustees int, shuffleKey
 
 	//client verify the sig and recognize their slot
 	for j := 0; j < nClients; j++ {
-		mySlot, err := n.ClientVerifySigAndRecognizeSlot(clients[j].Private, trusteesPks, parsed5.Base, parsed5.EphPks, parsed5.TrusteesSigs)
+		mySlot, err := n.ClientVerifySigAndRecognizeSlot(clients[j].Private, trusteesPks, parsed5.Base, parsed5.EphPks, parsed5.GetSignatures())
 		if err != nil {
 			t.Error(err)
 		}
@@ -377,14 +377,14 @@ func TestWholeNeffShuffleRelayErrors(t *testing.T) {
 	// cannot send transcript when inner state is invalid
 	n.RelayView.Bases = make([]abstract.Point, 1)
 	n.RelayView.ShuffledPublicKeys = make([]net.PublicKeyArray, 0)
-	n.RelayView.Proofs = make([][]byte, 2)
+	n.RelayView.Proofs = make([]net.ByteArray, 2)
 	_, err = n.RelayView.SendTranscript()
 	if err == nil {
 		t.Error("Relay shouldn't try to send obviously wrong transcript")
 	}
 	n.RelayView.Bases = make([]abstract.Point, 0)
 	n.RelayView.ShuffledPublicKeys = make([]net.PublicKeyArray, 0)
-	n.RelayView.Proofs = make([][]byte, 0)
+	n.RelayView.Proofs = make([]net.ByteArray, 0)
 	_, err = n.RelayView.SendTranscript()
 	if err == nil {
 		t.Error("Relay shouldn't try to send empty transcript")
@@ -406,7 +406,7 @@ func TestWholeNeffShuffleRelayErrors(t *testing.T) {
 		t.Error("Relay shouldn't accept to verify without trustees public keys")
 	}
 	n.RelayView.ShuffledPublicKeys = make([]net.PublicKeyArray, 1)
-	n.RelayView.Signatures = make([][]byte, 2)
+	n.RelayView.Signatures = make([]net.ByteArray, 2)
 	_, err = n.RelayView.VerifySigsAndSendToClients(make([]abstract.Point, 3))
 	if err == nil {
 		t.Error("Relay shouldn't accept to verify when sizes are mismatching")

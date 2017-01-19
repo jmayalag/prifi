@@ -1,10 +1,10 @@
 package relay
 
 import (
-	"strconv"
 	"time"
 
 	"github.com/dedis/cothority/log"
+	"strconv"
 )
 
 /*
@@ -17,7 +17,7 @@ func (p *PriFiLibRelayInstance) checkIfRoundHasEndedAfterTimeOut_Phase1(roundID 
 
 	time.Sleep(TIMEOUT_PHASE_1)
 
-	if p.relayState.currentDCNetRound.currentRound != roundID {
+	if !p.relayState.currentDCNetRound.isStillInRound(roundID) {
 		return //everything went well, it's great !
 	}
 
@@ -25,28 +25,20 @@ func (p *PriFiLibRelayInstance) checkIfRoundHasEndedAfterTimeOut_Phase1(roundID 
 		return //nothing to ensure in that case
 	}
 
-	allGood := true
+	log.Error("waitAndCheckIfClientsSentData : We seem to be stuck in round", roundID, ". Phase 1 timeout.")
 
-	if p.relayState.bufferManager.CurrentRound() == roundID {
-		log.Error("waitAndCheckIfClientsSentData : We seem to be stuck in round", roundID, ". Phase 1 timeout.")
+	missingClientCiphers, missingTrusteesCiphers := p.relayState.bufferManager.MissingCiphersForCurrentRound()
 
-		missingClientCiphers, missingTrusteesCiphers := p.relayState.bufferManager.MissingCiphersForCurrentRound()
-
-		//If we're using UDP, client might have missed the broadcast, re-sending
-		if p.relayState.UseUDP {
-			for clientID := range missingClientCiphers {
-				log.Error("Relay : Client " + strconv.Itoa(clientID) + " didn't sent us is cipher for round " + strconv.Itoa(int(roundID)) + ". Phase 1 timeout. Re-sending...")
-				extraInfo := "(client " + strconv.Itoa(clientID) + ", round " + strconv.Itoa(int(p.relayState.currentDCNetRound.currentRound)) + ")"
-				p.messageSender.SendToClientWithLog(clientID, &p.relayState.currentDCNetRound.dataAlreadySent, extraInfo)
-			}
-		}
-
-		if len(missingClientCiphers) > 0 || len(missingTrusteesCiphers) > 0 {
-			allGood = false
+	//If we're using UDP, client might have missed the broadcast, re-sending
+	if p.relayState.UseUDP {
+		for clientID := range missingClientCiphers {
+			log.Error("Relay : Client " + strconv.Itoa(clientID) + " didn't sent us is cipher for round " + strconv.Itoa(int(roundID)) + ". Phase 1 timeout. Re-sending...")
+			extraInfo := "(client " + strconv.Itoa(clientID) + ", round " + strconv.Itoa(int(p.relayState.currentDCNetRound.CurrentRound())) + ")"
+			p.messageSender.SendToClientWithLog(clientID, p.relayState.currentDCNetRound.GetDataAlreadySent(), extraInfo)
 		}
 	}
 
-	if !allGood {
+	if len(missingClientCiphers) > 0 || len(missingTrusteesCiphers) > 0 {
 		//if we're not done (we miss data), wait another timeout, after which clients/trustees will be considered offline
 		go p.checkIfRoundHasEndedAfterTimeOut_Phase2(roundID)
 	}
@@ -61,7 +53,7 @@ func (p *PriFiLibRelayInstance) checkIfRoundHasEndedAfterTimeOut_Phase2(roundID 
 
 	time.Sleep(TIMEOUT_PHASE_2)
 
-	if p.relayState.currentDCNetRound.currentRound != roundID {
+	if !p.relayState.currentDCNetRound.isStillInRound(roundID) {
 		//everything went well, it's great !
 		return
 	}
@@ -71,10 +63,8 @@ func (p *PriFiLibRelayInstance) checkIfRoundHasEndedAfterTimeOut_Phase2(roundID 
 		return
 	}
 
-	if p.relayState.bufferManager.CurrentRound() == roundID {
-		log.Error("waitAndCheckIfClientsSentData : We seem to be stuck in round", roundID, ". Phase 2 timeout.")
+	log.Error("waitAndCheckIfClientsSentData : We seem to be stuck in round", roundID, ". Phase 2 timeout.")
 
-		missingClientCiphers, missingTrusteesCiphers := p.relayState.bufferManager.MissingCiphersForCurrentRound()
-		p.relayState.timeoutHandler(missingClientCiphers, missingTrusteesCiphers)
-	}
+	missingClientCiphers, missingTrusteesCiphers := p.relayState.bufferManager.MissingCiphersForCurrentRound()
+	p.relayState.timeoutHandler(missingClientCiphers, missingTrusteesCiphers)
 }

@@ -1,7 +1,10 @@
 package utils
 
+import "sync"
+
 // Is used to asset that an entity is in a given state
 type StateMachine struct {
+	sync.Mutex
 	currentState string
 	states       []string
 	logInfo      func(interface{})
@@ -27,6 +30,8 @@ func allowedState(states []string, input string) bool {
 
 //assert (and returns true/false) that the state is the one given. Fails if the given state is invalid
 func (s *StateMachine) AssertState(state string) bool {
+	s.Lock()
+	defer s.Unlock()
 	if !allowedState(s.states, state) {
 		s.logErr("Required State " + state + " which is not a valid state.")
 		return false
@@ -40,6 +45,8 @@ func (s *StateMachine) AssertState(state string) bool {
 
 //change state if it is valid
 func (s *StateMachine) ChangeState(newState string) {
+	s.Lock()
+	defer s.Unlock()
 
 	if !allowedState(s.states, newState) {
 		s.logErr("Cannot change state to " + newState + " which is not valid.")
@@ -50,5 +57,8 @@ func (s *StateMachine) ChangeState(newState string) {
 
 //returns the current state
 func (s *StateMachine) State() string {
+	s.Lock()
+	defer s.Unlock()
+
 	return s.currentState
 }

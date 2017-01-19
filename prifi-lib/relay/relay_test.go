@@ -1,9 +1,12 @@
 package relay
 
 import (
+	"bytes"
+	"encoding/binary"
 	"errors"
 	"github.com/dedis/cothority/log"
 	"github.com/dedis/crypto/random"
+	"github.com/lbarman/prifi/prifi-lib/client"
 	"github.com/lbarman/prifi/prifi-lib/config"
 	"github.com/lbarman/prifi/prifi-lib/crypto"
 	"github.com/lbarman/prifi/prifi-lib/net"
@@ -77,7 +80,7 @@ func getMessage(bufferPtr *[]interface{}, wantedMessage string) (interface{}, er
 	return msg, nil
 }
 
-func TestClient(t *testing.T) {
+func TestRelayRun1(t *testing.T) {
 
 	timeoutHandler := func(clients, trustees []int) { log.Error(clients, trustees) }
 	resultChan := make(chan interface{}, 1)
@@ -381,6 +384,179 @@ func TestClient(t *testing.T) {
 	//wait to trigger the timeouts
 	time.Sleep(3 * time.Second)
 
+	//suppose we receive a ALL_ALL_SHUTDOWN (since we had a timeout)
+	shutdownMsg := net.ALL_ALL_SHUTDOWN{}
+	if err := relay.ReceivedMessage(shutdownMsg); err != nil {
+		t.Error("Should handle this ALL_ALL_SHUTDOWN message, but", err)
+	}
+	if relay.stateMachine.State() != "SHUTDOWN" {
+		t.Error("RELAY should be in state SHUTDOWN")
+	}
+}
+
+func TestRelayRun2(t *testing.T) {
+
+	timeoutHandler := func(clients, trustees []int) { log.Error(clients, trustees) }
+	resultChan := make(chan interface{}, 1)
+
+	msgSender := new(TestMessageSender)
+	msw := newTestMessageSenderWrapper(msgSender)
+	sentToClient = make([]interface{}, 0)
+	sentToTrustee = make([]interface{}, 0)
+	dataForClients := make(chan []byte, 6)
+	dataFromDCNet := make(chan []byte, 3)
+
+	relay := NewRelay(true, dataForClients, dataFromDCNet, resultChan, timeoutHandler, msw)
+	rs := relay.relayState
+
+	//we start by receiving a ALL_ALL_PARAMETERS from relay
+	msg := new(net.ALL_ALL_PARAMETERS_NEW)
+	msg.ForceParams = true
+	nClients := 1
+	nTrustees := 1
+	upCellSize := 1500
+	msg.Add("StartNow", true)
+	msg.Add("NClients", nClients)
+	msg.Add("NTrustees", nTrustees)
+	msg.Add("UpstreamCellSize", upCellSize)
+	msg.Add("DownstreamCellSize", 10*upCellSize)
+	msg.Add("WindowSize", 1)
+	msg.Add("UseUDP", true)
+	msg.Add("UseDummyDataDown", true)
+	msg.Add("ExperimentRoundLimit", 2)
+
+	if err := relay.ReceivedMessage(msg); err != nil {
+		t.Error("Relay should be able to receive this message, but", err)
+	}
+
+	// should send ALL_ALL_PARAMETERS to clients
+	msg2, err := getClientMessage("ALL_ALL_PARAMETERS")
+	if err != nil {
+		t.Error(err)
+	}
+	_ = msg2.(*net.ALL_ALL_PARAMETERS_NEW)
+
+	// should send ALL_ALL_PARAMETERS to trustees
+	msg4, err := getTrusteeMessage("ALL_ALL_PARAMETERS")
+	if err != nil {
+		t.Error(err)
+	}
+	_ = msg4.(*net.ALL_ALL_PARAMETERS_NEW)
+
+	//since startNow = true, trustee sends TRU_REL_TELL_PK
+	trusteePub, trusteePriv := crypto.NewKeyPair()
+	_ = trusteePriv
+	msg6 := net.TRU_REL_TELL_PK{
+		TrusteeID: 0,
+		Pk:        trusteePub,
+	}
+	if err := relay.ReceivedMessage(msg6); err != nil {
+		t.Error("Relay should be able to receive this message, but", err)
+	}
+
+	// should send REL_CLI_TELL_TRUSTEES_PK to clients
+	msg7, err := getClientMessage("REL_CLI_TELL_TRUSTEES_PK")
+	if err != nil {
+		t.Error(err)
+	}
+	_ = msg7.(*net.REL_CLI_TELL_TRUSTEES_PK)
+
+	//should receive a CLI_REL_TELL_PK_AND_EPH_PK
+	cliPub, cliPriv := crypto.NewKeyPair()
+	cliEphPub, cliEphPriv := crypto.NewKeyPair()
+	_ = cliPriv
+	_ = cliEphPriv
+	msg9 := net.CLI_REL_TELL_PK_AND_EPH_PK{
+		ClientID: 0,
+		Pk:       cliPub,
+		EphPk:    cliEphPub,
+	}
+	if err := relay.ReceivedMessage(msg9); err != nil {
+		t.Error("Relay should be able to receive this message, but", err)
+	}
+
+	// should send REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE to clients
+	msg10, err := getTrusteeMessage("REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE")
+	if err != nil {
+		t.Error(err)
+	}
+	msg11 := msg10.(*net.REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE)
+
+	//should receive a TRU_REL_TELL_NEW_BASE_AND_EPH_PKS
+	msg12 := net.TRU_REL_TELL_NEW_BASE_AND_EPH_PKS{
+		NewBase:   msg11.Base,
+		NewEphPks: msg11.EphPks,
+		Proof:     make([]byte, 50),
+	}
+	if err := relay.ReceivedMessage(msg12); err != nil {
+		t.Error("Relay should be able to receive this message, but", err)
+	}
+
+	// should send REL_TRU_TELL_TRANSCRIPT to clients
+	msg13, err := getTrusteeMessage("REL_TRU_TELL_TRANSCRIPT")
+	if err != nil {
+		t.Error(err)
+	}
+	transcript := msg13.(*net.REL_TRU_TELL_TRANSCRIPT)
+
+	//prepare the transcript signature. Since it is OK, we're gonna sign only the latest permutation
+	var blob []byte
+
+	lastSharesByte, err := transcript.Bases[0].MarshalBinary()
+	if err != nil {
+		t.Error("Can't marshall the last shares...")
+	}
+	blob = append(blob, lastSharesByte...)
+
+	for j := 0; j < nClients; j++ {
+		pkBytes, err := transcript.EphPks[0].Keys[j].MarshalBinary()
+		if err != nil {
+			t.Error("Can't marshall shuffled public key" + strconv.Itoa(j))
+		}
+		blob = append(blob, pkBytes...)
+	}
+	signature := crypto.SchnorrSign(config.CryptoSuite, random.Stream, blob, trusteePriv)
+
+	//should receive a TRU_REL_SHUFFLE_SIG
+	msg15 := net.TRU_REL_SHUFFLE_SIG{
+		TrusteeID: 0,
+		Sig:       signature}
+	if err := relay.ReceivedMessage(msg15); err != nil {
+		t.Error("Relay should be able to receive this message, but", err)
+	}
+
+	// should send REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG to clients
+	msg16, err := getClientMessage("REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG")
+	if err != nil {
+		t.Error(err)
+	}
+	_ = msg16.(*net.REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG)
+
+	// should receive a TRU_REL_DC_CIPHER
+	msg17 := net.TRU_REL_DC_CIPHER{
+		TrusteeID: 0,
+		RoundID:   0,
+		Data:      make([]byte, upCellSize),
+	}
+	if err := relay.ReceivedMessage(msg17); err != nil {
+		t.Error("Relay should be able to receive this message, but", err)
+	}
+
+	//not enough to change round !
+	if rs.currentDCNetRound.currentRound != 0 {
+		t.Error("Should still be in round 0, no data from relay")
+	}
+
+	msg18 := net.CLI_REL_UPSTREAM_DATA{
+		ClientID: 0,
+		RoundID:  0,
+		Data:     make([]byte, upCellSize),
+	}
+	if err := relay.ReceivedMessage(msg18); err != nil {
+		t.Error("Relay should be able to receive this message, but", err)
+	}
+
+	// should receive a TRU_REL_DATA_UPSTREAM
 	msg19 := net.TRU_REL_DC_CIPHER{
 		TrusteeID: 0,
 		RoundID:   1,
@@ -393,34 +569,233 @@ func TestClient(t *testing.T) {
 	//this time the client message finishes the round
 	msg20 := net.CLI_REL_UPSTREAM_DATA{
 		ClientID: 0,
-		RoundID:  0,
+		RoundID:  1,
 		Data:     make([]byte, upCellSize),
 	}
 	if err := relay.ReceivedMessage(msg20); err != nil {
 		t.Error("Relay should be able to receive this message, but", err)
 	}
 
-	// do another round
-	msg20.RoundID = 2
-	msg18.RoundID = 2
-	if err := relay.ReceivedMessage(msg18); err != nil {
-		t.Error("Relay should be able to receive this message, but", err)
-	}
-	if err := relay.ReceivedMessage(msg20); err != nil {
-		t.Error("Relay should be able to receive this message, but", err)
-	}
-
-	//suppose we receive a ALL_ALL_SHUTDOWN
+	//suppose we should refuse this random message
 	randomMsg := net.REL_CLI_TELL_TRUSTEES_PK{}
 	if err := relay.ReceivedMessage(randomMsg); err == nil {
 		t.Error("Should not accept this REL_CLI_TELL_TRUSTEES_PK message")
 	}
+}
 
-	shutdownMsg := net.ALL_ALL_SHUTDOWN{}
-	if err := relay.ReceivedMessage(shutdownMsg); err != nil {
-		t.Error("Should handle this ALL_ALL_SHUTDOWN message, but", err)
+func TestRelayRun3(t *testing.T) {
+
+	timeoutHandler := func(clients, trustees []int) { log.Error(clients, trustees) }
+	resultChan := make(chan interface{}, 1)
+
+	msgSender := new(TestMessageSender)
+	msw := newTestMessageSenderWrapper(msgSender)
+	sentToClient = make([]interface{}, 0)
+	sentToTrustee = make([]interface{}, 0)
+	dataForClients := make(chan []byte, 6)
+	dataFromDCNet := make(chan []byte, 3)
+
+	relay := NewRelay(true, dataForClients, dataFromDCNet, resultChan, timeoutHandler, msw)
+
+	//we start by receiving a ALL_ALL_PARAMETERS from relay
+	msg := new(net.ALL_ALL_PARAMETERS_NEW)
+	msg.ForceParams = true
+	nClients := 1
+	nTrustees := 2
+	upCellSize := 1500
+	msg.Add("StartNow", true)
+	msg.Add("NClients", nClients)
+	msg.Add("NTrustees", nTrustees)
+	msg.Add("UpstreamCellSize", upCellSize)
+	msg.Add("DownstreamCellSize", 10*upCellSize)
+	msg.Add("WindowSize", 1)
+	msg.Add("UseUDP", false)
+	msg.Add("UseDummyDataDown", false)
+	msg.Add("ExperimentRoundLimit", -1)
+
+	if err := relay.ReceivedMessage(msg); err != nil {
+		t.Error("Relay should be able to receive this message, but", err)
 	}
-	if relay.stateMachine.State() != "SHUTDOWN" {
-		t.Error("RELAY should be in state SHUTDOWN")
+
+	// should send ALL_ALL_PARAMETERS to clients
+	msg2, err := getClientMessage("ALL_ALL_PARAMETERS")
+	if err != nil {
+		t.Error(err)
 	}
+	_ = msg2.(*net.ALL_ALL_PARAMETERS_NEW)
+
+	// should send ALL_ALL_PARAMETERS to trustees
+	msg4, err := getTrusteeMessage("ALL_ALL_PARAMETERS")
+	if err != nil {
+		t.Error(err)
+	}
+	_ = msg4.(*net.ALL_ALL_PARAMETERS_NEW)
+	msg4, err = getTrusteeMessage("ALL_ALL_PARAMETERS")
+	if err != nil {
+		t.Error(err)
+	}
+	_ = msg4.(*net.ALL_ALL_PARAMETERS_NEW)
+
+	//since startNow = true, trustee sends TRU_REL_TELL_PK
+	trusteePub, trusteePriv := crypto.NewKeyPair()
+	_ = trusteePriv
+	msg6 := net.TRU_REL_TELL_PK{
+		TrusteeID: 0,
+		Pk:        trusteePub,
+	}
+	if err := relay.ReceivedMessage(msg6); err != nil {
+		t.Error("Relay should be able to receive this message, but", err)
+	}
+	msg6_2 := net.TRU_REL_TELL_PK{
+		TrusteeID: 1,
+		Pk:        trusteePub,
+	}
+	if err := relay.ReceivedMessage(msg6_2); err != nil {
+		t.Error("Relay should be able to receive this message, but", err)
+	}
+
+	// should send REL_CLI_TELL_TRUSTEES_PK to clients
+	msg7, err := getClientMessage("REL_CLI_TELL_TRUSTEES_PK")
+	if err != nil {
+		t.Error(err)
+	}
+	_ = msg7.(*net.REL_CLI_TELL_TRUSTEES_PK)
+
+	//should receive a CLI_REL_TELL_PK_AND_EPH_PK
+	cliPub, cliPriv := crypto.NewKeyPair()
+	cliEphPub, cliEphPriv := crypto.NewKeyPair()
+	_ = cliPriv
+	_ = cliEphPriv
+	msg9 := net.CLI_REL_TELL_PK_AND_EPH_PK{
+		ClientID: 0,
+		Pk:       cliPub,
+		EphPk:    cliEphPub,
+	}
+	if err := relay.ReceivedMessage(msg9); err != nil {
+		t.Error("Relay should be able to receive this message, but", err)
+	}
+
+	// should send REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE to clients
+	msg10, err := getTrusteeMessage("REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE")
+	if err != nil {
+		t.Error(err)
+	}
+	msg11 := msg10.(*net.REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE)
+
+	//should receive a TRU_REL_TELL_NEW_BASE_AND_EPH_PKS
+	msg12 := net.TRU_REL_TELL_NEW_BASE_AND_EPH_PKS{
+		NewBase:   msg11.Base,
+		NewEphPks: msg11.EphPks,
+		Proof:     make([]byte, 50),
+	}
+	if err := relay.ReceivedMessage(msg12); err != nil {
+		t.Error("Relay should be able to receive this message, but", err)
+	}
+
+	// should send REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE to clients
+	msg10_2, err := getTrusteeMessage("REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE")
+	if err != nil {
+		t.Error(err)
+	}
+	_ = msg10_2.(*net.REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE)
+
+	//should receive a TRU_REL_TELL_NEW_BASE_AND_EPH_PKS
+	msg12_2 := net.TRU_REL_TELL_NEW_BASE_AND_EPH_PKS{
+		NewBase:   msg11.Base,
+		NewEphPks: msg11.EphPks,
+		Proof:     make([]byte, 50),
+	}
+	if err := relay.ReceivedMessage(msg12_2); err != nil {
+		t.Error("Relay should be able to receive this message, but", err)
+	}
+
+	// should send REL_TRU_TELL_TRANSCRIPT to trustees
+	msg13, err := getTrusteeMessage("REL_TRU_TELL_TRANSCRIPT")
+	if err != nil {
+		t.Error(err)
+	}
+	transcript := msg13.(*net.REL_TRU_TELL_TRANSCRIPT)
+
+	//prepare the transcript signature. Since it is OK, we're gonna sign only the latest permutation
+	var blob []byte
+
+	lastSharesByte, err := transcript.Bases[0].MarshalBinary()
+	if err != nil {
+		t.Error("Can't marshall the last shares...")
+	}
+	blob = append(blob, lastSharesByte...)
+
+	for j := 0; j < nClients; j++ {
+		pkBytes, err := transcript.EphPks[0].Keys[j].MarshalBinary()
+		if err != nil {
+			t.Error("Can't marshall shuffled public key" + strconv.Itoa(j))
+		}
+		blob = append(blob, pkBytes...)
+	}
+	signature := crypto.SchnorrSign(config.CryptoSuite, random.Stream, blob, trusteePriv)
+
+	//should receive two TRU_REL_SHUFFLE_SIG
+	msg15 := net.TRU_REL_SHUFFLE_SIG{
+		TrusteeID: 0,
+		Sig:       signature}
+	if err := relay.ReceivedMessage(msg15); err != nil {
+		t.Error("Relay should be able to receive this message, but", err)
+	}
+	msg15 = net.TRU_REL_SHUFFLE_SIG{
+		TrusteeID: 1,
+		Sig:       signature}
+	if err := relay.ReceivedMessage(msg15); err != nil {
+		t.Error("Relay should be able to receive this message, but", err)
+	}
+
+	// should send REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG to clients
+	msg16, err := getClientMessage("REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG")
+	if err != nil {
+		t.Error(err)
+	}
+	_ = msg16.(*net.REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG)
+
+	// should receive a TRU_REL_DC_CIPHER
+	msg17 := net.TRU_REL_DC_CIPHER{
+		TrusteeID: 0,
+		RoundID:   0,
+		Data:      make([]byte, upCellSize),
+	}
+	if err := relay.ReceivedMessage(msg17); err != nil {
+		t.Error("Relay should be able to receive this message, but", err)
+	}
+	msg17 = net.TRU_REL_DC_CIPHER{
+		TrusteeID: 1,
+		RoundID:   0,
+		Data:      make([]byte, upCellSize),
+	}
+	if err := relay.ReceivedMessage(msg17); err != nil {
+		t.Error("Relay should be able to receive this message, but", err)
+	}
+
+	// should receive a CLI_REL_UPSTREAM_DATA
+	currentTime := client.MsTimeStamp()
+	latencyMessage := []byte{170, 170, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0}
+	binary.BigEndian.PutUint64(latencyMessage[4:12], uint64(currentTime))
+	msg18 := net.CLI_REL_UPSTREAM_DATA{
+		ClientID: 0,
+		RoundID:  0,
+		Data:     latencyMessage,
+	}
+	if err := relay.ReceivedMessage(msg18); err != nil {
+		t.Error("Relay should be able to receive this message, but", err)
+	}
+
+	//should send a downstream data
+
+	// should send REL_CLI_DOWNSTREAM_DATA to clients
+	msg19, err := getClientMessage("REL_CLI_DOWNSTREAM_DATA")
+	if err != nil {
+		t.Error(err)
+	}
+	msg20 := msg19.(*net.REL_CLI_DOWNSTREAM_DATA)
+	if !bytes.Equal(msg20.Data[0:12], latencyMessage) {
+		t.Error("Relay should re-send latency messages")
+	}
+
 }
