@@ -13,7 +13,7 @@
 # variables that you might change often
 
 dbg_lvl=3						# 1=less verbose, 3=more verbose. goes up to 5, but then prints the SDA's message (network framework)
-try_use_real_identities="true"	# if "true", will try to use "self-generated" public/private key as a replacement for the dummy keys
+try_use_real_identities="false"	# if "true", will try to use "self-generated" public/private key as a replacement for the dummy keys
 								# we generated for you. It asks you if it does not find real keys. If false, will always use the dummy keys.
 colors="true"					# if "false", the output of PriFi (and this script) will be in black-n-white
 
@@ -113,16 +113,6 @@ test_cothority() {
 		echo -e "$errorMsg Make sure \"$GOPATH/src/github.com/dedis/cothority\" is a git repo, on branch \"$cothorityBranchRequired\". Try running \"./prifi.sh install\""
 		exit 1
 	fi
-
-	echo "Halfway through...c"
-	echo $(cd $GOPATH/src/github.com/dedis/cothority; git status --porcelain)
-
-	if [ ! -z "$(cd $GOPATH/src/github.com/dedis/cothority; git status --porcelain)" ]; then
-		echo -e "$errorMsg \"$GOPATH/src/github.com/dedis/cothority\" is on the correct branch \"$cothorityBranchRequired\", but is dirty. Please stash/clean your changes."
-		exit 1
-	fi
-	
-	echo "finished !"
 }
 
 # test if $1 is a digit, if not, prints "argument $2 invalid" and exit.
@@ -163,10 +153,6 @@ test_files() {
 #     MAIN SWITCH
 # ------------------------
 
-# on kill, kill all spawed subprocesses
-trap "exit" INT TERM
-trap "kill 0" EXIT
-
 # $1 is operation : "install", "relay", "client", "trustee", "sockstest", "all-localhost", "clean", "gen-id"
 case $1 in
 
@@ -195,6 +181,8 @@ case $1 in
 		test_cothority 
 		echo -e "$okMsg"
 
+		echo "were done here"
+
 		;;
 
 	relay|Relay|RELAY)
@@ -210,10 +198,9 @@ case $1 in
 		fi
 
 		#specialize the config file (we use the dummy folder, and maybe we replace with the real folder after)
-		BASEDIR=$(dirname "$0")
-		prifi_file2="$BASEDIR/$configdir/$prifi_file"
-		identity_file2="$BASEDIR/$configdir/$defaultIdentitiesDir/relay/$identity_file"
-		group_file2="$BASEDIR/$configdir/$defaultIdentitiesDir/relay/$group_file"
+		prifi_file2="$configdir/$prifi_file"
+		identity_file2="$configdir/$defaultIdentitiesDir/relay/$identity_file"
+		group_file2="$configdir/$defaultIdentitiesDir/relay/$group_file"
 
 		#we we want to, try to replace with the real folder
 		if [ "$try_use_real_identities" = "true" ]; then
@@ -250,10 +237,9 @@ case $1 in
 		test_digit $trusteeId 2
 
 		#specialize the config file (we use the dummy folder, and maybe we replace with the real folder after)
-		BASEDIR=$(dirname "$0")
-		prifi_file2="$BASEDIR/$configdir/$prifi_file"
-		identity_file2="$BASEDIR/$configdir/$defaultIdentitiesDir/trustee$trusteeId/$identity_file"
-		group_file2="$BASEDIR/$configdir/$defaultIdentitiesDir/trustee$trusteeId/$group_file"
+		prifi_file2="$configdir/$prifi_file"
+		identity_file2="$configdir/$defaultIdentitiesDir/trustee$trusteeId/$identity_file"
+		group_file2="$configdir/$defaultIdentitiesDir/trustee$trusteeId/$group_file"
 
 		#we we want to, try to replace with the real folder
 		if [ "$try_use_real_identities" = "true" ]; then
@@ -296,10 +282,9 @@ case $1 in
 		fi
 
 		#specialize the config file (we use the dummy folder, and maybe we replace with the real folder after)
-		BASEDIR=$(dirname "$0")
-		prifi_file2="$BASEDIR/$configdir/$prifi_file"
-		identity_file2="$BASEDIR/$configdir/$defaultIdentitiesDir/client$clientId/$identity_file"
-		group_file2="$BASEDIR/$configdir/$defaultIdentitiesDir/client$clientId/$group_file"
+		prifi_file2="$configdir/$prifi_file"
+		identity_file2="$configdir/$defaultIdentitiesDir/client$clientId/$identity_file"
+		group_file2="$configdir/$defaultIdentitiesDir/client$clientId/$group_file"
 
 		#we we want to, try to replace with the real folder
 		if [ "$try_use_real_identities" = "true" ]; then
@@ -340,10 +325,9 @@ case $1 in
 		fi
 
 		#specialize the config file, and test all files
-		BASEDIR=$(dirname "$0")
-		prifi_file2="$BASEDIR/$configdir/$prifi_file"
-		identity_file2="$BASEDIR/$configdir/$defaultIdentitiesDir/relay/$identity_file"
-		group_file2="$BASEDIR/$configdir/$defaultIdentitiesDir/relay/$group_file"
+		prifi_file2="$configdir/$prifi_file"
+		identity_file2="$configdir/$defaultIdentitiesDir/relay/$identity_file"
+		group_file2="$configdir/$defaultIdentitiesDir/relay/$group_file"
 		test_files
 
 		#run PriFi in relay mode
@@ -369,6 +353,7 @@ case $1 in
 		if [ "$socks" -ne 1 ]; then
 			echo -n "Socks proxy not running, starting it... "
 			cd socks && ./run-socks-proxy.sh "$socksServer2Port" > ../socks.log 2>&1 &
+			SOCKSPID=$!
 			echo -e "$okMsg"
 		fi
 
@@ -408,7 +393,7 @@ case $1 in
 
 		read -p "PriFi deployed. Press [enter] to kill all..." key
 
-		kill -TERM -- -$THISPGID 2>/dev/null 1>/dev/null
+		kill -TERM -- -$THISPGID
 		;;
 
 	gen-id|Gen-Id|GEN-ID)
@@ -453,39 +438,19 @@ case $1 in
 				;;
 		esac
 
-		BASEDIR=$(dirname "$0")
-		pathReal="$BASEDIR/$configdir/$realIdentitiesDir/$path/"
-		pathDefault="$BASEDIR/$configdir/$defaultIdentitiesDir/$path/"
+		pathReal="$configdir/$realIdentitiesDir/$path/"
+		pathDefault="$configdir/$defaultIdentitiesDir/$path/"
 		echo -e "Gonna generate ${highlightOn}identity.toml${highlightOff} in ${highlightOn}$pathReal${highlightOff}"
 
 		#generate identity.toml
-		echo
 		DEBUG_COLOR=$colors go run $bin_file --default_path "$pathReal" gen-id
-		echo
 
 		#now group.toml
 		echo -n "Done ! now copying group.toml from identities_default/ to identity_real/..."
-		if [ -f "${pathReal}group.toml" ]; then
-			echo ""
-			echo -e "$warningMsg File \"${pathReal}group.toml\" already exists"
-			read -p "overwrite ? [y/n] " key2
+		cp "${pathDefault}/group.toml" "${pathReal}group.toml"
+		echo -e "$okMsg"
 
-				case "$key2" in
-					y|Y)
-						echo -n "Copying group.toml from identities_default/ to identity_real/..."
-						cp "${pathDefault}/group.toml" "${pathReal}group.toml"
-						echo -e "$okMsg"
-						;;
-					*)
-						echo -e "$okMsg File ${pathReal}group.toml not changed."
-						;;
-				esac
-		else
-			cp "${pathDefault}/group.toml" "${pathReal}group.toml"
-			echo -e "$okMsg"
-		fi
-
-		echo -e "Please edit ${highlightOn}${pathReal}group.toml${highlightOff} to the correct values."
+		echo -e "Please edit ${highlightOn}$pathReal/group.toml${highlightOff} to the correct values."
 		;;
 
 	integration-test)
@@ -618,7 +583,7 @@ case $1 in
 		test_go
 		test_cothority
 
-		thisScript="$0"	&
+		thisScript="$0"
 
 		echo -n "Starting relay...			"
 		"$thisScript" relay > relay.log 2>&1 &
