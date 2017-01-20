@@ -8,6 +8,7 @@ package output
 import (
 	"fmt"
 	"github.com/dedis/cothority/log"
+	"os"
 )
 
 // Output Interface represents a generic output.
@@ -57,3 +58,21 @@ type NullOutput struct{}
 
 // Print implements Output interface.
 func (o *NullOutput) Print(text string) {}
+
+type FileOutput struct {
+	Filename string
+	file *os.File
+}
+
+func (o *FileOutput) Print(text string) {
+	if o.file == nil {
+		f, err := os.Create(o.Filename)
+		if err != nil {
+			fmt.Print("Unable to open or create file:", err)
+			return
+		}
+		o.file = f
+	}
+
+	o.file.WriteString(text + "\n")
+}
