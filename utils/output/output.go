@@ -17,7 +17,7 @@ type Output interface {
 	Print(text string)
 }
 
-// PrintOutput prints it's messages to the standard output.
+// PrintOutput prints its messages to the standard output.
 type PrintOutput struct{}
 
 // Print implements Output interface.
@@ -25,7 +25,7 @@ func (o *PrintOutput) Print(text string) {
 	fmt.Println(text)
 }
 
-// LogOutput prints it's messages using Cothority's logging infrastructure.
+// LogOutput prints its messages using Cothority's logging infrastructure.
 type LogOutput struct {
 	Level int
 	Info  bool
@@ -59,11 +59,13 @@ type NullOutput struct{}
 // Print implements Output interface.
 func (o *NullOutput) Print(text string) {}
 
+// FileOutput prints its messages to a file.
 type FileOutput struct {
 	Filename string
 	file     *os.File
 }
 
+// Print implements Output interface.
 func (o *FileOutput) Print(text string) {
 	if o.file == nil {
 		f, err := os.Create(o.Filename)
