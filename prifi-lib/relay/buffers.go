@@ -2,6 +2,7 @@ package relay
 
 import (
 	"errors"
+	"github.com/dedis/cothority/log"
 	"sync"
 )
 
@@ -94,6 +95,7 @@ func addToBuffer(bufferPtr *map[int]map[int32][]byte, roundID int32, entityID in
  * Adds a trustee cipher for a given round
  */
 func (b *BufferManager) AddTrusteeCipher(roundID int32, trusteeID int, data []byte) error {
+	log.Error("aquiring lock")
 	b.Lock()
 	defer b.Unlock()
 
@@ -111,6 +113,7 @@ func (b *BufferManager) AddTrusteeCipher(roundID int32, trusteeID int, data []by
 
 	b.sendRateChangeIfNeeded(trusteeID)
 
+	log.Error("releasing lock")
 	return nil
 }
 
