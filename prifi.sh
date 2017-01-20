@@ -525,6 +525,16 @@ case $1 in
 
         rm -f relay.log 2>/dev/null # just to be sure...
 
+        #test if a socks proxy is already running (needed for relay), or start ours
+		socks=$(netstat -tunpl 2>/dev/null | grep $socksServer2Port | wc -l)
+		
+		if [ "$socks" -ne 1 ]; then
+			echo -n "Socks proxy not running, starting it... "
+			cd socks && ./run-socks-proxy.sh "$socksServer2Port" > ../socks.log 2>&1 &
+			SOCKSPID=$!
+			echo -e "$okMsg"
+		fi
+
 		echo -n "Starting relay...			"
 		"$thisScript" relay > relay.log 2>&1 &
 		echo -e "$okMsg"
@@ -558,7 +568,7 @@ case $1 in
 		fi
 
 		#let it boot
-		sleep 20
+		sleep 10
 
 		curl google.com --socks5 127.0.0.1:8081 --max-time 10 1>/dev/null 2>&1
 		res=$?

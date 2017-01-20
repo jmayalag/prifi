@@ -11,6 +11,7 @@ import (
 	"github.com/lbarman/prifi/prifi-lib/net"
 	"github.com/lbarman/prifi/prifi-lib/scheduler"
 	"testing"
+	"time"
 )
 
 /**
@@ -379,7 +380,11 @@ func TestClient(t *testing.T) {
 	}
 
 	//Receive some data down, with nothing to say, and latencytest=true
-	cs.LatencyTest = true
+	cs.LatencyTest = &LatencyTests{
+		DoLatencyTests:       true,
+		LatencyTestsInterval: time.Second * 0,
+		NextLatencyTest:      time.Now(),
+	}
 	dataDown = []byte{100, 101, 102}
 
 	currenTime := MsTimeStamp()

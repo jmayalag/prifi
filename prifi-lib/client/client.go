@@ -35,6 +35,7 @@ import (
 
 	"github.com/lbarman/prifi/prifi-lib/scheduler"
 	socks "github.com/lbarman/prifi/prifi-socks"
+	"time"
 )
 
 // Received_ALL_CLI_SHUTDOWN handles ALL_CLI_SHUTDOWN messages.
@@ -163,7 +164,7 @@ func (p *PriFiLibClientInstance) ProcessDownStreamData(msg net.REL_CLI_DOWNSTREA
 			p.clientState.DataFromDCNet <- msg.Data
 		}
 		//test if it is the answer from our ping (for latency test)
-		if p.clientState.LatencyTest && len(msg.Data) > 2 {
+		if p.clientState.LatencyTest.DoLatencyTests && len(msg.Data) > 2 {
 
 			pattern := int(binary.BigEndian.Uint16(msg.Data[0:2]))
 			if pattern == 43690 {
@@ -223,7 +224,8 @@ func (p *PriFiLibClientInstance) SendUpstreamData() error {
 			emptyData := socks.NewSocksPacket(socks.DummyData, 0, 0, uint16(p.clientState.PayloadLength), make([]byte, 0))
 			upstreamCellContent = emptyData.ToBytes()
 
-			if p.clientState.LatencyTest {
+			now := time.Now()
+			if p.clientState.LatencyTest.DoLatencyTests && now.After(p.clientState.LatencyTest.NextLatencyTest) {
 
 				if p.clientState.PayloadLength < 12 {
 					panic("Trying to do a Latency test, but payload is smaller than 10 bytes.")
@@ -238,6 +240,7 @@ func (p *PriFiLibClientInstance) SendUpstreamData() error {
 				binary.BigEndian.PutUint64(buffer[4:12], uint64(currTime))
 
 				upstreamCellContent = buffer
+				p.clientState.LatencyTest.NextLatencyTest = now.Add(p.clientState.LatencyTest.LatencyTestsInterval)
 			}
 		}
 	}
