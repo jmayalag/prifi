@@ -105,7 +105,7 @@ const PROCESSING_LOOP_SLEEP_TIME = 0 * time.Millisecond
 const TIMEOUT_PHASE_1 = 1 * time.Second
 
 //The timeout before kicking a client/trustee
-const TIMEOUT_PHASE_2 = 1 * time.Second
+const TIMEOUT_PHASE_2 = 5 * time.Second
 
 // Number of ciphertexts buffered by trustees. When <= TRUSTEE_CACHE_LOWBOUND, resume sending
 const TRUSTEE_CACHE_LOWBOUND = 1

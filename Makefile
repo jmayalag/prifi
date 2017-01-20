@@ -52,4 +52,4 @@ clean:
 
 test: build test_fmt test_govet test_lint
 
-all: test coveralls it
+all: test coveralls it it2

@@ -32,6 +32,7 @@ import (
 	"github.com/lbarman/prifi/prifi-lib/net"
 	"github.com/lbarman/prifi/prifi-lib/utils"
 	"reflect"
+	"time"
 )
 
 // ClientState contains the mutable state of the client.
@@ -44,7 +45,7 @@ type ClientState struct {
 	ephemeralPrivateKey       abstract.Scalar
 	EphemeralPublicKey        abstract.Point
 	ID                        int
-	LatencyTest               bool
+	LatencyTest               *LatencyTests
 	MySlot                    int
 	Name                      string
 	nClients                  int
@@ -73,6 +74,13 @@ type PriFiLibClientInstance struct {
 	stateMachine  *utils.StateMachine
 }
 
+// Regroups the information about doing latency tests
+type LatencyTests struct {
+	DoLatencyTests       bool
+	LatencyTestsInterval time.Duration
+	NextLatencyTest      time.Time
+}
+
 // NewClient creates a new PriFi client entity state.
 func NewClient(doLatencyTest bool, dataOutputEnabled bool, dataForDCNet chan []byte, dataFromDCNet chan []byte, msgSender *net.MessageSenderWrapper) *PriFiLibClientInstance {
 
@@ -82,7 +90,11 @@ func NewClient(doLatencyTest bool, dataOutputEnabled bool, dataForDCNet chan []b
 	clientState.statistics = prifilog.NewLatencyStatistics()
 	clientState.PublicKey, clientState.privateKey = crypto.NewKeyPair()
 	//clientState.StartStopReceiveBroadcast = make(chan bool) //this should stay nil, !=nil -> we have a listener goroutine active
-	clientState.LatencyTest = doLatencyTest
+	clientState.LatencyTest = &LatencyTests{
+		DoLatencyTests:       doLatencyTest,
+		LatencyTestsInterval: 5 * time.Second,
+		NextLatencyTest:      time.Now(),
+	}
 	clientState.CellCoder = config.Factory()
 	clientState.DataForDCNet = dataForDCNet
 	clientState.DataFromDCNet = dataFromDCNet
