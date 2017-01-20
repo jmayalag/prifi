@@ -61,7 +61,7 @@ func (o *NullOutput) Print(text string) {}
 
 type FileOutput struct {
 	Filename string
-	file *os.File
+	file     *os.File
 }
 
 func (o *FileOutput) Print(text string) {
