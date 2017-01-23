@@ -1,7 +1,7 @@
 package protocols
 
 import (
-	"github.com/dedis/onet"
+	"gopkg.in/dedis/onet.v1"
 	"github.com/lbarman/prifi/prifi-lib/net"
 )
 

@@ -7,7 +7,7 @@ package output
 
 import (
 	"fmt"
-	"github.com/dedis/onet/log"
+	"gopkg.in/dedis/onet.v1/log"
 	"os"
 )
 

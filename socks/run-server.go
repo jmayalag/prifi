@@ -13,7 +13,7 @@ import (
 	"flag"
 	"strconv"
 
-	"github.com/dedis/onet/log"
+	"gopkg.in/dedis/onet.v1/log"
 )
 
 // Authentication methods

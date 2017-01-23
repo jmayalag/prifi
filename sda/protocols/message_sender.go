@@ -5,8 +5,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/dedis/onet/log"
-	"github.com/dedis/onet"
+	"gopkg.in/dedis/onet.v1/log"
+	"gopkg.in/dedis/onet.v1"
 	"github.com/lbarman/prifi/prifi-lib/net"
 )
 
