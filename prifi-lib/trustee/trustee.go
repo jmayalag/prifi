@@ -198,6 +198,17 @@ func (p *PriFiLibTrusteeInstance) Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_
 		p.trusteeState.sharedSecrets[i] = config.CryptoSuite.Point().Mul(clientsPks[i], p.trusteeState.privateKey)
 	}
 
+	//set up the DC-nets
+	sharedPRNGs := make([]abstract.Cipher, p.trusteeState.nClients)
+	for i := 0; i < p.trusteeState.nClients; i++ {
+		bytes, err := p.trusteeState.sharedSecrets[i].MarshalBinary()
+		if err != nil {
+			return errors.New("Could not marshal point !")
+		}
+		sharedPRNGs[i] = config.CryptoSuite.Cipher(bytes)
+	}
+	p.trusteeState.CellCoder.TrusteeSetup(config.CryptoSuite, sharedPRNGs)
+
 	toSend, err := p.trusteeState.neffShuffle.ReceivedShuffleFromRelay(msg.Base, msg.EphPks, true)
 	if err != nil {
 		return errors.New("Could not do ReceivedShuffleFromRelay, error is " + err.Error())
