@@ -2,7 +2,6 @@ package trustee
 
 import (
 	"errors"
-	"gopkg.in/dedis/onet.v1/log"
 	"github.com/dedis/crypto/abstract"
 	"github.com/lbarman/prifi/prifi-lib/config"
 	"github.com/lbarman/prifi/prifi-lib/crypto"
@@ -10,6 +9,7 @@ import (
 	"github.com/lbarman/prifi/prifi-lib/net"
 	"github.com/lbarman/prifi/prifi-lib/scheduler"
 	"github.com/lbarman/prifi/prifi-lib/utils"
+	"gopkg.in/dedis/onet.v1/log"
 	"reflect"
 	"time"
 )

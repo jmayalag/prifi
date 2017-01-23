@@ -5,10 +5,10 @@ package services
 import (
 	"time"
 
+	"github.com/lbarman/prifi/sda/protocols"
+	"gopkg.in/dedis/onet.v1"
 	"gopkg.in/dedis/onet.v1/log"
 	"gopkg.in/dedis/onet.v1/network"
-	"gopkg.in/dedis/onet.v1"
-	"github.com/lbarman/prifi/sda/protocols"
 )
 
 /*
@@ -47,7 +47,7 @@ type waitQueue struct {
 	clients  map[string]*waitQueueEntry
 }
 
-func idFromMsg(msg *network.Packet) string {
+func idFromMsg(msg *network.Envelope) string {
 	return idFromServerIdentity(msg.ServerIdentity)
 }
 func idFromServerIdentity(si *network.ServerIdentity) string {
@@ -202,7 +202,7 @@ func (c *churnHandler) getTrusteesIdentities() []*network.ServerIdentity {
 /**
  * Handles a "Connection" message
  */
-func (c *churnHandler) handleConnection(msg *network.Packet) {
+func (c *churnHandler) handleConnection(msg *network.Envelope) {
 
 	ID := idFromMsg(msg)
 	isTrustee := c.isATrustee(msg.ServerIdentity)
@@ -249,7 +249,7 @@ func (c *churnHandler) handleUnknownDisconnection() {
 /**
  * Handles a "Disconnection" message
  */
-func (c *churnHandler) handleDisconnection(msg *network.Packet) {
+func (c *churnHandler) handleDisconnection(msg *network.Envelope) {
 
 	ID := idFromMsg(msg)
 	isTrustee := c.isATrustee(msg.ServerIdentity)

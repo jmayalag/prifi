@@ -12,12 +12,12 @@ import (
 	"io/ioutil"
 	"strconv"
 
-	"github.com/dedis/cothority/app/lib/config"
-	"gopkg.in/dedis/onet.v1/log"
-	"gopkg.in/dedis/onet.v1/network"
-	"gopkg.in/dedis/onet.v1"
 	prifi_socks "github.com/lbarman/prifi/prifi-socks"
 	prifi_protocol "github.com/lbarman/prifi/sda/protocols"
+	"gopkg.in/dedis/onet.v1"
+	"gopkg.in/dedis/onet.v1/app"
+	"gopkg.in/dedis/onet.v1/log"
+	"gopkg.in/dedis/onet.v1/network"
 )
 
 //The name of the service, used by SDA's internals
@@ -58,15 +58,17 @@ type Storage struct {
 // newService receives the context and a path where it can write its
 // configuration, if desired. As we don't know when the service will exit,
 // we need to save the configuration on our own from time to time.
-func newService(c *onet.Context, path string) onet.Service {
+func newService(c *onet.Context) onet.Service {
 	s := &ServiceState{
 		ServiceProcessor: onet.NewServiceProcessor(c),
-		path:             path,
 	}
+	stopMsg := network.RegisterMessage(StopProtocol{})
+	connMsg := network.RegisterMessage(ConnectionRequest{})
+	disconnectMsg := network.RegisterMessage(DisconnectionRequest{})
 
-	c.RegisterProcessorFunc(network.TypeFromData(StopProtocol{}), s.HandleStop)
-	c.RegisterProcessorFunc(network.TypeFromData(ConnectionRequest{}), s.HandleConnection)
-	c.RegisterProcessorFunc(network.TypeFromData(DisconnectionRequest{}), s.HandleDisconnection)
+	c.RegisterProcessorFunc(stopMsg, s.HandleStop)
+	c.RegisterProcessorFunc(connMsg, s.HandleConnection)
+	c.RegisterProcessorFunc(disconnectMsg, s.HandleDisconnection)
 
 	if err := s.tryLoad(); err != nil {
 		log.Error(err)
@@ -98,7 +100,7 @@ func (s *ServiceState) NewProtocol(tn *onet.TreeNodeInstance, conf *onet.Generic
 // StartRelay starts the necessary
 // protocols to enable the relay-mode.
 // In this example it simply starts the demo protocol
-func (s *ServiceState) StartRelay(group *config.Group) error {
+func (s *ServiceState) StartRelay(group *app.Group) error {
 	log.Info("Service", s, "running in relay mode")
 
 	//set state to the correct info, parse .toml
@@ -128,7 +130,7 @@ func (s *ServiceState) StartRelay(group *config.Group) error {
 
 // StartClient starts the necessary
 // protocols to enable the client-mode.
-func (s *ServiceState) StartClient(group *config.Group) error {
+func (s *ServiceState) StartClient(group *app.Group) error {
 	log.Info("Service", s, "running in client mode")
 	s.role = prifi_protocol.Client
 
@@ -177,7 +179,7 @@ func (s *ServiceState) StartSocksTunnelOnly() error {
 
 // StartTrustee starts the necessary
 // protocols to enable the trustee-mode.
-func (s *ServiceState) StartTrustee(group *config.Group) error {
+func (s *ServiceState) StartTrustee(group *app.Group) error {
 	log.Info("Service", s, "running in trustee mode")
 	s.role = prifi_protocol.Trustee
 

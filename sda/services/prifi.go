@@ -2,10 +2,10 @@ package services
 
 import (
 	"errors"
-	"gopkg.in/dedis/onet.v1/log"
-	"gopkg.in/dedis/onet.v1/network"
 	prifi_protocol "github.com/lbarman/prifi/sda/protocols"
 	"github.com/lbarman/prifi/utils/timing"
+	"gopkg.in/dedis/onet.v1/log"
+	"gopkg.in/dedis/onet.v1/network"
 	"time"
 )
 
@@ -20,12 +20,6 @@ type ConnectionRequest struct{}
 // by nodes that want to leave the protocol.
 type DisconnectionRequest struct{}
 
-func init() {
-	network.RegisterMessage(StopProtocol{})
-	network.RegisterMessage(ConnectionRequest{})
-	network.RegisterMessage(DisconnectionRequest{})
-}
-
 // returns true if the PriFi SDA protocol is running (in any state : init, communicate, etc)
 func (s *ServiceState) IsPriFiProtocolRunning() bool {
 	if s.priFiSDAProtocol != nil {
@@ -35,14 +29,14 @@ func (s *ServiceState) IsPriFiProtocolRunning() bool {
 }
 
 // Packet send by relay; when we get it, we stop the protocol
-func (s *ServiceState) HandleStop(msg *network.Packet) {
+func (s *ServiceState) HandleStop(msg *network.Envelope) {
 	log.Lvl1("Received a Handle Stop")
 	s.stopPriFiCommunicateProtocol()
 
 }
 
 // Packet send by relay when some node connected
-func (s *ServiceState) HandleConnection(msg *network.Packet) {
+func (s *ServiceState) HandleConnection(msg *network.Envelope) {
 	if s.churnHandler == nil {
 		log.Fatal("Can't handle a connection without a churnHandler")
 	}
@@ -50,7 +44,7 @@ func (s *ServiceState) HandleConnection(msg *network.Packet) {
 }
 
 // Packet send by relay when some node disconnected
-func (s *ServiceState) HandleDisconnection(msg *network.Packet) {
+func (s *ServiceState) HandleDisconnection(msg *network.Envelope) {
 	if s.churnHandler == nil {
 		log.Fatal("Can't handle a disconnection without a churnHandler")
 	}
@@ -101,7 +95,7 @@ func (s *ServiceState) startPriFiCommunicateProtocol() {
 
 	// Start the PriFi protocol on a flat tree with the relay as root
 	tree := roster.GenerateNaryTreeWithRoot(100, s.churnHandler.relayIdentity)
-	pi, err := s.CreateProtocolService(prifi_protocol.ProtocolName, tree)
+	pi, err := s.CreateProtocol(prifi_protocol.ProtocolName, tree)
 
 	if err != nil {
 		log.Fatal("Unable to start Prifi protocol:", err)

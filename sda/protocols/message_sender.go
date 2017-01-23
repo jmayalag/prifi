@@ -5,9 +5,9 @@ import (
 	"strconv"
 	"time"
 
-	"gopkg.in/dedis/onet.v1/log"
-	"gopkg.in/dedis/onet.v1"
 	"github.com/lbarman/prifi/prifi-lib/net"
+	"gopkg.in/dedis/onet.v1"
+	"gopkg.in/dedis/onet.v1/log"
 )
 
 //MessageSender is the struct we need to give PriFi-Lib so it can send messages.

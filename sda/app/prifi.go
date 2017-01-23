@@ -14,15 +14,15 @@ import (
 
 	"bytes"
 	"github.com/BurntSushi/toml"
-	"github.com/dedis/cothority/app/lib/config"
-	"github.com/dedis/cothority/crypto"
-	"gopkg.in/dedis/onet.v1/log"
-	"gopkg.in/dedis/onet.v1/network"
-	"gopkg.in/dedis/onet.v1"
 	"github.com/dedis/crypto/abstract"
 	cryptoconfig "github.com/dedis/crypto/config"
 	prifi_protocol "github.com/lbarman/prifi/sda/protocols"
 	prifi_service "github.com/lbarman/prifi/sda/services"
+	"gopkg.in/dedis/onet.v1"
+	"gopkg.in/dedis/onet.v1/app"
+	"gopkg.in/dedis/onet.v1/crypto"
+	"gopkg.in/dedis/onet.v1/log"
+	"gopkg.in/dedis/onet.v1/network"
 	"gopkg.in/urfave/cli.v1"
 	"net"
 	"strconv"
@@ -135,7 +135,7 @@ func main() {
 /**
  * Every "app" require reading config files and starting cothority beforehand
  */
-func readConfigAndStartCothority(c *cli.Context) (*onet.Conode, *config.Group, *prifi_service.ServiceState) {
+func readConfigAndStartCothority(c *cli.Context) (*onet.Server, *app.Group, *prifi_service.ServiceState) {
 	//parse PriFi parameters
 	prifiTomlConfig, err := readPriFiConfigFile(c)
 
@@ -177,7 +177,7 @@ func startTrustee(c *cli.Context) error {
 		log.Error("Could not start the prifi service:", err)
 		os.Exit(1)
 	}
-	host.StartWithErrorListener(service.NetworkErrorHappened)
+	host.Start() //host.StartWithErrorListener(service.NetworkErrorHappened)
 	return nil
 }
 
@@ -192,7 +192,7 @@ func startRelay(c *cli.Context) error {
 		os.Exit(1)
 	}
 
-	host.StartWithErrorListener(service.NetworkErrorHappened)
+	host.Start() //host.StartWithErrorListener(service.NetworkErrorHappened)
 	return nil
 }
 
@@ -207,7 +207,7 @@ func startClient(c *cli.Context) error {
 		os.Exit(1)
 	}
 
-	host.StartWithErrorListener(service.NetworkErrorHappened)
+	host.Start() //host.StartWithErrorListener(service.NetworkErrorHappened)
 	return nil
 }
 
@@ -222,7 +222,7 @@ func startSocksTunnelOnly(c *cli.Context) error {
 		os.Exit(1)
 	}
 
-	host.StartWithErrorListener(service.NetworkErrorHappened)
+	host.Start() //host.StartWithErrorListener(service.NetworkErrorHappened)
 	return nil
 }
 
@@ -235,7 +235,7 @@ func startSocksTunnelOnly(c *cli.Context) error {
 func checkOverwrite(file string) bool {
 	// check if the file exists and ask for override
 	if _, err := os.Stat(file); err == nil {
-		return config.InputYN(true, "Configuration file "+file+" already exists. Override?")
+		return app.InputYN(true, "Configuration file "+file+" already exists. Override?")
 	}
 	return true
 }
@@ -246,7 +246,7 @@ func createNewIdentityToml(c *cli.Context) error {
 
 	privStr, pubStr := createKeyPair()
 
-	addrPort := config.Inputf(":"+strconv.Itoa(DefaultPort)+"", "Which port do you want PriFi to use locally ?")
+	addrPort := app.Inputf(":"+strconv.Itoa(DefaultPort)+"", "Which port do you want PriFi to use locally ?")
 
 	//parse IP + Port
 	var hostStr string
@@ -268,7 +268,7 @@ func createNewIdentityToml(c *cli.Context) error {
 
 	serverBinding := network.NewTCPAddress(hostStr + ":" + portStr)
 
-	identity := &config.CothoritydConfig{
+	identity := &app.CothorityConfig{
 		Public:  pubStr,
 		Private: privStr,
 		Address: serverBinding,
@@ -286,7 +286,7 @@ func createNewIdentityToml(c *cli.Context) error {
 			defaultPath = c.GlobalString("default_path")
 		}
 
-		folderPath = config.Inputf(defaultPath, "Please enter the path for the new identity.toml file:")
+		folderPath = app.Inputf(defaultPath, "Please enter the path for the new identity.toml file:")
 		identityFilePath = path.Join(folderPath, DefaultCothorityConfigFile)
 
 		// check if the directory exists
@@ -308,12 +308,12 @@ func createNewIdentityToml(c *cli.Context) error {
 
 	//now since cothority is smart enough to write only the decimal format of the key, AND require the base64 format for group.toml, let's add it as a comment
 
-	public, err := crypto.ReadPubHex(network.Suite, pubStr)
+	public, err := crypto.StringHexToPub(network.Suite, pubStr)
 	if err != nil {
 		log.Fatal("Impossible to parse public key:", err)
 	}
 	var buff bytes.Buffer
-	if err := crypto.WritePub64(network.Suite, &buff, public); err != nil {
+	if err := crypto.Write64Pub(network.Suite, &buff, public); err != nil {
 		log.Error("Can't convert public key to base 64")
 		return nil
 	}
@@ -333,7 +333,7 @@ func createNewIdentityToml(c *cli.Context) error {
 }
 
 // Starts the cothority node to enable communication with the prifi-service.
-func startCothorityNode(c *cli.Context) (*onet.Conode, error) {
+func startCothorityNode(c *cli.Context) (*onet.Server, error) {
 	// first check the options
 	cfile := c.GlobalString("cothority_config")
 
@@ -342,7 +342,7 @@ func startCothorityNode(c *cli.Context) (*onet.Conode, error) {
 		return nil, err
 	}
 	// Let's read the config
-	_, host, err := config.ParseCothorityd(cfile)
+	_, host, err := app.ParseCothority(cfile)
 	if err != nil {
 		log.Error("Could not parse file", cfile)
 		return nil, err
@@ -409,7 +409,7 @@ func getDefaultFilePathForName(fileName string) string {
 }
 
 // getGroup reads the group-file and returns it.
-func readCothorityGroupConfig(c *cli.Context) *config.Group {
+func readCothorityGroupConfig(c *cli.Context) *app.Group {
 
 	gfile := c.GlobalString("group")
 
@@ -427,7 +427,7 @@ func readCothorityGroupConfig(c *cli.Context) *config.Group {
 
 	defer gr.Close()
 
-	groups, err := config.ReadGroupDescToml(gr)
+	groups, err := app.ReadGroupDescToml(gr)
 
 	if err != nil {
 		log.Error("Could not parse toml file \"", gfile, "\"")
@@ -444,7 +444,7 @@ func readCothorityGroupConfig(c *cli.Context) *config.Group {
 // createKeyPair returns the private and public key in hexadecimal representation.
 func createKeyPair() (string, string) {
 	kp := cryptoconfig.NewKeyPair(network.Suite)
-	privStr, err := crypto.ScalarHex(network.Suite, kp.Secret)
+	privStr, err := crypto.ScalarToStringHex(network.Suite, kp.Secret)
 	if err != nil {
 		log.Fatal("Error formating private key to hexadecimal. Abort.")
 	}
@@ -452,7 +452,7 @@ func createKeyPair() (string, string) {
 	// use the transformation for EdDSA signatures
 	//point = cosi.Ed25519Public(network.Suite, kp.Secret)
 	point = kp.Public
-	pubStr, err := crypto.PubHex(network.Suite, point)
+	pubStr, err := crypto.PubToStringHex(network.Suite, point)
 	if err != nil {
 		log.Fatal("Could not parse public key. Abort.")
 	}

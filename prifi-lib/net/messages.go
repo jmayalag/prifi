@@ -5,8 +5,8 @@ import (
 	"errors"
 	"strconv"
 
-	"gopkg.in/dedis/onet.v1/log"
 	"github.com/dedis/crypto/abstract"
+	"gopkg.in/dedis/onet.v1/log"
 )
 
 /*

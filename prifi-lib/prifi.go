@@ -1,11 +1,11 @@
 package prifi_lib
 
 import (
-	"gopkg.in/dedis/onet.v1/log"
 	"github.com/lbarman/prifi/prifi-lib/client"
 	"github.com/lbarman/prifi/prifi-lib/net"
 	"github.com/lbarman/prifi/prifi-lib/relay"
 	"github.com/lbarman/prifi/prifi-lib/trustee"
+	"gopkg.in/dedis/onet.v1/log"
 )
 
 /*

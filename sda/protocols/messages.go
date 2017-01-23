@@ -1,8 +1,8 @@
 package protocols
 
 import (
-	"gopkg.in/dedis/onet.v1"
 	"github.com/lbarman/prifi/prifi-lib/net"
+	"gopkg.in/dedis/onet.v1"
 )
 
 //Struct_ALL_ALL_SHUTDOWN is a wrapper for ALL_ALL_SHUTDOWN (but also contains a *onet.TreeNode)
