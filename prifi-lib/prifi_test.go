@@ -2,7 +2,7 @@ package prifi_lib
 
 import (
 	"errors"
-	"github.com/dedis/cothority/log"
+	"gopkg.in/dedis/onet.v1/log"
 	"testing"
 )
 

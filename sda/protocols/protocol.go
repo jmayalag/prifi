@@ -25,11 +25,11 @@ package protocols
 import (
 	"errors"
 
-	"github.com/dedis/cothority/log"
-	"github.com/dedis/cothority/network"
-	"github.com/dedis/cothority/sda"
 	prifi_lib "github.com/lbarman/prifi/prifi-lib"
 	"github.com/lbarman/prifi/prifi-lib/net"
+	"gopkg.in/dedis/onet.v1"
+	"gopkg.in/dedis/onet.v1/log"
+	"gopkg.in/dedis/onet.v1/network"
 )
 
 // ProtocolName is the name used to register the SDA wrapper protocol with SDA.
@@ -37,7 +37,7 @@ const ProtocolName = "PrifiProtocol"
 
 //PriFiSDAProtocol is the SDA-protocol struct. It contains the SDA-tree, and a chanel that stops the simulation when it receives a "true"
 type PriFiSDAProtocol struct {
-	*sda.TreeNodeInstance
+	*onet.TreeNodeInstance
 	configSet     bool
 	config        PriFiSDAWrapperConfig
 	role          PriFiRole
@@ -102,21 +102,21 @@ func (p *PriFiSDAProtocol) Stop() {
 func init() {
 
 	//register the prifi_lib's message with the network lib here
-	network.RegisterPacketType(net.ALL_ALL_PARAMETERS_NEW{})
-	network.RegisterPacketType(net.CLI_REL_TELL_PK_AND_EPH_PK{})
-	network.RegisterPacketType(net.CLI_REL_UPSTREAM_DATA{})
-	network.RegisterPacketType(net.REL_CLI_DOWNSTREAM_DATA{})
-	network.RegisterPacketType(net.REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG{})
-	network.RegisterPacketType(net.REL_CLI_TELL_TRUSTEES_PK{})
-	network.RegisterPacketType(net.REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE{})
-	network.RegisterPacketType(net.REL_TRU_TELL_TRANSCRIPT{})
-	network.RegisterPacketType(net.TRU_REL_DC_CIPHER{})
-	network.RegisterPacketType(net.REL_TRU_TELL_RATE_CHANGE{})
-	network.RegisterPacketType(net.TRU_REL_SHUFFLE_SIG{})
-	network.RegisterPacketType(net.TRU_REL_TELL_NEW_BASE_AND_EPH_PKS{})
-	network.RegisterPacketType(net.TRU_REL_TELL_PK{})
+	network.RegisterMessage(net.ALL_ALL_PARAMETERS_NEW{})
+	network.RegisterMessage(net.CLI_REL_TELL_PK_AND_EPH_PK{})
+	network.RegisterMessage(net.CLI_REL_UPSTREAM_DATA{})
+	network.RegisterMessage(net.REL_CLI_DOWNSTREAM_DATA{})
+	network.RegisterMessage(net.REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG{})
+	network.RegisterMessage(net.REL_CLI_TELL_TRUSTEES_PK{})
+	network.RegisterMessage(net.REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE{})
+	network.RegisterMessage(net.REL_TRU_TELL_TRANSCRIPT{})
+	network.RegisterMessage(net.TRU_REL_DC_CIPHER{})
+	network.RegisterMessage(net.REL_TRU_TELL_RATE_CHANGE{})
+	network.RegisterMessage(net.TRU_REL_SHUFFLE_SIG{})
+	network.RegisterMessage(net.TRU_REL_TELL_NEW_BASE_AND_EPH_PKS{})
+	network.RegisterMessage(net.TRU_REL_TELL_PK{})
 
-	sda.GlobalProtocolRegister(ProtocolName, NewPriFiSDAWrapperProtocol)
+	onet.GlobalProtocolRegister(ProtocolName, NewPriFiSDAWrapperProtocol)
 }
 
 // handleTimeout translates ids int ServerIdentities
@@ -139,7 +139,7 @@ func (p *PriFiSDAProtocol) handleTimeout(clientsIds []int, trusteesIds []int) {
 // NewPriFiSDAWrapperProtocol creates a bare PrifiSDAWrapper struct.
 // SetConfig **MUST** be called on it before it can participate
 // to the protocol.
-func NewPriFiSDAWrapperProtocol(n *sda.TreeNodeInstance) (sda.ProtocolInstance, error) {
+func NewPriFiSDAWrapperProtocol(n *onet.TreeNodeInstance) (onet.ProtocolInstance, error) {
 	p := &PriFiSDAProtocol{
 		TreeNodeInstance: n,
 		ResultChannel:    make(chan interface{}),

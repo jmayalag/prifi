@@ -5,10 +5,10 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/dedis/cothority/app/lib/config"
-	"github.com/dedis/cothority/log"
-	"github.com/dedis/cothority/network"
 	prifi_protocol "github.com/lbarman/prifi/sda/protocols"
+	"gopkg.in/dedis/onet.v1/app"
+	"gopkg.in/dedis/onet.v1/log"
+	"gopkg.in/dedis/onet.v1/network"
 )
 
 var socksClientConfig *prifi_protocol.SOCKSConfig
@@ -30,7 +30,7 @@ func (s *ServiceState) tryLoad() error {
 		return fmt.Errorf("Error while reading %s: %s", configFile, err)
 	}
 	if len(b) > 0 {
-		_, msg, err := network.UnmarshalRegistered(b)
+		_, msg, err := network.Unmarshal(b)
 		if err != nil {
 			return fmt.Errorf("Couldn't unmarshal: %s", err)
 		}
@@ -43,7 +43,7 @@ func (s *ServiceState) tryLoad() error {
 // mapIdentities reads the group configuration to assign PriFi roles
 // to server addresses and returns them with the server
 // identity of the relay.
-func mapIdentities(group *config.Group) (*network.ServerIdentity, []*network.ServerIdentity) {
+func mapIdentities(group *app.Group) (*network.ServerIdentity, []*network.ServerIdentity) {
 	trustees := make([]*network.ServerIdentity, 0)
 	var relay *network.ServerIdentity
 

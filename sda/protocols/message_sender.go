@@ -5,29 +5,29 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/dedis/cothority/log"
-	"github.com/dedis/cothority/sda"
 	"github.com/lbarman/prifi/prifi-lib/net"
+	"gopkg.in/dedis/onet.v1"
+	"gopkg.in/dedis/onet.v1/log"
 )
 
 //MessageSender is the struct we need to give PriFi-Lib so it can send messages.
 //It needs to implement the "MessageSender interface" defined in prifi_lib/prifi.go
 type MessageSender struct {
-	tree     *sda.TreeNodeInstance
-	relay    *sda.TreeNode
-	clients  map[int]*sda.TreeNode
-	trustees map[int]*sda.TreeNode
+	tree     *onet.TreeNodeInstance
+	relay    *onet.TreeNode
+	clients  map[int]*onet.TreeNode
+	trustees map[int]*onet.TreeNode
 }
 
 // buildMessageSender creates a MessageSender struct
 // given a mep between server identities and PriFi identities.
 func (p *PriFiSDAProtocol) buildMessageSender(identities map[string]PriFiIdentity) MessageSender {
-	nodes := p.List() // Has type []*sda.TreeNode
-	trustees := make(map[int]*sda.TreeNode)
-	clients := make(map[int]*sda.TreeNode)
+	nodes := p.List() // Has type []*onet.TreeNode
+	trustees := make(map[int]*onet.TreeNode)
+	clients := make(map[int]*onet.TreeNode)
 	trusteeID := 0
 	clientID := 0
-	var relay *sda.TreeNode
+	var relay *onet.TreeNode
 
 	for i := 0; i < len(nodes); i++ {
 		identifier := nodes[i].ServerIdentity.Public.String()

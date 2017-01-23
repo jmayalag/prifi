@@ -37,11 +37,11 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/dedis/cothority/log"
 	"github.com/dedis/crypto/abstract"
 	"github.com/lbarman/prifi/prifi-lib/net"
 	socks "github.com/lbarman/prifi/prifi-socks"
 	"github.com/lbarman/prifi/utils/timing"
+	"gopkg.in/dedis/onet.v1/log"
 )
 
 /*

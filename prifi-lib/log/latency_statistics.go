@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/dedis/cothority/log"
+	"gopkg.in/dedis/onet.v1/log"
 )
 
 //This class hold latencies values, and performs the average/std distribution of it. That is the max number of value stored.

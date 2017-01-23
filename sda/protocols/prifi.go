@@ -1,9 +1,9 @@
 package protocols
 
 import (
-	"github.com/dedis/cothority/log"
-	"github.com/dedis/cothority/network"
 	prifi_lib "github.com/lbarman/prifi/prifi-lib"
+	"gopkg.in/dedis/onet.v1/log"
+	"gopkg.in/dedis/onet.v1/network"
 )
 
 //the UDP channel we provide to PriFi. check udp.go for more details.

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/dedis/cothority/log"
+	"gopkg.in/dedis/onet.v1/log"
 )
 
 //BitrateStatistics holds statistics about the bitrate, such as instant/total up/down/down (via udp)/retransmitted bits

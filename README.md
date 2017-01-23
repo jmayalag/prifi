@@ -27,7 +27,7 @@ cd $GOPATH/src/github.com/lbarman/prifi
 
 ## Running PriFi
 
-PriFi uses [SDA](https://github.com/dedis/cothority) as a network framework. It is easy to run all components (trustees, relay, clients) on one machine for testing purposes, or on different machines for the real setup.
+PriFi uses [ONet](https://github.com/dedis/onet) as a network framework. It is easy to run all components (trustees, relay, clients) on one machine for testing purposes, or on different machines for the real setup.
 
 Each component has a *SDA configuration* : an identity (`identity.toml`, containing a private and public key), and some knowledge of the others participants via `group.toml`. For your convenience, we pre-generated some identities in `config/identities_default`.
 

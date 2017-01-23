@@ -15,10 +15,10 @@ Then, this file simple handle the answer to the different message kind :
 
 import (
 	"errors"
-	"github.com/dedis/cothority/log"
 	"github.com/dedis/crypto/abstract"
 	"github.com/lbarman/prifi/prifi-lib/config"
 	"github.com/lbarman/prifi/prifi-lib/net"
+	"gopkg.in/dedis/onet.v1/log"
 	"strconv"
 	"time"
 )

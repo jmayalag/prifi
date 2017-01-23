@@ -1,11 +1,11 @@
 package services
 
 import (
-	"github.com/dedis/cothority/log"
-	"github.com/dedis/cothority/network"
-	"github.com/dedis/cothority/sda"
 	"github.com/lbarman/prifi/prifi-lib/crypto"
 	"github.com/lbarman/prifi/sda/protocols"
+	"gopkg.in/dedis/onet.v1"
+	"gopkg.in/dedis/onet.v1/log"
+	"gopkg.in/dedis/onet.v1/network"
 	"strconv"
 	"testing"
 )
@@ -52,7 +52,7 @@ func startProtocol() {
 	startProtocolCalled = true
 }
 
-func testIfInRoster(roster *sda.Roster, ID *network.ServerIdentity) bool {
+func testIfInRoster(roster *onet.Roster, ID *network.ServerIdentity) bool {
 	for _, v := range roster.List {
 		if v.Equal(ID) {
 			return true
