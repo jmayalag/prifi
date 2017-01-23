@@ -14,7 +14,7 @@ This is the core of the protocol PriFi.
 
 2) `PriFi-SDA-Wrapper` (what is in folder `sda`), that does the mapping between the tree entities of SDA and our roles (Relay, Trustee, Client), and provides the MessageSender interface discussed above.
 
-The [SDA](https://github.com/dedis/cothority) is a framework for Secure Distributed Algorithms, developped by DeDiS, EPFL. It help bootstrapping secure protocols. The "wrapper" is simply the link between this framework and our library `PriFi-lib` (which does not know at all about `sda`).
+The [ONet](https://github.com/dedis/onet) is a framework for Secure Distributed Algorithms, developped by DeDiS, EPFL. It help bootstrapping secure protocols. The "wrapper" is simply the link between this framework and our library `PriFi-lib` (which does not know at all about `sda`).
 
 To sum up, the architecture is as follow :
 

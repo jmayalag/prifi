@@ -42,7 +42,7 @@ realIdentitiesDir="identities_real"		#in $configdir
 # unimportant variable (but do not change, ofc)
 
 sleeptime_between_spawns=1 		# time in second between entities launch in all-localhost part
-cothorityBranchRequired="test_ism_2_699" # the branch required for the cothority (SDA) framework
+cothorityBranchRequired="master" # the branch required for the cothority (SDA) framework
 
 #pretty colored message
 highlightOn="\033[33m"
@@ -107,10 +107,10 @@ test_go(){
 
 # tests if the cothority exists and is on the correct branch
 test_cothority() {
-	branchOk=$(cd $GOPATH/src/github.com/dedis/cothority; git status | grep "On branch $cothorityBranchRequired" | wc -l)
+	branchOk=$(cd $GOPATH/src/gopkg.in/dedis/onet.v1; git status | grep "On branch $cothorityBranchRequired" | wc -l)
 
 	if [ $branchOk -ne 1 ]; then
-		echo -e "$errorMsg Make sure \"$GOPATH/src/github.com/dedis/cothority\" is a git repo, on branch \"$cothorityBranchRequired\". Try running \"./prifi.sh install\""
+		echo -e "$errorMsg Make sure \"$GOPATH/src/gopkg.in/dedis/onet.v1\" is a git repo, on branch \"$cothorityBranchRequired\". Try running \"./prifi.sh install\""
 		exit 1
 	fi
 }
@@ -167,17 +167,17 @@ case $1 in
 		cd ../..
 		echo -e "$okMsg"
 
-		echo -n "Switching cothority branch... "
-		cd $GOPATH/src/github.com/dedis/cothority; git checkout "$cothorityBranchRequired" 1>/dev/null 2>&1
+		echo -n "Switching ONet branch... "
+		cd $GOPATH/src/gopkg.in/dedis/onet.v1; git checkout "$cothorityBranchRequired" 1>/dev/null 2>&1
 		echo -e "$okMsg"
 
 		echo -n "Re-getting all go packages (since we switched branch)... "
 		cd $GOPATH/src/github.com/lbarman/prifi/sda/app; go get ./... 1>/dev/null 2>&1
 		cd ../..
-		cd $GOPATH/src/github.com/dedis/cothority; go get ./... 1>/dev/null 2>&1
+		cd $GOPATH/src/gopkg.in/dedis/onet.v1; go get ./... 1>/dev/null 2>&1
 		echo -e "$okMsg"
 
-		echo -n "Testing cothority branch... "
+		echo -n "Testing ONet branch... "
 		test_cothority 
 		echo -e "$okMsg"
 
