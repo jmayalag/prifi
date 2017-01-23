@@ -135,7 +135,7 @@ func main() {
 /**
  * Every "app" require reading config files and starting cothority beforehand
  */
-func readConfigAndStartCothority(c *cli.Context) (*sda.Conode, *config.Group, *prifi_service.ServiceState) {
+func readConfigAndStartCothority(c *cli.Context) (*onet.Conode, *config.Group, *prifi_service.ServiceState) {
 	//parse PriFi parameters
 	prifiTomlConfig, err := readPriFiConfigFile(c)
 
@@ -333,7 +333,7 @@ func createNewIdentityToml(c *cli.Context) error {
 }
 
 // Starts the cothority node to enable communication with the prifi-service.
-func startCothorityNode(c *cli.Context) (*sda.Conode, error) {
+func startCothorityNode(c *cli.Context) (*onet.Conode, error) {
 	// first check the options
 	cfile := c.GlobalString("cothority_config")
 

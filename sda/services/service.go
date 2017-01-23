@@ -23,19 +23,19 @@ import (
 //The name of the service, used by SDA's internals
 const ServiceName = "PriFiService"
 
-var serviceID sda.ServiceID
+var serviceID onet.ServiceID
 
 // Register Service with SDA
 func init() {
-	sda.RegisterNewService(ServiceName, newService)
-	serviceID = sda.ServiceFactory.ServiceID(ServiceName)
+	onet.RegisterNewService(ServiceName, newService)
+	serviceID = onet.ServiceFactory.ServiceID(ServiceName)
 }
 
 //Service contains the state of the service
 type ServiceState struct {
 	// We need to embed the ServiceProcessor, so that incoming messages
 	// are correctly handled.
-	*sda.ServiceProcessor
+	*onet.ServiceProcessor
 	prifiTomlConfig *prifi_protocol.PrifiTomlConfig
 	Storage         *Storage
 	path            string
@@ -58,9 +58,9 @@ type Storage struct {
 // newService receives the context and a path where it can write its
 // configuration, if desired. As we don't know when the service will exit,
 // we need to save the configuration on our own from time to time.
-func newService(c *sda.Context, path string) sda.Service {
+func newService(c *onet.Context, path string) onet.Service {
 	s := &ServiceState{
-		ServiceProcessor: sda.NewServiceProcessor(c),
+		ServiceProcessor: onet.NewServiceProcessor(c),
 		path:             path,
 	}
 
@@ -81,7 +81,7 @@ func newService(c *sda.Context, path string) sda.Service {
 // instantiate the protocol on its own. If you need more control at the
 // instantiation of the protocol, use CreateProtocolService, and you can
 // give some extra-configuration to your protocol in here.
-func (s *ServiceState) NewProtocol(tn *sda.TreeNodeInstance, conf *sda.GenericConfig) (sda.ProtocolInstance, error) {
+func (s *ServiceState) NewProtocol(tn *onet.TreeNodeInstance, conf *onet.GenericConfig) (onet.ProtocolInstance, error) {
 
 	pi, err := prifi_protocol.NewPriFiSDAWrapperProtocol(tn)
 	if err != nil {
@@ -192,7 +192,7 @@ func (s *ServiceState) StartTrustee(group *config.Group) error {
 // save saves the actual identity
 func (s *ServiceState) save() {
 	log.Lvl3("Saving service")
-	b, err := network.MarshalRegisteredType(s.Storage)
+	b, err := network.Marshal(s.Storage)
 	if err != nil {
 		log.Error("Couldn't marshal service:", err)
 	} else {

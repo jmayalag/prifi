@@ -30,7 +30,7 @@ func (s *ServiceState) tryLoad() error {
 		return fmt.Errorf("Error while reading %s: %s", configFile, err)
 	}
 	if len(b) > 0 {
-		_, msg, err := network.UnmarshalRegistered(b)
+		_, msg, err := network.Unmarshal(b)
 		if err != nil {
 			return fmt.Errorf("Couldn't unmarshal: %s", err)
 		}

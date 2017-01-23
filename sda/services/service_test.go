@@ -13,14 +13,14 @@ func TestMain(m *testing.M) {
 func TestServiceTemplate(t *testing.T) {
 
 	/*
-		local := sda.NewLocalTest()
+		local := onet.NewLocalTest()
 		defer local.CloseAll()
 		hosts, roster, _ := local.MakeHELS(5, serviceID)
 		log.Lvl1("Roster is", roster)
 
-		var services []sda.Service
+		var services []onet.Service
 		for _, h := range hosts {
-			service := local.Services[h.ServerIdentity.ID][serviceID].(sda.Service)
+			service := local.Services[h.ServerIdentity.ID][serviceID].(onet.Service)
 			services = append(services, service)
 		}
 

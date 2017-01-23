@@ -110,7 +110,7 @@ func (wq *waitQueue) count() (int, int) {
 /**
  * Creates a roster from waiting nodes, used by SDA
  */
-func (c *churnHandler) createRoster() *sda.Roster {
+func (c *churnHandler) createRoster() *onet.Roster {
 
 	n, m := c.waitQueue.count()
 	nParticipants := n + m + 1
@@ -127,7 +127,7 @@ func (c *churnHandler) createRoster() *sda.Roster {
 		i++
 	}
 
-	roster := sda.NewRoster(participants)
+	roster := onet.NewRoster(participants)
 	return roster
 }
 

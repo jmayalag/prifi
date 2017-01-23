@@ -21,9 +21,9 @@ type ConnectionRequest struct{}
 type DisconnectionRequest struct{}
 
 func init() {
-	network.RegisterPacketType(StopProtocol{})
-	network.RegisterPacketType(ConnectionRequest{})
-	network.RegisterPacketType(DisconnectionRequest{})
+	network.RegisterMessage(StopProtocol{})
+	network.RegisterMessage(ConnectionRequest{})
+	network.RegisterMessage(DisconnectionRequest{})
 }
 
 // returns true if the PriFi SDA protocol is running (in any state : init, communicate, etc)

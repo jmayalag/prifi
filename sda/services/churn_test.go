@@ -52,7 +52,7 @@ func startProtocol() {
 	startProtocolCalled = true
 }
 
-func testIfInRoster(roster *sda.Roster, ID *network.ServerIdentity) bool {
+func testIfInRoster(roster *onet.Roster, ID *network.ServerIdentity) bool {
 	for _, v := range roster.List {
 		if v.Equal(ID) {
 			return true
