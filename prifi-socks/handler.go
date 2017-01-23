@@ -9,7 +9,7 @@ import (
 
 	"strconv"
 
-	"github.com/dedis/cothority/log"
+	"github.com/dedis/onet/log"
 )
 
 // Authentication methods

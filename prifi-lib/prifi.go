@@ -1,7 +1,7 @@
 package prifi_lib
 
 import (
-	"github.com/dedis/cothority/log"
+	"github.com/dedis/onet/log"
 	"github.com/lbarman/prifi/prifi-lib/client"
 	"github.com/lbarman/prifi/prifi-lib/net"
 	"github.com/lbarman/prifi/prifi-lib/relay"

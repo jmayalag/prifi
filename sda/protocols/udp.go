@@ -15,7 +15,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dedis/cothority/log"
+	"github.com/dedis/onet/log"
 )
 
 //UPD_PORT is the port used for UDP broadcast

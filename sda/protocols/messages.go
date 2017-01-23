@@ -1,7 +1,7 @@
 package protocols
 
 import (
-	"github.com/dedis/cothority/sda"
+	"github.com/dedis/onet"
 	"github.com/lbarman/prifi/prifi-lib/net"
 )
 

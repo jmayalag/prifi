@@ -2,8 +2,8 @@ package services
 
 import (
 	"errors"
-	"github.com/dedis/cothority/log"
-	"github.com/dedis/cothority/network"
+	"github.com/dedis/onet/log"
+	"github.com/dedis/onet/network"
 	prifi_protocol "github.com/lbarman/prifi/sda/protocols"
 	"github.com/lbarman/prifi/utils/timing"
 	"time"

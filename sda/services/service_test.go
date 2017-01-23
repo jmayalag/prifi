@@ -3,7 +3,7 @@ package services
 import (
 	"testing"
 
-	"github.com/dedis/cothority/log"
+	"github.com/dedis/onet/log"
 )
 
 func TestMain(m *testing.M) {

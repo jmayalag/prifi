@@ -3,7 +3,7 @@ package relay
 import (
 	"time"
 
-	"github.com/dedis/cothority/log"
+	"github.com/dedis/onet/log"
 	"strconv"
 )
 

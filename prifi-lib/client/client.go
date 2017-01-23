@@ -27,7 +27,7 @@ import (
 	"errors"
 	"strconv"
 
-	"github.com/dedis/cothority/log"
+	"github.com/dedis/onet/log"
 	"github.com/dedis/crypto/abstract"
 	"github.com/lbarman/prifi/prifi-lib/config"
 	"github.com/lbarman/prifi/prifi-lib/crypto"

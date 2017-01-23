@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/dedis/cothority/log"
+	"github.com/dedis/onet/log"
 )
 
 //This class hold latencies values, and performs the average/std distribution of it. That is the max number of value stored.

@@ -1,8 +1,8 @@
 package protocols
 
 import (
-	"github.com/dedis/cothority/log"
-	"github.com/dedis/cothority/network"
+	"github.com/dedis/onet/log"
+	"github.com/dedis/onet/network"
 	prifi_lib "github.com/lbarman/prifi/prifi-lib"
 )
 

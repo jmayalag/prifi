@@ -7,7 +7,7 @@ package output
 
 import (
 	"fmt"
-	"github.com/dedis/cothority/log"
+	"github.com/dedis/onet/log"
 	"os"
 )
 
