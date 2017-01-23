@@ -6,11 +6,11 @@ Description = "Prifi"
   Description = "relay"
 
 [[servers]]
-  Address = "tcp://127.0.0.1:7001"
+  Address = "tcp://127.0.0.1:7002"
   Public = "iwjdlBd0kAlOviatMvTuN95cB0am9mY8+DmeK86c3Fg="
   Description = "trustee"
 
 [[servers]]
-  Address = "tcp://127.0.0.1:7002"
+  Address = "tcp://127.0.0.1:7004"
   Public = "Km6aHg0MenQnGH7gJtt6wb28FbUQE9H7i9c8ID3elm8="
   Description = "trustee"
