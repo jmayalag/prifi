@@ -36,6 +36,7 @@ import (
 	"github.com/lbarman/prifi/prifi-lib/scheduler"
 	socks "github.com/lbarman/prifi/prifi-socks"
 	"time"
+	"fmt"
 )
 
 // Received_ALL_CLI_SHUTDOWN handles ALL_CLI_SHUTDOWN messages.
@@ -70,6 +71,22 @@ func (p *PriFiLibClientInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PAR
 	}
 	if upCellSize < 1 {
 		return errors.New("UpCellSize cannot be 0")
+	}
+
+	//manual confirm if only one client
+	if nClients == 1 {
+		var response string
+		log.LLvl1("WARNING: You are the only client, so PriFi cannot provide anonymity. Confirm [Y] that you would like to proceed.")
+		_, err := fmt.Scanln(&response)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if response == "Y" {
+			log.Lvl3("Protocol proceeding with only one client (no anonymity)")
+		} else {
+			return errors.New("Only one client")
+		}
+		//todo: if [N], wait for more clients
 	}
 
 	//set the received parameters
