@@ -91,7 +91,7 @@ func (r *NeffShuffleRelay) SendToNextTrustee() (interface{}, int, error) {
 
 	// send to the next trustee
 	msg := &net.REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE{
-		Pks:    r.PublicKeyBeingShuffled,
+		Pks:    nil,
 		EphPks: r.PublicKeyBeingShuffled,
 		Base:   r.LastBase}
 

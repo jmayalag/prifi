@@ -172,6 +172,12 @@ func TestTrustee(t *testing.T) {
 	}
 	msg4 := toSend.(*net.REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE)
 
+	//we inject the public keys
+	msg4.Pks = make([]abstract.Point, nClients)
+	for i := 0; i < nClients; i++ {
+		msg4.Pks[i] = clientPubKeys[i]
+	}
+
 	//we receive the shuffle
 	if err := trustee.ReceivedMessage(*msg4); err != nil {
 		t.Error("Trustee should be able to receive this message:", err)
