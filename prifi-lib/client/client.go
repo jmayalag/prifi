@@ -292,6 +292,17 @@ func (p *PriFiLibClientInstance) Received_REL_CLI_TELL_TRUSTEES_PK(msg net.REL_C
 		p.clientState.sharedSecrets[i] = config.CryptoSuite.Point().Mul(msg.Pks[i], p.clientState.privateKey)
 	}
 
+	//set up the DC-nets
+	sharedPRNGs := make([]abstract.Cipher, p.clientState.nTrustees)
+	for i := 0; i < p.clientState.nTrustees; i++ {
+		bytes, err := p.clientState.sharedSecrets[i].MarshalBinary()
+		if err != nil {
+			return errors.New("Could not marshal point !")
+		}
+		sharedPRNGs[i] = config.CryptoSuite.Cipher(bytes)
+	}
+	p.clientState.CellCoder.ClientSetup(config.CryptoSuite, sharedPRNGs)
+
 	//then, generate our ephemeral keys (used for shuffling)
 	p.clientState.EphemeralPublicKey, p.clientState.ephemeralPrivateKey = crypto.NewKeyPair()
 

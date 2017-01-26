@@ -465,6 +465,12 @@ func (p *PriFiLibRelayInstance) Received_CLI_REL_TELL_PK_AND_EPH_PK(msg net.CLI_
 		}
 		toSend := msg.(*net.REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE)
 
+		//todo: fix this. The neff shuffle now stores twices the ephemeral public keys
+		toSend.Pks = make([]abstract.Point, p.relayState.nClients)
+		for i := 0; i < p.relayState.nClients; i++ {
+			toSend.Pks[i] = p.relayState.clients[i].PublicKey
+		}
+
 		// send to the 1st trustee
 		p.messageSender.SendToTrusteeWithLog(trusteeID, toSend, "(0-th iteration)")
 
