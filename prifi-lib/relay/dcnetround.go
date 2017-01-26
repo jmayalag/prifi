@@ -29,6 +29,7 @@ func (dc *DCNetRound) ChangeRound(newRound int32) {
 	defer dc.Unlock()
 	dc.currentRound = newRound
 	dc.dataAlreadySent = nil
+	dc.startTime = time.Now()
 }
 
 //Check if we are still in the given round
