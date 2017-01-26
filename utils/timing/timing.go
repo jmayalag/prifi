@@ -18,9 +18,7 @@ import (
 
 var startTimes = make(map[string]time.Time)
 var mutex sync.Mutex
-var outputInterface output.Output = &output.FileOutput{
-	Filename: "timing.txt",
-}
+var outputInterface output.Output = &output.NullOutput{}
 
 // StartMeasure starts a time measure identified by a name.
 func StartMeasure(name string) {
