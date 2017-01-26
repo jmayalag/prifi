@@ -242,7 +242,7 @@ func TestTrustee(t *testing.T) {
 		t.Error("Should handle this stop message, but", err)
 	}
 
-	//now should be sending data
+	//should have sent a few ciphers before getting the stop message
 	select {
 	case msg8 := <-sentToRelay:
 		msg8_parsed := msg8.(*net.TRU_REL_DC_CIPHER)
@@ -259,6 +259,19 @@ func TestTrustee(t *testing.T) {
 
 	default:
 		t.Error("Trustee should have sent a TRU_REL_DC_CIPHER to the relay")
+	}
+
+	time.Sleep(TRUSTEE_BASE_SLEEP_TIME * 2)
+
+	//empty the chan
+	empty := false
+	for !empty {
+		select {
+		case <-sentToRelay:
+			//nothing
+		default:
+			empty = true
+		}
 	}
 
 	time.Sleep(3 * TRUSTEE_BASE_SLEEP_TIME)

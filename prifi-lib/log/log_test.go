@@ -15,9 +15,9 @@ func TestBWStatistics(t *testing.T) {
 }
 func TestLatencyStatistics(t *testing.T) {
 	b := NewTimeStatistics()
-	b.AddLatency(int64(1000))
-	b.AddLatency(int64(2000))
-	b.AddLatency(int64(2000))
+	b.AddTime(int64(1000))
+	b.AddTime(int64(2000))
+	b.AddTime(int64(2000))
 	b.Report()
 }
 
