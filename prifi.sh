@@ -174,7 +174,7 @@ case $1 in
 		echo -n "Re-getting all go packages (since we switched branch)... "
 		cd $GOPATH/src/github.com/lbarman/prifi/sda/app; go get ./... 1>/dev/null 2>&1
 		cd ../..
-		cd $GOPATH/src/gopkg.in/dedis/onet.v1; go get ./... 1>/dev/null 2>&1
+		cd $GOPATH/src/gopkg.in/dedis/onet.v1; go get -u ./... 1>/dev/null 2>&1
 		echo -e "$okMsg"
 
 		echo -n "Testing ONet branch... "
@@ -405,31 +405,23 @@ case $1 in
 				path="relay"
 			;;
 			t|T)
-				read -p "Do you want to generate it for trustee [0] or [1] ? " key2
+				
+				read -p "Do you want to generate it for trustee [0] or [1] (or more - enter digit) ? " key2
 
-				case "$key2" in
-					0|1)
-						path="trustee$key2"
-						;;
-					*)
-						echo -e "$errorMsg did not understand."
-						exit 1
-						;;
-				esac
+				test_digit $key2 1
+				pathSource="trustee0"
+				path="trustee$key2"
 				;;
+
 			c|C)
-				read -p "Do you want to generate it for client [0],[1] or [2] ? " key2
+				read -p "Do you want to generate it for client [0],[1] or [2] (or more - enter digit) ? " key2
 
-				case "$key2" in
-					0|1|2)
-						path="client$key2"
-						;;
-					*)
-						echo -e "$errorMsg did not understand."
-						exit 1
-						;;
-				esac
+				test_digit $key2 1
+				pathSource="client0"
+				path="client$key2"
 				;;
+
+
 			*)
 				echo -e "$errorMsg did not understand."
 				exit 1
@@ -437,7 +429,7 @@ case $1 in
 		esac
 
 		pathReal="$configdir/$realIdentitiesDir/$path/"
-		pathDefault="$configdir/$defaultIdentitiesDir/$path/"
+		pathDefault="$configdir/$defaultIdentitiesDir/$pathSource/"
 		echo -e "Gonna generate ${highlightOn}identity.toml${highlightOff} in ${highlightOn}$pathReal${highlightOff}"
 
 		#generate identity.toml

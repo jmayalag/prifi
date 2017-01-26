@@ -48,7 +48,7 @@ it2:
 	./prifi.sh integration-test2
 
 clean:
-	rm -f profile.cov *.log
+	rm -f profile.cov *.log timing.txt prifi-lib/relay/timing.txt
 
 test: build test_fmt test_govet test_lint
 
