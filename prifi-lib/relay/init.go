@@ -70,7 +70,12 @@ func NewRelay(dataOutputEnabled bool, dataForClients chan []byte, dataFromDCNet 
 	relayState.timeoutHandler = timeoutHandler
 	relayState.ExperimentResultChannel = experimentResultChan
 	relayState.PriorityDataForClients = make(chan []byte, 10) // This is used for relay's control message (like latency-tests)
-	relayState.statistics = prifilog.NewBitRateStatistics()
+	relayState.bitrateStatistics = prifilog.NewBitRateStatistics()
+	relayState.timeStatistics = make(map[string]*prifilog.TimeStatistics)
+	relayState.timeStatistics["round-duration"] = prifilog.NewTimeStatistics()
+	relayState.timeStatistics["waiting-on-clients"] = prifilog.NewTimeStatistics()
+	relayState.timeStatistics["waiting-on-trustees"] = prifilog.NewTimeStatistics()
+	relayState.timeStatistics["sending-data"] = prifilog.NewTimeStatistics()
 	relayState.PublicKey, relayState.privateKey = crypto.NewKeyPair()
 	relayState.bufferManager = new(BufferManager)
 	relayState.currentDCNetRound = NewDCNetRound(0, nil)
@@ -153,7 +158,8 @@ type RelayState struct {
 	ExperimentResultChannel           chan interface{}
 	ExperimentResultData              interface{}
 	timeoutHandler                    func([]int, []int)
-	statistics                        *prifilog.BitrateStatistics
+	bitrateStatistics                 *prifilog.BitrateStatistics
+	timeStatistics                    map[string]*prifilog.TimeStatistics
 }
 
 // ReceivedMessage must be called when a PriFi host receives a message.

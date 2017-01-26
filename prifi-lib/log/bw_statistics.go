@@ -32,6 +32,8 @@ type BitrateStatistics struct {
 	totalDownstreamRetransmitCells   int64
 	totalDownstreamRetransmitBytes   int64
 	instantDownstreamRetransmitBytes int64
+
+	reportNo int
 }
 
 //NewBitRateStatistics create a new BitrateStatistics struct, with a period (for reporting) of 5 second
@@ -41,6 +43,7 @@ func NewBitRateStatistics() *BitrateStatistics {
 	stats := BitrateStatistics{
 		begin:      now,
 		nextReport: now,
+		reportNo:   0,
 		period:     fiveSec}
 	return &stats
 }
@@ -104,13 +107,15 @@ func (stats *BitrateStatistics) ReportWithInfo(info string) {
 			}
 		*/
 
-		log.Lvlf1("%0.1f round/sec, %0.1f kB/s up, %0.1f kB/s down, %0.1f kB/s down(udp)",
+		log.Lvlf1("[%v] %0.1f round/sec, %0.1f kB/s up, %0.1f kB/s down, %0.1f kB/s down(udp)",
+			stats.reportNo,
 			float64(stats.instantUpstreamCells)/stats.period.Seconds(),
 			float64(stats.instantUpstreamBytes)/1024/stats.period.Seconds(),
 			float64(stats.instantDownstreamBytes)/1024/stats.period.Seconds(),
 			float64(stats.instantDownstreamUDPBytes)/1024/stats.period.Seconds())
 
-		data := fmt.Sprintf("round=%0.1f&up=%0.1f&down=%0.1f&udp_down%0.1f&info=%s",
+		data := fmt.Sprintf("no=%v&round=%0.1f&up=%0.1f&down=%0.1f&udp_down%0.1f&info=%s",
+			stats.reportNo,
 			float64(stats.instantUpstreamCells)/stats.period.Seconds(),
 			float64(stats.instantUpstreamBytes)/1024/stats.period.Seconds(),
 			float64(stats.instantDownstreamBytes)/1024/stats.period.Seconds(),
@@ -128,5 +133,6 @@ func (stats *BitrateStatistics) ReportWithInfo(info string) {
 		stats.instantDownstreamUDPBytesTimesClients = 0
 
 		stats.nextReport = now.Add(stats.period)
+		stats.reportNo++
 	}
 }

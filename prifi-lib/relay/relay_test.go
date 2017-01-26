@@ -123,7 +123,7 @@ func TestRelayRun1(t *testing.T) {
 	if rs.privateKey == nil || rs.PublicKey == nil {
 		t.Error("Private/Public key not set")
 	}
-	if rs.statistics == nil {
+	if rs.bitrateStatistics == nil {
 		t.Error("Statistics should have been set")
 	}
 
