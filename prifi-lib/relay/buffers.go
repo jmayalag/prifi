@@ -31,7 +31,9 @@ type BufferManager struct {
 	LowBound                 int //restart sending at lowerbound
 	HighBound                int //stop sending at higherbound
 	stopFunction             func(int)
+	stopSent                 bool
 	resumeFunction           func(int)
+	resumeSent               bool
 }
 
 /**
@@ -117,10 +119,14 @@ func (b *BufferManager) AddTrusteeCipher(roundID int32, trusteeID int, data []by
 func (b *BufferManager) sendRateChangeIfNeeded(trusteeID int) {
 	if b.DoSendStopResumeMessages {
 		n := b.NumberOfBufferedCiphers(trusteeID)
-		if n >= b.HighBound {
+		if n >= b.HighBound && !b.stopSent {
 			b.stopFunction(trusteeID)
-		} else if n <= b.LowBound {
+			b.stopSent = true
+			b.resumeSent = false
+		} else if n <= b.LowBound && !b.resumeSent {
 			b.resumeFunction(trusteeID)
+			b.stopSent = false
+			b.resumeSent = true
 		}
 	}
 }

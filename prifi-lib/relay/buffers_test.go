@@ -262,22 +262,22 @@ func TestRateLimiter(test *testing.T) {
 	}
 	stopCalled = false
 	b.AddTrusteeCipher(4, 0, trusteeSlice)
-	if !stopCalled {
-		test.Error("Stop should have been called again")
+	if stopCalled {
+		test.Error("Stop not should have been called again")
 	}
 	stopCalled = false
 
 	b.AddClientCipher(0, 0, trusteeSlice)
 	b.FinalizeRound()
-	if !stopCalled {
-		test.Error("Stop should have been called again (2)")
+	if stopCalled {
+		test.Error("Stop not should have been called again (2)")
 	}
 	stopCalled = false
 
 	b.AddClientCipher(1, 0, trusteeSlice)
 	b.FinalizeRound()
-	if !stopCalled {
-		test.Error("Stop should have been called again (3)")
+	if stopCalled {
+		test.Error("Stop not should have been called again (3)")
 	}
 	stopCalled = false
 	b.AddClientCipher(2, 0, trusteeSlice)
