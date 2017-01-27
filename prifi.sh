@@ -52,7 +52,6 @@ warningMsg="${highlightOn}[warning]${highlightOff}"
 errorMsg="\033[31m\033[1m[error]${highlightOff}"
 okMsg="\033[32m[ok]${highlightOff}"
 if [ "$colors" = "false" ]; then
-	echo "Colors off"
 	highlightOn=""
 	highlightOff=""
 	shell="[script]"

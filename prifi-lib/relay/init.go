@@ -169,9 +169,9 @@ func (p *PriFiLibRelayInstance) ReceivedMessage(msg interface{}) error {
 	var err error
 
 	switch typedMsg := msg.(type) {
-	case *net.ALL_ALL_PARAMETERS_NEW:
+	case net.ALL_ALL_PARAMETERS_NEW:
 		if typedMsg.ForceParams || p.stateMachine.AssertState("BEFORE_INIT") {
-			err = p.Received_ALL_ALL_PARAMETERS(*typedMsg)
+			err = p.Received_ALL_ALL_PARAMETERS(typedMsg)
 		}
 	case net.ALL_ALL_SHUTDOWN:
 		err = p.Received_ALL_ALL_SHUTDOWN(typedMsg)
