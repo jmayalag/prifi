@@ -174,8 +174,8 @@ func (p *PriFiLibClientInstance) ProcessDownStreamData(msg net.REL_CLI_DOWNSTREA
 					timestamp := int64(binary.BigEndian.Uint64(msg.Data[4:12]))
 					diff := MsTimeStamp() - timestamp
 
-					p.clientState.statistics.AddLatency(diff)
-					p.clientState.statistics.Report()
+					p.clientState.statistics.AddTime(diff)
+					p.clientState.statistics.ReportWithInfo("measured-latency")
 				}
 			}
 		}

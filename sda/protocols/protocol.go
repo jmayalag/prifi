@@ -52,6 +52,7 @@ type PriFiSDAProtocol struct {
 
 //Start is called on the Relay by the service when ChurnHandler decides so
 func (p *PriFiSDAProtocol) Start() error {
+
 	if !p.configSet {
 		log.Fatal("Trying to start PriFi-lib, but config not set !")
 	}
@@ -72,7 +73,8 @@ func (p *PriFiSDAProtocol) Start() error {
 	msg.Add("ExperimentRoundLimit", p.config.Toml.RelayReportingLimit)
 	msg.Add("UseUDP", p.config.Toml.UseUDP)
 	msg.ForceParams = true
-	p.prifiLibInstance.ReceivedMessage(msg)
+
+	p.SendTo(p.TreeNode(), msg)
 
 	return nil
 }

@@ -21,7 +21,7 @@ socksServer1Port=8080			# the port for the SOCKS-Server-1 (part of the PriFi cli
 socksServer2Port=8090			# the port to attempt connect to (from the PriFi relay) for the SOCKS-Server-2
 								# notes : see <https://github.com/lbarman/prifi/blob/master/README_architecture.md>
 
-all_localhost_n_clients=2		# number of clients to start in the "all-localhost" script
+all_localhost_n_clients=10		# number of clients to start in the "all-localhost" script
 
 # default file names :
 
@@ -52,7 +52,6 @@ warningMsg="${highlightOn}[warning]${highlightOff}"
 errorMsg="\033[31m\033[1m[error]${highlightOff}"
 okMsg="\033[32m[ok]${highlightOff}"
 if [ "$colors" = "false" ]; then
-	echo "Colors off"
 	highlightOn=""
 	highlightOff=""
 	shell="[script]"
@@ -174,7 +173,7 @@ case $1 in
 		echo -n "Re-getting all go packages (since we switched branch)... "
 		cd $GOPATH/src/github.com/lbarman/prifi/sda/app; go get ./... 1>/dev/null 2>&1
 		cd ../..
-		cd $GOPATH/src/gopkg.in/dedis/onet.v1; go get ./... 1>/dev/null 2>&1
+		cd $GOPATH/src/gopkg.in/dedis/onet.v1; go get -u ./... 1>/dev/null 2>&1
 		echo -e "$okMsg"
 
 		echo -n "Testing ONet branch... "
@@ -346,6 +345,7 @@ case $1 in
 		test_cothority
 
 		#test if a socks proxy is already running (needed for relay), or start ours
+		netstat -tunpl 2>/dev/null | grep $socksServer2Port
 		socks=$(netstat -tunpl 2>/dev/null | grep $socksServer2Port | wc -l)
 		
 		if [ "$socks" -ne 1 ]; then
@@ -369,25 +369,16 @@ case $1 in
 
 		sleep $sleeptime_between_spawns
 
-		echo -n "Starting client 0... (SOCKS on :8081)	"
-		"$thisScript" client 0 8081 > client0.log 2>&1 &
-		echo -e "$okMsg"
-
-        if [ "$all_localhost_n_clients" -gt 1 ]; then
-            sleep $sleeptime_between_spawns
-
-            echo -n "Starting client 1... (SOCKS on :8082)	"
-            "$thisScript" client 1 8082 > client1.log 2>&1 &
-            echo -e "$okMsg"
-		fi
-
-        if [ "$all_localhost_n_clients" -gt 2 ]; then
-            sleep $sleeptime_between_spawns
-
-            echo -n "Starting client 2... (SOCKS on :8083)	"
-            "$thisScript" client 2 8083 > client2.log 2>&1 &
-            echo -e "$okMsg"
-		fi
+		for i in `seq 0 $(($all_localhost_n_clients - 1))`
+		do
+			port=$(($socksServer1Port + $i))
+			log="client$i.log"
+			echo -n "Starting client $i... (SOCKS on :$port)	"
+			"$thisScript" client $i $port > "$log" 2>&1 &
+			echo -e "$okMsg"
+			sleep $sleeptime_between_spawns
+			
+		done
 
 		read -p "PriFi deployed. Press [enter] to kill all..." key
 
@@ -405,31 +396,23 @@ case $1 in
 				path="relay"
 			;;
 			t|T)
-				read -p "Do you want to generate it for trustee [0] or [1] ? " key2
+				
+				read -p "Do you want to generate it for trustee [0] or [1] (or more - enter digit) ? " key2
 
-				case "$key2" in
-					0|1)
-						path="trustee$key2"
-						;;
-					*)
-						echo -e "$errorMsg did not understand."
-						exit 1
-						;;
-				esac
+				test_digit $key2 1
+				pathSource="trustee0"
+				path="trustee$key2"
 				;;
+
 			c|C)
-				read -p "Do you want to generate it for client [0],[1] or [2] ? " key2
+				read -p "Do you want to generate it for client [0],[1] or [2] (or more - enter digit) ? " key2
 
-				case "$key2" in
-					0|1|2)
-						path="client$key2"
-						;;
-					*)
-						echo -e "$errorMsg did not understand."
-						exit 1
-						;;
-				esac
+				test_digit $key2 1
+				pathSource="client0"
+				path="client$key2"
 				;;
+
+
 			*)
 				echo -e "$errorMsg did not understand."
 				exit 1
@@ -437,7 +420,7 @@ case $1 in
 		esac
 
 		pathReal="$configdir/$realIdentitiesDir/$path/"
-		pathDefault="$configdir/$defaultIdentitiesDir/$path/"
+		pathDefault="$configdir/$defaultIdentitiesDir/$pathSource/"
 		echo -e "Gonna generate ${highlightOn}identity.toml${highlightOff} in ${highlightOn}$pathReal${highlightOff}"
 
 		#generate identity.toml

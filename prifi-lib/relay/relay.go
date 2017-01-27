@@ -175,7 +175,10 @@ func (p *PriFiLibRelayInstance) Received_CLI_REL_UPSTREAM_DATA(msg net.CLI_REL_U
 
 	if p.relayState.bufferManager.HasAllCiphersForCurrentRound() {
 
-		log.Lvl2("Relay has collected all ciphers for round", p.relayState.currentDCNetRound.CurrentRound(), ", decoding...")
+		timeMs := timing.StopMeasure("waiting-on-someone").Nanoseconds() / 1e6
+		p.relayState.timeStatistics["waiting-on-clients"].AddTime(timeMs)
+
+		log.Lvl3("Relay has collected all ciphers for round", p.relayState.currentDCNetRound.CurrentRound(), ", decoding...")
 		p.finalizeUpstreamData()
 
 		//one round has just passed !
@@ -201,6 +204,9 @@ func (p *PriFiLibRelayInstance) Received_TRU_REL_DC_CIPHER(msg net.TRU_REL_DC_CI
 	p.relayState.bufferManager.AddTrusteeCipher(msg.RoundID, msg.TrusteeID, msg.Data)
 
 	if p.relayState.bufferManager.HasAllCiphersForCurrentRound() {
+
+		timeMs := timing.StopMeasure("waiting-on-someone").Nanoseconds() / 1e6
+		p.relayState.timeStatistics["waiting-on-trustees"].AddTime(timeMs)
 
 		log.Lvl2("Relay has collected all ciphers for round", p.relayState.currentDCNetRound.CurrentRound(), ", decoding...")
 		p.finalizeUpstreamData()
@@ -239,7 +245,7 @@ func (p *PriFiLibRelayInstance) finalizeUpstreamData() error {
 	}
 	upstreamPlaintext := p.relayState.CellCoder.DecodeCell()
 
-	p.relayState.statistics.AddUpstreamCell(int64(len(upstreamPlaintext)))
+	p.relayState.bitrateStatistics.AddUpstreamCell(int64(len(upstreamPlaintext)))
 
 	// check if we have a latency test message
 	if len(upstreamPlaintext) >= 2 {
@@ -329,6 +335,7 @@ func (p *PriFiLibRelayInstance) sendDownstreamData() error {
 		FlagResync: flagResync}
 	p.relayState.currentDCNetRound.SetDataAlreadySent(toSend)
 
+	timing.StartMeasure("sending-data")
 	if !p.relayState.UseUDP {
 		// broadcast to all clients
 		for i := 0; i < p.relayState.nClients; i++ {
@@ -336,14 +343,19 @@ func (p *PriFiLibRelayInstance) sendDownstreamData() error {
 			p.messageSender.SendToClientWithLog(i, toSend, "(client "+strconv.Itoa(i)+", round "+strconv.Itoa(int(p.relayState.nextDownStreamRoundToSend))+")")
 		}
 
-		p.relayState.statistics.AddDownstreamCell(int64(len(downstreamCellContent)))
+		p.relayState.bitrateStatistics.AddDownstreamCell(int64(len(downstreamCellContent)))
 	} else {
 		toSend2 := &net.REL_CLI_DOWNSTREAM_DATA_UDP{REL_CLI_DOWNSTREAM_DATA: *toSend}
 		p.messageSender.MessageSender.BroadcastToAllClients(toSend2)
 
-		p.relayState.statistics.AddDownstreamUDPCell(int64(len(downstreamCellContent)), p.relayState.nClients)
+		p.relayState.bitrateStatistics.AddDownstreamUDPCell(int64(len(downstreamCellContent)), p.relayState.nClients)
 	}
-	log.Lvl2("Relay is done broadcasting messages for round " + strconv.Itoa(int(p.relayState.nextDownStreamRoundToSend)) + ".")
+
+	timeMs := timing.StopMeasure("sending-data").Nanoseconds() / 1e6
+	p.relayState.timeStatistics["sending-data"].AddTime(timeMs)
+	timing.StartMeasure("waiting-on-someone")
+
+	log.Lvl3("Relay is done broadcasting messages for round " + strconv.Itoa(int(p.relayState.nextDownStreamRoundToSend)) + ".")
 
 	p.relayState.nextDownStreamRoundToSend++
 	p.relayState.numberOfNonAckedDownstreamPackets++
@@ -356,7 +368,11 @@ func (p *PriFiLibRelayInstance) roundFinished() error {
 	p.relayState.numberOfNonAckedDownstreamPackets--
 
 	log.Lvl2("Relay finished round "+strconv.Itoa(int(p.relayState.currentDCNetRound.CurrentRound()))+" (after", p.relayState.currentDCNetRound.TimeSpentInRound(), ").")
-	p.relayState.statistics.Report()
+	p.relayState.bitrateStatistics.Report()
+	p.relayState.timeStatistics["round-duration"].AddTime(p.relayState.currentDCNetRound.TimeSpentInRound().Nanoseconds() / 1e6) //ms
+	for k, v := range p.relayState.timeStatistics {
+		v.ReportWithInfo(k)
+	}
 
 	//prepare for the next round
 	nextRound := p.relayState.currentDCNetRound.CurrentRound() + 1

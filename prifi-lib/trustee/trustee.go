@@ -112,6 +112,7 @@ func (p *PriFiLibTrusteeInstance) Send_TRU_REL_DC_CIPHER(rateChan chan int16) {
 	for !stop {
 		select {
 		case newRate := <-rateChan:
+
 			if currentRate != newRate {
 				log.Lvl2("Trustee " + strconv.Itoa(p.trusteeState.ID) + " : rate changed from " + strconv.Itoa(int(currentRate)) + " to " + strconv.Itoa(int(newRate)))
 				currentRate = newRate
@@ -124,7 +125,6 @@ func (p *PriFiLibTrusteeInstance) Send_TRU_REL_DC_CIPHER(rateChan chan int16) {
 		default:
 			if currentRate == TRUSTEE_RATE_ACTIVE {
 				roundID, _ = sendData(p, roundID)
-				time.Sleep(TRUSTEE_BASE_SLEEP_TIME)
 
 			} else if currentRate == TRUSTEE_RATE_STOPPED {
 				time.Sleep(TRUSTEE_BASE_SLEEP_TIME)
