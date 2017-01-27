@@ -143,7 +143,7 @@ func TestRelayRun1(t *testing.T) {
 	msg.Add("UseDummyDataDown", true)
 	msg.Add("ExperimentRoundLimit", 2)
 
-	if err := relay.ReceivedMessage(msg); err != nil {
+	if err := relay.ReceivedMessage(*msg); err != nil {
 		t.Error("Relay should be able to receive this message, but", err)
 	}
 	if rs.nClients != nClients {
@@ -425,7 +425,7 @@ func TestRelayRun2(t *testing.T) {
 	msg.Add("UseDummyDataDown", true)
 	msg.Add("ExperimentRoundLimit", 2)
 
-	if err := relay.ReceivedMessage(msg); err != nil {
+	if err := relay.ReceivedMessage(*msg); err != nil {
 		t.Error("Relay should be able to receive this message, but", err)
 	}
 
@@ -613,7 +613,7 @@ func TestRelayRun3(t *testing.T) {
 	msg.Add("UseDummyDataDown", false)
 	msg.Add("ExperimentRoundLimit", -1)
 
-	if err := relay.ReceivedMessage(msg); err != nil {
+	if err := relay.ReceivedMessage(*msg); err != nil {
 		t.Error("Relay should be able to receive this message, but", err)
 	}
 
