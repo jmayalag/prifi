@@ -15,9 +15,19 @@ type StopProtocol struct{}
 // by nodes that want to join the protocol.
 type ConnectionRequest struct{}
 
+// HelloMsg messages are sent by the relay to the trustee;
+// if they are up, they answer with a ConnectionRequest
+type HelloMsg struct{}
+
 // DisconnectionRequest messages are sent to the relay
 // by nodes that want to leave the protocol.
 type DisconnectionRequest struct{}
+
+//Delay before each host re-tried to connect to the relay
+const DELAY_BEFORE_CONNECT_TO_RELAY = 5 * time.Second
+
+//Delay before the relay re-tried to connect to the trustees
+const DELAY_BEFORE_CONNECT_TO_TRUSTEES = 30 * time.Second
 
 // returns true if the PriFi SDA protocol is running (in any state : init, communicate, etc)
 func (s *ServiceState) IsPriFiProtocolRunning() bool {
@@ -31,6 +41,22 @@ func (s *ServiceState) IsPriFiProtocolRunning() bool {
 func (s *ServiceState) HandleStop(msg *network.Envelope) {
 	log.Lvl1("Received a Handle Stop")
 	s.stopPriFiCommunicateProtocol()
+
+}
+
+// Packet send by relay when some node connected
+func (s *ServiceState) HandleHelloMsg(msg *network.Envelope) {
+	if s.role != prifi_protocol.Trustee {
+		log.Error("Received a Hello message, but we're not a trustee ! ignoring.")
+		return
+	}
+
+	if !s.receivedHello {
+		//start sending some ConnectionRequests
+		s.relayIdentity = msg.ServerIdentity
+		go s.connectToRelay(s.relayIdentity, s.connectToRelayStopChan)
+		s.receivedHello = true
+	}
 
 }
 
@@ -66,6 +92,7 @@ func (s *ServiceState) NetworkErrorHappened(si *network.ServerIdentity) {
 
 	if s.role != prifi_protocol.Relay {
 		log.Lvl3("A network error occurred with node", si, ", but we're not the relay, nothing to do.")
+		s.connectToRelayStopChan <- true //"nothing" except stop this goroutine
 		return
 	}
 	if s.churnHandler == nil {
@@ -143,13 +170,45 @@ func (s *ServiceState) stopPriFiCommunicateProtocol() {
 // autoConnect sends a connection request to the relay
 // every 10 seconds if the node is not participating to
 // a PriFi protocol.
-func (s *ServiceState) autoConnect(relayID *network.ServerIdentity) {
+func (s *ServiceState) connectToTrustees(trusteesIDs []*network.ServerIdentity, stopChan chan bool) {
+	for _, v := range trusteesIDs {
+		s.sendHelloMessage(v)
+	}
+
+	tick := time.Tick(DELAY_BEFORE_CONNECT_TO_TRUSTEES)
+	for range tick {
+		if !s.IsPriFiProtocolRunning() {
+			for _, v := range trusteesIDs {
+				s.sendHelloMessage(v)
+			}
+		}
+
+		select {
+		case <-stopChan:
+			log.Lvl3("Stopping connectToTrustees subroutine.")
+			return
+		default:
+		}
+	}
+}
+
+// connectToRelay sends a connection request to the relay
+// every 10 seconds if the node is not participating to
+// a PriFi protocol.
+func (s *ServiceState) connectToRelay(relayID *network.ServerIdentity, stopChan chan bool) {
 	s.sendConnectionRequest(relayID)
 
-	tick := time.Tick(DELAY_BEFORE_KEEPALIVE)
+	tick := time.Tick(DELAY_BEFORE_CONNECT_TO_RELAY)
 	for range tick {
 		if !s.IsPriFiProtocolRunning() {
 			s.sendConnectionRequest(relayID)
+		}
+
+		select {
+		case <-stopChan:
+			log.Lvl3("Stopping connectToRelay subroutine.")
+			return
+		default:
 		}
 	}
 }
@@ -163,5 +222,17 @@ func (s *ServiceState) sendConnectionRequest(relayID *network.ServerIdentity) {
 
 	if err != nil {
 		log.Error("Connection failed:", err)
+	}
+}
+
+// sendHelloMessage sends a hello message to the trustee.
+// It is called by the relay services at startup to
+// announce themselves to the trustees.
+func (s *ServiceState) sendHelloMessage(trusteeID *network.ServerIdentity) {
+	log.Lvl2("Sending hello request")
+	err := s.SendRaw(trusteeID, &HelloMsg{})
+
+	if err != nil {
+		log.Lvl3("Hello failed, ", trusteeID, " isn't online.")
 	}
 }
