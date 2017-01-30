@@ -208,7 +208,7 @@ func (p *PriFiLibRelayInstance) Received_TRU_REL_DC_CIPHER(msg net.TRU_REL_DC_CI
 		timeMs := timing.StopMeasure("waiting-on-someone").Nanoseconds() / 1e6
 		p.relayState.timeStatistics["waiting-on-trustees"].AddTime(timeMs)
 
-		log.Lvl2("Relay has collected all ciphers for round", p.relayState.currentDCNetRound.CurrentRound(), ", decoding...")
+		log.Lvl3("Relay has collected all ciphers for round", p.relayState.currentDCNetRound.CurrentRound(), ", decoding...")
 		p.finalizeUpstreamData()
 
 		// send the data down
