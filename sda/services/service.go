@@ -73,6 +73,7 @@ func newService(c *onet.Context) onet.Service {
 	if err := s.tryLoad(); err != nil {
 		log.Error(err)
 	}
+
 	return s
 }
 

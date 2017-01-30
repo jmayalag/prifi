@@ -1,7 +1,6 @@
 package services
 
 import (
-	"errors"
 	prifi_protocol "github.com/lbarman/prifi/sda/protocols"
 	"github.com/lbarman/prifi/utils/timing"
 	"gopkg.in/dedis/onet.v1/log"
@@ -57,23 +56,23 @@ func (s *ServiceState) HandleDisconnection(msg *network.Envelope) {
 func (s *ServiceState) handleTimeout(lateClients []string, lateTrustees []string) {
 
 	// we can probably do something more clever here, since we know who disconnected. Yet let's just restart everything
-	s.NetworkErrorHappened(errors.New("Timeout"))
+	s.NetworkErrorHappened(nil)
 }
 
 // This is a handler passed to the SDA when starting a host. The SDA usually handle all the network by itself,
 // but in our case it is useful to know when a network RESET occurred, so we can kill protocols (otherwise they
 // remain in some weird state)
-func (s *ServiceState) NetworkErrorHappened(e error) {
+func (s *ServiceState) NetworkErrorHappened(si *network.ServerIdentity) {
 
 	if s.role != prifi_protocol.Relay {
-		log.Lvl3("A network error occurred, but we're not the relay, nothing to do.")
+		log.Lvl3("A network error occurred with node", si, ", but we're not the relay, nothing to do.")
 		return
 	}
 	if s.churnHandler == nil {
 		log.Fatal("Can't handle a network error without a churnHandler")
 	}
 
-	log.Error("A network error occurred, warning other clients.")
+	log.Error("A network error occurred with node", si, ", warning other clients.")
 	s.churnHandler.handleUnknownDisconnection()
 }
 

@@ -177,7 +177,9 @@ func startTrustee(c *cli.Context) error {
 		log.Error("Could not start the prifi service:", err)
 		os.Exit(1)
 	}
-	host.Start() //host.StartWithErrorListener(service.NetworkErrorHappened)
+
+	host.Router.AddErrorHandler(service.NetworkErrorHappened)
+	host.Start()
 	return nil
 }
 
@@ -192,7 +194,8 @@ func startRelay(c *cli.Context) error {
 		os.Exit(1)
 	}
 
-	host.Start() //host.StartWithErrorListener(service.NetworkErrorHappened)
+	host.Router.AddErrorHandler(service.NetworkErrorHappened)
+	host.Start()
 	return nil
 }
 
@@ -207,7 +210,8 @@ func startClient(c *cli.Context) error {
 		os.Exit(1)
 	}
 
-	host.Start() //host.StartWithErrorListener(service.NetworkErrorHappened)
+	host.Router.AddErrorHandler(service.NetworkErrorHappened)
+	host.Start()
 	return nil
 }
 
@@ -222,7 +226,7 @@ func startSocksTunnelOnly(c *cli.Context) error {
 		os.Exit(1)
 	}
 
-	host.Start() //host.StartWithErrorListener(service.NetworkErrorHappened)
+	host.Start()
 	return nil
 }
 
