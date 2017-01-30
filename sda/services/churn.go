@@ -3,8 +3,6 @@ package services
 // This file contains the logic to handle churn.
 
 import (
-	"time"
-
 	"github.com/lbarman/prifi/sda/protocols"
 	"gopkg.in/dedis/onet.v1"
 	"gopkg.in/dedis/onet.v1/log"
@@ -30,9 +28,6 @@ import (
  * if the protocol is not running
  * count the number of participants, if > threshold, start prifi
  */
-
-//Delay before each host re-tried to connect
-const DELAY_BEFORE_KEEPALIVE = 5 * time.Second
 
 type waitQueueEntry struct {
 	serverID  *network.ServerIdentity

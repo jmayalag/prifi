@@ -36,11 +36,15 @@ type ServiceState struct {
 	// We need to embed the ServiceProcessor, so that incoming messages
 	// are correctly handled.
 	*onet.ServiceProcessor
-	prifiTomlConfig *prifi_protocol.PrifiTomlConfig
-	Storage         *Storage
-	path            string
-	role            prifi_protocol.PriFiRole
-	relayIdentity   *network.ServerIdentity
+	prifiTomlConfig           *prifi_protocol.PrifiTomlConfig
+	Storage                   *Storage
+	path                      string
+	role                      prifi_protocol.PriFiRole
+	relayIdentity             *network.ServerIdentity
+	trusteeIDs                []*network.ServerIdentity
+	connectToRelayStopChan    chan bool
+	connectToTrusteesStopChan chan bool
+	receivedHello             bool
 
 	//this hold the churn handler; protocol is started there. Only relay has this != nil
 	churnHandler *churnHandler
@@ -62,10 +66,12 @@ func newService(c *onet.Context) onet.Service {
 	s := &ServiceState{
 		ServiceProcessor: onet.NewServiceProcessor(c),
 	}
+	helloMsg := network.RegisterMessage(HelloMsg{})
 	stopMsg := network.RegisterMessage(StopProtocol{})
 	connMsg := network.RegisterMessage(ConnectionRequest{})
 	disconnectMsg := network.RegisterMessage(DisconnectionRequest{})
 
+	c.RegisterProcessorFunc(helloMsg, s.HandleHelloMsg)
 	c.RegisterProcessorFunc(stopMsg, s.HandleStop)
 	c.RegisterProcessorFunc(connMsg, s.HandleConnection)
 	c.RegisterProcessorFunc(disconnectMsg, s.HandleDisconnection)
@@ -126,6 +132,9 @@ func (s *ServiceState) StartRelay(group *app.Group) error {
 	//the relay has a socks Client
 	go prifi_socks.StartSocksClient(socksServerConfig.Port, socksServerConfig.UpstreamChannel, socksServerConfig.DownstreamChannel)
 
+	s.connectToTrusteesStopChan = make(chan bool)
+	go s.connectToTrustees(trusteesIDs, s.connectToTrusteesStopChan)
+
 	return nil
 }
 
@@ -135,7 +144,7 @@ func (s *ServiceState) StartClient(group *app.Group) error {
 	log.Info("Service", s, "running in client mode")
 	s.role = prifi_protocol.Client
 
-	relayID, _ := mapIdentities(group)
+	relayID, trusteeIDs := mapIdentities(group)
 	s.relayIdentity = relayID
 
 	socksClientConfig = &prifi_protocol.SOCKSConfig{
@@ -149,7 +158,9 @@ func (s *ServiceState) StartClient(group *app.Group) error {
 	log.Lvl1("Starting SOCKS server on port", socksClientConfig.Port)
 	go prifi_socks.StartSocksServer(socksClientConfig.Port, socksClientConfig.PayloadLength, socksClientConfig.UpstreamChannel, socksClientConfig.DownstreamChannel, s.prifiTomlConfig.DoLatencyTests)
 
-	go s.autoConnect(relayID)
+	s.connectToRelayStopChan = make(chan bool)
+	s.trusteeIDs = trusteeIDs
+	go s.connectToRelay(relayID, s.connectToRelayStopChan)
 
 	return nil
 }
@@ -183,11 +194,12 @@ func (s *ServiceState) StartSocksTunnelOnly() error {
 func (s *ServiceState) StartTrustee(group *app.Group) error {
 	log.Info("Service", s, "running in trustee mode")
 	s.role = prifi_protocol.Trustee
+	s.connectToRelayStopChan = make(chan bool)
 
+	//the this might fail if the relay is behind a firewall. The HelloMsg is to fix this
 	relayID, _ := mapIdentities(group)
 	s.relayIdentity = relayID
-
-	go s.autoConnect(relayID)
+	go s.connectToRelay(relayID, s.connectToRelayStopChan)
 
 	return nil
 }
