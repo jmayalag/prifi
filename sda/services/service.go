@@ -196,6 +196,11 @@ func (s *ServiceState) StartTrustee(group *app.Group) error {
 	s.role = prifi_protocol.Trustee
 	s.connectToRelayStopChan = make(chan bool)
 
+	//the this might fail if the relay is behind a firewall. The HelloMsg is to fix this
+	relayID, _ := mapIdentities(group)
+	s.relayIdentity = relayID
+	go s.connectToRelay(relayID, s.connectToRelayStopChan)
+
 	return nil
 }
 
