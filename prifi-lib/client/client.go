@@ -71,7 +71,7 @@ func (p *PriFiLibClientInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PAR
 	if upCellSize < 1 {
 		return errors.New("UpCellSize cannot be 0")
 	}
-
+	
 	//set the received parameters
 	p.clientState.ID = clientID
 	p.clientState.Name = "Client-" + strconv.Itoa(clientID)
