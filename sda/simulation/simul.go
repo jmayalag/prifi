@@ -5,5 +5,5 @@ import (
 )
 
 func main() {
-	simul.Start("prifi_simul.toml")
+	simul.Start()
 }

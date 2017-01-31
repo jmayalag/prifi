@@ -77,6 +77,7 @@ print_usage() {
 	echo -e "	${highlightOn}params${highlightOff} for operation ${highlightOn}install${highlightOff}: none"
 	echo -e "	${highlightOn}params${highlightOff} for operation ${highlightOn}all-localhost${highlightOff}: none"
 	echo -e "	${highlightOn}params${highlightOff} for operation ${highlightOn}gen-id${highlightOff}: none"
+	echo -e "	${highlightOn}params${highlightOff} for operation ${highlightOn}simul${highlightOff}: none"
 	echo -e "	${highlightOn}params${highlightOff} for operation ${highlightOn}sockstest${highlightOff}: [socks_server_port] (optional, numeric), [prifi_socks_server_port] (optional, numeric)"
 	echo
 
@@ -88,6 +89,7 @@ print_usage() {
 	echo -e "	${highlightOn}all-localhost${highlightOff}: starts a Prifi relay, a trustee, three clients all on localhost"
 	echo -e "	${highlightOn}sockstest${highlightOff}: starts the PriFi and non-PriFi SOCKS tunnel, without PriFi anonymization"
 	echo -e "	${highlightOn}gen-id${highlightOff}: interactive creation of identity.toml"
+	echo -e "	${highlightOn}simul${highlightOff}: runs the simulation specified in sda/simulation/prifi_simul.toml in localhost"
 	echo -e "	${highlightOn}integration-test${highlightOff}: runs all-localhost and test if the relay manages to communicate"
 	echo -e "	Lost ? read https://github.com/lbarman/prifi/README.md"
 }
@@ -619,6 +621,28 @@ case $1 in
 		echo -e "$okMsg"
 
 		echo -e "PriFi trustee deployed, PGID $SOCKSPGID. Kill with \"kill -TERM -- -$SOCKSPGID\""
+		;;
+
+	simul|Simul|SIMUL)
+	
+		SIMUL_FILE="prifi_simul.toml"
+		PLATFORM="localhost"
+		EXEC_NAME="prifi_simul"
+		SIMUL_DIR="sda/simulation"
+
+		#temporary
+		dbg_lvl=5
+
+		echo -n "Building simulation... "
+		cd "$SIMUL_DIR"; go build -o "$EXEC_NAME" *.go
+		echo -e "$okMsg"
+
+		echo -e "Starting simulation ${highlightOn}${SIMUL_FILE}${highlightOff} on ${highlightOn}${PLATFORM}${highlightOff}."
+		DEBUG_LVL=$dbg_lvl DEBUG_COLOR=$colors ./"$EXEC_NAME" -platform "$PLATFORM" "$SIMUL_FILE"
+
+		echo -n "Simulation done, cleaning up... "
+		rm -f "$EXEC_NAME"
+		echo -e "$okMsg"
 		;;
 
 	clean|Clean|CLEAN)
