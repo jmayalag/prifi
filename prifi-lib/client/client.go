@@ -79,7 +79,7 @@ func (p *PriFiLibClientInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PAR
 	p.clientState.nClients = nClients
 	p.clientState.nTrustees = nTrustees
 	p.clientState.PayloadLength = upCellSize
-	p.clientState.UsablePayloadLength = p.clientState.CellCoder.ClientCellSize(upCellSize)
+	//p.clientState.UsablePayloadLength = p.clientState.CellCoder.ClientCellSize(upCellSize)
 	p.clientState.UseUDP = useUDP
 	p.clientState.TrusteePublicKey = make([]abstract.Point, nTrustees)
 	p.clientState.sharedSecrets = make([]abstract.Point, nTrustees)
@@ -162,6 +162,7 @@ func (p *PriFiLibClientInstance) ProcessDownStreamData(msg net.REL_CLI_DOWNSTREA
 		//pass the data to the VPN/SOCKS5 proxy, if enabled
 		if p.clientState.DataOutputEnabled {
 			p.clientState.DataFromDCNet <- msg.Data
+			p.clientState.MessageHistory = UpdateMessageHistory(p.clientState.MessageHistory, msg.Data)
 		}
 		//test if it is the answer from our ping (for latency test)
 		if p.clientState.LatencyTest.DoLatencyTests && len(msg.Data) > 2 {
@@ -302,6 +303,7 @@ func (p *PriFiLibClientInstance) Received_REL_CLI_TELL_TRUSTEES_PK(msg net.REL_C
 		sharedPRNGs[i] = config.CryptoSuite.Cipher(bytes)
 	}
 	p.clientState.CellCoder.ClientSetup(config.CryptoSuite, sharedPRNGs)
+	p.clientState.UsablePayloadLength = p.clientState.CellCoder.ClientCellSize(p.clientState.PayloadLength)
 
 	//then, generate our ephemeral keys (used for shuffling)
 	p.clientState.EphemeralPublicKey, p.clientState.ephemeralPrivateKey = crypto.NewKeyPair()
@@ -362,6 +364,7 @@ func (p *PriFiLibClientInstance) Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(
 	log.Lvl3("Client " + strconv.Itoa(p.clientState.ID) + " is ready to communicate.")
 
 	//produce a blank cell (we could embed data, but let's keep the code simple, one wasted message is not much)
+	p.clientState.MessageHistory = UpdateMessageHistory(p.clientState.MessageHistory, nil)
 	upstreamCell := p.clientState.CellCoder.ClientEncode(make([]byte, 0), p.clientState.PayloadLength, p.clientState.MessageHistory)
 
 	//send the data to the relay
@@ -375,4 +378,26 @@ func (p *PriFiLibClientInstance) Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(
 	p.clientState.RoundNo++
 
 	return nil
+}
+
+func UpdateMessageHistory(history abstract.Cipher, newMessage []byte) abstract.Cipher {
+
+	var newHistory []byte
+
+	if history.CipherState == nil { // If the history is empty
+		if len(newMessage) == 0 {
+			newHistory = []byte("dummy history") // Initial history
+		} else {
+			newHistory = newMessage
+		}
+	} else {
+		s := config.CryptoSuite.Scalar().Pick(history)
+		historyBytes, _ := s.MarshalBinary()
+		newHistory = make([]byte, len(historyBytes)+len(newMessage))
+
+		copy(newHistory[:len(historyBytes)], historyBytes)
+		copy(newHistory[len(historyBytes):], newMessage)
+	}
+
+	return config.CryptoSuite.Cipher(newHistory)
 }

@@ -37,6 +37,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/lbarman/prifi/prifi-lib/config"
 	"github.com/dedis/crypto/abstract"
 	"github.com/lbarman/prifi/prifi-lib/net"
 	socks "github.com/lbarman/prifi/prifi-socks"
@@ -325,6 +326,11 @@ func (p *PriFiLibRelayInstance) sendDownstreamData() error {
 		downstreamCellContent = data
 	}
 
+	// update message history
+	p.relayState.MessageHistory = UpdateMessageHistory(p.relayState.MessageHistory, downstreamCellContent)
+
+
+
 	// TODO : if something went wrong before, this flag should be used to warn the clients that the config has changed
 
 	flagResync := false
@@ -540,6 +546,9 @@ func (p *PriFiLibRelayInstance) Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS(msg n
 			p.messageSender.SendToTrusteeWithLog(j, toSend, "(trustee "+strconv.Itoa(j+1)+")")
 		}
 
+		// update message history
+		p.relayState.MessageHistory = UpdateMessageHistory(p.relayState.MessageHistory, nil)
+
 		// prepare to collect the ciphers
 		p.relayState.currentDCNetRound.ChangeRound(0)
 		p.relayState.CellCoder.DecodeStart(p.relayState.UpstreamCellSize, p.relayState.MessageHistory)
@@ -598,4 +607,25 @@ func (p *PriFiLibRelayInstance) Received_TRU_REL_SHUFFLE_SIG(msg net.TRU_REL_SHU
 	}
 
 	return nil
+}
+
+func UpdateMessageHistory(history abstract.Cipher, newMessage []byte) abstract.Cipher {
+
+	var newHistory []byte
+
+	if history.CipherState == nil { // If the history is empty
+		if len(newMessage) == 0 {
+			newHistory = []byte("dummy") // Initial history
+		} else {
+			newHistory = newMessage
+		}
+	} else {
+		s := config.CryptoSuite.Scalar().Pick(history)
+		historyBytes, _ := s.MarshalBinary()
+		newHistory = make([]byte, len(historyBytes)+len(newMessage))
+
+		copy(newHistory[:len(historyBytes)], historyBytes)
+		copy(newHistory[len(historyBytes):], newMessage)
+	}
+	return config.CryptoSuite.Cipher(newHistory)
 }

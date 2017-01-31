@@ -17,5 +17,5 @@ var Factory func() dcnet.CellCoder
 
 func init() {
 	CryptoSuite = ed25519.NewAES128SHA256Ed25519(false) //nist.NewAES128SHA256P256()
-	Factory = dcnet.SimpleCoderFactory
+	Factory = dcnet.OwnedCoderFactory
 }
