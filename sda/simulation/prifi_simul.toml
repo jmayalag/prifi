@@ -3,9 +3,20 @@ Servers = 1
 Depth = 1
 Rounds = 10
 CloseWait = 6000
-NTrustees = 2
+NTrustees = 1
+CellSizeUp = 100
+CellSizeDown = 1000
+RelayWindowSize = 10
+RelayUseDummyDataDown = false
+RelayReportingLimit = -1
+RelayDataOutputEnabled = true
+ClientDataOutputEnabled = true
+UseUDP = false
+DoLatencyTests = true
+SocksServerPort = 8080
+SocksClientPort = 8090
 
 Hosts
-2
+3
 4
-10
+5

@@ -8,9 +8,10 @@ import (
 	"gopkg.in/dedis/onet.v1/log"
 	"gopkg.in/dedis/onet.v1/simul/monitor"
 	"time"
-	"github.com/dedis/cothority/services"
 	"os"
 	"io/ioutil"
+	"gopkg.in/dedis/onet.v1/app"
+	"gopkg.in/dedis/onet.v1/network"
 )
 
 /*
@@ -18,13 +19,13 @@ import (
  */
 
 func init() {
-	log.Error("Called")
 	onet.SimulationRegister("PriFi", NewSimulationService)
 }
 
 // SimulationService only holds the BFTree simulation
 type SimulationService struct {
 	onet.SimulationBFTree
+	prifi_protocol.PrifiTomlConfig
 	NTrustees int
 }
 
@@ -50,8 +51,6 @@ func (s *SimulationService) Setup(dir string, hosts []string) (*onet.SimulationC
 	return sc, nil
 }
 
-var prifiService *prifi_service.ServiceState
-
 // Node can be used to initialize each node before it will be run
 // by the server. Here we call the 'Node'-method of the
 // SimulationBFTree structure which will load the roster- and the
@@ -66,24 +65,40 @@ func (s *SimulationService) Node(config *onet.SimulationConfig) error {
 		log.Fatal("Could not register node in SDA Tree", err)
 	}
 
-	//read the config
-	prifiTomlConfig, err := readPriFiConfigFile("filepath.txt")
-	if err != nil {
-		log.Fatal("Could not read PriFi config", err)
+	//assign the roles
+	roles := make(map[*network.ServerIdentity]string)
+	for k, v := range config.Roster.List {
+		if k == 0 {
+			roles[v] = "relay"
+		} else if k > 0 && k <= s.NTrustees {
+			roles[v] = "trustee"
+		} else {
+			roles[v] = "client"
+		}
+		//no, we don't need clients (handled by churn.go)
 	}
+	group := &app.Group{Roster: config.Roster, Description: roles}
 
 	//finds the PriFi service
 	service := config.GetService(prifi_service.ServiceName).(*prifi_service.ServiceState)
 
 	//set the config from the .toml file
-	service.SetConfigFromToml(prifiTomlConfig)
+	service.SetConfigFromToml(&s.PrifiTomlConfig)
 
+	var err error = nil
+	if index == 0 {
+		log.Lvl1("Initiating this node as relay")
+		err = service.StartRelay(group)
+	} else if index > 0 && index <= s.NTrustees {
+		log.Lvl1("Initiating this node as trustee")
+		err = service.StartTrustee(group)
+	} else {
+		log.Lvl1("Initiating this node as client")
+		err = service.StartClient(group)
+	}
 
-	switch index{
-	case 0:
-		log.Lvl1("Intiating this node as relay")
-		prifiService = service.StartRelay( /* need app.Group here */ )
-
+	if err != nil {
+		log.Fatal("Error instantiating this node, ", err)
 	}
 
 	/*
@@ -98,10 +113,12 @@ func (s *SimulationService) Node(config *onet.SimulationConfig) error {
 func (s *SimulationService) Run(config *onet.SimulationConfig) error {
 	size := config.Tree.Size()
 	log.Lvl2("Size is:", size, "rounds:", s.Rounds)
+	/*
 	service, ok := config.GetService("PriFi").(*services.ServiceState)
 	if service == nil || !ok {
 		log.Fatal("Didn't find service PriFi")
 	}
+	*/
 	for round := 0; round < s.Rounds; round++ {
 		log.Lvl1("Starting round", round)
 		round := monitor.NewTimeMeasure("round")
@@ -115,9 +132,6 @@ func (s *SimulationService) Run(config *onet.SimulationConfig) error {
 		*/
 		time.Sleep(time.Second)
 
-		if !ok {
-			log.Fatal("Didn't get a ClockResponse")
-		}
 		round.Record()
 	}
 	return nil
@@ -127,13 +141,14 @@ func (s *SimulationService) Run(config *onet.SimulationConfig) error {
 func readPriFiConfigFile(filePath string) (*prifi_protocol.PrifiTomlConfig, error) {
 
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
-		log.Error("Could not open file \"", filePath, "\" (specified by flag prifi_config)")
+		a, _ := os.Getwd()
+		log.Error("Could not open file \"", filePath, "\" (pwd:", a, ")")
 		return nil, err
 	}
 
 	tomlRawData, err := ioutil.ReadFile(filePath)
 	if err != nil {
-		log.Error("Could not read file \"", filePath, "\" (specified by flag prifi_config)")
+		log.Error("Could not read file \"", filePath, "\".")
 	}
 
 	tomlConfig := &prifi_protocol.PrifiTomlConfig{}
