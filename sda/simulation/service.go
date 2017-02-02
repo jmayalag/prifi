@@ -2,13 +2,13 @@ package main
 
 import (
 	"github.com/BurntSushi/toml"
-	prifi_service "github.com/lbarman/prifi/sda/services"
 	prifi_protocol "github.com/lbarman/prifi/sda/protocols"
+	prifi_service "github.com/lbarman/prifi/sda/services"
 	"gopkg.in/dedis/onet.v1"
-	"gopkg.in/dedis/onet.v1/log"
-	"time"
 	"gopkg.in/dedis/onet.v1/app"
+	"gopkg.in/dedis/onet.v1/log"
 	"gopkg.in/dedis/onet.v1/network"
+	"time"
 )
 
 /*
@@ -63,7 +63,7 @@ func (s *SimulationService) Node(config *onet.SimulationConfig) error {
 		log.Fatal("Could not register node in SDA Tree", err)
 	}
 
-	s.RelayReportingLimit = 10*100
+	s.RelayReportingLimit = 10 * 100
 	s.SocksServerPort = 8080 + index
 
 	//assign the roles
@@ -87,7 +87,7 @@ func (s *SimulationService) Node(config *onet.SimulationConfig) error {
 	service.SetConfigFromToml(&s.PrifiTomlConfig)
 
 	//start this node in the correct setup
-	var err error = nil
+	var err error
 	if index == 0 {
 		log.Lvl1("Initiating this node as relay")
 		err = service.StartRelay(group)
@@ -125,7 +125,7 @@ func (s *SimulationService) Run(config *onet.SimulationConfig) error {
 		}
 
 		//block and get the result from the channel
-		res := <- service.PriFiSDAProtocol.ResultChannel
+		res := <-service.PriFiSDAProtocol.ResultChannel
 		log.Error("Res is", res)
 
 		time.Sleep(time.Second)
