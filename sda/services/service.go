@@ -47,10 +47,10 @@ type ServiceState struct {
 	receivedHello             bool
 
 	//this hold the churn handler; protocol is started there. Only relay has this != nil
-	churnHandler *churnHandler
+	churnHandler              *churnHandler
 
 	//this hold the running protocol (when it runs)
-	priFiSDAProtocol *prifi_protocol.PriFiSDAProtocol
+	PriFiSDAProtocol          *prifi_protocol.PriFiSDAProtocol
 }
 
 // Storage will be saved, on the contrary of the 'Service'-structure
@@ -98,7 +98,7 @@ func (s *ServiceState) NewProtocol(tn *onet.TreeNodeInstance, conf *onet.Generic
 	}
 
 	wrapper := pi.(*prifi_protocol.PriFiSDAProtocol)
-	s.priFiSDAProtocol = wrapper
+	s.PriFiSDAProtocol = wrapper
 	s.setConfigToPriFiProtocol(wrapper)
 
 	return wrapper, nil

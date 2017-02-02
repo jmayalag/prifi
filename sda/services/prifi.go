@@ -31,8 +31,8 @@ const DELAY_BEFORE_CONNECT_TO_TRUSTEES = 30 * time.Second
 
 // returns true if the PriFi SDA protocol is running (in any state : init, communicate, etc)
 func (s *ServiceState) IsPriFiProtocolRunning() bool {
-	if s.priFiSDAProtocol != nil {
-		return !s.priFiSDAProtocol.HasStopped
+	if s.PriFiSDAProtocol != nil {
+		return !s.PriFiSDAProtocol.HasStopped
 	}
 	return false
 }
@@ -131,7 +131,7 @@ func (s *ServiceState) startPriFiCommunicateProtocol() {
 	wrapper = pi.(*prifi_protocol.PriFiSDAProtocol)
 
 	//assign and start the protocol
-	s.priFiSDAProtocol = wrapper
+	s.PriFiSDAProtocol = wrapper
 
 	s.setConfigToPriFiProtocol(wrapper)
 
@@ -149,10 +149,10 @@ func (s *ServiceState) stopPriFiCommunicateProtocol() {
 
 	log.Lvl2("A network error occurred, killing the PriFi protocol.")
 
-	if s.priFiSDAProtocol != nil {
-		s.priFiSDAProtocol.Stop()
+	if s.PriFiSDAProtocol != nil {
+		s.PriFiSDAProtocol.Stop()
 	}
-	s.priFiSDAProtocol = nil
+	s.PriFiSDAProtocol = nil
 
 	if s.role == prifi_protocol.Relay {
 

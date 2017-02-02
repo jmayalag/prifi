@@ -82,13 +82,15 @@ func (p *PriFiSDAProtocol) Start() error {
 // Stop aborts the current execution of the protocol.
 func (p *PriFiSDAProtocol) Stop() {
 
-	switch p.role {
-	case Relay:
-		p.prifiLibInstance.ReceivedMessage(net.ALL_ALL_SHUTDOWN{})
-	case Trustee:
-		p.prifiLibInstance.ReceivedMessage(net.ALL_ALL_SHUTDOWN{})
-	case Client:
-		p.prifiLibInstance.ReceivedMessage(net.ALL_ALL_SHUTDOWN{})
+	if p.prifiLibInstance != nil {
+		switch p.role {
+		case Relay:
+			p.prifiLibInstance.ReceivedMessage(net.ALL_ALL_SHUTDOWN{})
+		case Trustee:
+			p.prifiLibInstance.ReceivedMessage(net.ALL_ALL_SHUTDOWN{})
+		case Client:
+			p.prifiLibInstance.ReceivedMessage(net.ALL_ALL_SHUTDOWN{})
+		}
 	}
 
 	p.HasStopped = true

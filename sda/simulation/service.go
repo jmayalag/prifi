@@ -6,10 +6,7 @@ import (
 	prifi_protocol "github.com/lbarman/prifi/sda/protocols"
 	"gopkg.in/dedis/onet.v1"
 	"gopkg.in/dedis/onet.v1/log"
-	"gopkg.in/dedis/onet.v1/simul/monitor"
 	"time"
-	"os"
-	"io/ioutil"
 	"gopkg.in/dedis/onet.v1/app"
 	"gopkg.in/dedis/onet.v1/network"
 )
@@ -56,6 +53,7 @@ func (s *SimulationService) Setup(dir string, hosts []string) (*onet.SimulationC
 // SimulationBFTree structure which will load the roster- and the
 // tree-structure to speed up the first round.
 func (s *SimulationService) Node(config *onet.SimulationConfig) error {
+
 	index, _ := config.Roster.Search(config.Server.ServerIdentity.ID)
 	if index < 0 {
 		log.Fatal("Didn't find this node in roster")
@@ -64,6 +62,9 @@ func (s *SimulationService) Node(config *onet.SimulationConfig) error {
 	if err := s.SimulationBFTree.Node(config); err != nil {
 		log.Fatal("Could not register node in SDA Tree", err)
 	}
+
+	s.RelayReportingLimit = 10*100
+	s.SocksServerPort = 8080 + index
 
 	//assign the roles
 	roles := make(map[*network.ServerIdentity]string)
@@ -85,6 +86,7 @@ func (s *SimulationService) Node(config *onet.SimulationConfig) error {
 	//set the config from the .toml file
 	service.SetConfigFromToml(&s.PrifiTomlConfig)
 
+	//start this node in the correct setup
 	var err error = nil
 	if index == 0 {
 		log.Lvl1("Initiating this node as relay")
@@ -101,62 +103,32 @@ func (s *SimulationService) Node(config *onet.SimulationConfig) error {
 		log.Fatal("Error instantiating this node, ", err)
 	}
 
-	/*
-	host.Router.AddErrorHandler(service.NetworkErrorHappened)
-	host.Start()
-	 */
 	return nil
 }
 
 // Run is used on the destination machines and runs a number of
 // rounds
 func (s *SimulationService) Run(config *onet.SimulationConfig) error {
-	size := config.Tree.Size()
-	log.Lvl2("Size is:", size, "rounds:", s.Rounds)
-	/*
-	service, ok := config.GetService("PriFi").(*services.ServiceState)
-	if service == nil || !ok {
-		log.Fatal("Didn't find service PriFi")
-	}
-	*/
+
 	for round := 0; round < s.Rounds; round++ {
-		log.Lvl1("Starting round", round)
-		round := monitor.NewTimeMeasure("round")
+		log.Lvl1("Starting experiment round", round)
 
-		/*
-			ret, err := service.ClockRequest(&template.ClockRequest{Roster: config.Roster})
-			if err != nil {
-				log.Error(err)
-			}
-			resp, ok := ret.(*template.ClockResponse)$
-		*/
+		//finds the PriFi service
+		service := config.GetService(prifi_service.ServiceName).(*prifi_service.ServiceState)
+
+		//the art of programming : waiting for an event
+		for service.PriFiSDAProtocol == nil {
+			time.Sleep(10 * time.Millisecond)
+		}
+		for service.PriFiSDAProtocol.ResultChannel == nil {
+			time.Sleep(10 * time.Millisecond)
+		}
+
+		//block and get the result from the channel
+		res := <- service.PriFiSDAProtocol.ResultChannel
+		log.Error("Res is", res)
+
 		time.Sleep(time.Second)
-
-		round.Record()
 	}
 	return nil
-}
-
-
-func readPriFiConfigFile(filePath string) (*prifi_protocol.PrifiTomlConfig, error) {
-
-	if _, err := os.Stat(filePath); os.IsNotExist(err) {
-		a, _ := os.Getwd()
-		log.Error("Could not open file \"", filePath, "\" (pwd:", a, ")")
-		return nil, err
-	}
-
-	tomlRawData, err := ioutil.ReadFile(filePath)
-	if err != nil {
-		log.Error("Could not read file \"", filePath, "\".")
-	}
-
-	tomlConfig := &prifi_protocol.PrifiTomlConfig{}
-	_, err = toml.Decode(string(tomlRawData), tomlConfig)
-	if err != nil {
-		log.Error("Could not parse toml file", filePath)
-		return nil, err
-	}
-
-	return tomlConfig, nil
 }
