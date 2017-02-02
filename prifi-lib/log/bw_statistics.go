@@ -86,12 +86,12 @@ func (stats *BitrateStatistics) AddUpstreamCell(nBytes int64) {
 }
 
 //Report prints (if t>period=5 seconds have passed since the last report) all the information, without extra data
-func (stats *BitrateStatistics) Report() {
-	stats.ReportWithInfo("")
+func (stats *BitrateStatistics) Report() string {
+	return stats.ReportWithInfo("")
 }
 
 //ReportWithInfo prints (if t>period=5 seconds have passed since the last report) all the information, with extra data "info"
-func (stats *BitrateStatistics) ReportWithInfo(info string) {
+func (stats *BitrateStatistics) ReportWithInfo(info string) string {
 	now := time.Now()
 	if now.After(stats.nextReport) {
 		//percentage of retransmitted packet is not supported yet
@@ -107,12 +107,14 @@ func (stats *BitrateStatistics) ReportWithInfo(info string) {
 			}
 		*/
 
-		log.Lvlf1("[%v] %0.1f round/sec, %0.1f kB/s up, %0.1f kB/s down, %0.1f kB/s down(udp)",
+		str := fmt.Sprintf("[%v] %0.1f round/sec, %0.1f kB/s up, %0.1f kB/s down, %0.1f kB/s down(udp)",
 			stats.reportNo,
 			float64(stats.instantUpstreamCells)/stats.period.Seconds(),
 			float64(stats.instantUpstreamBytes)/1024/stats.period.Seconds(),
 			float64(stats.instantDownstreamBytes)/1024/stats.period.Seconds(),
 			float64(stats.instantDownstreamUDPBytes)/1024/stats.period.Seconds())
+
+		log.Lvlf1(str)
 
 		data := fmt.Sprintf("no=%v&round=%0.1f&up=%0.1f&down=%0.1f&udp_down%0.1f&info=%s",
 			stats.reportNo,
@@ -134,5 +136,9 @@ func (stats *BitrateStatistics) ReportWithInfo(info string) {
 
 		stats.nextReport = now.Add(stats.period)
 		stats.reportNo++
+
+		return str
 	}
+
+	return ""
 }
