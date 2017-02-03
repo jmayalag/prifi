@@ -159,13 +159,26 @@ sendData is an auxiliary function used by Send_TRU_REL_DC_CIPHER. It computes th
 It returns the new round number (previous + 1).
 */
 func sendData(p *PriFiLibTrusteeInstance, roundID int32) (int32, error) {
+
+	//set up the DC-nets
+	sharedPRNGs := make([]abstract.Cipher, p.trusteeState.nClients)
+	for i := 0; i < p.trusteeState.nClients; i++ {
+		bytes, err := p.trusteeState.sharedSecrets[i].MarshalBinary()
+		if err != nil {
+			return errors.New("Could not marshal point !")
+		}
+		sharedPRNGs[i] = config.CryptoSuite.Cipher(bytes)
+	}
+	//share seed with client, seed PRNG, and rv is negation of trustees' verifiable composite secrets that we should send to relay
+	vcs := p.trusteeState.CellCoder.TrusteeSetup(config.CryptoSuite, sharedPRNGs)
 	data := p.trusteeState.CellCoder.TrusteeEncode(p.trusteeState.PayloadLength)
 
 	//send the data
 	toSend := &net.TRU_REL_DC_CIPHER{
 		RoundID:   roundID,
 		TrusteeID: p.trusteeState.ID,
-		Data:      data}
+		DCBlinder: data,
+		Composite: vcs}
 	p.messageSender.SendToRelayWithLog(toSend, "(round "+strconv.Itoa(int(roundID))+")")
 
 	return roundID + 1, nil
@@ -207,17 +220,6 @@ func (p *PriFiLibTrusteeInstance) Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_
 		p.trusteeState.ClientPublicKeys[i] = clientsPks[i]
 		p.trusteeState.sharedSecrets[i] = config.CryptoSuite.Point().Mul(clientsPks[i], p.trusteeState.privateKey)
 	}
-
-	//set up the DC-nets
-	sharedPRNGs := make([]abstract.Cipher, p.trusteeState.nClients)
-	for i := 0; i < p.trusteeState.nClients; i++ {
-		bytes, err := p.trusteeState.sharedSecrets[i].MarshalBinary()
-		if err != nil {
-			return errors.New("Could not marshal point !")
-		}
-		sharedPRNGs[i] = config.CryptoSuite.Cipher(bytes)
-	}
-	p.trusteeState.CellCoder.TrusteeSetup(config.CryptoSuite, sharedPRNGs)
 
 	toSend, err := p.trusteeState.neffShuffle.ReceivedShuffleFromRelay(msg.Base, msg.EphPks, true)
 	if err != nil {

@@ -37,12 +37,13 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/lbarman/prifi/prifi-lib/config"
 	"github.com/dedis/crypto/abstract"
+	"github.com/lbarman/prifi/prifi-lib/config"
 	"github.com/lbarman/prifi/prifi-lib/net"
 	socks "github.com/lbarman/prifi/prifi-socks"
 	"github.com/lbarman/prifi/utils/timing"
 	"gopkg.in/dedis/onet.v1/log"
+	"fmt"
 )
 
 /*
@@ -82,7 +83,7 @@ func (p *PriFiLibRelayInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARA
 	startNow := msg.BoolValueOrElse("StartNow", false)
 	nTrustees := msg.IntValueOrElse("NTrustees", p.relayState.nTrustees)
 	nClients := msg.IntValueOrElse("NClients", p.relayState.nClients)
-	upCellSize := msg.IntValueOrElse("UpstreamCellSize", p.relayState.UpstreamCellSize)
+	upCellSize := msg.IntValueOrElse("UpstreamCellSize", 100) //p.relayState.UpstreamCellSize)
 	downCellSize := msg.IntValueOrElse("DownstreamCellSize", p.relayState.DownstreamCellSize)
 	windowSize := msg.IntValueOrElse("WindowSize", p.relayState.WindowSize)
 	useDummyDown := msg.BoolValueOrElse("UseDummyDataDown", p.relayState.UseDummyDataDown)
@@ -202,7 +203,7 @@ If it's for this round, we call decode on it, and remember we received it.
 If for a future round we need to Buffer it.
 */
 func (p *PriFiLibRelayInstance) Received_TRU_REL_DC_CIPHER(msg net.TRU_REL_DC_CIPHER) error {
-	p.relayState.bufferManager.AddTrusteeCipher(msg.RoundID, msg.TrusteeID, msg.Data)
+	p.relayState.bufferManager.AddTrusteeCipher(msg.RoundID, msg.TrusteeID, msg.DCBlinder, msg.Composite)
 
 	if p.relayState.bufferManager.HasAllCiphersForCurrentRound() {
 
@@ -328,8 +329,6 @@ func (p *PriFiLibRelayInstance) sendDownstreamData() error {
 
 	// update message history
 	p.relayState.MessageHistory = UpdateMessageHistory(p.relayState.MessageHistory, downstreamCellContent)
-
-
 
 	// TODO : if something went wrong before, this flag should be used to warn the clients that the config has changed
 
@@ -551,6 +550,7 @@ func (p *PriFiLibRelayInstance) Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS(msg n
 
 		// prepare to collect the ciphers
 		p.relayState.currentDCNetRound.ChangeRound(0)
+		p.relayState.CellCoder.RelaySetup(config.CryptoSuite, nil)
 		p.relayState.CellCoder.DecodeStart(p.relayState.UpstreamCellSize, p.relayState.MessageHistory)
 
 		p.stateMachine.ChangeState("COLLECTING_SHUFFLE_SIGNATURES")
@@ -627,5 +627,6 @@ func UpdateMessageHistory(history abstract.Cipher, newMessage []byte) abstract.C
 		copy(newHistory[:len(historyBytes)], historyBytes)
 		copy(newHistory[len(historyBytes):], newMessage)
 	}
+	log.Lvl1("newHistory: " + fmt.Sprint(newHistory))
 	return config.CryptoSuite.Cipher(newHistory)
 }

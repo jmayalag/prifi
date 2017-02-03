@@ -135,7 +135,8 @@ type REL_TRU_TELL_TRANSCRIPT struct {
 type TRU_REL_DC_CIPHER struct {
 	RoundID   int32
 	TrusteeID int
-	Data      []byte
+	DCBlinder []byte
+	Composite []byte
 }
 
 // TRU_REL_SHUFFLE_SIG contains the signatures shuffled by a trustee and is sent to the relay.
