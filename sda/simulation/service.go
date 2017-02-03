@@ -116,7 +116,9 @@ func (s *SimulationService) Run(config *onet.SimulationConfig) error {
 		//finds the PriFi service
 		service := config.GetService(prifi_service.ServiceName).(*prifi_service.ServiceState)
 
-		//the art of programming : waiting for an event
+		service.StartPriFiCommunicateProtocol()
+
+		//the art of programming : waiting for an event (not even thread safe!)
 		for service.PriFiSDAProtocol == nil {
 			time.Sleep(10 * time.Millisecond)
 		}
@@ -128,7 +130,9 @@ func (s *SimulationService) Run(config *onet.SimulationConfig) error {
 		res := <-service.PriFiSDAProtocol.ResultChannel
 		log.Error("Res is", res)
 
-		time.Sleep(time.Second)
+		service.StopPriFiCommunicateProtocol()
+
+		time.Sleep(10 * time.Second)
 	}
 	return nil
 }

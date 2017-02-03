@@ -189,6 +189,7 @@ func startRelay(c *cli.Context) error {
 
 	host, group, service := readConfigAndStartCothority(c)
 
+	service.AutoStart = true
 	if err := service.StartRelay(group); err != nil {
 		log.Error("Could not start the prifi service:", err)
 		os.Exit(1)
