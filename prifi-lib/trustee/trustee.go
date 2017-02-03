@@ -186,8 +186,18 @@ func (p *PriFiLibTrusteeInstance) Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_
 	clientsEphemeralPks := msg.EphPks
 
 	//sanity check
-	if len(clientsPks) < 1 || len(clientsEphemeralPks) < 1 || len(clientsPks) != len(clientsEphemeralPks) {
-		e := "Trustee " + strconv.Itoa(p.trusteeState.ID) + " : One of the following check failed : len(clientsPks)>1, len(clientsEphemeralPks)>1, len(clientsPks)==len(clientsEphemeralPks)"
+	if len(clientsPks) < 1 {
+		e := "Trustee " + strconv.Itoa(p.trusteeState.ID) + " : len(clientsPks) must be >= 1"
+		log.Error(e)
+		return errors.New(e)
+	}
+	if len(clientsEphemeralPks) < 1 {
+		e := "Trustee " + strconv.Itoa(p.trusteeState.ID) + " : len(clientsEphemeralPks) must be >= 1"
+		log.Error(e)
+		return errors.New(e)
+	}
+	if len(clientsPks) != len(clientsEphemeralPks) {
+		e := "Trustee " + strconv.Itoa(p.trusteeState.ID) + " : len(clientsPks) must be == len(clientsEphemeralPks)"
 		log.Error(e)
 		return errors.New(e)
 	}
