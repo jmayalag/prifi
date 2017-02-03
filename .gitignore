@@ -37,3 +37,7 @@ config/PriFiService
 config/CoSi
 config/identities_real
 timing.txt
+sda/simulation/build/
+sda/simulation/deploy/
+sda/simulation/test_data/
+sda/simulation/deter.toml

@@ -363,15 +363,28 @@ func (p *PriFiLibRelayInstance) sendDownstreamData() error {
 	return nil
 }
 
+func (p *PriFiLibRelayInstance) collectExperimentResult(str string) {
+	if str == "" {
+		return
+	}
+
+	// if this is not an experiment, simply return
+	if p.relayState.ExperimentRoundLimit == -1 {
+		return
+	}
+
+	p.relayState.ExperimentResultData = append(p.relayState.ExperimentResultData, str)
+}
+
 func (p *PriFiLibRelayInstance) roundFinished() error {
 
 	p.relayState.numberOfNonAckedDownstreamPackets--
 
 	log.Lvl2("Relay finished round "+strconv.Itoa(int(p.relayState.currentDCNetRound.CurrentRound()))+" (after", p.relayState.currentDCNetRound.TimeSpentInRound(), ").")
-	p.relayState.bitrateStatistics.Report()
+	p.collectExperimentResult(p.relayState.bitrateStatistics.Report())
 	p.relayState.timeStatistics["round-duration"].AddTime(p.relayState.currentDCNetRound.TimeSpentInRound().Nanoseconds() / 1e6) //ms
 	for k, v := range p.relayState.timeStatistics {
-		v.ReportWithInfo(k)
+		p.collectExperimentResult(v.ReportWithInfo(k))
 	}
 
 	//prepare for the next round
@@ -385,15 +398,6 @@ func (p *PriFiLibRelayInstance) roundFinished() error {
 	// Test if we are doing an experiment, and if we need to stop at some point.
 	if nextRound == int32(p.relayState.ExperimentRoundLimit) {
 		log.Lvl1("Relay : Experiment round limit (", nextRound, ") reached")
-
-		// this can be set anywhere, anytime before
-		p.relayState.ExperimentResultData = &struct {
-			Data1 string
-			Data2 []int
-		}{
-			"This is an experiment",
-			[]int{0, -1, 1023},
-		}
 		p.relayState.ExperimentResultChannel <- p.relayState.ExperimentResultData
 
 		// shut down everybody

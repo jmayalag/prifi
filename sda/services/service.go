@@ -46,11 +46,14 @@ type ServiceState struct {
 	connectToTrusteesStopChan chan bool
 	receivedHello             bool
 
+	//If true, when the number of participants is reached, the protocol starts without calling StartPriFiCommunicateProtocol
+	AutoStart bool
+
 	//this hold the churn handler; protocol is started there. Only relay has this != nil
 	churnHandler *churnHandler
 
 	//this hold the running protocol (when it runs)
-	priFiSDAProtocol *prifi_protocol.PriFiSDAProtocol
+	PriFiSDAProtocol *prifi_protocol.PriFiSDAProtocol
 }
 
 // Storage will be saved, on the contrary of the 'Service'-structure
@@ -98,7 +101,7 @@ func (s *ServiceState) NewProtocol(tn *onet.TreeNodeInstance, conf *onet.Generic
 	}
 
 	wrapper := pi.(*prifi_protocol.PriFiSDAProtocol)
-	s.priFiSDAProtocol = wrapper
+	s.PriFiSDAProtocol = wrapper
 	s.setConfigToPriFiProtocol(wrapper)
 
 	return wrapper, nil
@@ -119,8 +122,12 @@ func (s *ServiceState) StartRelay(group *app.Group) error {
 	s.churnHandler = new(churnHandler)
 	s.churnHandler.init(relayID, trusteesIDs)
 	s.churnHandler.isProtocolRunning = s.IsPriFiProtocolRunning
-	s.churnHandler.startProtocol = s.startPriFiCommunicateProtocol
-	s.churnHandler.stopProtocol = s.stopPriFiCommunicateProtocol
+	if s.AutoStart {
+		s.churnHandler.startProtocol = s.StartPriFiCommunicateProtocol
+	} else {
+		s.churnHandler.startProtocol = nil
+	}
+	s.churnHandler.stopProtocol = s.StopPriFiCommunicateProtocol
 
 	socksServerConfig = &prifi_protocol.SOCKSConfig{
 		Port:              "127.0.0.1:" + strconv.Itoa(s.prifiTomlConfig.SocksClientPort),

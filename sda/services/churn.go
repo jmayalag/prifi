@@ -288,6 +288,10 @@ func (c *churnHandler) tryStartProtocol() {
 		if c.isProtocolRunning() {
 			c.stopProtocol()
 		}
+		if c.startProtocol == nil {
+			log.Lvl1("Enough participants (", nClients, "clients and", nTrustees, "trustees), but no handler to start.")
+			return
+		}
 		c.startProtocol()
 	} else {
 		log.Lvl1("Too few participants (", nClients, "clients and", nTrustees, "trustees), waiting...")

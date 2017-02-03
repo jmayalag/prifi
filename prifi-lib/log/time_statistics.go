@@ -61,18 +61,20 @@ func (stats *TimeStatistics) AddTime(latency int64) {
 }
 
 //Report prints (if t>period=5 seconds have passed since the last report) all the information, without extra data
-func (stats *TimeStatistics) Report() {
-	stats.ReportWithInfo("")
+func (stats *TimeStatistics) Report() string {
+	return stats.ReportWithInfo("")
 }
 
 //ReportWithInfo prints (if t>period=5 seconds have passed since the last report) all the information, with extra data
-func (stats *TimeStatistics) ReportWithInfo(info string) {
+func (stats *TimeStatistics) ReportWithInfo(info string) string {
 	now := time.Now()
 	if now.After(stats.nextReport) {
 
 		mean, variance, n := stats.TimeStatistics()
 
-		log.Lvlf1("[%v] %s ms +- %s (over %s, happened %v). Info: %s", stats.reportNo, mean, variance, n, stats.totalValuesAdded, info)
+		str := fmt.Sprintf("[%v] %s ms +- %s (over %s, happened %v). Info: %s", stats.reportNo, mean, variance, n, stats.totalValuesAdded, info)
+
+		log.Lvl1(str)
 
 		data := fmt.Sprintf("no=%v&mean=%s&var=%s&n=%s&happened=%v&info=%s", stats.reportNo, mean, variance, n, stats.totalValuesAdded, info)
 
@@ -80,5 +82,8 @@ func (stats *TimeStatistics) ReportWithInfo(info string) {
 
 		stats.nextReport = now.Add(stats.period)
 		stats.reportNo++
+
+		return str
 	}
+	return ""
 }

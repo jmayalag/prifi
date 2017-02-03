@@ -31,8 +31,8 @@ const DELAY_BEFORE_CONNECT_TO_TRUSTEES = 30 * time.Second
 
 // returns true if the PriFi SDA protocol is running (in any state : init, communicate, etc)
 func (s *ServiceState) IsPriFiProtocolRunning() bool {
-	if s.priFiSDAProtocol != nil {
-		return !s.priFiSDAProtocol.HasStopped
+	if s.PriFiSDAProtocol != nil {
+		return !s.PriFiSDAProtocol.HasStopped
 	}
 	return false
 }
@@ -40,7 +40,7 @@ func (s *ServiceState) IsPriFiProtocolRunning() bool {
 // Packet send by relay; when we get it, we stop the protocol
 func (s *ServiceState) HandleStop(msg *network.Envelope) {
 	log.Lvl1("Received a Handle Stop")
-	s.stopPriFiCommunicateProtocol()
+	s.StopPriFiCommunicateProtocol()
 
 }
 
@@ -106,7 +106,7 @@ func (s *ServiceState) NetworkErrorHappened(si *network.ServerIdentity) {
 // startPriFi starts a PriFi protocol. It is called
 // by the relay as soon as enough participants are
 // ready (one trustee and two clients).
-func (s *ServiceState) startPriFiCommunicateProtocol() {
+func (s *ServiceState) StartPriFiCommunicateProtocol() {
 	log.Lvl1("Starting PriFi protocol")
 
 	if s.role != prifi_protocol.Relay {
@@ -131,7 +131,7 @@ func (s *ServiceState) startPriFiCommunicateProtocol() {
 	wrapper = pi.(*prifi_protocol.PriFiSDAProtocol)
 
 	//assign and start the protocol
-	s.priFiSDAProtocol = wrapper
+	s.PriFiSDAProtocol = wrapper
 
 	s.setConfigToPriFiProtocol(wrapper)
 
@@ -139,7 +139,7 @@ func (s *ServiceState) startPriFiCommunicateProtocol() {
 }
 
 // stopPriFi stops the PriFi protocol currently running.
-func (s *ServiceState) stopPriFiCommunicateProtocol() {
+func (s *ServiceState) StopPriFiCommunicateProtocol() {
 	log.Lvl1("Stopping PriFi protocol")
 
 	if !s.IsPriFiProtocolRunning() {
@@ -147,12 +147,10 @@ func (s *ServiceState) stopPriFiCommunicateProtocol() {
 		return
 	}
 
-	log.Lvl2("A network error occurred, killing the PriFi protocol.")
-
-	if s.priFiSDAProtocol != nil {
-		s.priFiSDAProtocol.Stop()
+	if s.PriFiSDAProtocol != nil {
+		s.PriFiSDAProtocol.Stop()
 	}
-	s.priFiSDAProtocol = nil
+	s.PriFiSDAProtocol = nil
 
 	if s.role == prifi_protocol.Relay {
 
