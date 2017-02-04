@@ -5,13 +5,10 @@ import (
 	"sync"
 )
 
-type CipherTuple struct {
+type TrusteeCipherTuple struct {
 	dcBlinder []byte
 	composite []byte
 }
-
-type TrusteeCiphers map[int32]CipherTuple
-type BufferedTrusteeCiphers map[int]TrusteeCiphers
 
 /**
  * Stores ciphers for different rounds
@@ -32,7 +29,7 @@ type BufferManager struct {
 
 	//hold the real data. map(trustee/clientID -> map( roundID -> data))
 	bufferedClientCiphers  map[int]map[int32][]byte
-	bufferedTrusteeCiphers map[int]map[int32]CipherTuple
+	bufferedTrusteeCiphers map[int]map[int32]TrusteeCipherTuple
 
 	//stop/resume functions when we have too much/little ciphers
 	DoSendStopResumeMessages bool
@@ -44,10 +41,6 @@ type BufferManager struct {
 	resumeSent               bool
 }
 
-func (t *TrusteeCipherTuple) InitTrusteeCipherTuple() {
-	t.dcBlinder = make([]byte)
-
-}
 /**
  * Creates a BufferManager that will expect nClients + nTrustees ciphers per round
  */
@@ -61,10 +54,8 @@ func (b *BufferManager) Init(nClients, nTrustees int) error {
 	b.nTrustees = nTrustees
 	b.resetACKmaps()
 
-	trusteeCipherTuple := new(TrusteeCipherTuple)
-
 	b.bufferedClientCiphers = make(map[int]map[int32][]byte)
-	b.bufferedTrusteeCiphers = make(map[int]map[int32]trusteeCipherTuple)
+	b.bufferedTrusteeCiphers = make(map[int]map[int32]TrusteeCipherTuple)
 
 	return nil
 }
@@ -96,7 +87,8 @@ func (b *BufferManager) AddRateLimiter(lowBound, highBound int, stopFunction, re
 	return nil
 }
 
-func addToBuffer(bufferPtr *map[int]map[int32][]byte, roundID int32, entityID int, dcblinder []byte, composite []byte) {
+
+func addToClientBuffer(bufferPtr *map[int]map[int32][]byte, roundID int32, entityID int, data []byte) {
 
 	buffer := *bufferPtr
 	if buffer[entityID] == nil {
@@ -104,6 +96,21 @@ func addToBuffer(bufferPtr *map[int]map[int32][]byte, roundID int32, entityID in
 	}
 
 	buffer[entityID][roundID] = data
+}
+
+func addToTrusteeBuffer(bufferPtr *map[int]map[int32][]byte, roundID int32, entityID int, dcblinder []byte, composite []byte) {
+
+	buffer := *bufferPtr
+	if buffer[entityID] == nil {
+		buffer[entityID] = make(map[int32][]byte)
+	}
+
+	tc := &TrusteeCipherTuple{
+		dcBlinder: dcblinder,
+		composite: composite,
+	}
+
+	buffer[entityID][roundID] = tc
 }
 
 /**
@@ -122,7 +129,7 @@ func (b *BufferManager) AddTrusteeCipher(roundID int32, trusteeID int, dcblinder
 	if roundID < b.currentRoundID {
 		return errors.New("Can't accept a trustee cipher in the past")
 	}
-	addToBuffer(&b.bufferedTrusteeCiphers, roundID, trusteeID, dcblinder, composite)
+	addToTrusteeBuffer(&b.bufferedTrusteeCiphers, roundID, trusteeID, dcblinder, composite)
 
 	if roundID == b.currentRoundID {
 		b.trusteeAckMap[trusteeID] = true
@@ -161,7 +168,7 @@ func (b *BufferManager) AddClientCipher(roundID int32, clientID int, data []byte
 	if roundID < b.currentRoundID {
 		return errors.New("Can't accept a client cipher in the past")
 	}
-	addToBuffer(&b.bufferedClientCiphers, roundID, clientID, data)
+	addToClientBuffer(&b.bufferedClientCiphers, roundID, clientID, data)
 
 	if roundID == b.currentRoundID {
 		b.clientAckMap[clientID] = true
