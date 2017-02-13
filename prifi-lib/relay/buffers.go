@@ -5,10 +5,6 @@ import (
 	"sync"
 )
 
-type TrusteeCipherTuple struct {
-	dcBlinder []byte
-	composite []byte
-}
 
 /**
  * Stores ciphers for different rounds
@@ -29,7 +25,7 @@ type BufferManager struct {
 
 	//hold the real data. map(trustee/clientID -> map( roundID -> data))
 	bufferedClientCiphers  map[int]map[int32][]byte
-	bufferedTrusteeCiphers map[int]map[int32]TrusteeCipherTuple
+	bufferedTrusteeCiphers map[int]map[int32][]byte
 
 	//stop/resume functions when we have too much/little ciphers
 	DoSendStopResumeMessages bool
@@ -55,7 +51,7 @@ func (b *BufferManager) Init(nClients, nTrustees int) error {
 	b.resetACKmaps()
 
 	b.bufferedClientCiphers = make(map[int]map[int32][]byte)
-	b.bufferedTrusteeCiphers = make(map[int]map[int32]TrusteeCipherTuple)
+	b.bufferedTrusteeCiphers = make(map[int]map[int32][]byte)
 
 	return nil
 }
@@ -98,38 +94,30 @@ func addToClientBuffer(bufferPtr *map[int]map[int32][]byte, roundID int32, entit
 	buffer[entityID][roundID] = data
 }
 
-func addToTrusteeBuffer(bufferPtr *map[int]map[int32][]byte, roundID int32, entityID int, dcblinder []byte, composite []byte) {
+func addToTrusteeBuffer(bufferPtr *map[int]map[int32][]byte, roundID int32, entityID int, data []byte) {
 
 	buffer := *bufferPtr
 	if buffer[entityID] == nil {
 		buffer[entityID] = make(map[int32][]byte)
 	}
 
-	tc := &TrusteeCipherTuple{
-		dcBlinder: dcblinder,
-		composite: composite,
-	}
-
-	buffer[entityID][roundID] = tc
+	buffer[entityID][roundID] = data
 }
 
 /**
  * Adds a trustee cipher for a given round
  */
-func (b *BufferManager) AddTrusteeCipher(roundID int32, trusteeID int, dcblinder []byte, composite []byte) error {
+func (b *BufferManager) AddTrusteeCipher(roundID int32, trusteeID int, data []byte) error {
 	b.Lock()
 	defer b.Unlock()
 
-	if dcblinder == nil {
+	if data == nil {
 		return errors.New("Can't accept a nil trustee cipher")
-	}
-	if composite == nil {
-		return errors.New("Can't accept nil trustee composite secrets")
 	}
 	if roundID < b.currentRoundID {
 		return errors.New("Can't accept a trustee cipher in the past")
 	}
-	addToTrusteeBuffer(&b.bufferedTrusteeCiphers, roundID, trusteeID, dcblinder, composite)
+	addToTrusteeBuffer(&b.bufferedTrusteeCiphers, roundID, trusteeID, data)
 
 	if roundID == b.currentRoundID {
 		b.trusteeAckMap[trusteeID] = true
