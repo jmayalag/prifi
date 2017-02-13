@@ -95,6 +95,8 @@ func (p *PriFiLibRelayInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARA
 	p.relayState.nClients = nClients
 	p.relayState.nTrustees = nTrustees
 	p.relayState.nTrusteesPkCollected = 0
+	p.relayState.nTrusteesVkCollected = 0
+	p.relayState.VKeys = make([]byte, nTrustees)
 	p.relayState.nClientsPkCollected = 0
 	p.relayState.ExperimentRoundLimit = reportingLimit
 	p.relayState.UpstreamCellSize = upCellSize
@@ -203,7 +205,7 @@ If it's for this round, we call decode on it, and remember we received it.
 If for a future round we need to Buffer it.
 */
 func (p *PriFiLibRelayInstance) Received_TRU_REL_DC_CIPHER(msg net.TRU_REL_DC_CIPHER) error {
-	p.relayState.bufferManager.AddTrusteeCipher(msg.RoundID, msg.TrusteeID, msg.DCBlinder, msg.Composite)
+	p.relayState.bufferManager.AddTrusteeCipher(msg.RoundID, msg.TrusteeID, msg.Data)
 
 	if p.relayState.bufferManager.HasAllCiphersForCurrentRound() {
 
@@ -507,6 +509,17 @@ func (p *PriFiLibRelayInstance) Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS(msg n
 		return errors.New(e)
 	}
 
+	//store trustee's vkey
+	if p.relayState.nTrusteesVkCollected < p.relayState.nTrustees {
+		p.relayState.VKeys[p.relayState.nTrusteesVkCollected] = msg.VKey
+		p.relayState.nTrusteesVkCollected++
+	} else {
+		e := "nTrusteesVkCollected greater than nTrustees"
+		log.Error(e)
+		return errors.New(e)
+	}
+
+
 	// if we're still waiting on some trustees, send them the new shuffle
 	if !done {
 
@@ -550,7 +563,7 @@ func (p *PriFiLibRelayInstance) Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS(msg n
 
 		// prepare to collect the ciphers
 		p.relayState.currentDCNetRound.ChangeRound(0)
-		p.relayState.CellCoder.RelaySetup(config.CryptoSuite, nil)
+		p.relayState.CellCoder.RelaySetup(config.CryptoSuite, p.relayState.Vkeys)
 		p.relayState.CellCoder.DecodeStart(p.relayState.UpstreamCellSize, p.relayState.MessageHistory)
 
 		p.stateMachine.ChangeState("COLLECTING_SHUFFLE_SIGNATURES")

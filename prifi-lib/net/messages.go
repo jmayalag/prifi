@@ -135,8 +135,7 @@ type REL_TRU_TELL_TRANSCRIPT struct {
 type TRU_REL_DC_CIPHER struct {
 	RoundID   int32
 	TrusteeID int
-	DCBlinder []byte
-	Composite []byte
+	Data	  []byte
 }
 
 // TRU_REL_SHUFFLE_SIG contains the signatures shuffled by a trustee and is sent to the relay.
@@ -157,6 +156,7 @@ type TRU_REL_TELL_NEW_BASE_AND_EPH_PKS struct {
 	NewBase   abstract.Point
 	NewEphPks []abstract.Point
 	Proof     []byte
+	VKey      []byte
 }
 
 // TRU_REL_TELL_PK message contains the public key of a trustee and is sent to the relay.

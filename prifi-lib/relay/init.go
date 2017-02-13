@@ -146,6 +146,8 @@ type RelayState struct {
 	nClientsPkCollected               int
 	nTrustees                         int
 	nTrusteesPkCollected              int
+	nTrusteesVkCollected		  int
+	VKeys				  [][]byte
 	privateKey                        abstract.Scalar
 	PublicKey                         abstract.Point
 	ExperimentRoundLimit              int
