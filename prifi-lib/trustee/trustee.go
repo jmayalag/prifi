@@ -226,7 +226,7 @@ func (p *PriFiLibTrusteeInstance) Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_
 		return errors.New("Could not do ReceivedShuffleFromRelay, error is " + err.Error())
 	}
 
-	toSend.(&net.TRU_REL_TELL_NEW_BASE_AND_EPH_PKS).VKey = vkey
+	toSend.(*net.TRU_REL_TELL_NEW_BASE_AND_EPH_PKS).VKey = vkey
 
 	//send the answer
 	p.messageSender.SendToRelayWithLog(toSend, "")
