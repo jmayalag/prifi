@@ -96,7 +96,7 @@ func (p *PriFiLibRelayInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARA
 	p.relayState.nTrustees = nTrustees
 	p.relayState.nTrusteesPkCollected = 0
 	p.relayState.nTrusteesVkCollected = 0
-	p.relayState.VKeys = make([]byte, nTrustees)
+	p.relayState.VKeys = make([][]byte, nTrustees)
 	p.relayState.nClientsPkCollected = 0
 	p.relayState.ExperimentRoundLimit = reportingLimit
 	p.relayState.UpstreamCellSize = upCellSize
@@ -563,7 +563,7 @@ func (p *PriFiLibRelayInstance) Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS(msg n
 
 		// prepare to collect the ciphers
 		p.relayState.currentDCNetRound.ChangeRound(0)
-		p.relayState.CellCoder.RelaySetup(config.CryptoSuite, p.relayState.Vkeys)
+		p.relayState.CellCoder.RelaySetup(config.CryptoSuite, p.relayState.VKeys)
 		p.relayState.CellCoder.DecodeStart(p.relayState.UpstreamCellSize, p.relayState.MessageHistory)
 
 		p.stateMachine.ChangeState("COLLECTING_SHUFFLE_SIGNATURES")
