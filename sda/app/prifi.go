@@ -14,10 +14,10 @@ import (
 
 	"bytes"
 	"github.com/BurntSushi/toml"
-	"github.com/dedis/crypto/abstract"
-	cryptoconfig "github.com/dedis/crypto/config"
 	prifi_protocol "github.com/lbarman/prifi/sda/protocols"
 	prifi_service "github.com/lbarman/prifi/sda/services"
+	"gopkg.in/dedis/crypto.v0/abstract"
+	cryptoconfig "gopkg.in/dedis/crypto.v0/config"
 	"gopkg.in/dedis/onet.v1"
 	"gopkg.in/dedis/onet.v1/app"
 	"gopkg.in/dedis/onet.v1/crypto"
