@@ -9,6 +9,15 @@ import (
 	"gopkg.in/dedis/onet.v1/log"
 	"gopkg.in/dedis/onet.v1/network"
 	"time"
+	"github.com/lbarman/prifi/utils/output"
+	"strconv"
+	"fmt"
+	"encoding/base64"
+	"os"
+	"io/ioutil"
+	"path"
+	"crypto/sha1"
+	"strings"
 )
 
 /*
@@ -63,7 +72,8 @@ func (s *SimulationService) Node(config *onet.SimulationConfig) error {
 		log.Fatal("Could not register node in SDA Tree", err)
 	}
 
-	s.RelayReportingLimit = 10 * 100
+	//this controls the length (duration) of the simulation
+	s.RelayReportingLimit = 10 * 1000
 	s.SocksServerPort = 8080 + index
 
 	//assign the roles
@@ -128,11 +138,49 @@ func (s *SimulationService) Run(config *onet.SimulationConfig) error {
 
 		//block and get the result from the channel
 		res := <-service.PriFiSDAProtocol.ResultChannel
-		log.Error("Res is", res)
+		resStringArray := res.([]string)
+		log.Error("Simulation result is", resStringArray)
+
+		//create folder for this experiment
+		folderName := "output_"+hashStruct(config)
+		if _, err := os.Stat(folderName); err != nil {
+			os.MkdirAll(folderName, 0777)
+
+			//write config
+			filePath := path.Join(folderName, "config")
+			err = ioutil.WriteFile(filePath, []byte(fmt.Sprintf("%+v", config)), 0777)
+			if err != nil{
+				log.Error("Could not write config into file", filePath)
+			}
+		}
+
+		//write to file
+		o := new(output.FileOutput)
+		filePath := path.Join(folderName, "output_r"+strconv.Itoa(round)+".txt")
+		o.Filename = filePath
+		log.Error("Filename is", o.Filename)
+		for _, s := range resStringArray {
+			o.Print(s)
+		}
 
 		service.StopPriFiCommunicateProtocol()
 
 		time.Sleep(10 * time.Second)
 	}
 	return nil
+}
+func hashStruct(config *onet.SimulationConfig) string {
+	hasher := sha1.New() //this is not a crypto hash, and 256 is too long to be human-readable
+	hasher.Write([]byte(fmt.Sprintf("%+v", config)))
+	sha := base64.URLEncoding.EncodeToString(hasher.Sum(nil))
+
+	//just for readability
+	sha = strings.Replace(sha, "=", "", -1)
+	sha = strings.Replace(sha, "-", "", -1)
+	sha = strings.Replace(sha, "_", "", -1)
+	sha = strings.Replace(sha, "/", "", -1)
+
+	log.Error("Config is", config)
+	log.Error("Hash of config is", sha)
+	return sha
 }
