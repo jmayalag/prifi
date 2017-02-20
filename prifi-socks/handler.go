@@ -49,7 +49,7 @@ const (
 
 //StartSocksClient starts a socks CLIENT. It is run by the PriFi's relay to connect to some SOCKS server. dataForServer contains the
 //relay's output, i.e. the anonymized traffic. dataFromServer should be the downstream traffic for the PriFi clients.
-func StartSocksClient(serverAddress string, upstreamChan chan []byte, downstreamChan chan []byte) {
+func StartSocksClient(serverAddress string, upstreamChan chan []byte, downstreamChan chan []byte, stopChan chan bool) {
 
 	socksConnections := make(map[uint32]net.Conn)      // Stores all live connections
 	controlChannels := make(map[uint32]chan uint16)    // Stores the control channels for each live connection
@@ -57,7 +57,20 @@ func StartSocksClient(serverAddress string, upstreamChan chan []byte, downstream
 
 	for {
 		// Block on receiving a packet
-		data := <-upstreamChan
+		var data []byte
+		select {
+			case data = <-upstreamChan:
+
+			case <-stopChan:
+				//free resources
+				for _, v := range controlChannels {
+					v <- KillGoRoutine
+				}
+				for _, v := range socksConnections {
+					v.Close()
+				}
+				return
+		}
 
 		// Extract the data from the packet
 		packet := ParseSocksPacketFromBytes(data)
@@ -159,11 +172,12 @@ func StartSocksClient(serverAddress string, upstreamChan chan []byte, downstream
 
 //StartSocksServer is started by the PriFi clients, so the app on their computer can connect to this "fake" Socks server (fake in the sense that the
 //output is actually forwarded to prifi and anonymized).
-func StartSocksServer(localListeningAddress string, payloadLength int, upstreamChan chan []byte, downstreamChan chan []byte, downStreamContainsLatencyMessages bool) {
+func StartSocksServer(localListeningAddress string, payloadLength int, upstreamChan chan []byte, downstreamChan chan []byte, downStreamContainsLatencyMessages bool, stopChan chan bool) {
 
 	// Setup a thread to listen at the assigned port
 	socksConnections := make(chan net.Conn, 1)
-	go acceptSocksClients(localListeningAddress, socksConnections)
+	internalStopChan := make(chan bool, 1)
+	go acceptSocksClients(localListeningAddress, socksConnections, internalStopChan)
 
 	socksProxyActiveConnections := make(map[uint32]net.Conn) // Stores all live connections (Reserve socksProxyActiveConnections[0])
 	controlChannels := make(map[uint32]chan uint16)          // Stores the control channels for each live connection
@@ -173,6 +187,18 @@ func StartSocksServer(localListeningAddress string, payloadLength int, upstreamC
 	for {
 
 		select {
+
+		case <-stopChan:
+			//free resources
+			internalStopChan <- true
+			net.Dial("tcp", localListeningAddress) //self-connect trick to unlock the listener
+			for _, v := range controlChannels {
+				v <- KillGoRoutine
+			}
+			for _, v := range socksProxyActiveConnections {
+				v.Close()
+			}
+			return
 
 		// New TCP connection to the SOCKS proxy received
 		case conn := <-socksConnections:
@@ -329,6 +355,11 @@ func handleSocksClientConnection(tcpConnection net.Conn, connectionID uint32, so
 				// Empty the data buffer
 				dataBuffer = nil
 
+			case KillGoRoutine:
+				log.Lvl2("SOCKS handler for connection " + strconv.Itoa(int(connectionID)) + " just got a Kill message.")
+				tcpConnection.Close()
+				return
+
 			default:
 				break
 			}
@@ -374,7 +405,7 @@ func handleSocksClientConnection(tcpConnection net.Conn, connectionID uint32, so
 /*
 browserConnectionListener listens and accepts connections at a certain port
 */
-func acceptSocksClients(port string, newConnections chan<- net.Conn) {
+func acceptSocksClients(port string, newConnections chan<- net.Conn, stopChan chan bool) {
 
 	log.Lvl2("SOCKS listener is listening for connections on port " + port)
 
@@ -387,6 +418,14 @@ func acceptSocksClients(port string, newConnections chan<- net.Conn) {
 
 	for {
 		conn, err := lsock.Accept()
+
+		select {
+		case <-stopChan:
+			log.Lvl2("SOCKS listener stopped.")
+			lsock.Close()
+			return
+		default:
+		}
 
 		log.Lvl2("SOCKS listener just accepted a connection.")
 
@@ -407,7 +446,12 @@ func connectionReader(conn net.Conn, readLength int, dataChannel chan []byte) {
 	for {
 		// Read data from the connection
 		buffer := make([]byte, readLength)
-		n, _ := conn.Read(buffer)
+		n, err := conn.Read(buffer)
+
+		if err != nil {
+			log.Error("SOCKS connectionReader error,", err)
+			return
+		}
 
 		// Trim the data and send it through the data channel
 		dataChannel <- buffer[:n]
