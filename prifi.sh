@@ -12,22 +12,22 @@
 
 # variables that you might change often
 
-dbg_lvl=3						# 1=less verbose, 3=more verbose. goes up to 5, but then prints the SDA's message (network framework)
-try_use_real_identities="false"	# if "true", will try to use "self-generated" public/private key as a replacement for the dummy keys
-								# we generated for you. It asks you if it does not find real keys. If false, will always use the dummy keys.
-colors="true"					# if "false", the output of PriFi (and this script) will be in black-n-white
+dbg_lvl=3                       # 1=less verbose, 3=more verbose. goes up to 5, but then prints the SDA's message (network framework)
+try_use_real_identities="false" # if "true", will try to use "self-generated" public/private key as a replacement for the dummy keys
+                                # we generated for you. It asks you if it does not find real keys. If false, will always use the dummy keys.
+colors="true"                   # if "false", the output of PriFi (and this script) will be in black-n-white
 
-socksServer1Port=8080			# the port for the SOCKS-Server-1 (part of the PriFi client)
-socksServer2Port=8090			# the port to attempt connect to (from the PriFi relay) for the SOCKS-Server-2
-								# notes : see <https://github.com/lbarman/prifi/blob/master/README_architecture.md>
+socksServer1Port=8080           # the port for the SOCKS-Server-1 (part of the PriFi client)
+socksServer2Port=8090           # the port to attempt connect to (from the PriFi relay) for the SOCKS-Server-2
+                                # notes : see <https://github.com/lbarman/prifi/blob/master/README_architecture.md>
 
-all_localhost_n_clients=10		# number of clients to start in the "all-localhost" script
+all_localhost_n_clients=10      # number of clients to start in the "all-localhost" script
 
 # default file names :
 
-prifi_file="prifi.toml"			#default name for the prifi config file (contains prifi-specific settings)
-identity_file="identity.toml"	#default name for the identity file (contains public + private key)
-group_file="group.toml"			#default name for the group file (contains public keys + address of other nodes)
+prifi_file="prifi.toml"                     # default name for the prifi config file (contains prifi-specific settings)
+identity_file="identity.toml"               # default name for the identity file (contains public + private key)
+group_file="group.toml"                     # default name for the group file (contains public keys + address of other nodes)
 
 # location of the buildable (go build) prifi file :
 
@@ -36,13 +36,16 @@ bin_file="$GOPATH/src/github.com/lbarman/prifi/sda/app/prifi.go"
 # we have two "identities" directory. The second one is empty unless you generate your own keys with "gen-id"
 
 configdir="config"
-defaultIdentitiesDir="identities_default" 	#in $configdir
-realIdentitiesDir="identities_real"		#in $configdir
+defaultIdentitiesDir="identities_default"   # in $configdir
+realIdentitiesDir="identities_real"         # in $configdir
+
+# min required go version
+min_go_version = 17                         # min required go version, without the '.', e.g. 17 for 1.7.x
 
 # unimportant variable (but do not change, ofc)
 
-sleeptime_between_spawns=1 		# time in second between entities launch in all-localhost part
-cothorityBranchRequired="master" # the branch required for the cothority (SDA) framework
+sleeptime_between_spawns=1                  # time in second between entities launch in all-localhost part
+cothorityBranchRequired="master"            # the branch required for the cothority (SDA) framework
 
 #pretty colored message
 highlightOn="\033[33m"
@@ -104,9 +107,9 @@ test_go(){
 		echo -e "$errorMsg GOPATH ($GOPATH) is not a folder ! make sure you installed the Go language correctly."
 		exit 1
 	fi
-    GO_VER=$(go version 2>&1 | sed 's/.*version go\(.*\)\.\(.*\)\..*/\1\2/; 1q')
-	if [ $GO_VER -lt 17 ]; then
-	    echo -e "$errorMsg Go >= 1.7.0 is required"
+	GO_VER=$(go version 2>&1 | sed 's/.*version go\(.*\)\.\(.*\)\..*/\1\2/; 1q')
+	if [ $GO_VER -lt "$min_go_version" ]; then
+		echo -e "$errorMsg Go >= 1.7.0 is required"
 		exit 1
 	fi
 }
