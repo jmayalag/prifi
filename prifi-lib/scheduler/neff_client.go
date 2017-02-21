@@ -2,8 +2,8 @@ package scheduler
 
 import (
 	"errors"
-	"github.com/dedis/crypto/abstract"
 	"github.com/lbarman/prifi/prifi-lib/config"
+	"gopkg.in/dedis/crypto.v0/abstract"
 	"strconv"
 )
 

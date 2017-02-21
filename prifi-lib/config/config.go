@@ -4,9 +4,9 @@ Package config contains the cryptographic primitives that are used by the PriFi 
 package config
 
 import (
-	"github.com/dedis/crypto/abstract"
-	"github.com/dedis/crypto/ed25519"
 	"github.com/lbarman/prifi/prifi-lib/dcnet"
+	"gopkg.in/dedis/crypto.v0/abstract"
+	"gopkg.in/dedis/crypto.v0/ed25519"
 )
 
 //CryptoSuite contains crypto suite used, here ED25519

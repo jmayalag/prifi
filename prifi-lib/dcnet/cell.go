@@ -1,7 +1,7 @@
 package dcnet
 
 import (
-	"github.com/dedis/crypto/abstract"
+	"gopkg.in/dedis/crypto.v0/abstract"
 )
 
 // CellCoder is the cell encoding, decoding, and accountability interface.

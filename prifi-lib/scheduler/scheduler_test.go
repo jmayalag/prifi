@@ -2,10 +2,10 @@ package scheduler
 
 import (
 	"fmt"
-	"github.com/dedis/crypto/abstract"
 	"github.com/lbarman/prifi/prifi-lib/config"
 	"github.com/lbarman/prifi/prifi-lib/crypto"
 	"github.com/lbarman/prifi/prifi-lib/net"
+	"gopkg.in/dedis/crypto.v0/abstract"
 	"strconv"
 	"testing"
 )
