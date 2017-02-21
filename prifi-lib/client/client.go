@@ -27,10 +27,10 @@ import (
 	"errors"
 	"strconv"
 
-	"github.com/dedis/crypto/abstract"
 	"github.com/lbarman/prifi/prifi-lib/config"
 	"github.com/lbarman/prifi/prifi-lib/crypto"
 	"github.com/lbarman/prifi/prifi-lib/net"
+	"gopkg.in/dedis/crypto.v0/abstract"
 	"gopkg.in/dedis/onet.v1/log"
 
 	"github.com/lbarman/prifi/prifi-lib/scheduler"

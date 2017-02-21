@@ -5,7 +5,7 @@ import (
 	"crypto/cipher"
 	"errors"
 
-	"github.com/dedis/crypto/abstract"
+	"gopkg.in/dedis/crypto.v0/abstract"
 )
 
 // A basic, verifiable signature
@@ -23,7 +23,7 @@ func hashSchnorr(suite abstract.Suite, message []byte, p abstract.Point) abstrac
 }
 
 // SchnorrSign is a simplified implementation of Schnorr signatures that
-// is based on github.com/dedis/crypto/anon/sig.go.
+// is based on gopkg.in/dedis/crypto.v0/anon/sig.go.
 // The ring structure is removed and the anonymity set is reduced to
 // one public key = no anonymity
 // This implementation is based on the paper:

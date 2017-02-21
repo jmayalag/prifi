@@ -3,7 +3,7 @@ package net
 import (
 	"bytes"
 	"errors"
-	"github.com/dedis/crypto/random"
+	"gopkg.in/dedis/crypto.v0/random"
 	"testing"
 )
 

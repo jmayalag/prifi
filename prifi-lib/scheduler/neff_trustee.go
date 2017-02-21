@@ -13,13 +13,13 @@ OUTPUT : list of slots
 import (
 	"bytes"
 	"errors"
-	"github.com/dedis/crypto/abstract"
-	crypto_proof "github.com/dedis/crypto/proof"
-	"github.com/dedis/crypto/random"
-	"github.com/dedis/crypto/shuffle"
 	"github.com/lbarman/prifi/prifi-lib/config"
 	"github.com/lbarman/prifi/prifi-lib/crypto"
 	"github.com/lbarman/prifi/prifi-lib/net"
+	"gopkg.in/dedis/crypto.v0/abstract"
+	crypto_proof "gopkg.in/dedis/crypto.v0/proof"
+	"gopkg.in/dedis/crypto.v0/random"
+	"gopkg.in/dedis/crypto.v0/shuffle"
 	"strconv"
 )
 

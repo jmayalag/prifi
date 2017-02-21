@@ -1,8 +1,8 @@
 package config
 
 import (
-	"github.com/dedis/crypto/abstract"
 	"github.com/lbarman/prifi/prifi-lib/dcnet"
+	"gopkg.in/dedis/crypto.v0/abstract"
 	"testing"
 )
 

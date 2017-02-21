@@ -1,12 +1,12 @@
 package crypto
 
 import (
-	"github.com/dedis/crypto/abstract"
 	"github.com/lbarman/prifi/prifi-lib/config"
+	"gopkg.in/dedis/crypto.v0/abstract"
 	"testing"
 
 	"fmt"
-	"github.com/dedis/crypto/random"
+	"gopkg.in/dedis/crypto.v0/random"
 	"strconv"
 )
 

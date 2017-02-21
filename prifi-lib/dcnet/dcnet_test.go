@@ -8,9 +8,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/dedis/crypto/nist"
+	"gopkg.in/dedis/crypto.v0/nist"
 
-	"github.com/dedis/crypto/abstract"
+	"gopkg.in/dedis/crypto.v0/abstract"
 )
 
 func TestSimple(t *testing.T) {
