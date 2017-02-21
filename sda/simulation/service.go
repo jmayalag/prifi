@@ -173,7 +173,6 @@ func (s *SimulationService) Run(config *onet.SimulationConfig) error {
 
 	//stop the SOCKS stuff (will be restarted next round)
 
-
 	return nil
 }
 func hashStruct(config *onet.SimulationConfig) string {

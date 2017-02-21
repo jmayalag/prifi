@@ -43,7 +43,7 @@ type ServiceState struct {
 	relayIdentity             *network.ServerIdentity
 	trusteeIDs                []*network.ServerIdentity
 	connectToRelayStopChan    chan bool //spawned at init
-	connectToRelay2StopChan    chan bool //spawned after receiving a HELLO message
+	connectToRelay2StopChan   chan bool //spawned after receiving a HELLO message
 	connectToTrusteesStopChan chan bool
 	receivedHello             bool
 

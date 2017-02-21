@@ -32,8 +32,8 @@ import (
 	"gopkg.in/dedis/crypto.v0/abstract"
 	"gopkg.in/dedis/onet.v1/log"
 	"reflect"
-	"time"
 	"strings"
+	"time"
 )
 
 // ClientState contains the mutable state of the client.
@@ -108,7 +108,7 @@ func NewClient(doLatencyTest bool, dataOutputEnabled bool, dataForDCNet chan []b
 		log.Lvl2(s)
 	}
 	errFn := func(s interface{}) {
-		if strings.Contains(s.(string), ", but in state SHUTDOWN"){ //it's an "acceptable error"
+		if strings.Contains(s.(string), ", but in state SHUTDOWN") { //it's an "acceptable error"
 			log.Lvl2(s)
 		} else {
 			log.Error(s)
