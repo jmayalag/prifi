@@ -104,6 +104,11 @@ test_go(){
 		echo -e "$errorMsg GOPATH ($GOPATH) is not a folder ! make sure you installed the Go language correctly."
 		exit 1
 	fi
+    GO_VER=$(go version 2>&1 | sed 's/.*version go\(.*\)\.\(.*\)\..*/\1\2/; 1q')
+	if [ $GO_VER -lt 17 ]; then
+	    echo -e "$errorMsg Go >= 1.7.0 is required"
+		exit 1
+	fi
 }
 
 # tests if the cothority exists and is on the correct branch
@@ -159,7 +164,7 @@ case $1 in
 
 	install|Install|INSTALL)
 
-		echo -n "Testing for GOPATH... "
+		echo -n "Testing for GO... "
 		test_go
 		echo -e "$okMsg"
 
