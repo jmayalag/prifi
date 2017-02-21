@@ -76,12 +76,14 @@ func newService(c *onet.Context) onet.Service {
 		ServiceProcessor: onet.NewServiceProcessor(c),
 	}
 	helloMsg := network.RegisterMessage(HelloMsg{})
+	stopSOCKSMsg := network.RegisterMessage(StopSOCKS{})
 	stopMsg := network.RegisterMessage(StopProtocol{})
 	connMsg := network.RegisterMessage(ConnectionRequest{})
 	disconnectMsg := network.RegisterMessage(DisconnectionRequest{})
 
 	c.RegisterProcessorFunc(helloMsg, s.HandleHelloMsg)
 	c.RegisterProcessorFunc(stopMsg, s.HandleStop)
+	c.RegisterProcessorFunc(stopSOCKSMsg, s.HandleStopSOCKS)
 	c.RegisterProcessorFunc(connMsg, s.HandleConnection)
 	c.RegisterProcessorFunc(disconnectMsg, s.HandleDisconnection)
 
@@ -231,13 +233,28 @@ func (s *ServiceState) StartTrustee(group *app.Group) error {
 	return nil
 }
 
-// CleanResources kill all goroutines
+// CleanResources kill all goroutines related to SOCKS on this service
 func (s *ServiceState) ShutdownSocks() error {
 	log.Lvl2("Stopping service's SOCKS goroutines.")
 
 	for _, v := range s.socksStopChan {
 		v <- true
 	}
+
+	return nil
+}
+
+// CleanResources kill all goroutines on all services
+func (s *ServiceState) GlobalShutDownSocks() error {
+	log.Lvl2("Stopping globally all SOCKS goroutines.")
+
+	//contact the clients
+	for _, v := range s.churnHandler.getClientsIdentities() {
+		s.SendRaw(v, &StopSOCKS{})
+	}
+
+	//shut down the relay's SOCKS
+	s.ShutdownSocks()
 
 	return nil
 }

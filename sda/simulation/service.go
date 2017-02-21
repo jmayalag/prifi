@@ -158,7 +158,7 @@ func (s *SimulationService) Run(config *onet.SimulationConfig) error {
 		o := new(output.FileOutput)
 		filePath := path.Join(folderName, "output_r"+strconv.Itoa(round)+".txt")
 		o.Filename = filePath
-		log.Error("Filename is", o.Filename)
+		log.Info("Simulation results stored in", o.Filename)
 		for _, s := range resStringArray {
 			o.Print(s)
 		}
@@ -169,6 +169,11 @@ func (s *SimulationService) Run(config *onet.SimulationConfig) error {
 		time.Sleep(10 * time.Second)
 		log.Info("Moving on to next round")
 	}
+	service.GlobalShutDownSocks()
+
+	//stop the SOCKS stuff (will be restarted next round)
+
+
 	return nil
 }
 func hashStruct(config *onet.SimulationConfig) string {

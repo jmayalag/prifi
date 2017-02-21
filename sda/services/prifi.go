@@ -11,6 +11,9 @@ import (
 // Packet send by relay when some node disconnected
 type StopProtocol struct{}
 
+// Packet send by relay doing simulations to stop the SOCKS stuff
+type StopSOCKS struct{}
+
 // ConnectionRequest messages are sent to the relay
 // by nodes that want to join the protocol.
 type ConnectionRequest struct{}
@@ -77,6 +80,11 @@ func (s *ServiceState) HandleDisconnection(msg *network.Envelope) {
 		log.Fatal("Can't handle a disconnection without a churnHandler")
 	}
 	s.churnHandler.handleDisconnection(msg)
+}
+
+// Packet send by relay when some node disconnected
+func (s *ServiceState) HandleStopSOCKS(msg *network.Envelope) {
+	s.ShutdownSocks()
 }
 
 // handleTimeout is a callback that should be called on the relay
