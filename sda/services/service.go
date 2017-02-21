@@ -42,7 +42,8 @@ type ServiceState struct {
 	role                      prifi_protocol.PriFiRole
 	relayIdentity             *network.ServerIdentity
 	trusteeIDs                []*network.ServerIdentity
-	connectToRelayStopChan    chan bool
+	connectToRelayStopChan    chan bool //spawned at init
+	connectToRelay2StopChan    chan bool //spawned after receiving a HELLO message
 	connectToTrusteesStopChan chan bool
 	receivedHello             bool
 
@@ -223,11 +224,12 @@ func (s *ServiceState) StartSocksTunnelOnly() error {
 func (s *ServiceState) StartTrustee(group *app.Group) error {
 	log.Info("Service", s, "running in trustee mode")
 	s.role = prifi_protocol.Trustee
-	s.connectToRelayStopChan = make(chan bool)
 
 	//the this might fail if the relay is behind a firewall. The HelloMsg is to fix this
 	relayID, _ := mapIdentities(group)
 	s.relayIdentity = relayID
+
+	s.connectToRelayStopChan = make(chan bool)
 	go s.connectToRelay(relayID, s.connectToRelayStopChan)
 
 	return nil
