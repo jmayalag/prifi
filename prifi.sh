@@ -108,7 +108,7 @@ test_go(){
 		exit 1
 	fi
 	GO_VER=$(go version 2>&1 | sed 's/.*version go\(.*\)\.\(.*\)\..*/\1\2/; 1q')
-	if [ $GO_VER -lt "$min_go_version" ]; then
+	if [ "$GO_VER" -lt "$min_go_version" ]; then
 		echo -e "$errorMsg Go >= 1.7.0 is required"
 		exit 1
 	fi
@@ -643,6 +643,11 @@ case $1 in
 
 		echo -n "Building simulation... "
 		cd "$SIMUL_DIR"; go build -o "$EXEC_NAME" *.go
+		if [ "$?" -ne 0 ]; then
+			echo -e "$errorMsg build failed"
+			exit 1
+		fi
+
 		echo -e "$okMsg"
 
 		echo -e "Starting simulation ${highlightOn}${SIMUL_FILE}${highlightOff} on ${highlightOn}${PLATFORM}${highlightOff}."
