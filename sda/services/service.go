@@ -47,16 +47,16 @@ type ServiceState struct {
 	receivedHello             bool
 
 	//If true, when the number of participants is reached, the protocol starts without calling StartPriFiCommunicateProtocol
-	AutoStart                 bool
+	AutoStart bool
 
 	//this hold the churn handler; protocol is started there. Only relay has this != nil
-	churnHandler              *churnHandler
+	churnHandler *churnHandler
 
 	//this hold the running protocol (when it runs)
-	PriFiSDAProtocol          *prifi_protocol.PriFiSDAProtocol
+	PriFiSDAProtocol *prifi_protocol.PriFiSDAProtocol
 
 	//used to hold "stoppers" for go-routines; send "true" to kill
-	socksStopChan             []chan bool
+	socksStopChan []chan bool
 }
 
 // Storage will be saved, on the contrary of the 'Service'-structure
@@ -222,7 +222,6 @@ func (s *ServiceState) StartTrustee(group *app.Group) error {
 	return nil
 }
 
-
 // Stop kills all protocols, and shutdown this service by freeing resources.
 func (s *ServiceState) Stop() error {
 	log.Info("Stopping service", s, ".")
@@ -235,7 +234,6 @@ func (s *ServiceState) Stop() error {
 
 	return nil
 }
-
 
 // save saves the actual identity
 func (s *ServiceState) save() {

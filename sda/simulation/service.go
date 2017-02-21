@@ -1,23 +1,23 @@
 package main
 
 import (
+	"crypto/sha1"
+	"encoding/base64"
+	"fmt"
 	"github.com/BurntSushi/toml"
 	prifi_protocol "github.com/lbarman/prifi/sda/protocols"
 	prifi_service "github.com/lbarman/prifi/sda/services"
+	"github.com/lbarman/prifi/utils/output"
 	"gopkg.in/dedis/onet.v1"
 	"gopkg.in/dedis/onet.v1/app"
 	"gopkg.in/dedis/onet.v1/log"
 	"gopkg.in/dedis/onet.v1/network"
-	"time"
-	"github.com/lbarman/prifi/utils/output"
-	"strconv"
-	"fmt"
-	"encoding/base64"
-	"os"
 	"io/ioutil"
+	"os"
 	"path"
-	"crypto/sha1"
+	"strconv"
 	"strings"
+	"time"
 )
 
 /*
@@ -142,14 +142,14 @@ func (s *SimulationService) Run(config *onet.SimulationConfig) error {
 		log.Error("Simulation result is", resStringArray)
 
 		//create folder for this experiment
-		folderName := "output_"+hashStruct(config)
+		folderName := "output_" + hashStruct(config)
 		if _, err := os.Stat(folderName); err != nil {
 			os.MkdirAll(folderName, 0777)
 
 			//write config
 			filePath := path.Join(folderName, "config")
 			err = ioutil.WriteFile(filePath, []byte(fmt.Sprintf("%+v", config)), 0777)
-			if err != nil{
+			if err != nil {
 				log.Error("Could not write config into file", filePath)
 			}
 		}

@@ -59,17 +59,17 @@ func StartSocksClient(serverAddress string, upstreamChan chan []byte, downstream
 		// Block on receiving a packet
 		var data []byte
 		select {
-			case data = <-upstreamChan:
+		case data = <-upstreamChan:
 
-			case <-stopChan:
-				//free resources
-				for _, v := range controlChannels {
-					v <- KillGoRoutine
-				}
-				for _, v := range socksConnections {
-					v.Close()
-				}
-				return
+		case <-stopChan:
+			//free resources
+			for _, v := range controlChannels {
+				v <- KillGoRoutine
+			}
+			for _, v := range socksConnections {
+				v.Close()
+			}
+			return
 		}
 
 		// Extract the data from the packet
