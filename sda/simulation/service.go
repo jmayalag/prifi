@@ -120,11 +120,11 @@ func (s *SimulationService) Node(config *onet.SimulationConfig) error {
 // rounds
 func (s *SimulationService) Run(config *onet.SimulationConfig) error {
 
-	for round := 0; round < s.Rounds; round++ {
-		log.Lvl1("Starting experiment round", round)
+	//finds the PriFi service
+	service := config.GetService(prifi_service.ServiceName).(*prifi_service.ServiceState)
 
-		//finds the PriFi service
-		service := config.GetService(prifi_service.ServiceName).(*prifi_service.ServiceState)
+	for round := 0; round < s.Rounds; round++ {
+		log.Info("Starting experiment round", round)
 
 		service.StartPriFiCommunicateProtocol()
 
@@ -165,7 +165,9 @@ func (s *SimulationService) Run(config *onet.SimulationConfig) error {
 
 		service.StopPriFiCommunicateProtocol()
 
+		log.Info("Sleeping 10 seconds before next round...")
 		time.Sleep(10 * time.Second)
+		log.Info("Moving on to next round")
 	}
 	return nil
 }
@@ -180,7 +182,5 @@ func hashStruct(config *onet.SimulationConfig) string {
 	sha = strings.Replace(sha, "_", "", -1)
 	sha = strings.Replace(sha, "/", "", -1)
 
-	log.Error("Config is", config)
-	log.Error("Hash of config is", sha)
 	return sha
 }

@@ -42,6 +42,9 @@ func (s *ServiceState) HandleStop(msg *network.Envelope) {
 	log.Lvl1("Received a Handle Stop")
 	s.StopPriFiCommunicateProtocol()
 
+	if s.role != prifi_protocol.Relay {
+		s.connectToRelayStopChan <- true
+	}
 }
 
 // Packet send by relay when some node connected
@@ -154,6 +157,11 @@ func (s *ServiceState) StopPriFiCommunicateProtocol() {
 
 	if s.role == prifi_protocol.Relay {
 
+		//stop the connectToTrustees goroutine
+		if s.role == prifi_protocol.Relay {
+			s.connectToTrusteesStopChan <- true
+		}
+
 		log.Lvl2("A network error occurred, we're the relay, warning other clients...")
 
 		for _, v := range s.churnHandler.getClientsIdentities() {
@@ -220,6 +228,7 @@ func (s *ServiceState) sendConnectionRequest(relayID *network.ServerIdentity) {
 
 	if err != nil {
 		log.Error("Connection failed:", err)
+		log.Error("I'm", s.role, s)
 	}
 }
 

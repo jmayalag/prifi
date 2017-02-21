@@ -46,6 +46,7 @@ import (
 
 	"github.com/lbarman/prifi/prifi-lib/crypto"
 	"reflect"
+	"strings"
 )
 
 // PriFiLibInstance contains the mutable state of a PriFi entity.
@@ -92,7 +93,11 @@ func NewRelay(dataOutputEnabled bool, dataForClients chan []byte, dataFromDCNet 
 		log.Lvl2(s)
 	}
 	errFn := func(s interface{}) {
-		log.Error(s)
+		if strings.Contains(s.(string), ", but in state SHUTDOWN"){ //it's an "acceptable error"
+			log.Lvl2(s)
+		} else {
+			log.Error(s)
+		}
 	}
 	sm.Init(states, logFn, errFn)
 

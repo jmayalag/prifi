@@ -57,6 +57,9 @@ type ServiceState struct {
 
 	//used to hold "stoppers" for go-routines; send "true" to kill
 	socksStopChan []chan bool
+
+	hasSocksClientGoRoutine bool
+	hasSocksServerGoRoutine bool
 }
 
 // Storage will be saved, on the contrary of the 'Service'-structure
@@ -140,9 +143,12 @@ func (s *ServiceState) StartRelay(group *app.Group) error {
 	}
 
 	//the relay has a socks Client
-	stopChan := make(chan bool, 1)
-	go prifi_socks.StartSocksClient(socksServerConfig.Port, socksServerConfig.UpstreamChannel, socksServerConfig.DownstreamChannel, stopChan)
-	s.socksStopChan = append(s.socksStopChan, stopChan)
+	if !s.hasSocksClientGoRoutine {
+		stopChan := make(chan bool, 1)
+		go prifi_socks.StartSocksClient(socksServerConfig.Port, socksServerConfig.UpstreamChannel, socksServerConfig.DownstreamChannel, stopChan)
+		s.socksStopChan = append(s.socksStopChan, stopChan)
+		s.hasSocksClientGoRoutine = true
+	}
 
 	s.connectToTrusteesStopChan = make(chan bool)
 	go s.connectToTrustees(trusteesIDs, s.connectToTrusteesStopChan)
@@ -167,10 +173,13 @@ func (s *ServiceState) StartClient(group *app.Group) error {
 	}
 
 	//the client has a socks server
-	log.Lvl1("Starting SOCKS server on port", socksClientConfig.Port)
-	stopChan := make(chan bool, 1)
-	go prifi_socks.StartSocksServer(socksClientConfig.Port, socksClientConfig.PayloadLength, socksClientConfig.UpstreamChannel, socksClientConfig.DownstreamChannel, s.prifiTomlConfig.DoLatencyTests, stopChan)
-	s.socksStopChan = append(s.socksStopChan, stopChan)
+	if !s.hasSocksServerGoRoutine {
+		log.Lvl1("Starting SOCKS server on port", socksClientConfig.Port)
+		stopChan := make(chan bool, 1)
+		go prifi_socks.StartSocksServer(socksClientConfig.Port, socksClientConfig.PayloadLength, socksClientConfig.UpstreamChannel, socksClientConfig.DownstreamChannel, s.prifiTomlConfig.DoLatencyTests, stopChan)
+		s.socksStopChan = append(s.socksStopChan, stopChan)
+		s.hasSocksServerGoRoutine = true
+	}
 
 	s.connectToRelayStopChan = make(chan bool)
 	s.trusteeIDs = trusteeIDs
@@ -222,12 +231,10 @@ func (s *ServiceState) StartTrustee(group *app.Group) error {
 	return nil
 }
 
-// Stop kills all protocols, and shutdown this service by freeing resources.
-func (s *ServiceState) Stop() error {
-	log.Info("Stopping service", s, ".")
+// CleanResources kill all goroutines
+func (s *ServiceState) ShutdownSocks() error {
+	log.Lvl2("Stopping service's SOCKS goroutines.")
 
-	s.connectToRelayStopChan <- true
-	s.connectToTrusteesStopChan <- true
 	for _, v := range s.socksStopChan {
 		v <- true
 	}

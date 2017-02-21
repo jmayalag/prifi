@@ -12,6 +12,7 @@ import (
 	"gopkg.in/dedis/onet.v1/log"
 	"reflect"
 	"time"
+	"strings"
 )
 
 // Possible sending rates for the trustees.
@@ -51,7 +52,11 @@ func NewTrustee(msgSender *net.MessageSenderWrapper) *PriFiLibTrusteeInstance {
 		log.Lvl2(s)
 	}
 	errFn := func(s interface{}) {
-		log.Error(s)
+		if strings.Contains(s.(string), ", but in state SHUTDOWN"){ //it's an "acceptable error"
+			log.Lvl2(s)
+		} else {
+			log.Error(s)
+		}
 	}
 	sm.Init(states, logFn, errFn)
 
