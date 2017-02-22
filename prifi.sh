@@ -626,7 +626,7 @@ case $1 in
 	simul|Simul|SIMUL)
 	
 		SIMUL_FILE="prifi_simul.toml"
-		PLATFORM="localhost"
+		PLATFORM="deterlab"
 		EXEC_NAME="prifi_simul"
 		SIMUL_DIR="sda/simulation"
 

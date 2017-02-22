@@ -1,0 +1,82 @@
+#
+# This topology has M servers and N user nodes
+# connected by a bandwidth-limited link.
+#
+
+set ns [new Simulator]
+source tb_compat.tcl
+
+set n_trustees 5
+set n_clients 10
+
+set trustee_bandwidth 10Mb
+set trustee_delay 100ms
+
+set lanstr_trustees ""
+set lanstr_clients ""
+
+#server(0) is the relay
+for {set i 0} {$i <= 0} {incr i} {
+   set server($i) [$ns node]
+   tb-set-node-os $server($i) Ubuntu1404-64-STD
+   tb-set-hardware $server($i) bpc3000
+   tb-set-node-startcmd $server($i) /share/t1t2/set_route
+   tb-set-node-failure-action $server($i) "nonfatal"
+   append lanstr_clients "$server($i) "
+   append lanstr_trustees "$server($i) "
+}
+
+#server(1)...server(n_clients) are the trustees
+for {set i 1} {$i <= $n_clients} {incr i} {
+   set server($i) [$ns node]
+   tb-set-node-os $server($i) Ubuntu1404-64-STD
+   tb-set-hardware $server($i) bpc3000
+   tb-set-node-startcmd $server($i) /share/t1t2/set_route
+   tb-set-node-failure-action $server($i) "nonfatal"
+   append lanstr_trustees "$server($i) "
+}
+
+#other nodes are clients
+for {set i [expr {$n_clients + 1}]} {$i <= [expr {$n_trustees + $n_clients}]} {incr i} {
+   set server($i) [$ns node]
+   tb-set-node-os $server($i) Ubuntu1404-64-STD
+   tb-set-node-startcmd $server($i)  /share/t1t2/set_route
+   tb-set-node-failure-action $server($i) "nonfatal"
+   append lanstr_clients "$server($i) "
+}
+
+
+set lanclients [$ns make-lan "$lanstr_clients" 100Mb 10ms]
+set lantrustees [$ns make-lan "$lanstr_trustees" 100Mb $trustee_delay]
+
+#server(0) is the relay
+for {set i 0} {$i <= 0} {incr i} {
+    set ip 10.0.0.[expr {$i + 1}]
+    tb-set-ip-lan $server($i) $lantrustees 10.0.0.254
+    tb-set-ip-lan $server($i) $lanclients 10.0.1.254
+}
+
+#server(1)...server(n_clients) are the trustees
+for {set i 1} {$i <= $n_clients} {incr i} {
+    set ip 10.0.0.[expr {$i + 1}]
+    tb-set-ip-lan $server($i) $lantrustees $ip
+    tb-set-node-lan-bandwidth $server($i) $lantrustees $trustee_bandwidth
+}
+
+#other nodes are clients
+for {set i [expr {$n_clients + 1}]} {$i <= [expr {$n_trustees + $n_clients}]} {incr i} {
+    set ip 10.0.1.[expr {$i + 1}]
+    tb-set-ip-lan $server($i) $lanclients $ip
+}
+
+# Do not remove - automatically generated tunnelcode for connectivity
+# set tunnel [$ns node]
+# tb-set-node-os $tunnel CentOS5-TUNNEL
+# tb-allow-external $tunnel
+# set linktunnel [$ns duplex-link $router $tunnel 1000Mb 0ms DropTail]
+# End of tunnelcode
+
+$ns rtproto Static
+$ns run
+
+
