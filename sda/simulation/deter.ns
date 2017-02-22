@@ -19,7 +19,7 @@ set lanstr_clients ""
 for {set i 0} {$i <= 0} {incr i} {
    set server($i) [$ns node]
    tb-set-node-os $server($i) Ubuntu1404-64-STD
-   tb-set-hardware $server($i) bpc3000
+   #tb-set-hardware $server($i) bpc3000
    tb-set-node-startcmd $server($i) /share/t1t2/set_route
    tb-set-node-failure-action $server($i) "nonfatal"
    append lanstr_clients "$server($i) "
@@ -30,7 +30,7 @@ for {set i 0} {$i <= 0} {incr i} {
 for {set i 1} {$i <= $n_clients} {incr i} {
    set server($i) [$ns node]
    tb-set-node-os $server($i) Ubuntu1404-64-STD
-   tb-set-hardware $server($i) bpc3000
+   #tb-set-hardware $server($i) bpc3000
    tb-set-node-startcmd $server($i) /share/t1t2/set_route
    tb-set-node-failure-action $server($i) "nonfatal"
    append lanstr_trustees "$server($i) "
