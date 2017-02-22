@@ -12,22 +12,22 @@
 
 # variables that you might change often
 
-dbg_lvl=3						# 1=less verbose, 3=more verbose. goes up to 5, but then prints the SDA's message (network framework)
-try_use_real_identities="false"	# if "true", will try to use "self-generated" public/private key as a replacement for the dummy keys
-								# we generated for you. It asks you if it does not find real keys. If false, will always use the dummy keys.
-colors="true"					# if "false", the output of PriFi (and this script) will be in black-n-white
+dbg_lvl=3                       # 1=less verbose, 3=more verbose. goes up to 5, but then prints the SDA's message (network framework)
+try_use_real_identities="false" # if "true", will try to use "self-generated" public/private key as a replacement for the dummy keys
+                                # we generated for you. It asks you if it does not find real keys. If false, will always use the dummy keys.
+colors="true"                   # if "false", the output of PriFi (and this script) will be in black-n-white
 
-socksServer1Port=8080			# the port for the SOCKS-Server-1 (part of the PriFi client)
-socksServer2Port=8090			# the port to attempt connect to (from the PriFi relay) for the SOCKS-Server-2
-								# notes : see <https://github.com/lbarman/prifi/blob/master/README_architecture.md>
+socksServer1Port=8080           # the port for the SOCKS-Server-1 (part of the PriFi client)
+socksServer2Port=8090           # the port to attempt connect to (from the PriFi relay) for the SOCKS-Server-2
+                                # notes : see <https://github.com/lbarman/prifi/blob/master/README_architecture.md>
 
-all_localhost_n_clients=10		# number of clients to start in the "all-localhost" script
+all_localhost_n_clients=10      # number of clients to start in the "all-localhost" script
 
 # default file names :
 
-prifi_file="prifi.toml"			#default name for the prifi config file (contains prifi-specific settings)
-identity_file="identity.toml"	#default name for the identity file (contains public + private key)
-group_file="group.toml"			#default name for the group file (contains public keys + address of other nodes)
+prifi_file="prifi.toml"                     # default name for the prifi config file (contains prifi-specific settings)
+identity_file="identity.toml"               # default name for the identity file (contains public + private key)
+group_file="group.toml"                     # default name for the group file (contains public keys + address of other nodes)
 
 # location of the buildable (go build) prifi file :
 
@@ -36,13 +36,16 @@ bin_file="$GOPATH/src/github.com/lbarman/prifi/sda/app/prifi.go"
 # we have two "identities" directory. The second one is empty unless you generate your own keys with "gen-id"
 
 configdir="config"
-defaultIdentitiesDir="identities_default" 	#in $configdir
-realIdentitiesDir="identities_real"		#in $configdir
+defaultIdentitiesDir="identities_default"   # in $configdir
+realIdentitiesDir="identities_real"         # in $configdir
+
+# min required go version
+min_go_version = 17                         # min required go version, without the '.', e.g. 17 for 1.7.x
 
 # unimportant variable (but do not change, ofc)
 
-sleeptime_between_spawns=1 		# time in second between entities launch in all-localhost part
-cothorityBranchRequired="master" # the branch required for the cothority (SDA) framework
+sleeptime_between_spawns=1                  # time in second between entities launch in all-localhost part
+cothorityBranchRequired="master"            # the branch required for the cothority (SDA) framework
 
 #pretty colored message
 highlightOn="\033[33m"
@@ -104,13 +107,18 @@ test_go(){
 		echo -e "$errorMsg GOPATH ($GOPATH) is not a folder ! make sure you installed the Go language correctly."
 		exit 1
 	fi
+	GO_VER=$(go version 2>&1 | sed 's/.*version go\(.*\)\.\(.*\)\..*/\1\2/; 1q')
+	if [ "$GO_VER" -lt "$min_go_version" ]; then
+		echo -e "$errorMsg Go >= 1.7.0 is required"
+		exit 1
+	fi
 }
 
 # tests if the cothority exists and is on the correct branch
 test_cothority() {
-	branchOk=$(cd $GOPATH/src/gopkg.in/dedis/onet.v1; git status | grep "On branch $cothorityBranchRequired" | wc -l)
+	branchOk=$(cd "$GOPATH/src/gopkg.in/dedis/onet.v1"; git status | grep "On branch $cothorityBranchRequired" | wc -l)
 
-	if [ $branchOk -ne 1 ]; then
+	if [ "$branchOk" -ne 1 ]; then
 		echo -e "$errorMsg Make sure \"$GOPATH/src/gopkg.in/dedis/onet.v1\" is a git repo, on branch \"$cothorityBranchRequired\". Try running \"./prifi.sh install\""
 		exit 1
 	fi
@@ -119,7 +127,7 @@ test_cothority() {
 # test if $1 is a digit, if not, prints "argument $2 invalid" and exit.
 test_digit() {
 	case $1 in
-		''|*[!0-9]*) 
+		''|*[!0-9]*)
 			echo -e "$errorMsg parameter $2 need to be an integer."
 			exit 1;;
 		*) ;;
@@ -159,7 +167,7 @@ case $1 in
 
 	install|Install|INSTALL)
 
-		echo -n "Testing for GOPATH... "
+		echo -n "Testing for GO... "
 		test_go
 		echo -e "$okMsg"
 
@@ -169,17 +177,17 @@ case $1 in
 		echo -e "$okMsg"
 
 		echo -n "Switching ONet branch... "
-		cd $GOPATH/src/gopkg.in/dedis/onet.v1; git checkout "$cothorityBranchRequired" 1>/dev/null 2>&1
+		cd "$GOPATH/src/gopkg.in/dedis/onet.v1"; git checkout "$cothorityBranchRequired" 1>/dev/null 2>&1
 		echo -e "$okMsg"
 
 		echo -n "Re-getting all go packages (since we switched branch)... "
-		cd $GOPATH/src/github.com/lbarman/prifi/sda/app; go get ./... 1>/dev/null 2>&1
+		cd "$GOPATH/src/github.com/lbarman/prifi/sda/app"; go get ./... 1>/dev/null 2>&1
 		cd ../..
-		cd $GOPATH/src/gopkg.in/dedis/onet.v1; go get -u ./... 1>/dev/null 2>&1
+		cd "$GOPATH/src/gopkg.in/dedis/onet.v1"; go get -u ./... 1>/dev/null 2>&1
 		echo -e "$okMsg"
 
 		echo -n "Testing ONet branch... "
-		test_cothority 
+		test_cothority
 		echo -e "$okMsg"
 
 		;;
@@ -189,10 +197,10 @@ case $1 in
 		#test for proper setup
 		test_go
 		test_cothority
-	
+
 		# the 2nd argument can replace the port number
 		if [ "$#" -eq 2 ]; then
-			test_digit $2 2
+			test_digit "$2" 2
 			socksServer2Port="$2"
 		fi
 
@@ -218,7 +226,7 @@ case $1 in
 		test_files
 
 		#run PriFi in relay mode
-		DEBUG_COLOR=$colors go run $bin_file --cothority_config "$identity_file2" --group "$group_file2" -d "$dbg_lvl" --prifi_config "$prifi_file2" --port "$socksServer1Port" --port_client "$socksServer2Port" relay
+		DEBUG_COLOR="$colors" go run "$bin_file" --cothority_config "$identity_file2" --group "$group_file2" -d "$dbg_lvl" --prifi_config "$prifi_file2" --port "$socksServer1Port" --port_client "$socksServer2Port" relay
 		;;
 
 	trustee|Trustee|TRUSTEE)
@@ -233,7 +241,7 @@ case $1 in
 			echo -e "$errorMsg parameter 2 need to be the trustee id."
 			exit 1
 		fi
-		test_digit $trusteeId 2
+		test_digit "$trusteeId" 2
 
 		#specialize the config file (we use the dummy folder, and maybe we replace with the real folder after)
 		prifi_file2="$configdir/$prifi_file"
@@ -257,7 +265,7 @@ case $1 in
 		test_files
 
 		#run PriFi in relay mode
-		DEBUG_COLOR=$colors go run $bin_file --cothority_config "$identity_file2" --group "$group_file2" -d "$dbg_lvl" --prifi_config "$prifi_file2" --port "$socksServer1Port" --port_client "$socksServer2Port" trustee
+		DEBUG_COLOR="$colors" go run "$bin_file" --cothority_config "$identity_file2" --group "$group_file2" -d "$dbg_lvl" --prifi_config "$prifi_file2" --port "$socksServer1Port" --port_client "$socksServer2Port" trustee
 		;;
 
 	client|Client|CLIENT)
@@ -267,16 +275,16 @@ case $1 in
 		#test for proper setup
 		test_go
 		test_cothority
-	
+
 		if [ "$#" -lt 2 ]; then
 			echo -e "$errorMsg parameter 2 need to be the client id."
 			exit 1
 		fi
-		test_digit $clientId 2
+		test_digit "$clientId" 2
 
 		# the 3rd argument can replace the port number
 		if [ "$#" -eq 3 ]; then
-			test_digit $3 3
+			test_digit "$3" 3
 			socksServer1Port="$3"
 		fi
 
@@ -302,7 +310,7 @@ case $1 in
 		test_files
 
 		#run PriFi in relay mode
-		DEBUG_COLOR=$colors go run $bin_file --cothority_config "$identity_file2" --group "$group_file2" -d "$dbg_lvl" --prifi_config "$prifi_file2" --port "$socksServer1Port" --port_client "$socksServer2Port" client
+		DEBUG_COLOR="$colors" go run "$bin_file" --cothority_config "$identity_file2" --group "$group_file2" -d "$dbg_lvl" --prifi_config "$prifi_file2" --port "$socksServer1Port" --port_client "$socksServer2Port" client
 		;;
 
 	sockstest|Sockstest|SOCKSTEST)
@@ -310,16 +318,16 @@ case $1 in
 		#test for proper setup
 		test_go
 		test_cothority
-	
+
 		# the 2rd argument can replace the port number
 		if [ "$#" -gt 1 ]; then
-			test_digit $2 2
+			test_digit "$2" 2
 			socksServer1Port="$2"
 		fi
 
 		# the 3rd argument can replace the port_client number
 		if [ "$#" -eq 3 ]; then
-			test_digit $3 3
+			test_digit "$3" 3
 			socksServer2Port="$3"
 		fi
 
@@ -330,26 +338,26 @@ case $1 in
 		test_files
 
 		#run PriFi in relay mode
-		DEBUG_COLOR=$colors go run $bin_file --cothority_config "$identity_file2" --group "$group_file2" -d "$dbg_lvl" --prifi_config "$prifi_file2" --port "$socksServer1Port" --port_client "$socksServer2Port" sockstest
+		DEBUG_COLOR="$colors" go run "$bin_file" --cothority_config "$identity_file2" --group "$group_file2" -d "$dbg_lvl" --prifi_config "$prifi_file2" --port "$socksServer1Port" --port_client "$socksServer2Port" sockstest
 		;;
 
 	localhost|Localhost|LOCALHOST|all-localhost|All-Localhost|ALL-LOCALHOST)
-	
-		thisScript="$0"	
+
+		thisScript="$0"
 		if [ "$try_use_real_identities" = "true" ]; then
 			echo -en "$warningMsg, try_use_real_identities set to true, but this is incompatible to all-localhost mode. Switching to false ..."
 			sed -i -e 's/try_use_real_identities=\"true\"/try_use_real_identities=\"false\"/g' "$thisScript"
 			echo -e "$okMsg"
 		fi
-		
+
 		#test for proper setup
 		test_go
 		test_cothority
 
 		#test if a socks proxy is already running (needed for relay), or start ours
-		netstat -tunpl 2>/dev/null | grep $socksServer2Port
-		socks=$(netstat -tunpl 2>/dev/null | grep $socksServer2Port | wc -l)
-		
+		netstat -tunpl 2>/dev/null | grep "$socksServer2Port"
+		socks=$(netstat -tunpl 2>/dev/null | grep "$socksServer2Port" | wc -l)
+
 		if [ "$socks" -ne 1 ]; then
 			echo -n "Socks proxy not running, starting it... "
 			cd socks && ./run-socks-proxy.sh "$socksServer2Port" > ../socks.log 2>&1 &
@@ -360,31 +368,31 @@ case $1 in
 		echo -n "Starting relay...			"
 		"$thisScript" relay > relay.log 2>&1 &
 		RELAYPID=$!
-		THISPGID=$(ps -o pgid= $RELAYPID)
+		THISPGID=$(ps -o pgid= "$RELAYPID")
 		echo -e "$okMsg"
 
-		sleep $sleeptime_between_spawns
+		sleep "$sleeptime_between_spawns"
 
 		echo -n "Starting trustee 0...			"
 		"$thisScript" trustee 0 > trustee0.log 2>&1 &
 		echo -e "$okMsg"
 
-		sleep $sleeptime_between_spawns
+		sleep "$sleeptime_between_spawns"
 
 		for i in `seq 0 $(($all_localhost_n_clients - 1))`
 		do
 			port=$(($socksServer1Port + $i))
 			log="client$i.log"
 			echo -n "Starting client $i... (SOCKS on :$port)	"
-			"$thisScript" client $i $port > "$log" 2>&1 &
+			"$thisScript" client "$i" "$port" > "$log" 2>&1 &
 			echo -e "$okMsg"
-			sleep $sleeptime_between_spawns
-			
+			sleep "$sleeptime_between_spawns"
+
 		done
 
 		read -p "PriFi deployed. Press [enter] to kill all..." key
 
-		kill -TERM -- -$THISPGID
+		kill -TERM -- -"$THISPGID"
 		;;
 
 	gen-id|Gen-Id|GEN-ID)
@@ -398,10 +406,10 @@ case $1 in
 				path="relay"
 			;;
 			t|T)
-				
+
 				read -p "Do you want to generate it for trustee [0] or [1] (or more - enter digit) ? " key2
 
-				test_digit $key2 1
+				test_digit "$key2" 1
 				pathSource="trustee0"
 				path="trustee$key2"
 				;;
@@ -409,7 +417,7 @@ case $1 in
 			c|C)
 				read -p "Do you want to generate it for client [0],[1] or [2] (or more - enter digit) ? " key2
 
-				test_digit $key2 1
+				test_digit "$key2" 1
 				pathSource="client0"
 				path="client$key2"
 				;;
@@ -426,7 +434,7 @@ case $1 in
 		echo -e "Gonna generate ${highlightOn}identity.toml${highlightOff} in ${highlightOn}$pathReal${highlightOff}"
 
 		#generate identity.toml
-		DEBUG_COLOR=$colors go run $bin_file --default_path "$pathReal" gen-id
+		DEBUG_COLOR="$colors" go run "$bin_file" --default_path "$pathReal" gen-id
 
 		#now group.toml
 		echo -n "Done ! now copying group.toml from identities_default/ to identity_real/..."
@@ -438,81 +446,81 @@ case $1 in
 
 	integration-test)
 
-        pkill prifi 2>/dev/null
-        kill -TERM $(pidof "go run run-server.go") 2>/dev/null
+		pkill prifi 2>/dev/null
+		kill -TERM $(pidof "go run run-server.go") 2>/dev/null
 
-		thisScript="$0"	
+		thisScript="$0"
 		"$thisScript" clean
 
-        rm -f relay.log 2>/dev/null # just to be sure...
+		rm -f relay.log 2>/dev/null # just to be sure...
 
 		echo -n "Starting relay...			"
 		"$thisScript" relay > relay.log 2>&1 &
 		echo -e "$okMsg"
 
-		sleep $sleeptime_between_spawns
+		sleep "$sleeptime_between_spawns"
 
 		echo -n "Starting trustee 0...			"
 		"$thisScript" trustee 0 > trustee0.log 2>&1 &
 		echo -e "$okMsg"
 
-		sleep $sleeptime_between_spawns
+		sleep "$sleeptime_between_spawns"
 
 		echo -n "Starting client 0... (SOCKS on :8081)	"
 		"$thisScript" client 0 8081 > client0.log 2>&1 &
 		echo -e "$okMsg"
 
-        if [ "$all_localhost_n_clients" -gt 1 ]; then
-            sleep $sleeptime_between_spawns
+		if [ "$all_localhost_n_clients" -gt 1 ]; then
+			sleep "$sleeptime_between_spawns"
 
-            echo -n "Starting client 1... (SOCKS on :8082)	"
-            "$thisScript" client 1 8082 > client1.log 2>&1 &
-            echo -e "$okMsg"
+			echo -n "Starting client 1... (SOCKS on :8082)	"
+			"$thisScript" client 1 8082 > client1.log 2>&1 &
+			echo -e "$okMsg"
 		fi
 
-        if [ "$all_localhost_n_clients" -gt 2 ]; then
-            sleep $sleeptime_between_spawns
+		if [ "$all_localhost_n_clients" -gt 2 ]; then
+			sleep "$sleeptime_between_spawns"
 
-            echo -n "Starting client 2... (SOCKS on :8083)	"
-            "$thisScript" client 2 8083 > client2.log 2>&1 &
-            echo -e "$okMsg"
+			echo -n "Starting client 2... (SOCKS on :8083)	"
+			"$thisScript" client 2 8083 > client2.log 2>&1 &
+			echo -e "$okMsg"
 		fi
 
 		#let it boot
 		waitTime=10
-        echo "Waiting $waitTime seconds..."
-        sleep $waitTime
+		echo "Waiting $waitTime seconds..."
+		sleep "$waitTime"
 
-        #reporting is every 5 second by default. if we wait 30, we should have 6 of those
-        lines=$(cat relay.log | grep -E "([0-9\.]+) round/sec, ([0-9\.]+) kB/s up, ([0-9\.]+) kB/s down, ([0-9\.]+) kB/s down\(udp\)" | wc -l)
+		#reporting is every 5 second by default. if we wait 30, we should have 6 of those
+		lines=$(cat relay.log | grep -E "([0-9\.]+) round/sec, ([0-9\.]+) kB/s up, ([0-9\.]+) kB/s down, ([0-9\.]+) kB/s down\(udp\)" | wc -l)
 
-        echo "Number of reportings : $lines"
+		echo "Number of reportings : $lines"
 
-        pkill prifi 2>/dev/null
-        kill -TERM $(pidof "go run run-server.go")  2>/dev/null
+		pkill prifi 2>/dev/null
+		kill -TERM $(pidof "go run run-server.go")  2>/dev/null
 
-        if [ "$lines" -gt 1 ]; then
-        	echo "Test succeeded"
-        	exit 0
-        else
-        	echo "Test failed"
-        	exit 1
-        fi
+		if [ "$lines" -gt 1 ]; then
+			echo "Test succeeded"
+			exit 0
+		else
+			echo "Test failed"
+			exit 1
+		fi
 		;;
 
 	integration-test2)
 
-        pkill prifi 2>/dev/null
-        kill -TERM $(pidof "go run run-server.go") 2>/dev/null
+		pkill prifi 2>/dev/null
+		kill -TERM $(pidof "go run run-server.go") 2>/dev/null
 
-		thisScript="$0"	
+		thisScript="$0"
 		"$thisScript" clean
 
-        rm -f relay.log 2>/dev/null # just to be sure...
+		rm -f relay.log 2>/dev/null # just to be sure...
 
-        #test if a socks proxy is already running (needed for relay), or start ours
-		socks=$(netstat -tunpl 2>/dev/null | grep $socksServer2Port | wc -l)
-		
+		#test if a socks proxy is already running (needed for relay), or start ours
+		socks=$(netstat -tunpl 2>/dev/null | grep "$socksServer2Port" | wc -l)
+
 		if [ "$socks" -ne 1 ]; then
 			echo -n "Socks proxy not running, starting it... "
 			cd socks && ./run-socks-proxy.sh "$socksServer2Port" > ../socks.log 2>&1 &
@@ -524,32 +532,32 @@ case $1 in
 		"$thisScript" relay > relay.log 2>&1 &
 		echo -e "$okMsg"
 
-		sleep $sleeptime_between_spawns
+		sleep "$sleeptime_between_spawns"
 
 		echo -n "Starting trustee 0...			"
 		"$thisScript" trustee 0 > trustee0.log 2>&1 &
 		echo -e "$okMsg"
 
-		sleep $sleeptime_between_spawns
+		sleep "$sleeptime_between_spawns"
 
 		echo -n "Starting client 0... (SOCKS on :8081)	"
 		"$thisScript" client 0 8081 > client0.log 2>&1 &
 		echo -e "$okMsg"
 
-        if [ "$all_localhost_n_clients" -gt 1 ]; then
-            sleep $sleeptime_between_spawns
+		if [ "$all_localhost_n_clients" -gt 1 ]; then
+			sleep "$sleeptime_between_spawns"
 
-            echo -n "Starting client 1... (SOCKS on :8082)	"
-            "$thisScript" client 1 8082 > client1.log 2>&1 &
-            echo -e "$okMsg"
+			echo -n "Starting client 1... (SOCKS on :8082)	"
+			"$thisScript" client 1 8082 > client1.log 2>&1 &
+			echo -e "$okMsg"
 		fi
 
-        if [ "$all_localhost_n_clients" -gt 2 ]; then
-            sleep $sleeptime_between_spawns
+		if [ "$all_localhost_n_clients" -gt 2 ]; then
+			sleep "$sleeptime_between_spawns"
 
-            echo -n "Starting client 2... (SOCKS on :8083)	"
-            "$thisScript" client 2 8083 > client2.log 2>&1 &
-            echo -e "$okMsg"
+			echo -n "Starting client 2... (SOCKS on :8083)	"
+			"$thisScript" client 2 8083 > client2.log 2>&1 &
+			echo -e "$okMsg"
 		fi
 
 		#let it boot
@@ -559,16 +567,16 @@ case $1 in
 		curl google.com --socks5 127.0.0.1:8081 --max-time 10 1>/dev/null 2>&1
 		res=$?
 
-        pkill prifi 2>/dev/null
-        kill -TERM $(pidof "go run run-server.go")  2>/dev/null
+		pkill prifi 2>/dev/null
+		kill -TERM $(pidof "go run run-server.go")  2>/dev/null
 
-        if [ $res -eq 0 ]; then
-        	echo "Test succeeded"
-        	exit 0
-        else
-        	echo "Test failed"
-        	exit 1
-        fi
+		if [ "$res" -eq 0 ]; then
+			echo "Test succeeded"
+			exit 0
+		else
+			echo "Test failed"
+			exit 1
+		fi
 		;;
 
 	relay-d)
@@ -582,7 +590,7 @@ case $1 in
 		echo -n "Starting relay...			"
 		"$thisScript" relay > relay.log 2>&1 &
 		RELAYPID=$!
-		RELAYPGID=$(ps -o pgid= $RELAYPID)
+		RELAYPGID=$(ps -o pgid= "$RELAYPID")
 		echo -e "$okMsg"
 
 		echo -e "PriFi relay deployed, PGID $RELAYPGID. Kill with \"kill -TERM -- -$RELAYPID\""
@@ -594,19 +602,19 @@ case $1 in
 		test_go
 		test_cothority
 
-		thisScript="$0"	
+		thisScript="$0"
 		trusteeId="$2"
-	
+
 		if [ "$#" -lt 2 ]; then
 			echo -e "$errorMsg parameter 2 need to be the client id."
 			exit 1
 		fi
-		test_digit $trusteeId 2
+		test_digit "$trusteeId" 2
 
 		echo -n "Starting trustee $trusteeId...			"
 		"$thisScript" trustee "$trusteeId" > trustee${trusteeId}.log 2>&1 &
 		TRUSTEEPID=$!
-		TRUSTEEGPID=$(ps -o pgid= $TRUSTEEPID)
+		TRUSTEEGPID=$(ps -o pgid= "$TRUSTEEPID")
 		echo -e "$okMsg"
 
 		echo -e "PriFi trustee deployed, PGID $TRUSTEEGPID. Kill with \"kill -TERM -- -$TRUSTEEGPID\""
@@ -617,14 +625,14 @@ case $1 in
 		echo -n "Starting SOCKS Server...			"
 		cd socks && ./run-socks-proxy.sh "$socksServer2Port" > ../socks.log 2>&1 &
 		SOCKSPID=$!
-		SOCKSPGID=$(ps -o pgid= $SOCKSPID)
+		SOCKSPGID=$(ps -o pgid= "$SOCKSPID")
 		echo -e "$okMsg"
 
 		echo -e "PriFi trustee deployed, PGID $SOCKSPGID. Kill with \"kill -TERM -- -$SOCKSPGID\""
 		;;
 
 	simul|Simul|SIMUL)
-	
+
 		SIMUL_FILE="prifi_simul.toml"
 		PLATFORM="localhost"
 		EXEC_NAME="prifi_simul"
@@ -635,10 +643,15 @@ case $1 in
 
 		echo -n "Building simulation... "
 		cd "$SIMUL_DIR"; go build -o "$EXEC_NAME" *.go
+		if [ "$?" -ne 0 ]; then
+			echo -e "$errorMsg build failed"
+			exit 1
+		fi
+
 		echo -e "$okMsg"
 
 		echo -e "Starting simulation ${highlightOn}${SIMUL_FILE}${highlightOff} on ${highlightOn}${PLATFORM}${highlightOff}."
-		DEBUG_LVL=$dbg_lvl DEBUG_COLOR=$colors ./"$EXEC_NAME" -platform "$PLATFORM" "$SIMUL_FILE"
+		DEBUG_LVL="$dbg_lvl" DEBUG_COLOR="$colors" ./"$EXEC_NAME" -platform "$PLATFORM" "$SIMUL_FILE"
 
 		echo -n "Simulation done, cleaning up... "
 		rm -f "$EXEC_NAME"
@@ -654,5 +667,5 @@ case $1 in
 	*)
 		print_usage
 		;;
-	
+
 esac
