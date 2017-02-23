@@ -1,9 +1,9 @@
 Simulation = "PriFi"
-Servers = 1
+Servers = 10
 Depth = 1
 Rounds = 1
 CloseWait = 6000
-NTrustees = 1
+NTrustees = 3
 CellSizeUp = 100
 CellSizeDown = 1000
 RelayWindowSize = 10
