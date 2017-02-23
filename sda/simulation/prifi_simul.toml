@@ -1,5 +1,5 @@
 Simulation = "PriFi"
-Servers = 10
+Servers = 9
 Depth = 1
 Rounds = 1
 CloseWait = 6000
