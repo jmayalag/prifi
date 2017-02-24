@@ -1,36 +1,36 @@
 [[hosts]]
-  Name = "client-0.LB-LLD.SAFER.isi.deterlab.net"
-  IP = "10.1.0.1"
-
-[[hosts]]
-  Name = "client-1.LB-LLD.SAFER.isi.deterlab.net"
-  IP = "10.1.0.2"
-
-[[hosts]]
-  Name = "client-2.LB-LLD.SAFER.isi.deterlab.net"
-  IP = "10.1.0.3"
-
-[[hosts]]
-  Name = "client-3.LB-LLD.SAFER.isi.deterlab.net"
-  IP = "10.1.0.4"
-
-[[hosts]]
-  Name = "client-4.LB-LLD.SAFER.isi.deterlab.net"
-  IP = "10.1.0.5"
-
-[[hosts]]
   Name = "relay.LB-LLD.SAFER.isi.deterlab.net"
   IP = "10.1.0.254"
   IP2 = "10.0.1.254"
 
 [[hosts]]
   Name = "trustee-0.LB-LLD.SAFER.isi.deterlab.net"
-  IP = "10.0.1.1"
+  IP = "10.1.0.1"
 
 [[hosts]]
   Name = "trustee-1.LB-LLD.SAFER.isi.deterlab.net"
-  IP = "10.0.1.2"
+  IP = "10.1.0.2"
 
 [[hosts]]
   Name = "trustee-2.LB-LLD.SAFER.isi.deterlab.net"
+  IP = "10.1.0.3"
+
+[[hosts]]
+  Name = "client-0.LB-LLD.SAFER.isi.deterlab.net"
+  IP = "10.0.1.1"
+
+[[hosts]]
+  Name = "client-1.LB-LLD.SAFER.isi.deterlab.net"
+  IP = "10.0.1.2"
+
+[[hosts]]
+  Name = "client-2.LB-LLD.SAFER.isi.deterlab.net"
   IP = "10.0.1.3"
+
+[[hosts]]
+  Name = "client-3.LB-LLD.SAFER.isi.deterlab.net"
+  IP = "10.0.1.4"
+
+[[hosts]]
+  Name = "client-4.LB-LLD.SAFER.isi.deterlab.net"
+  IP = "10.0.1.5"

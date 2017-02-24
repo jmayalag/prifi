@@ -631,7 +631,7 @@ case $1 in
 		SIMUL_DIR="sda/simulation"
 
 		#temporary
-		dbg_lvl=1
+		dbg_lvl=3
 
 		echo -n "Building simulation... "
 		cd "$SIMUL_DIR"; go build -o "$EXEC_NAME" *.go

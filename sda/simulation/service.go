@@ -99,13 +99,13 @@ func (s *SimulationService) Node(config *onet.SimulationConfig) error {
 	//start this node in the correct setup
 	var err error
 	if index == 0 {
-		log.Lvl1("Initiating this node as relay")
+		log.Lvl1("Initiating this node (index ", index, ") as relay")
 		err = service.StartRelay(group)
 	} else if index > 0 && index <= s.NTrustees {
-		log.Lvl1("Initiating this node as trustee")
+		log.Lvl1("Initiating this node (index ", index, ") as trustee")
 		err = service.StartTrustee(group)
 	} else {
-		log.Lvl1("Initiating this node as client")
+		log.Lvl1("Initiating this node (index ", index, ") as client")
 		err = service.StartClient(group)
 	}
 
@@ -124,6 +124,11 @@ func (s *SimulationService) Run(config *onet.SimulationConfig) error {
 	service := config.GetService(prifi_service.ServiceName).(*prifi_service.ServiceState)
 
 	for round := 0; round < s.Rounds; round++ {
+
+		log.Info("Sleeping 10 seconds before next round...")
+		time.Sleep(10 * time.Second)
+		log.Info("Moving on to next round")
+
 		log.Info("Starting experiment round", round)
 
 		service.StartPriFiCommunicateProtocol()
@@ -164,10 +169,6 @@ func (s *SimulationService) Run(config *onet.SimulationConfig) error {
 		}
 
 		service.StopPriFiCommunicateProtocol()
-
-		log.Info("Sleeping 10 seconds before next round...")
-		time.Sleep(10 * time.Second)
-		log.Info("Moving on to next round")
 	}
 	service.GlobalShutDownSocks()
 
