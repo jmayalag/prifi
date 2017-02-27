@@ -8,6 +8,7 @@ CellSizeUp = 100
 CellSizeDown = 1000
 RelayWindowSize = 10
 OverrideLogLevel = 3
+ForceConsoleColor = true
 RelayUseDummyDataDown = false
 RelayReportingLimit = 10000
 RelayDataOutputEnabled = true

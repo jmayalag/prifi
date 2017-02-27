@@ -96,6 +96,10 @@ func (s *SimulationService) Node(config *onet.SimulationConfig) error {
 		log.Lvl1("Overriding log level (from .toml) to", s.OverrideLogLevel)
 		log.SetDebugVisible(s.OverrideLogLevel)
 	}
+	if s.ForceConsoleColor {
+		log.Lvl1("Forcing the console output to be colored (from .toml)")
+		log.SetUseColors(true)
+	}
 
 	//set the config from the .toml file
 	service.SetConfigFromToml(&s.PrifiTomlConfig)
