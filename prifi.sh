@@ -630,15 +630,12 @@ case $1 in
 		EXEC_NAME="prifi_simul"
 		SIMUL_DIR="sda/simulation"
 
-		#temporary
-		dbg_lvl=3
-
 		echo -n "Building simulation... "
 		cd "$SIMUL_DIR"; go build -o "$EXEC_NAME" *.go
 		echo -e "$okMsg"
 
 		echo -e "Starting simulation ${highlightOn}${SIMUL_FILE}${highlightOff} on ${highlightOn}${PLATFORM}${highlightOff}."
-		DEBUG_LVL=$dbg_lvl DEBUG_COLOR=$colors ./"$EXEC_NAME" -platform "$PLATFORM" "$SIMUL_FILE"
+		DEBUG_LVL=$dbg_lvl DEBUG_COLOR=$colors ./"$EXEC_NAME" -platform "$PLATFORM" "$SIMUL_FILE" | tee last-simul.log
 
 		echo -n "Simulation done, cleaning up... "
 		rm -f "$EXEC_NAME"

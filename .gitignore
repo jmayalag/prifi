@@ -42,3 +42,4 @@ sda/simulation/deploy/
 sda/simulation/test_data/
 sda/simulation/deter.toml
 sda/simulation/prifi_simul
+last-simul.log
