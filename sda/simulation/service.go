@@ -72,8 +72,6 @@ func (s *SimulationService) Node(config *onet.SimulationConfig) error {
 		log.Fatal("Could not register node in SDA Tree", err)
 	}
 
-	//this controls the length (duration) of the simulation
-	s.RelayReportingLimit = 10 * 1000
 	s.SocksServerPort = 8080 + index
 
 	//assign the roles
@@ -92,6 +90,12 @@ func (s *SimulationService) Node(config *onet.SimulationConfig) error {
 
 	//finds the PriFi service
 	service := config.GetService(prifi_service.ServiceName).(*prifi_service.ServiceState)
+
+	//override log level, maybe
+	if s.OverrideLogLevel > 0 {
+		log.Lvl1("Overriding log level (from .toml) to", s.OverrideLogLevel)
+		log.SetDebugVisible(s.OverrideLogLevel)
+	}
 
 	//set the config from the .toml file
 	service.SetConfigFromToml(&s.PrifiTomlConfig)

@@ -9,3 +9,4 @@ UseUDP = false
 DoLatencyTests = true
 SocksServerPort = 8080
 SocksClientPort = 8090
+OverrideLogLevel = 3

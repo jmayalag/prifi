@@ -139,6 +139,12 @@ func readConfigAndStartCothority(c *cli.Context) (*onet.Server, *app.Group, *pri
 	//parse PriFi parameters
 	prifiTomlConfig, err := readPriFiConfigFile(c)
 
+	//override log level, maybe
+	if prifiTomlConfig.OverrideLogLevel > 0 {
+		log.Lvl1("Overriding log level (from .toml) to", prifiTomlConfig.OverrideLogLevel)
+		log.SetDebugVisible(prifiTomlConfig.OverrideLogLevel)
+	}
+
 	if err != nil {
 		log.Error("Could not read prifi config:", err)
 		os.Exit(1)

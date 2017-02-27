@@ -12,7 +12,7 @@
 
 # variables that you might change often
 
-dbg_lvl=3						# 1=less verbose, 3=more verbose. goes up to 5, but then prints the SDA's message (network framework)
+dbg_lvl=1						# 1=less verbose, 3=more verbose. goes up to 5, but then prints the SDA's message (network framework)
 try_use_real_identities="false"	# if "true", will try to use "self-generated" public/private key as a replacement for the dummy keys
 								# we generated for you. It asks you if it does not find real keys. If false, will always use the dummy keys.
 colors="true"					# if "false", the output of PriFi (and this script) will be in black-n-white
@@ -42,7 +42,7 @@ realIdentitiesDir="identities_real"		#in $configdir
 # unimportant variable (but do not change, ofc)
 
 sleeptime_between_spawns=1 		# time in second between entities launch in all-localhost part
-cothorityBranchRequired="master" # the branch required for the cothority (SDA) framework
+cothorityBranchRequired="improve-simul" # the branch required for the cothority (SDA) framework
 
 #pretty colored message
 highlightOn="\033[33m"

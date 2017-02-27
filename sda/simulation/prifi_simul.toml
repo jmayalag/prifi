@@ -1,14 +1,15 @@
 Simulation = "PriFi"
 Servers = 9
 Depth = 1
-Rounds = 1
+Rounds = 10
 CloseWait = 6000
 NTrustees = 3
 CellSizeUp = 100
 CellSizeDown = 1000
 RelayWindowSize = 10
+OverrideLogLevel = 4
 RelayUseDummyDataDown = false
-RelayReportingLimit = -1
+RelayReportingLimit = 10000
 RelayDataOutputEnabled = true
 ClientDataOutputEnabled = true
 UseUDP = false
@@ -17,5 +18,4 @@ SocksServerPort = 8080
 SocksClientPort = 8090
 
 Hosts
-5
-6
+9
