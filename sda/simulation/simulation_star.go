@@ -16,10 +16,10 @@ import (
 	"gopkg.in/dedis/onet.v1/log"
 )
 
+const HostsMappingFile = "hosts_mapping.toml"
 
-// SimulationBFTree is the main struct storing the data for all the simulations
-// which use a tree with a certain branching factor or depth.
-type SimulationBFTree struct {
+// SimulationStar is a second implementation of SimulationBFTree, but we change the method CreateRoster
+type SimulationStar struct {
 	Rounds     int
 	BF         int
 	Hosts      int
@@ -27,16 +27,18 @@ type SimulationBFTree struct {
 	Depth      int
 }
 
-
-
+// HostMapping contains a mapping of ID (0 to n_hosts) and IP on which they need to run
 type HostMapping struct {
 	ID 	int
 	IP     string
 }
+
+// HostsMappingToml is used to parse the .toml
 type HostsMappingToml struct {
 	Hosts []*HostMapping `toml:"hosts"`
 }
 
+// decodeHostsMapping reads the .toml file
 func decodeHostsMapping(filePath string) (*HostsMappingToml, error) {
 
 	f, err := os.Open(filePath)
@@ -59,7 +61,7 @@ func decodeHostsMapping(filePath string) (*HostsMappingToml, error) {
 // CreateRoster creates an Roster with the host-names in 'addresses'.
 // It creates 's.Hosts' entries, starting from 'port' for each round through
 // 'addresses'. The network.Address(es) created are of type PlainTCP.
-func (s *SimulationBFTree) CreateRoster(sc *onet.SimulationConfig, addresses []string, port int) {
+func (s *SimulationStar) CreateRoster(sc *onet.SimulationConfig, addresses []string, port int) {
 	start := time.Now()
 	nbrAddr := len(addresses)
 	if sc.PrivateKeys == nil {
@@ -86,9 +88,9 @@ func (s *SimulationBFTree) CreateRoster(sc *onet.SimulationConfig, addresses []s
 	key := config.NewKeyPair(network.Suite)
 
 	//replaces linus automatic assignement by the one read in hosts_mapping.toml
-	mapping, err := decodeHostsMapping("hosts_mapping.toml")
+	mapping, err := decodeHostsMapping(HostsMappingFile)
 	if err != nil {
-		log.Fatal("Could not decode hosts_mapping.toml")
+		log.Fatal("Could not decode "+HostsMappingFile)
 	}
 
 	for c := 0; c < hosts; c++ {
@@ -167,8 +169,8 @@ func (s *SimulationBFTree) CreateRoster(sc *onet.SimulationConfig, addresses []s
 
 // CreateTree the tree as defined in SimulationBFTree and stores the result
 // in 'sc'
-func (s *SimulationBFTree) CreateTree(sc *onet.SimulationConfig) error {
-	log.Lvl3("CreateTree strarted")
+func (s *SimulationStar) CreateTree(sc *onet.SimulationConfig) error {
+	log.Lvl3("CreateTree started")
 	start := time.Now()
 	if sc.Roster == nil {
 		return errors.New("Empty Roster")
@@ -180,7 +182,7 @@ func (s *SimulationBFTree) CreateTree(sc *onet.SimulationConfig) error {
 
 // Node - standard registers the entityList and the Tree with that Overlay,
 // so we don't have to pass that around for the experiments.
-func (s *SimulationBFTree) Node(sc *onet.SimulationConfig) error {
+func (s *SimulationStar) Node(sc *onet.SimulationConfig) error {
 	sc.Overlay.RegisterRoster(sc.Roster)
 	sc.Overlay.RegisterTree(sc.Tree)
 	return nil

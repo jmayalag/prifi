@@ -30,7 +30,7 @@ func init() {
 
 // SimulationService only holds the BFTree simulation
 type SimulationService struct {
-	onet.SimulationBFTree
+	SimulationStar
 	prifi_protocol.PrifiTomlConfig
 	NTrustees int
 }
@@ -68,7 +68,7 @@ func (s *SimulationService) Node(config *onet.SimulationConfig) error {
 		log.Fatal("Didn't find this node in roster")
 	}
 	log.Lvl3("Initializing node-index", index)
-	if err := s.SimulationBFTree.Node(config); err != nil {
+	if err := s.SimulationStar.Node(config); err != nil {
 		log.Fatal("Could not register node in SDA Tree", err)
 	}
 
