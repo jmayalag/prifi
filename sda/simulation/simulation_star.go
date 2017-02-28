@@ -1,21 +1,22 @@
 package main
 
 import (
-	"os"
-	"net"
-	"fmt"
 	"errors"
+	"fmt"
 	"github.com/BurntSushi/toml"
-	"time"
-	"gopkg.in/dedis/onet.v1/network"
-	"strings"
-	"strconv"
-	"gopkg.in/dedis/onet.v1"
 	"gopkg.in/dedis/crypto.v0/abstract"
 	"gopkg.in/dedis/crypto.v0/config"
+	"gopkg.in/dedis/onet.v1"
 	"gopkg.in/dedis/onet.v1/log"
+	"gopkg.in/dedis/onet.v1/network"
+	"net"
+	"os"
+	"strconv"
+	"strings"
+	"time"
 )
 
+// HostsMappingFile is the file used to indicate the mapping host -> IP
 const HostsMappingFile = "hosts_mapping.toml"
 
 // SimulationStar is a second implementation of SimulationBFTree, but we change the method CreateRoster
@@ -29,8 +30,8 @@ type SimulationStar struct {
 
 // HostMapping contains a mapping of ID (0 to n_hosts) and IP on which they need to run
 type HostMapping struct {
-	ID 	int
-	IP     string
+	ID int
+	IP string
 }
 
 // HostsMappingToml is used to parse the .toml
@@ -90,7 +91,7 @@ func (s *SimulationStar) CreateRoster(sc *onet.SimulationConfig, addresses []str
 	//replaces linus automatic assignement by the one read in hosts_mapping.toml
 	mapping, err := decodeHostsMapping(HostsMappingFile)
 	if err != nil {
-		log.Fatal("Could not decode "+HostsMappingFile)
+		log.Fatal("Could not decode " + HostsMappingFile)
 	}
 
 	for c := 0; c < hosts; c++ {
