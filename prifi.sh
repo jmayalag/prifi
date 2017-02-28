@@ -40,7 +40,7 @@ defaultIdentitiesDir="identities_default"   # in $configdir
 realIdentitiesDir="identities_real"         # in $configdir
 
 # min required go version
-min_go_version = 17                         # min required go version, without the '.', e.g. 17 for 1.7.x
+min_go_version=17                           # min required go version, without the '.', e.g. 17 for 1.7.x
 
 # unimportant variable (but do not change, ofc)
 
@@ -180,7 +180,7 @@ case $1 in
 		cd ../..
 		echo -e "$okMsg"
 
-		echo -n "Switching ONet branch... "
+		echo -en "Switching ONet branch to ${highlightOn}$cothorityBranchRequired${highlightOff}... "
 		cd "$GOPATH/src/gopkg.in/dedis/onet.v1"; git checkout "$cothorityBranchRequired" 1>/dev/null 2>&1
 		echo -e "$okMsg"
 
