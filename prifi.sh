@@ -644,6 +644,29 @@ case $1 in
 		echo -e "$okMsg" | tee ../../last-simul.log
 		;;
 
+	simul-gl|simul-get-logs)
+
+		#create a file ~/makelogreadable.sh with this content
+		#	#!/bin/sh
+		#	ssh relay.LB-LLD.SAFER.isi.deterlab.net 'cd remote; sudo chmod ugo+rw -R .'
+		# [EOF]
+
+		expFolder="experiment_out"
+
+		echo -n "Making logs R/W... "
+		ssh lbarman@users.deterlab.net './makelogreadable.sh'
+		echo -e "$okMsg"
+
+		read -p "Which name do you want to give the data on the server ? " expName
+
+
+		echo -n "Making folder $expFolder/$expName "
+		mkdir -p "$expFolder/$expName"
+		echo -e "$okMsg"
+
+		
+		;;
+
 	clean|Clean|CLEAN)
 		echo -n "Cleaning log files... 			"
 		rm *.log 1>/dev/null 2>&1
