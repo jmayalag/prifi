@@ -646,25 +646,49 @@ case $1 in
 
 	simul-gl|simul-get-logs)
 
-		#create a file ~/makelogreadable.sh with this content
+		#create a file ~/makelogsrw.sh with this content
 		#	#!/bin/sh
 		#	ssh relay.LB-LLD.SAFER.isi.deterlab.net 'cd remote; sudo chmod ugo+rw -R .'
 		# [EOF]
 
 		expFolder="experiment_out"
+		deterlabUser="lbarman"
 
-		echo -n "Making logs R/W... "
-		ssh lbarman@users.deterlab.net './makelogreadable.sh'
+		echo -e "${warningMsg} Note that this tool downloads every log on the server. If you forgot to clean them, it might concern serveral experiments."
+
+		echo -n "Making logs R/W... " #this is needed since simul runs and writes log as root
+		ssh $deterlabUser@users.deterlab.net './makelogsrw.sh'
 		echo -e "$okMsg"
 
 		read -p "Which name do you want to give the data on the server ? " expName
 
+		if [ -d "$expFolder/$expName" ]; then
+			echo -e "${errorMsg} Directory ${highlightOn}$expFolder/$expName${highlightOff} already exists, exiting."
+			exit 1
+		fi
 
-		echo -n "Making folder $expFolder/$expName "
+		echo -ne "Making folder ${highlightOn}$expFolder/$expName${highlightOff} "
 		mkdir -p "$expFolder/$expName"
 		echo -e "$okMsg"
 
-		
+		echo -ne "Fetching all experiments of the form ${highlightOn}output_*${highlightOff} "
+		cd "$expFolder/$expName"; 
+		out=$(scp -r $deterlabUser@users.deterlab.net:~/remote/output_\* . )
+		echo -e "$okMsg"
+
+		echo -ne "Writing the download date... "
+		date > "download_date"
+		echo -e "$okMsg" 
+
+		echo -ne "Changing rights back to something normal... ${highlightOn}u+rwx,go-rwx${highlightOff} "
+		chmod u+rwx -R .
+		chmod go-rwx -R .
+		echo -e "$okMsg"
+
+		echo "Copied files are :"
+		echo ""
+		cd ..
+		tree -a "$expName"
 		;;
 
 	clean|Clean|CLEAN)
