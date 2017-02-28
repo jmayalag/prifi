@@ -7,7 +7,7 @@ NTrustees = 3
 CellSizeUp = 100
 CellSizeDown = 1000
 RelayWindowSize = 10
-OverrideLogLevel = 3
+OverrideLogLevel = 1
 ForceConsoleColor = true
 RelayUseDummyDataDown = false
 RelayReportingLimit = 10000
@@ -19,4 +19,6 @@ SocksServerPort = 8080
 SocksClientPort = 8090
 
 Hosts
+5
+9
 14
