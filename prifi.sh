@@ -40,7 +40,7 @@ defaultIdentitiesDir="identities_default"   # in $configdir
 realIdentitiesDir="identities_real"         # in $configdir
 
 # min required go version
-min_go_version = 17                         # min required go version, without the '.', e.g. 17 for 1.7.x
+min_go_version=17                           # min required go version, without the '.', e.g. 17 for 1.7.x
 
 # unimportant variable (but do not change, ofc)
 
