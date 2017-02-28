@@ -70,15 +70,17 @@ print_usage() {
 	echo
 	echo -e "Usage: run-prifi.sh ${highlightOn}role/operation [params]${highlightOff}"
 	echo -e "	${highlightOn}role${highlightOff}: client, relay, trustee"
-	echo -e "	${highlightOn}operation${highlightOff}: install, sockstest, all-localhost, gen-id, integration-test"
+	echo -e "	${highlightOn}operation${highlightOff}: install, sockstest, all-localhost, gen-id, integration-test, simul, simul-get-logs, simul-clear-logs"
 	echo -e "	${highlightOn}params${highlightOff} for role ${highlightOn}relay${highlightOff}: [socks_server_port] (optional, numeric)"
 	echo -e "	${highlightOn}params${highlightOff} for role ${highlightOn}trustee${highlightOff}: id (required, numeric)"
 	echo -e "	${highlightOn}params${highlightOff} for role ${highlightOn}client${highlightOff}: id (required, numeric), [prifi_socks_server_port] (optional, numeric)"
 	echo -e "	${highlightOn}params${highlightOff} for operation ${highlightOn}install${highlightOff}: none"
 	echo -e "	${highlightOn}params${highlightOff} for operation ${highlightOn}all-localhost${highlightOff}: none"
 	echo -e "	${highlightOn}params${highlightOff} for operation ${highlightOn}gen-id${highlightOff}: none"
-	echo -e "	${highlightOn}params${highlightOff} for operation ${highlightOn}simul${highlightOff}: none"
 	echo -e "	${highlightOn}params${highlightOff} for operation ${highlightOn}sockstest${highlightOff}: [socks_server_port] (optional, numeric), [prifi_socks_server_port] (optional, numeric)"
+	echo -e "	${highlightOn}params${highlightOff} for operation ${highlightOn}simul${highlightOff}: none"
+	echo -e "	${highlightOn}params${highlightOff} for operation ${highlightOn}simul-get-logs${highlightOff}: none"
+	echo -e "	${highlightOn}params${highlightOff} for operation ${highlightOn}simul-clear-logs${highlightOff}: none"
 	echo
 
 	echo -e "Man-page:"
@@ -89,8 +91,10 @@ print_usage() {
 	echo -e "	${highlightOn}all-localhost${highlightOff}: starts a Prifi relay, a trustee, three clients all on localhost"
 	echo -e "	${highlightOn}sockstest${highlightOff}: starts the PriFi and non-PriFi SOCKS tunnel, without PriFi anonymization"
 	echo -e "	${highlightOn}gen-id${highlightOff}: interactive creation of identity.toml"
-	echo -e "	${highlightOn}simul${highlightOff}: runs the simulation specified in sda/simulation/prifi_simul.toml in localhost"
 	echo -e "	${highlightOn}integration-test${highlightOff}: runs all-localhost and test if the relay manages to communicate"
+	echo -e "	${highlightOn}simul${highlightOff}: runs the simulation specified in sda/simulation/prifi_simul.toml in localhost/on Deterlab"
+	echo -e "	${highlightOn}simul-get-logs${highlightOff}: fetches the logs from the user server in Deterlab"
+	echo -e "	${highlightOn}simul-clear-logs${highlightOff}: clears the logs in the user server in Deterlab"
 	echo -e "	Lost ? read https://github.com/lbarman/prifi/README.md"
 }
 
@@ -689,10 +693,42 @@ case $1 in
 		echo ""
 		cd ..
 		tree -a "$expName"
+
 		;;
 
+	simul-cl|simul-clear-logs)
+
+		#create a file ~/makelogsrw.sh with this content
+		#	#!/bin/sh
+		#	ssh relay.LB-LLD.SAFER.isi.deterlab.net 'cd remote; sudo chmod ugo+rw -R .'
+		# [EOF]
+
+		deterlabUser="lbarman"
+
+		echo -e "${warningMsg} This tool *deletes* all experiment data on the remote server. Make sure you backuped what you need !"
+
+		read -p "Would you like to continue and *delete* all logs [y/n] ? " ans
+
+		if [ $ans = y -o $ans = Y -o $ans = yes -o $ans = Yes -o $ans = YES ]
+		then
+		
+			echo -n "Making logs R/W... " #this is needed since simul runs and writes log as root
+			ssh $deterlabUser@users.deterlab.net './makelogsrw.sh'
+			echo -e "$okMsg"
+
+			echo -n "Deleting all remote logs... "
+			ssh $deterlabUser@users.deterlab.net 'cd remote; rm -rf output_*;'
+			echo -e "$okMsg"
+
+		else
+			echo "Aborting without taking any action."
+		fi
+
+		;;
+
+
 	clean|Clean|CLEAN)
-		echo -n "Cleaning log files... 			"
+		echo -n "Cleaning local log files... 			"
 		rm *.log 1>/dev/null 2>&1
 		echo -e "$okMsg"
 		;;
