@@ -20,7 +20,7 @@ import (
 const HostsMappingFile = "hosts_mapping.toml"
 
 // SimulationStar is a second implementation of SimulationBFTree, but we change the method CreateRoster
-type SimulationStar struct {
+type SimulationManualAssignment struct {
 	Rounds     int
 	BF         int
 	Hosts      int
@@ -62,7 +62,7 @@ func decodeHostsMapping(filePath string) (*HostsMappingToml, error) {
 // CreateRoster creates an Roster with the host-names in 'addresses'.
 // It creates 's.Hosts' entries, starting from 'port' for each round through
 // 'addresses'. The network.Address(es) created are of type PlainTCP.
-func (s *SimulationStar) CreateRoster(sc *onet.SimulationConfig, addresses []string, port int) {
+func (s *SimulationManualAssignment) CreateRoster(sc *onet.SimulationConfig, addresses []string, port int) {
 	start := time.Now()
 	nbrAddr := len(addresses)
 	if sc.PrivateKeys == nil {
@@ -95,10 +95,8 @@ func (s *SimulationStar) CreateRoster(sc *onet.SimulationConfig, addresses []str
 	}
 
 	for c := 0; c < hosts; c++ {
-		key.Secret.Add(key.Secret,
-			key.Suite.Scalar().One())
-		key.Public.Add(key.Public,
-			key.Suite.Point().Base())
+		key.Secret.Add(key.Secret, key.Suite.Scalar().One())
+		key.Public.Add(key.Public, key.Suite.Point().Base())
 
 		addr := ""
 		for _, hostMapping := range mapping.Hosts {
@@ -137,14 +135,14 @@ func (s *SimulationStar) CreateRoster(sc *onet.SimulationConfig, addresses []str
 			address += strconv.Itoa(port + (c/nbrAddr)*2)
 			add = network.NewTCPAddress(address)
 		}
+		log.Lvl3("Adding server", address, "to Roster")
 		entities[c] = network.NewServerIdentity(key.Public.Clone(), add)
 		sc.PrivateKeys[entities[c].Address] = key.Secret.Clone()
 	}
 	if hosts > 1 {
 		if sc.PrivateKeys[entities[0].Address].Equal(
 			sc.PrivateKeys[entities[1].Address]) {
-			log.Fatal("Please update dedis/crypto with\n" +
-				"go get -u gopkg.in/dedis/crypto.v0")
+			log.Fatal("Please update dedis/crypto with\n go get -u gopkg.in/dedis/crypto.v0")
 		}
 	}
 
@@ -170,7 +168,7 @@ func (s *SimulationStar) CreateRoster(sc *onet.SimulationConfig, addresses []str
 
 // CreateTree the tree as defined in SimulationBFTree and stores the result
 // in 'sc'
-func (s *SimulationStar) CreateTree(sc *onet.SimulationConfig) error {
+func (s *SimulationManualAssignment) CreateTree(sc *onet.SimulationConfig) error {
 	log.Lvl3("CreateTree started")
 	start := time.Now()
 	if sc.Roster == nil {
@@ -183,7 +181,7 @@ func (s *SimulationStar) CreateTree(sc *onet.SimulationConfig) error {
 
 // Node - standard registers the entityList and the Tree with that Overlay,
 // so we don't have to pass that around for the experiments.
-func (s *SimulationStar) Node(sc *onet.SimulationConfig) error {
+func (s *SimulationManualAssignment) Node(sc *onet.SimulationConfig) error {
 	sc.Overlay.RegisterRoster(sc.Roster)
 	sc.Overlay.RegisterTree(sc.Tree)
 	return nil

@@ -15,6 +15,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -30,9 +31,12 @@ func init() {
 
 // SimulationService only holds the BFTree simulation
 type SimulationService struct {
-	SimulationStar
+	SimulationManualAssignment
 	prifi_protocol.PrifiTomlConfig
 	NTrustees int
+	TrusteeIPRegexPattern string
+	ClientIPRegexPattern string
+	RelayIPRegexPattern string
 }
 
 // NewSimulationService returns the new simulation, where all fields are
@@ -57,18 +61,44 @@ func (s *SimulationService) Setup(dir string, hosts []string) (*onet.SimulationC
 	return sc, nil
 }
 
+func (s *SimulationService) identifyNodeType(config *onet.SimulationConfig, nodeID network.ServerIdentityID) string {
+
+	_, v := config.Roster.Search(nodeID)
+
+	relayRegex := regexp.MustCompile(s.RelayIPRegexPattern)
+	clientRegex := regexp.MustCompile(s.ClientIPRegexPattern)
+	trusteeRegex := regexp.MustCompile(s.TrusteeIPRegexPattern)
+
+	addrStr := v.Address.String()
+
+	if relayRegex.MatchString(addrStr) {
+		return "relay"
+	} else if clientRegex.MatchString(addrStr) {
+		return "client"
+	} else if trusteeRegex.MatchString(addrStr) {
+		return "trustee"
+	} else {
+		log.Fatal("Unrecognized node type, IP is", addrStr)
+	}
+
+	return "" // never happens
+}
+
 // Node can be used to initialize each node before it will be run
 // by the server. Here we call the 'Node'-method of the
 // SimulationBFTree structure which will load the roster- and the
 // tree-structure to speed up the first round.
 func (s *SimulationService) Node(config *onet.SimulationConfig) error {
 
+	i, v := config.Roster.Search(config.Server.ServerIdentity.ID)
+	whoami := s.identifyNodeType(config, config.Server.ServerIdentity.ID)
+	log.Lvl1("Node #"+strconv.Itoa(i)+" running on server", v.Address, "and will be a", whoami)
+
 	index, _ := config.Roster.Search(config.Server.ServerIdentity.ID)
 	if index < 0 {
 		log.Fatal("Didn't find this node in roster")
 	}
-	log.Lvl3("Initializing node-index", index)
-	if err := s.SimulationStar.Node(config); err != nil {
+	if err := s.SimulationManualAssignment.Node(config); err != nil {
 		log.Fatal("Could not register node in SDA Tree", err)
 	}
 
@@ -76,15 +106,8 @@ func (s *SimulationService) Node(config *onet.SimulationConfig) error {
 
 	//assign the roles
 	roles := make(map[*network.ServerIdentity]string)
-	for k, v := range config.Roster.List {
-		if k == 0 {
-			roles[v] = "relay"
-		} else if k > 0 && k <= s.NTrustees {
-			roles[v] = "trustee"
-		} else {
-			roles[v] = "client"
-		}
-		//no, we don't need clients (handled by churn.go)
+	for _, v := range config.Roster.List {
+		roles[v] = s.identifyNodeType(config, v.ID)
 	}
 	group := &app.Group{Roster: config.Roster, Description: roles}
 
