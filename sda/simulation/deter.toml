@@ -9,4 +9,4 @@ Servers = 9
 Simulation = "PriFi"
 Hosts = 0
 Debug = 0
-RunWait = 0
+RunWait = 10000000
