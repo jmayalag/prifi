@@ -33,10 +33,10 @@ func init() {
 type SimulationService struct {
 	SimulationManualAssignment
 	prifi_protocol.PrifiTomlConfig
-	NTrustees int
+	NTrustees             int
 	TrusteeIPRegexPattern string
-	ClientIPRegexPattern string
-	RelayIPRegexPattern string
+	ClientIPRegexPattern  string
+	RelayIPRegexPattern   string
 }
 
 // NewSimulationService returns the new simulation, where all fields are
@@ -77,10 +77,8 @@ func (s *SimulationService) identifyNodeType(config *onet.SimulationConfig, node
 		return "client"
 	} else if trusteeRegex.MatchString(addrStr) {
 		return "trustee"
-	} else {
-		log.Fatal("Unrecognized node type, IP is", addrStr)
 	}
-
+	log.Fatal("Unrecognized node type, IP is", addrStr)
 	return "" // never happens
 }
 
