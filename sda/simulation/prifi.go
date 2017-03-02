@@ -161,7 +161,7 @@ func (s *SimulationService) Run(config *onet.SimulationConfig) error {
 
 		for !service.HasEnoughParticipants() {
 			t, c := service.CountParticipants()
-			log.Info("Not enough participants (",t,"trustees,",c,"clients), sleeping 10 seconds...")
+			log.Info("Not enough participants (", t, "trustees,", c, "clients), sleeping 10 seconds...")
 			time.Sleep(10 * time.Second)
 		}
 
