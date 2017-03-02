@@ -2,6 +2,8 @@ package prifi_lib
 
 import (
 	"errors"
+	"github.com/lbarman/prifi/prifi-lib/crypto"
+	"github.com/lbarman/prifi/prifi-lib/net"
 	"gopkg.in/dedis/onet.v1/log"
 	"testing"
 )
@@ -13,7 +15,7 @@ type TestMessageSender struct {
 }
 
 func (t *TestMessageSender) SendToClient(i int, msg interface{}) error {
-	return errors.New("not implemented")
+	return nil
 }
 func (t *TestMessageSender) SendToTrustee(i int, msg interface{}) error {
 	return errors.New("not implemented")
@@ -46,7 +48,25 @@ func TestPrifi(t *testing.T) {
 	trustee1 := NewPriFiTrustee(msgSender)
 
 	//TODO : emulate network connectivity, and run for a few rounds
-	client0.ReceivedMessage("someMessage")
+
+	//should trigger an error, not ready
+	pub, _ := crypto.NewKeyPair()
+	relay.ReceivedMessage(net.TRU_REL_TELL_PK{Pk: pub})
+
+	//emulate the reception of a ALL_ALL_PARAMETERS with StartNow=true
+	msg := new(net.ALL_ALL_PARAMETERS_NEW)
+	msg.Add("StartNow", true)
+	msg.Add("NTrustees", 2)
+	msg.Add("NClients", 2)
+	msg.Add("UpstreamCellSize", 1000)
+	msg.Add("DownstreamCellSize", 1000)
+	msg.Add("WindowSize", 1)
+	msg.Add("UseDummyDataDown", true)
+	msg.Add("ExperimentRoundLimit", 10)
+	msg.Add("UseUDP", false)
+	msg.ForceParams = true
+
+	relay.ReceivedMessage(*msg)
 	_ = client0
 	_ = client1
 	_ = relay

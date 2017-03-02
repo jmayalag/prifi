@@ -15,7 +15,7 @@
 dbg_lvl=3                       # 1=less verbose, 3=more verbose. goes up to 5, but then prints the SDA's message (network framework)
 try_use_real_identities="false" # if "true", will try to use "self-generated" public/private key as a replacement for the dummy keys
                                 # we generated for you. It asks you if it does not find real keys. If false, will always use the dummy keys.
-colors="true"                   # if "false", the output of PriFi (and this script) will be in black-n-white
+colors="true"                   # if  "false", the output of PriFi (and this script) will be in black-n-white
 
 socksServer1Port=8080           # the port for the SOCKS-Server-1 (part of the PriFi client)
 socksServer2Port=8090           # the port to attempt connect to (from the PriFi relay) for the SOCKS-Server-2
@@ -45,7 +45,7 @@ min_go_version=17                           # min required go version, without t
 # unimportant variable (but do not change, ofc)
 
 sleeptime_between_spawns=1                  # time in second between entities launch in all-localhost part
-cothorityBranchRequired="master"            # the branch required for the cothority (SDA) framework
+cothorityBranchRequired="v1.0"              # the branch required for the cothority (SDA) framework
 
 #pretty colored message
 highlightOn="\033[33m"
@@ -73,15 +73,17 @@ print_usage() {
 	echo
 	echo -e "Usage: run-prifi.sh ${highlightOn}role/operation [params]${highlightOff}"
 	echo -e "	${highlightOn}role${highlightOff}: client, relay, trustee"
-	echo -e "	${highlightOn}operation${highlightOff}: install, sockstest, all-localhost, gen-id, integration-test"
+	echo -e "	${highlightOn}operation${highlightOff}: install, sockstest, all-localhost, gen-id, integration-test, simul, simul-get-logs, simul-clear-logs"
 	echo -e "	${highlightOn}params${highlightOff} for role ${highlightOn}relay${highlightOff}: [socks_server_port] (optional, numeric)"
 	echo -e "	${highlightOn}params${highlightOff} for role ${highlightOn}trustee${highlightOff}: id (required, numeric)"
 	echo -e "	${highlightOn}params${highlightOff} for role ${highlightOn}client${highlightOff}: id (required, numeric), [prifi_socks_server_port] (optional, numeric)"
 	echo -e "	${highlightOn}params${highlightOff} for operation ${highlightOn}install${highlightOff}: none"
 	echo -e "	${highlightOn}params${highlightOff} for operation ${highlightOn}all-localhost${highlightOff}: none"
 	echo -e "	${highlightOn}params${highlightOff} for operation ${highlightOn}gen-id${highlightOff}: none"
-	echo -e "	${highlightOn}params${highlightOff} for operation ${highlightOn}simul${highlightOff}: none"
 	echo -e "	${highlightOn}params${highlightOff} for operation ${highlightOn}sockstest${highlightOff}: [socks_server_port] (optional, numeric), [prifi_socks_server_port] (optional, numeric)"
+	echo -e "	${highlightOn}params${highlightOff} for operation ${highlightOn}simul${highlightOff}: none"
+	echo -e "	${highlightOn}params${highlightOff} for operation ${highlightOn}simul-get-logs${highlightOff}: none"
+	echo -e "	${highlightOn}params${highlightOff} for operation ${highlightOn}simul-clear-logs${highlightOff}: none"
 	echo
 
 	echo -e "Man-page:"
@@ -92,8 +94,10 @@ print_usage() {
 	echo -e "	${highlightOn}all-localhost${highlightOff}: starts a Prifi relay, a trustee, three clients all on localhost"
 	echo -e "	${highlightOn}sockstest${highlightOff}: starts the PriFi and non-PriFi SOCKS tunnel, without PriFi anonymization"
 	echo -e "	${highlightOn}gen-id${highlightOff}: interactive creation of identity.toml"
-	echo -e "	${highlightOn}simul${highlightOff}: runs the simulation specified in sda/simulation/prifi_simul.toml in localhost"
 	echo -e "	${highlightOn}integration-test${highlightOff}: runs all-localhost and test if the relay manages to communicate"
+	echo -e "	${highlightOn}simul${highlightOff}: runs the simulation specified in sda/simulation/prifi_simul.toml in localhost/on Deterlab"
+	echo -e "	${highlightOn}simul-get-logs${highlightOff}: fetches the logs from the user server in Deterlab"
+	echo -e "	${highlightOn}simul-clear-logs${highlightOff}: clears the logs in the user server in Deterlab"
 	echo -e "	Lost ? read https://github.com/lbarman/prifi/README.md"
 }
 
@@ -176,7 +180,7 @@ case $1 in
 		cd ../..
 		echo -e "$okMsg"
 
-		echo -n "Switching ONet branch... "
+		echo -en "Switching ONet branch to ${highlightOn}$cothorityBranchRequired${highlightOff}... "
 		cd "$GOPATH/src/gopkg.in/dedis/onet.v1"; git checkout "$cothorityBranchRequired" 1>/dev/null 2>&1
 		echo -e "$okMsg"
 
@@ -634,32 +638,105 @@ case $1 in
 	simul|Simul|SIMUL)
 
 		SIMUL_FILE="prifi_simul.toml"
-		PLATFORM="localhost"
+		PLATFORM="deterlab"
 		EXEC_NAME="prifi_simul"
 		SIMUL_DIR="sda/simulation"
 
-		#temporary
-		dbg_lvl=3
+		rm -f last-simul.log
 
-		echo -n "Building simulation... "
-		cd "$SIMUL_DIR"; go build -o "$EXEC_NAME" *.go
-		if [ "$?" -ne 0 ]; then
-			echo -e "$errorMsg build failed"
+		echo -n "Building simulation... " | tee last-simul.log
+		cd "$SIMUL_DIR"; go build -o "$EXEC_NAME" *.go | tee ../../last-simul.log
+		echo -e "$okMsg" | tee last-simul.log
+
+		echo -e "Starting simulation ${highlightOn}${SIMUL_FILE}${highlightOff} on ${highlightOn}${PLATFORM}${highlightOff}." | tee ../../last-simul.log
+		DEBUG_LVL=$dbg_lvl DEBUG_COLOR=$colors ./"$EXEC_NAME" -platform "$PLATFORM" "$SIMUL_FILE" | tee ../../last-simul.log
+
+		echo -n "Simulation done, cleaning up... " | tee ../../last-simul.log
+		rm -f "$EXEC_NAME" | tee ../../last-simul.log
+		echo -e "$okMsg" | tee ../../last-simul.log
+		;;
+
+	simul-gl|simul-get-logs)
+
+		#create a file ~/makelogsrw.sh with this content
+		#	#!/bin/sh
+		#	ssh relay.LB-LLD.SAFER.isi.deterlab.net 'cd remote; sudo chmod ugo+rw -R .'
+		# [EOF]
+
+		expFolder="experiment_out"
+		deterlabUser="lbarman"
+
+		echo -e "${warningMsg} Note that this tool downloads every log on the server. If you forgot to clean them, it might concern serveral experiments."
+
+		echo -n "Making logs R/W... " #this is needed since simul runs and writes log as root
+		ssh $deterlabUser@users.deterlab.net './makelogsrw.sh'
+		echo -e "$okMsg"
+
+		read -p "Which name do you want to give the data on the server ? " expName
+
+		if [ -d "$expFolder/$expName" ]; then
+			echo -e "${errorMsg} Directory ${highlightOn}$expFolder/$expName${highlightOff} already exists, exiting."
 			exit 1
 		fi
 
+		echo -ne "Making folder ${highlightOn}$expFolder/$expName${highlightOff} "
+		mkdir -p "$expFolder/$expName"
 		echo -e "$okMsg"
 
-		echo -e "Starting simulation ${highlightOn}${SIMUL_FILE}${highlightOff} on ${highlightOn}${PLATFORM}${highlightOff}."
-		DEBUG_LVL="$dbg_lvl" DEBUG_COLOR="$colors" ./"$EXEC_NAME" -platform "$PLATFORM" "$SIMUL_FILE"
-
-		echo -n "Simulation done, cleaning up... "
-		rm -f "$EXEC_NAME"
+		echo -ne "Fetching all experiments of the form ${highlightOn}output_*${highlightOff} "
+		cd "$expFolder/$expName"; 
+		out=$(scp -r $deterlabUser@users.deterlab.net:~/remote/output_\* . )
 		echo -e "$okMsg"
+
+		echo -ne "Writing the download date... "
+		date > "download_date"
+		echo -e "$okMsg"
+
+		echo -ne "Changing rights back to something normal... ${highlightOn}u+rwx,go-rwx${highlightOff} "
+		chmod u+rwx -R .
+		chmod go-rwx -R .
+		echo -e "$okMsg"
+
+		echo "Copied files are :"
+		echo ""
+		cd ..
+		tree -a "$expName"
+
 		;;
 
+	simul-cl|simul-clear-logs)
+
+		#create a file ~/makelogsrw.sh with this content
+		#	#!/bin/sh
+		#	ssh relay.LB-LLD.SAFER.isi.deterlab.net 'cd remote; sudo chmod ugo+rw -R .'
+		# [EOF]
+
+		deterlabUser="lbarman"
+
+		echo -e "${warningMsg} This tool *deletes* all experiment data on the remote server. Make sure you backuped what you need !"
+
+		read -p "Would you like to continue and *delete* all logs [y/n] ? " ans
+
+		if [ $ans = y -o $ans = Y -o $ans = yes -o $ans = Yes -o $ans = YES ]
+		then
+		
+			echo -n "Making logs R/W... " #this is needed since simul runs and writes log as root
+			ssh $deterlabUser@users.deterlab.net './makelogsrw.sh'
+			echo -e "$okMsg"
+
+			echo -n "Deleting all remote logs... "
+			ssh $deterlabUser@users.deterlab.net 'cd remote; rm -rf output_*;'
+			echo -e "$okMsg"
+
+		else
+			echo "Aborting without taking any action."
+		fi
+
+		;;
+
+
 	clean|Clean|CLEAN)
-		echo -n "Cleaning log files... 			"
+		echo -n "Cleaning local log files... 			"
 		rm *.log 1>/dev/null 2>&1
 		echo -e "$okMsg"
 		;;

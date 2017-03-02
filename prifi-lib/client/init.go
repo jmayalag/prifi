@@ -32,6 +32,7 @@ import (
 	"gopkg.in/dedis/crypto.v0/abstract"
 	"gopkg.in/dedis/onet.v1/log"
 	"reflect"
+	"strings"
 	"time"
 )
 
@@ -107,7 +108,11 @@ func NewClient(doLatencyTest bool, dataOutputEnabled bool, dataForDCNet chan []b
 		log.Lvl2(s)
 	}
 	errFn := func(s interface{}) {
-		log.Error(s)
+		if strings.Contains(s.(string), ", but in state SHUTDOWN") { //it's an "acceptable error"
+			log.Lvl2(s)
+		} else {
+			log.Error(s)
+		}
 	}
 	sm.Init(states, logFn, errFn)
 

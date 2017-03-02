@@ -13,6 +13,7 @@ const (
 	SocksData
 	SocksClosed
 	SocksError
+	KillGoRoutine
 )
 
 // Size of the data wrapper header.
