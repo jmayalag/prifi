@@ -61,6 +61,8 @@ func (s *SimulationService) Setup(dir string, hosts []string) (*onet.SimulationC
 	return sc, nil
 }
 
+// identifyNodeType is used when simulating on deterlab. The IP address is
+// matched against 3 regex, and the match tells the node type
 func (s *SimulationService) identifyNodeType(config *onet.SimulationConfig, nodeID network.ServerIdentityID) string {
 
 	_, v := config.Roster.Search(nodeID)

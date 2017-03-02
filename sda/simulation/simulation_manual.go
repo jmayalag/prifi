@@ -19,7 +19,7 @@ import (
 // HostsMappingFile is the file used to indicate the mapping host -> IP
 const HostsMappingFile = "hosts_mapping.toml"
 
-// SimulationStar is a second implementation of SimulationBFTree, but we change the method CreateRoster
+// SimulationManualAssignment is a second implementation of SimulationBFTree, but we change the method CreateRoster
 type SimulationManualAssignment struct {
 	Rounds     int
 	BF         int
