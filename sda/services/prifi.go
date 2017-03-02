@@ -44,14 +44,6 @@ func (s *ServiceState) IsPriFiProtocolRunning() bool {
 func (s *ServiceState) HandleStop(msg *network.Envelope) {
 	log.Lvl1("Received a Handle Stop (I'm ", s.role, ")")
 	s.StopPriFiCommunicateProtocol()
-
-	if s.role != prifi_protocol.Relay {
-		s.connectToRelayStopChan <- true
-
-		if s.connectToRelay2StopChan != nil {
-			s.connectToRelay2StopChan <- true
-		}
-	}
 }
 
 // Packet send by relay when some node connected
