@@ -156,9 +156,14 @@ func (s *SimulationService) Run(config *onet.SimulationConfig) error {
 
 		log.Info("Sleeping 10 seconds before next round...")
 		time.Sleep(10 * time.Second)
-		log.Info("Moving on to next round")
 
 		log.Info("Starting experiment round", round)
+
+		for !service.HasEnoughParticipants() {
+			t, c := service.CountParticipants()
+			log.Info("Not enough participants (",t,"trustees,",c,"clients), sleeping 10 seconds...")
+			time.Sleep(10 * time.Second)
+		}
 
 		service.StartPriFiCommunicateProtocol()
 

@@ -119,6 +119,18 @@ func (s *ServiceState) NetworkErrorHappened(si *network.ServerIdentity) {
 	s.churnHandler.handleUnknownDisconnection()
 }
 
+// HasEnoughParticipants returns true iff
+// nTrustees >= 1 & nClients >= 1
+func (s *ServiceState) HasEnoughParticipants() bool {
+	t, c := s.churnHandler.CountParticipants()
+	return (t >= 1) && (c >= 1)
+}
+
+// CountParticipants returns ntrustees, nclients already connected
+func (s *ServiceState) CountParticipants() (int, int) {
+	return s.churnHandler.CountParticipants()
+}
+
 // startPriFi starts a PriFi protocol. It is called
 // by the relay as soon as enough participants are
 // ready (one trustee and two clients).

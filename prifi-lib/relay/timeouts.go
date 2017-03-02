@@ -65,6 +65,11 @@ func (p *PriFiLibRelayInstance) checkIfRoundHasEndedAfterTimeOut_Phase2(roundID 
 
 	log.Error("waitAndCheckIfClientsSentData : We seem to be stuck in round", roundID, ". Phase 2 timeout.")
 
+	log.Lvl3("Stopping experiment, if any.")
+	output := make([]string, 1)
+	output[0] = "aborted-round-"+strconv.Itoa(int(roundID))
+	p.relayState.ExperimentResultChannel <- output
+
 	missingClientCiphers, missingTrusteesCiphers := p.relayState.bufferManager.MissingCiphersForCurrentRound()
 	p.relayState.timeoutHandler(missingClientCiphers, missingTrusteesCiphers)
 }
