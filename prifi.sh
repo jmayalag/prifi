@@ -637,16 +637,22 @@ case $1 in
 
 	simul|Simul|SIMUL)
 
+		EXPERIMENT_ID_VALUE=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
 		SIMUL_FILE="prifi_simul.toml"
 		PLATFORM="deterlab"
 		EXEC_NAME="prifi_simul"
 		SIMUL_DIR="sda/simulation"
+		deterlabUser="lbarman"
 		dbg_lvl=1
-		
+
 		rm -f last-simul.log
 
 		echo -n "Building simulation... " | tee last-simul.log
 		cd "$SIMUL_DIR"; go build -o "$EXEC_NAME" *.go | tee ../../last-simul.log
+		echo -e "$okMsg" | tee last-simul.log
+
+		echo -e "Simulation ID is ${highlightOn}${EXPERIMENT_ID_VALUE}${highlightOff}, storing it in ${highlightOn}~/remote/.simID${highlightOff} on remote" | tee last-simul.log
+		ssh $deterlabUser@users.deterlab.net "echo ${EXPERIMENT_ID_VALUE} > ~/remote/.simID"
 		echo -e "$okMsg" | tee last-simul.log
 
 		echo -e "Starting simulation ${highlightOn}${SIMUL_FILE}${highlightOff} on ${highlightOn}${PLATFORM}${highlightOff}." | tee ../../last-simul.log

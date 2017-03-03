@@ -21,6 +21,9 @@ import (
 	"time"
 )
 
+// FILE_SIMULATION_ID is the file where the simulation ID is stored
+const FILE_SIMULATION_ID = ".simID"
+
 /*
  * Defines the simulation for the service-template
  */
@@ -58,6 +61,7 @@ func (s *SimulationService) Setup(dir string, hosts []string) (*onet.SimulationC
 	if err != nil {
 		return nil, err
 	}
+
 	return sc, nil
 }
 
@@ -90,10 +94,13 @@ func (s *SimulationService) identifyNodeType(config *onet.SimulationConfig, node
 // tree-structure to speed up the first round.
 func (s *SimulationService) Node(config *onet.SimulationConfig) error {
 
+	// identify who we are given our IP (works only on deterlab !)
 	i, v := config.Roster.Search(config.Server.ServerIdentity.ID)
 	whoami := s.identifyNodeType(config, config.Server.ServerIdentity.ID)
 	log.Lvl1("Node #"+strconv.Itoa(i)+" running on server", v.Address, "and will be a", whoami)
 
+	// this is (should be) used in localhost instead of whoami above, AND on deterlab for having
+	// different ports numbers when multiples hosts are on one server
 	index, _ := config.Roster.Search(config.Server.ServerIdentity.ID)
 	if index < 0 {
 		log.Fatal("Didn't find this node in roster")
@@ -151,6 +158,13 @@ func (s *SimulationService) Node(config *onet.SimulationConfig) error {
 // rounds
 func (s *SimulationService) Run(config *onet.SimulationConfig) error {
 
+	//this is run only on the relay. Get the simulation ID stored by the shell script
+	simulationIDBytes, err := ioutil.ReadFile(FILE_SIMULATION_ID)
+	if err != nil {
+		log.Fatal("Could not read file", FILE_SIMULATION_ID, "error is", err)
+	}
+	simulationID := string(simulationIDBytes)
+
 	//finds the PriFi service
 	service := config.GetService(prifi_service.ServiceName).(*prifi_service.ServiceState)
 
@@ -159,7 +173,7 @@ func (s *SimulationService) Run(config *onet.SimulationConfig) error {
 		log.Info("Sleeping 10 seconds before next round...")
 		time.Sleep(10 * time.Second)
 
-		log.Info("Starting experiment round", round)
+		log.Info("Starting experiment", simulationID, "round", round)
 
 		for !service.HasEnoughParticipants() {
 			t, c := service.CountParticipants()
@@ -182,7 +196,7 @@ func (s *SimulationService) Run(config *onet.SimulationConfig) error {
 		resStringArray := res.([]string)
 
 		//create folder for this experiment
-		folderName := "output_" + hashStruct(config)
+		folderName := "output_" + simulationID + "/" + hashString(config.Config)
 		if _, err := os.Stat(folderName); err != nil {
 			os.MkdirAll(folderName, 0777)
 
@@ -211,9 +225,9 @@ func (s *SimulationService) Run(config *onet.SimulationConfig) error {
 
 	return nil
 }
-func hashStruct(config *onet.SimulationConfig) string {
+func hashString(data string) string {
 	hasher := sha1.New() //this is not a crypto hash, and 256 is too long to be human-readable
-	hasher.Write([]byte(fmt.Sprintf("%+v", config)))
+	hasher.Write([]byte(data))
 	sha := base64.URLEncoding.EncodeToString(hasher.Sum(nil))
 
 	//just for readability
