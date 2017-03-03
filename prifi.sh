@@ -641,7 +641,8 @@ case $1 in
 		PLATFORM="deterlab"
 		EXEC_NAME="prifi_simul"
 		SIMUL_DIR="sda/simulation"
-
+		dbg_lvl=1
+		
 		rm -f last-simul.log
 
 		echo -n "Building simulation... " | tee last-simul.log
@@ -732,6 +733,12 @@ case $1 in
 			echo "Aborting without taking any action."
 		fi
 
+		;;
+
+
+	simul-e|simul-edit)
+
+		nano sda/simulation/prifi_simul.toml
 		;;
 
 
