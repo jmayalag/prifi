@@ -86,7 +86,7 @@ func (stats *TimeStatistics) ReportWithInfo(info string) string {
 		//report to website
 		data := fmt.Sprintf("no=%v&mean=%s&var=%s&n=%s&happened=%v&info=%s", stats.reportNo, mean, variance, n, stats.totalValuesAdded, info)
 
-		go performGETRequest("http://lbarman.ch/prifi/?" + data)
+		go performGETRequest("http://prifi.net/reporting/?" + data)
 
 		stats.nextReport = now.Add(stats.period)
 		stats.reportNo++

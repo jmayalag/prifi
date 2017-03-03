@@ -134,7 +134,7 @@ func (stats *BitrateStatistics) ReportWithInfo(info string) string {
 			float64(stats.instantDownstreamUDPBytes)/1024/stats.period.Seconds(),
 			info)
 
-		go performGETRequest("http://lbarman.ch/prifi/?" + data)
+		go performGETRequest("http://prifi.net/reporting/?" + data)
 
 		// Next report time
 		stats.instantUpstreamCells = 0
