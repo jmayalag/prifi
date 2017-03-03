@@ -180,7 +180,6 @@ func (s *SimulationService) Run(config *onet.SimulationConfig) error {
 		//block and get the result from the channel
 		res := <-service.PriFiSDAProtocol.ResultChannel
 		resStringArray := res.([]string)
-		log.Error("Simulation result is", resStringArray)
 
 		//create folder for this experiment
 		folderName := "output_" + hashStruct(config)
