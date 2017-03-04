@@ -168,11 +168,11 @@ func (p *PriFiLibClientInstance) ProcessDownStreamData(msg net.REL_CLI_DOWNSTREA
 
 			pattern := int(binary.BigEndian.Uint16(msg.Data[0:2]))
 			if pattern == 43690 {
-				//1010101010101010
-				clientID := int(binary.BigEndian.Uint16(msg.Data[2:4]))
-				if clientID == p.clientState.ID {
-					timestamp := int64(binary.BigEndian.Uint64(msg.Data[4:12]))
-					diff := MsTimeStamp() - timestamp
+					//1010101010101010
+					clientID := int(binary.BigEndian.Uint16(msg.Data[2:4]))
+					if clientID == p.clientState.ID {
+						timestamp := int64(binary.BigEndian.Uint64(msg.Data[4:12]))
+						diff := MsTimeStamp() - timestamp
 
 					p.clientState.statistics.AddTime(diff)
 					p.clientState.statistics.ReportWithInfo("measured-latency")
