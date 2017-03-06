@@ -75,7 +75,7 @@ func (stats *TimeStatistics) ReportWithInfo(info string) string {
 		//human-readable output
 		str := fmt.Sprintf("[%v] %s ms +- %s (over %s, happened %v). Info: %s", stats.reportNo, mean, variance, n, stats.totalValuesAdded, info)
 
-		log.Info(str)
+		log.Lvl1(str)
 
 		//json output
 		strJSON := fmt.Sprintf("{ \"type\"=\"relay_timings\", \"report_id\"=\"%v\", \"duration_mean_ms\"=\"%s\", \"duration_dev_ms\"=\"%s\", \"mean_over\"=\"%s\", \"total_pop\"=\"%v\", \"info\"=\"%s\" }\n",
