@@ -13,7 +13,7 @@ type StopProtocol struct{}
 
 // ConnectionRequest messages are sent to the relay
 // by nodes that want to join the protocol.
-type ConnectionRequest struct{
+type ConnectionRequest struct {
 	CommitID string
 }
 

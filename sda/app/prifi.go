@@ -25,8 +25,8 @@ import (
 	"gopkg.in/dedis/onet.v1/network"
 	"gopkg.in/urfave/cli.v1"
 	"net"
-	"strconv"
 	"os/exec"
+	"strconv"
 )
 
 // DefaultName is the name of the binary we produce and is used to create a directory

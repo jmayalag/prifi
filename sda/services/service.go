@@ -45,7 +45,7 @@ type ServiceState struct {
 	connectToRelayStopChan    chan bool
 	connectToTrusteesStopChan chan bool
 	receivedHello             bool
-	commitID		  string
+	commitID                  string
 
 	//If true, when the number of participants is reached, the protocol starts without calling StartPriFiCommunicateProtocol
 	AutoStart bool
