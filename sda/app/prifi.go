@@ -26,6 +26,7 @@ import (
 	"gopkg.in/urfave/cli.v1"
 	"net"
 	"strconv"
+	"os/exec"
 )
 
 // DefaultName is the name of the binary we produce and is used to create a directory
@@ -167,13 +168,34 @@ func readConfigAndStartCothority(c *cli.Context) (*onet.Server, *app.Group, *pri
 	return host, group, service
 }
 
+// Every *app* retrieves the commitID to avoid mismatched version between users
+func getCommitID() string {
+	var (
+		cmdOut []byte
+		err    error
+	)
+
+	cmdName := "git"
+	cmdArgs := []string{"rev-parse", "HEAD"}
+
+	//sends the command to the shell and retrieves the commitID for HEAD
+	if cmdOut, err = exec.Command(cmdName, cmdArgs...).Output(); err != nil {
+		log.Error("There was an error running git rev-parse command: ", err)
+		os.Exit(1)
+	}
+
+	return string(cmdOut)
+}
+
 // trustee start the cothority in trustee-mode using the already stored configuration.
 func startTrustee(c *cli.Context) error {
 	log.Info("Starting trustee")
 
 	host, group, service := readConfigAndStartCothority(c)
 
-	if err := service.StartTrustee(group); err != nil {
+	cID := getCommitID()
+
+	if err := service.StartTrustee(group, cID); err != nil {
 		log.Error("Could not start the prifi service:", err)
 		os.Exit(1)
 	}
@@ -189,8 +211,10 @@ func startRelay(c *cli.Context) error {
 
 	host, group, service := readConfigAndStartCothority(c)
 
+	cID := getCommitID()
+
 	service.AutoStart = true
-	if err := service.StartRelay(group); err != nil {
+	if err := service.StartRelay(group, cID); err != nil {
 		log.Error("Could not start the prifi service:", err)
 		os.Exit(1)
 	}
@@ -206,7 +230,9 @@ func startClient(c *cli.Context) error {
 
 	host, group, service := readConfigAndStartCothority(c)
 
-	if err := service.StartClient(group); err != nil {
+	cID := getCommitID()
+
+	if err := service.StartClient(group, cID); err != nil {
 		log.Error("Could not start the prifi service:", err)
 		os.Exit(1)
 	}
