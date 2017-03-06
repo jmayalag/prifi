@@ -42,7 +42,8 @@ type ServiceState struct {
 	role                      prifi_protocol.PriFiRole
 	relayIdentity             *network.ServerIdentity
 	trusteeIDs                []*network.ServerIdentity
-	connectToRelayStopChan    chan bool
+	connectToRelayStopChan    chan bool //spawned at init
+	connectToRelay2StopChan   chan bool //spawned after receiving a HELLO message
 	connectToTrusteesStopChan chan bool
 	receivedHello             bool
 	commitID                  string
@@ -55,6 +56,12 @@ type ServiceState struct {
 
 	//this hold the running protocol (when it runs)
 	PriFiSDAProtocol *prifi_protocol.PriFiSDAProtocol
+
+	//used to hold "stoppers" for go-routines; send "true" to kill
+	socksStopChan []chan bool
+
+	hasSocksClientGoRoutine bool
+	hasSocksServerGoRoutine bool
 }
 
 // Storage will be saved, on the contrary of the 'Service'-structure
@@ -71,12 +78,14 @@ func newService(c *onet.Context) onet.Service {
 		ServiceProcessor: onet.NewServiceProcessor(c),
 	}
 	helloMsg := network.RegisterMessage(HelloMsg{})
+	stopSOCKSMsg := network.RegisterMessage(StopSOCKS{})
 	stopMsg := network.RegisterMessage(StopProtocol{})
 	connMsg := network.RegisterMessage(ConnectionRequest{})
 	disconnectMsg := network.RegisterMessage(DisconnectionRequest{})
 
 	c.RegisterProcessorFunc(helloMsg, s.HandleHelloMsg)
 	c.RegisterProcessorFunc(stopMsg, s.HandleStop)
+	c.RegisterProcessorFunc(stopSOCKSMsg, s.HandleStopSOCKS)
 	c.RegisterProcessorFunc(connMsg, s.HandleConnection)
 	c.RegisterProcessorFunc(disconnectMsg, s.HandleDisconnection)
 
@@ -139,7 +148,12 @@ func (s *ServiceState) StartRelay(group *app.Group, commitID string) error {
 	}
 
 	//the relay has a socks Client
-	go prifi_socks.StartSocksClient(socksServerConfig.Port, socksServerConfig.UpstreamChannel, socksServerConfig.DownstreamChannel)
+	if !s.hasSocksClientGoRoutine {
+		stopChan := make(chan bool, 1)
+		go prifi_socks.StartSocksClient(socksServerConfig.Port, socksServerConfig.UpstreamChannel, socksServerConfig.DownstreamChannel, stopChan)
+		s.socksStopChan = append(s.socksStopChan, stopChan)
+		s.hasSocksClientGoRoutine = true
+	}
 
 	s.connectToTrusteesStopChan = make(chan bool)
 	go s.connectToTrustees(trusteesIDs, s.connectToTrusteesStopChan)
@@ -165,8 +179,13 @@ func (s *ServiceState) StartClient(group *app.Group, commitID string) error {
 	}
 
 	//the client has a socks server
-	log.Lvl1("Starting SOCKS server on port", socksClientConfig.Port)
-	go prifi_socks.StartSocksServer(socksClientConfig.Port, socksClientConfig.PayloadLength, socksClientConfig.UpstreamChannel, socksClientConfig.DownstreamChannel, s.prifiTomlConfig.DoLatencyTests)
+	if !s.hasSocksServerGoRoutine {
+		log.Lvl1("Starting SOCKS server on port", socksClientConfig.Port)
+		stopChan := make(chan bool, 1)
+		go prifi_socks.StartSocksServer(socksClientConfig.Port, socksClientConfig.PayloadLength, socksClientConfig.UpstreamChannel, socksClientConfig.DownstreamChannel, s.prifiTomlConfig.DoLatencyTests, stopChan)
+		s.socksStopChan = append(s.socksStopChan, stopChan)
+		s.hasSocksServerGoRoutine = true
+	}
 
 	s.connectToRelayStopChan = make(chan bool)
 	s.trusteeIDs = trusteeIDs
@@ -193,8 +212,12 @@ func (s *ServiceState) StartSocksTunnelOnly() error {
 		UpstreamChannel:   socksClientConfig.UpstreamChannel,
 		DownstreamChannel: socksClientConfig.DownstreamChannel,
 	}
-	go prifi_socks.StartSocksServer(socksClientConfig.Port, socksClientConfig.PayloadLength, socksClientConfig.UpstreamChannel, socksClientConfig.DownstreamChannel, false)
-	go prifi_socks.StartSocksClient(socksServerConfig.Port, socksServerConfig.UpstreamChannel, socksServerConfig.DownstreamChannel)
+	stopChan1 := make(chan bool, 1)
+	stopChan2 := make(chan bool, 1)
+	go prifi_socks.StartSocksServer(socksClientConfig.Port, socksClientConfig.PayloadLength, socksClientConfig.UpstreamChannel, socksClientConfig.DownstreamChannel, false, stopChan1)
+	go prifi_socks.StartSocksClient(socksServerConfig.Port, socksServerConfig.UpstreamChannel, socksServerConfig.DownstreamChannel, stopChan2)
+	s.socksStopChan = append(s.socksStopChan, stopChan1)
+	s.socksStopChan = append(s.socksStopChan, stopChan2)
 
 	return nil
 }
@@ -204,13 +227,40 @@ func (s *ServiceState) StartSocksTunnelOnly() error {
 func (s *ServiceState) StartTrustee(group *app.Group, commitID string) error {
 	log.Info("Service", s, "running in trustee mode")
 	s.role = prifi_protocol.Trustee
-	s.connectToRelayStopChan = make(chan bool)
 
 	//the this might fail if the relay is behind a firewall. The HelloMsg is to fix this
 	relayID, _ := mapIdentities(group)
 	s.relayIdentity = relayID
 	s.commitID = commitID
+
+	s.connectToRelayStopChan = make(chan bool)
 	go s.connectToRelay(relayID, s.connectToRelayStopChan)
+
+	return nil
+}
+
+// CleanResources kill all goroutines related to SOCKS on this service
+func (s *ServiceState) ShutdownSocks() error {
+	log.Lvl2("Stopping service's SOCKS goroutines.")
+
+	for _, v := range s.socksStopChan {
+		v <- true
+	}
+
+	return nil
+}
+
+// CleanResources kill all goroutines on all services
+func (s *ServiceState) GlobalShutDownSocks() error {
+	log.Lvl2("Stopping globally all SOCKS goroutines.")
+
+	//contact the clients
+	for _, v := range s.churnHandler.getClientsIdentities() {
+		s.SendRaw(v, &StopSOCKS{})
+	}
+
+	//shut down the relay's SOCKS
+	s.ShutdownSocks()
 
 	return nil
 }

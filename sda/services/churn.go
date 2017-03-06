@@ -126,6 +126,11 @@ func (c *churnHandler) createRoster() *onet.Roster {
 	return roster
 }
 
+// CountParticipants returns nTrustees, nClients already connected
+func (c *churnHandler) CountParticipants() (int, int) {
+	return c.waitQueue.count()
+}
+
 /**
  * Tests if the given serverIdentity represents a trustee
  */

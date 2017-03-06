@@ -26,6 +26,20 @@ func TestSM(t *testing.T) {
 	if sm.AssertState("SHUTDOWN") {
 		t.Error("We are not in state SHUTDOWN")
 	}
+	if !sm.AssertStateOrState("SHUTDOWN", "INIT") {
+		t.Error("We are in state init")
+	}
+
+	if sm.AssertStateOrState("ninja", "INIT") {
+		t.Error("ninja is an invalid state")
+	}
+	if sm.AssertStateOrState("INIT", "ninja") {
+		t.Error("ninja is an invalid state")
+	}
+
+	if sm.AssertStateOrState("COMM", "SHUTDOWN") {
+		t.Error("We are not in state SHUTDOWN")
+	}
 
 	sm.ChangeState("SHUTDOWN")
 

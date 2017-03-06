@@ -36,6 +36,8 @@ type SOCKSConfig struct {
 
 //The configuration read in prifi.toml
 type PrifiTomlConfig struct {
+	ForceConsoleColor       bool
+	OverrideLogLevel        int
 	ClientDataOutputEnabled bool
 	RelayDataOutputEnabled  bool
 	CellSizeUp              int

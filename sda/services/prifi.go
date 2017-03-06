@@ -11,6 +11,9 @@ import (
 // Packet send by relay when some node disconnected
 type StopProtocol struct{}
 
+// Packet send by relay doing simulations to stop the SOCKS stuff
+type StopSOCKS struct{}
+
 // ConnectionRequest messages are sent to the relay
 // by nodes that want to join the protocol.
 type ConnectionRequest struct {
@@ -41,9 +44,8 @@ func (s *ServiceState) IsPriFiProtocolRunning() bool {
 
 // Packet send by relay; when we get it, we stop the protocol
 func (s *ServiceState) HandleStop(msg *network.Envelope) {
-	log.Lvl1("Received a Handle Stop")
+	log.Lvl1("Received a Handle Stop (I'm ", s.role, ")")
 	s.StopPriFiCommunicateProtocol()
-
 }
 
 // Packet send by relay to trustees at start
@@ -56,7 +58,8 @@ func (s *ServiceState) HandleHelloMsg(msg *network.Envelope) {
 	if !s.receivedHello {
 		//start sending some ConnectionRequests
 		s.relayIdentity = msg.ServerIdentity
-		go s.connectToRelay(s.relayIdentity, s.connectToRelayStopChan)
+		s.connectToRelay2StopChan = make(chan bool, 1)
+		go s.connectToRelay(s.relayIdentity, s.connectToRelay2StopChan)
 		s.receivedHello = true
 	}
 
@@ -81,6 +84,11 @@ func (s *ServiceState) HandleDisconnection(msg *network.Envelope) {
 		log.Fatal("Can't handle a disconnection without a churnHandler")
 	}
 	s.churnHandler.handleDisconnection(msg)
+}
+
+// Packet send by relay when some node disconnected
+func (s *ServiceState) HandleStopSOCKS(msg *network.Envelope) {
+	s.ShutdownSocks()
 }
 
 // handleTimeout is a callback that should be called on the relay
@@ -108,6 +116,18 @@ func (s *ServiceState) NetworkErrorHappened(si *network.ServerIdentity) {
 
 	log.Error("A network error occurred with node", si, ", warning other clients.")
 	s.churnHandler.handleUnknownDisconnection()
+}
+
+// HasEnoughParticipants returns true iff
+// nTrustees >= 1 & nClients >= 1
+func (s *ServiceState) HasEnoughParticipants() bool {
+	t, c := s.churnHandler.CountParticipants()
+	return (t >= 1) && (c >= 1)
+}
+
+// CountParticipants returns ntrustees, nclients already connected
+func (s *ServiceState) CountParticipants() (int, int) {
+	return s.churnHandler.CountParticipants()
 }
 
 // startPriFi starts a PriFi protocol. It is called
@@ -161,7 +181,7 @@ func (s *ServiceState) StopPriFiCommunicateProtocol() {
 
 	if s.role == prifi_protocol.Relay {
 
-		log.Lvl2("A network error occurred, we're the relay, warning other clients...")
+		log.Lvl3("Stopping PriFi protocol, we're the relay, warning other clients...")
 
 		for _, v := range s.churnHandler.getClientsIdentities() {
 			s.SendRaw(v, &StopProtocol{})
@@ -228,6 +248,7 @@ func (s *ServiceState) sendConnectionRequest(relayID *network.ServerIdentity) {
 
 	if err != nil {
 		log.Error("Connection failed:", err)
+		log.Error("I'm", s.role, s)
 	}
 }
 

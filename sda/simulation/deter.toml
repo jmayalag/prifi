@@ -1,0 +1,12 @@
+Login = "lbarman"
+Host = "users.deterlab.net"
+Project = "SAFER"
+Experiment = "LB-LLD"
+ProxyAddress = "localhost"
+MonitorAddress = "users.isi.deterlab.net"
+MonitorPort = 10000
+Servers = 9
+Simulation = "PriFi"
+Hosts = 0
+Debug = 0
+RunWait = 10000000
