@@ -25,6 +25,7 @@ import (
 	"gopkg.in/dedis/onet.v1/network"
 	"gopkg.in/urfave/cli.v1"
 	"net"
+	"os/exec"
 	"strconv"
 )
 
@@ -174,7 +175,28 @@ func readConfigAndStartCothority(c *cli.Context) (*onet.Server, *app.Group, *pri
 		os.Exit(1)
 	}
 
+	prifiTomlConfig.ProtocolVersion = getGitCommitID()
+
 	return host, group, service
+}
+
+// This folder's git commit ID is used as a Protocol Version field to avoid mismatched version between nodes
+func getGitCommitID() string {
+	var (
+		cmdOut []byte
+		err    error
+	)
+
+	cmdName := "git"
+	cmdArgs := []string{"rev-parse", "HEAD"}
+
+	//sends the command to the shell and retrieves the commitID for HEAD
+	if cmdOut, err = exec.Command(cmdName, cmdArgs...).Output(); err != nil {
+		log.Error("There was an error running git rev-parse command: ", err)
+		os.Exit(1)
+	}
+
+	return string(cmdOut)
 }
 
 // trustee start the cothority in trustee-mode using the already stored configuration.
