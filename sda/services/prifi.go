@@ -16,7 +16,9 @@ type StopSOCKS struct{}
 
 // ConnectionRequest messages are sent to the relay
 // by nodes that want to join the protocol.
-type ConnectionRequest struct{}
+type ConnectionRequest struct {
+	ProtocolVersion string
+}
 
 // HelloMsg messages are sent by the relay to the trustee;
 // if they are up, they answer with a ConnectionRequest
@@ -46,7 +48,7 @@ func (s *ServiceState) HandleStop(msg *network.Envelope) {
 	s.StopPriFiCommunicateProtocol()
 }
 
-// Packet send by relay when some node connected
+// Packet send by relay to trustees at start
 func (s *ServiceState) HandleHelloMsg(msg *network.Envelope) {
 	if s.role != prifi_protocol.Trustee {
 		log.Error("Received a Hello message, but we're not a trustee ! ignoring.")
@@ -63,11 +65,16 @@ func (s *ServiceState) HandleHelloMsg(msg *network.Envelope) {
 
 }
 
-// Packet send by relay when some node connected
+// Packet received by relay when some node connects
 func (s *ServiceState) HandleConnection(msg *network.Envelope) {
 	if s.churnHandler == nil {
 		log.Fatal("Can't handle a connection without a churnHandler")
 	}
+
+	if s.prifiTomlConfig.ProtocolVersion != msg.Msg.(*ConnectionRequest).ProtocolVersion {
+		log.Fatal("Different CommitID between relay and ", msg.ServerIdentity.String())
+	}
+
 	s.churnHandler.handleConnection(msg)
 }
 
@@ -185,6 +192,7 @@ func (s *ServiceState) StopPriFiCommunicateProtocol() {
 	}
 }
 
+// TODO : change function comment
 // autoConnect sends a connection request to the relay
 // every 10 seconds if the node is not participating to
 // a PriFi protocol.
@@ -236,7 +244,7 @@ func (s *ServiceState) connectToRelay(relayID *network.ServerIdentity, stopChan 
 // announce themselves to the relay.
 func (s *ServiceState) sendConnectionRequest(relayID *network.ServerIdentity) {
 	log.Lvl2("Sending connection request")
-	err := s.SendRaw(relayID, &ConnectionRequest{})
+	err := s.SendRaw(relayID, &ConnectionRequest{ProtocolVersion: s.prifiTomlConfig.ProtocolVersion})
 
 	if err != nil {
 		log.Error("Connection failed:", err)
