@@ -175,14 +175,13 @@ func readConfigAndStartCothority(c *cli.Context) (*onet.Server, *app.Group, *pri
 		os.Exit(1)
 	}
 
-	//sets the commitID var in prifiTomlConfig
-	prifiTomlConfig.CommitID = getCommitID()
+	prifiTomlConfig.ProtocolVersion = getGitCommitID()
 
 	return host, group, service
 }
 
-// Every *app* retrieves the commitID to avoid mismatched version between users
-func getCommitID() string {
+// This folder's git commit ID is used as a Protocol Version field to avoid mismatched version between nodes
+func getGitCommitID() string {
 	var (
 		cmdOut []byte
 		err    error
