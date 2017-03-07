@@ -46,7 +46,6 @@ type ServiceState struct {
 	connectToRelay2StopChan   chan bool //spawned after receiving a HELLO message
 	connectToTrusteesStopChan chan bool
 	receivedHello             bool
-	commitID                  string
 
 	//If true, when the number of participants is reached, the protocol starts without calling StartPriFiCommunicateProtocol
 	AutoStart bool
@@ -120,14 +119,13 @@ func (s *ServiceState) NewProtocol(tn *onet.TreeNodeInstance, conf *onet.Generic
 // StartRelay starts the necessary
 // protocols to enable the relay-mode.
 // In this example it simply starts the demo protocol
-func (s *ServiceState) StartRelay(group *app.Group, commitID string) error {
+func (s *ServiceState) StartRelay(group *app.Group) error {
 	log.Info("Service", s, "running in relay mode")
 
 	//set state to the correct info, parse .toml
 	s.role = prifi_protocol.Relay
 	relayID, trusteesIDs := mapIdentities(group)
 	s.relayIdentity = relayID //should not be used in the case of the relay
-	s.commitID = commitID
 
 	//creates the ChurnHandler, part of the Relay's Service, that will start/stop the protocol
 	s.churnHandler = new(churnHandler)
@@ -163,13 +161,12 @@ func (s *ServiceState) StartRelay(group *app.Group, commitID string) error {
 
 // StartClient starts the necessary
 // protocols to enable the client-mode.
-func (s *ServiceState) StartClient(group *app.Group, commitID string) error {
+func (s *ServiceState) StartClient(group *app.Group) error {
 	log.Info("Service", s, "running in client mode")
 	s.role = prifi_protocol.Client
 
 	relayID, trusteeIDs := mapIdentities(group)
 	s.relayIdentity = relayID
-	s.commitID = commitID
 
 	socksClientConfig = &prifi_protocol.SOCKSConfig{
 		Port:              ":" + strconv.Itoa(s.prifiTomlConfig.SocksServerPort),
@@ -224,14 +221,13 @@ func (s *ServiceState) StartSocksTunnelOnly() error {
 
 // StartTrustee starts the necessary
 // protocols to enable the trustee-mode.
-func (s *ServiceState) StartTrustee(group *app.Group, commitID string) error {
+func (s *ServiceState) StartTrustee(group *app.Group) error {
 	log.Info("Service", s, "running in trustee mode")
 	s.role = prifi_protocol.Trustee
 
 	//the this might fail if the relay is behind a firewall. The HelloMsg is to fix this
 	relayID, _ := mapIdentities(group)
 	s.relayIdentity = relayID
-	s.commitID = commitID
 
 	s.connectToRelayStopChan = make(chan bool)
 	go s.connectToRelay(relayID, s.connectToRelayStopChan)

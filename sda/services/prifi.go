@@ -71,7 +71,7 @@ func (s *ServiceState) HandleConnection(msg *network.Envelope) {
 		log.Fatal("Can't handle a connection without a churnHandler")
 	}
 
-	if s.commitID != msg.Msg.(*ConnectionRequest).CommitID {
+	if s.prifiTomlConfig.CommitID != msg.Msg.(*ConnectionRequest).CommitID {
 		log.Fatal("Different CommitID between relay and ", msg.ServerIdentity.String())
 	}
 
@@ -244,7 +244,7 @@ func (s *ServiceState) connectToRelay(relayID *network.ServerIdentity, stopChan 
 // announce themselves to the relay.
 func (s *ServiceState) sendConnectionRequest(relayID *network.ServerIdentity) {
 	log.Lvl2("Sending connection request")
-	err := s.SendRaw(relayID, &ConnectionRequest{CommitID: s.commitID})
+	err := s.SendRaw(relayID, &ConnectionRequest{CommitID: s.prifiTomlConfig.CommitID})
 
 	if err != nil {
 		log.Error("Connection failed:", err)

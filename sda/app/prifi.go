@@ -175,6 +175,9 @@ func readConfigAndStartCothority(c *cli.Context) (*onet.Server, *app.Group, *pri
 		os.Exit(1)
 	}
 
+	//sets the commitID var in prifiTomlConfig
+	prifiTomlConfig.CommitID = getCommitID()
+
 	return host, group, service
 }
 
@@ -203,9 +206,7 @@ func startTrustee(c *cli.Context) error {
 
 	host, group, service := readConfigAndStartCothority(c)
 
-	cID := getCommitID()
-
-	if err := service.StartTrustee(group, cID); err != nil {
+	if err := service.StartTrustee(group); err != nil {
 		log.Error("Could not start the prifi service:", err)
 		os.Exit(1)
 	}
@@ -221,10 +222,8 @@ func startRelay(c *cli.Context) error {
 
 	host, group, service := readConfigAndStartCothority(c)
 
-	cID := getCommitID()
-
 	service.AutoStart = true
-	if err := service.StartRelay(group, cID); err != nil {
+	if err := service.StartRelay(group); err != nil {
 		log.Error("Could not start the prifi service:", err)
 		os.Exit(1)
 	}
@@ -240,9 +239,7 @@ func startClient(c *cli.Context) error {
 
 	host, group, service := readConfigAndStartCothority(c)
 
-	cID := getCommitID()
-
-	if err := service.StartClient(group, cID); err != nil {
+	if err := service.StartClient(group); err != nil {
 		log.Error("Could not start the prifi service:", err)
 		os.Exit(1)
 	}
