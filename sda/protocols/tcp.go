@@ -50,6 +50,32 @@ func (t *TCPChannel) StartListener(port int) error {
 	return nil
 }
 
+// ConnectToServer connects to the fast delivery server
+func (t *TCPChannel) ConnectToServer(addr string) error {
+	// connect to this socket
+
+	log.LLvl3("Connecting to tcp server at", addr, "for fast delivery")
+	conn, err := net.Dial("tcp", addr)
+	if err != nil {
+		return err
+	}
+
+	log.LLvl3("Connected to fast-delivery server.")
+	t.conn = conn
+	t.ready = true
+
+	//loop over exactly one connection
+	for !t.stop {
+		message, err := readMessage(t.conn)
+		if err != nil {
+			log.Error("Could not read message on the fast-channel, err is", err)
+		}
+
+		t.MessageHandler(message)
+	}
+	return nil
+}
+
 // If the connection is ready, write the byte message into it.
 func (t *TCPChannel) WriteMessage(msg []byte) {
 	if !t.ready {

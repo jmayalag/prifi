@@ -32,7 +32,11 @@ func (p *PriFiSDAProtocol) buildMessageSender(identities map[string]PriFiIdentit
 	for i := 0; i < len(nodes); i++ {
 		identifier := nodes[i].ServerIdentity.Public.String()
 		id, ok := identities[identifier]
-		log.Info("Found identity", identifier, " -> ", id)
+		port, _ := strconv.Atoi(nodes[i].ServerIdentity.Address.Port())
+		portForFastChannel := port+3
+
+		log.Lvl3("Found identity", identifier, " -> ", port, portForFastChannel)
+
 
 		if !ok {
 			log.Lvl3("Skipping unknow node with address", identifier)
@@ -53,6 +57,8 @@ func (p *PriFiSDAProtocol) buildMessageSender(identities map[string]PriFiIdentit
 			}
 		}
 	}
+
+	log.Fatal("test")
 
 	return MessageSender{p.TreeNodeInstance, relay, clients, trustees}
 }
