@@ -36,6 +36,7 @@ import (
 	"github.com/lbarman/prifi/prifi-lib/scheduler"
 	socks "github.com/lbarman/prifi/prifi-socks"
 	"time"
+	"github.com/lbarman/prifi2/utils/timing"
 )
 
 // Received_ALL_CLI_SHUTDOWN handles ALL_CLI_SHUTDOWN messages.
@@ -152,6 +153,8 @@ When this function ends, it calls SendUpstreamData() which continues the communi
 */
 func (p *PriFiLibClientInstance) ProcessDownStreamData(msg net.REL_CLI_DOWNSTREAM_DATA) error {
 
+	timing.StartMeasure("round-processing")
+
 	/*
 	 * HANDLE THE DOWNSTREAM DATA
 	 */
@@ -177,8 +180,8 @@ func (p *PriFiLibClientInstance) ProcessDownStreamData(msg net.REL_CLI_DOWNSTREA
 					//roundDiff := msg.RoundID - originalRoundID
 					//log.Info("Measured latency is", diff, ", for client", clientID, ", roundDiff", roundDiff, ", received on round", msg.RoundID)
 
-					p.clientState.statistics.AddTime(diff)
-					p.clientState.statistics.ReportWithInfo("measured-latency")
+					p.clientState.timeStatistics["measured-latency"].AddTime(diff)
+					p.clientState.timeStatistics["measured-latency"].ReportWithInfo("measured-latency")
 				}
 			}
 		}
@@ -270,6 +273,10 @@ func (p *PriFiLibClientInstance) SendUpstreamData() error {
 	if msg, hasAMessage := p.clientState.BufferedRoundData[int32(p.clientState.RoundNo)]; hasAMessage {
 		p.Received_REL_CLI_DOWNSTREAM_DATA(msg)
 	}
+
+	timeMs := timing.StopMeasure("round-processing").Nanoseconds() / 1e6
+	p.clientState.timeStatistics["round-processing"].AddTime(timeMs)
+	p.clientState.timeStatistics["round-processing"].ReportWithInfo("round-processing")
 
 	return nil
 }

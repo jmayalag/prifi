@@ -37,7 +37,6 @@ func (p *PriFiSDAProtocol) buildMessageSender(identities map[string]PriFiIdentit
 
 		log.Lvl3("Found identity", identifier, " -> ", port, portForFastChannel)
 
-
 		if !ok {
 			log.Lvl3("Skipping unknow node with address", identifier)
 			continue
@@ -57,8 +56,6 @@ func (p *PriFiSDAProtocol) buildMessageSender(identities map[string]PriFiIdentit
 			}
 		}
 	}
-
-	log.Fatal("test")
 
 	return MessageSender{p.TreeNodeInstance, relay, clients, trustees}
 }

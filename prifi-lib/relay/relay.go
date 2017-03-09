@@ -172,7 +172,10 @@ Either we send something from the SOCKS/VPN buffer, or we answer the latency-tes
 */
 func (p *PriFiLibRelayInstance) Received_CLI_REL_UPSTREAM_DATA(msg net.CLI_REL_UPSTREAM_DATA) error {
 
+	timing.StartMeasure("dcnet-add")
 	p.relayState.bufferManager.AddClientCipher(msg.RoundID, msg.ClientID, msg.Data)
+	timeMs := timing.StopMeasure("dcnet-add").Nanoseconds() / 1e6
+	p.relayState.timeStatistics["dcnet-add"].AddTime(timeMs)
 
 	if p.relayState.bufferManager.HasAllCiphersForCurrentRound() {
 
@@ -202,7 +205,10 @@ If it's for this round, we call decode on it, and remember we received it.
 If for a future round we need to Buffer it.
 */
 func (p *PriFiLibRelayInstance) Received_TRU_REL_DC_CIPHER(msg net.TRU_REL_DC_CIPHER) error {
+	timing.StartMeasure("dcnet-add")
 	p.relayState.bufferManager.AddTrusteeCipher(msg.RoundID, msg.TrusteeID, msg.Data)
+	timeMs := timing.StopMeasure("dcnet-add").Nanoseconds() / 1e6
+	p.relayState.timeStatistics["dcnet-add"].AddTime(timeMs)
 
 	if p.relayState.bufferManager.HasAllCiphersForCurrentRound() {
 
@@ -232,6 +238,7 @@ If we use SOCKS/VPN, give them the data.
 func (p *PriFiLibRelayInstance) finalizeUpstreamData() error {
 
 	// we decode the DC-net cell
+	timing.StartMeasure("dcnet-decode")
 	clientSlices, trusteesSlices, err := p.relayState.bufferManager.FinalizeRound()
 	if err != nil {
 		return err
@@ -245,6 +252,8 @@ func (p *PriFiLibRelayInstance) finalizeUpstreamData() error {
 		p.relayState.CellCoder.DecodeTrustee(s)
 	}
 	upstreamPlaintext := p.relayState.CellCoder.DecodeCell()
+	timeMs := timing.StopMeasure("dcnet-decode").Nanoseconds() / 1e6
+	p.relayState.timeStatistics["dcnet-decode"].AddTime(timeMs)
 
 	p.relayState.bitrateStatistics.AddUpstreamCell(int64(len(upstreamPlaintext)))
 
@@ -268,6 +277,7 @@ func (p *PriFiLibRelayInstance) finalizeUpstreamData() error {
 		return errors.New(e)
 	}
 
+	timing.StartMeasure("socks-out")
 	if p.relayState.DataOutputEnabled {
 		packetType, _, _, _ := socks.ParseSocksHeaderFromBytes(upstreamPlaintext)
 
@@ -280,6 +290,8 @@ func (p *PriFiLibRelayInstance) finalizeUpstreamData() error {
 		}
 
 	}
+	timeMs = timing.StopMeasure("socks-out").Nanoseconds() / 1e6
+	p.relayState.timeStatistics["socks-out"].AddTime(timeMs)
 
 	p.roundFinished(p.relayState.dcnetRoundManager.CurrentRound())
 
@@ -382,6 +394,7 @@ func (p *PriFiLibRelayInstance) collectExperimentResult(str string) {
 
 func (p *PriFiLibRelayInstance) roundFinished(roundID int32) error {
 
+	timing.StartMeasure("round-transition")
 	p.relayState.numberOfNonAckedDownstreamPackets--
 
 	log.Lvl2("Relay finished round "+strconv.Itoa(int(roundID))+" (after", p.relayState.dcnetRoundManager.TimeSpentInRound(roundID), ").")
@@ -410,6 +423,8 @@ func (p *PriFiLibRelayInstance) roundFinished(roundID int32) error {
 		p.Received_ALL_ALL_SHUTDOWN(msg)
 	}
 
+	timeMs := timing.StopMeasure("round-transition").Nanoseconds() / 1e6
+	p.relayState.timeStatistics["round-transition"].AddTime(timeMs)
 	return nil
 }
 

@@ -61,7 +61,7 @@ type ClientState struct {
 	UseUDP                    bool
 	MessageHistory            abstract.Cipher
 	StartStopReceiveBroadcast chan bool
-	statistics                *prifilog.TimeStatistics
+	timeStatistics            map[string]*prifilog.TimeStatistics
 
 	//concurrent stuff
 	RoundNo           int32
@@ -88,7 +88,6 @@ func NewClient(doLatencyTest bool, dataOutputEnabled bool, dataForDCNet chan []b
 	clientState := new(ClientState)
 
 	//instantiates the static stuff
-	clientState.statistics = prifilog.NewTimeStatistics()
 	clientState.PublicKey, clientState.privateKey = crypto.NewKeyPair()
 	//clientState.StartStopReceiveBroadcast = make(chan bool) //this should stay nil, !=nil -> we have a listener goroutine active
 	clientState.LatencyTest = &LatencyTests{
@@ -96,6 +95,9 @@ func NewClient(doLatencyTest bool, dataOutputEnabled bool, dataForDCNet chan []b
 		LatencyTestsInterval: 5 * time.Second,
 		NextLatencyTest:      time.Now(),
 	}
+	clientState.timeStatistics = make(map[string]*prifilog.TimeStatistics)
+	clientState.timeStatistics["measured-latency"] = prifilog.NewTimeStatistics()
+	clientState.timeStatistics["round-processing"] = prifilog.NewTimeStatistics()
 	clientState.CellCoder = config.Factory()
 	clientState.DataForDCNet = dataForDCNet
 	clientState.DataFromDCNet = dataFromDCNet
