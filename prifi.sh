@@ -359,7 +359,6 @@ case $1 in
 		test_cothority
 
 		#test if a socks proxy is already running (needed for relay), or start ours
-		netstat -tunpl 2>/dev/null | grep "$socksServer2Port"
 		socks=$(netstat -tunpl 2>/dev/null | grep "$socksServer2Port" | wc -l)
 
 		if [ "$socks" -ne 1 ]; then
@@ -372,7 +371,7 @@ case $1 in
 		echo -n "Starting relay...			"
 		"$thisScript" relay > relay.log 2>&1 &
 		RELAYPID=$!
-		THISPGID=$(ps -o pgid= "$RELAYPID")
+		THISPGID=$(ps -o pgid= "$RELAYPID" | sed -e "s/^ //")
 		echo -e "$okMsg"
 
 		sleep "$sleeptime_between_spawns"
@@ -395,6 +394,7 @@ case $1 in
 		done
 
 		read -p "PriFi deployed. Press [enter] to kill all..." key
+		echo "Gonna run kill -TERM -- -\"$THISPGID\""
 
 		kill -TERM -- -"$THISPGID"
 		;;
