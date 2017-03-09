@@ -253,7 +253,7 @@ func (p *PriFiLibRelayInstance) finalizeUpstreamData() error {
 		pattern := int(binary.BigEndian.Uint16(upstreamPlaintext[0:2]))
 		if pattern == 43690 { // 1010101010101010
 			// then, we simply have to send it down
-			log.Info("Relay noticed a latency-test message on round", p.relayState.dcnetRoundManager.CurrentRound())
+			// log.Info("Relay noticed a latency-test message on round", p.relayState.dcnetRoundManager.CurrentRound())
 			p.relayState.PriorityDataForClients <- upstreamPlaintext
 		}
 	}

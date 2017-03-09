@@ -171,11 +171,11 @@ func (p *PriFiLibClientInstance) ProcessDownStreamData(msg net.REL_CLI_DOWNSTREA
 				clientID := int(binary.BigEndian.Uint16(msg.Data[2:4]))
 				if clientID == p.clientState.ID {
 					timestamp := int64(binary.BigEndian.Uint64(msg.Data[4:12]))
-					originalRoundID := int32(binary.BigEndian.Uint32(msg.Data[12:16]))
 					diff := MsTimeStamp() - timestamp
-					roundDiff := msg.RoundID - originalRoundID
 
-					log.Info("Measured latency is", diff, ", for client", clientID, ", roundDiff", roundDiff, ", received on round", msg.RoundID)
+					//originalRoundID := int32(binary.BigEndian.Uint32(msg.Data[12:16]))
+					//roundDiff := msg.RoundID - originalRoundID
+					//log.Info("Measured latency is", diff, ", for client", clientID, ", roundDiff", roundDiff, ", received on round", msg.RoundID)
 
 					p.clientState.statistics.AddTime(diff)
 					p.clientState.statistics.ReportWithInfo("measured-latency")
@@ -246,7 +246,7 @@ func (p *PriFiLibClientInstance) SendUpstreamData() error {
 				upstreamCellContent = buffer
 				p.clientState.LatencyTest.NextLatencyTest = now.Add(p.clientState.LatencyTest.LatencyTestsInterval)
 
-				log.Info("Client", p.clientState.ID, "sent a latency-test message on round", p.clientState.RoundNo)
+				//log.Info("Client", p.clientState.ID, "sent a latency-test message on round", p.clientState.RoundNo)
 			}
 		}
 	}
