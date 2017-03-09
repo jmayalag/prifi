@@ -327,14 +327,20 @@ func (p *PriFiLibRelayInstance) sendDownstreamData() error {
 		downstreamCellContent = data
 	}
 
-	// TODO : if something went wrong before, this flag should be used to warn the clients that the config has changed
-
-	flagResync := false
 	log.Lvl3("Relay is gonna broadcast messages for round " + strconv.Itoa(int(p.relayState.nextDownStreamRoundToSend)) + ".")
-	toSend := &net.REL_CLI_DOWNSTREAM_DATA{
-		RoundID:    p.relayState.nextDownStreamRoundToSend,
-		Data:       downstreamCellContent,
-		FlagResync: flagResync}
+
+	// TODO : if something went wrong before, this flag should be used to warn the clients that the config has changed
+	flagResync := false
+	toSend := make([]byte, 4+1+len(downstreamCellContent))
+	binary.BigEndian.PutUint32(toSend[0:4], uint32(p.relayState.nextDownStreamRoundToSend))
+	if flagResync{
+		toSend[4] = byte(255) // 0xFF
+	}
+	if lenCopied := copy(toSend[5:], downstreamCellContent); lenCopied != len(downstreamCellContent){
+		log.Fatal("Payload is", len(downstreamCellContent),", but only copied", lenCopied, ".")
+	}
+
+
 	p.relayState.dcnetRoundManager.OpenRound(p.relayState.nextDownStreamRoundToSend)
 	p.relayState.dcnetRoundManager.SetDataAlreadySent(p.relayState.nextDownStreamRoundToSend, toSend)
 
@@ -343,13 +349,12 @@ func (p *PriFiLibRelayInstance) sendDownstreamData() error {
 		// broadcast to all clients
 		for i := 0; i < p.relayState.nClients; i++ {
 			//send to the i-th client
-			p.messageSender.SendToClientWithLog(i, toSend, "(client "+strconv.Itoa(i)+", round "+strconv.Itoa(int(p.relayState.nextDownStreamRoundToSend))+")")
+			p.messageSender.FastSendToClientWithLog(i, toSend, "(client "+strconv.Itoa(i)+", round "+strconv.Itoa(int(p.relayState.nextDownStreamRoundToSend))+")")
 		}
 
 		p.relayState.bitrateStatistics.AddDownstreamCell(int64(len(downstreamCellContent)))
 	} else {
-		toSend2 := &net.REL_CLI_DOWNSTREAM_DATA_UDP{REL_CLI_DOWNSTREAM_DATA: *toSend}
-		p.messageSender.MessageSender.BroadcastToAllClients(toSend2)
+		p.messageSender.MessageSender.BroadcastToAllClients(toSend)
 
 		p.relayState.bitrateStatistics.AddDownstreamUDPCell(int64(len(downstreamCellContent)), p.relayState.nClients)
 	}

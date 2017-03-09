@@ -3,6 +3,7 @@ package net
 import (
 	"errors"
 	"reflect"
+	"strconv"
 )
 
 // MessageSender is the interface that abstracts the network
@@ -17,20 +18,21 @@ type MessageSender interface {
 	// SendToRelay tries to deliver the message "msg" to the relay.
 	SendToRelay(msg interface{}) error
 
-	/*
-		BroadcastToAllClients tries to deliver the message "msg"
-		to every client, possibly using broadcast.
-	*/
-	BroadcastToAllClients(msg interface{}) error
+	// FastSendToClient tries to deliver the bytes to the client i, possibly skipping the marshalling imposed
+	// by the methods above.
+	FastSendToClient(i int, msg []byte) error
 
-	/*
-		ClientSubscribeToBroadcast should be called by the Clients
-		in order to receive the Broadcast messages.
-		Calling the function starts the handler but does not actually
-		listen for broadcast messages.
-		Sending true to startStopChan starts receiving the broadcasts.
-		Sending false to startStopChan stops receiving the broadcasts.
-	*/
+	// FastSendToClient tries to deliver the bytes to the client i, possibly skipping the marshalling imposed
+	// by the methods above.
+	FastSendToRelay(msg []byte) error
+
+	// BroadcastToAllClients tries to deliver the message "msg" to every client, possibly using broadcast.
+	BroadcastToAllClients(msg []byte) error
+
+	// ClientSubscribeToBroadcast should be called by the Clients in order to receive the Broadcast messages.
+	// Calling the function starts the handler but does not actually listen for broadcast messages.
+	// Sending true to startStopChan starts receiving the broadcasts.
+	// Sending false to startStopChan stops receiving the broadcasts.
 	ClientSubscribeToBroadcast(clientName string, messageReceived func(interface{}) error, startStopChan chan bool) error
 }
 
@@ -114,6 +116,54 @@ func (m *MessageSenderWrapper) SendToRelayWithLog(msg interface{}, extraInfos st
 	}
 	return true
 }
+
+/**
+ * Send a message to client i. will automatically print what it does (Lvl3) if loggingenabled, and
+ * will call networkErrorHappened on error
+ */
+func (m *MessageSenderWrapper) FastSendToClientWithLog(i int, msg []byte, extraInfos string) bool {
+	err := m.MessageSender.FastSendToClient(i, msg)
+	if err != nil {
+		e := "Tried to fast-send a message to client "+strconv.Itoa(i)+", but some network error occurred. Err is: " + err.Error()
+		if m.networkErrorHappened != nil {
+			m.networkErrorHappened(errors.New(e))
+		}
+		if m.loggingEnabled {
+			m.logErrorFunction(e + extraInfos)
+		}
+		return false
+	}
+
+	if m.loggingEnabled {
+		m.logSuccessFunction("Fast-sent a message to client "+strconv.Itoa(i)+"." + extraInfos)
+	}
+	return true
+}
+
+/**
+ * Send a message to client i. will automatically print what it does (Lvl3) if loggingenabled, and
+ * will call networkErrorHappened on error
+ */
+func (m *MessageSenderWrapper) FastSendToRelayWithLog(msg []byte, extraInfos string) bool {
+	err := m.MessageSender.FastSendToRelay(msg)
+	if err != nil {
+		e := "Tried to fast-send a message to relay, but some network error occurred. Err is: " + err.Error()
+		if m.networkErrorHappened != nil {
+			m.networkErrorHappened(errors.New(e))
+		}
+		if m.loggingEnabled {
+			m.logErrorFunction(e + extraInfos)
+		}
+		return false
+	}
+
+	if m.loggingEnabled {
+		m.logSuccessFunction("Fast-sent a message to relay." + extraInfos)
+	}
+
+	return true
+}
+
 
 /**
  * Helper function for both SendToClientWithLog and SendToTrusteeWithLog

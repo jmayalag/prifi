@@ -1,18 +1,21 @@
 package relay
 
 import (
-	"github.com/lbarman/prifi/prifi-lib/net"
 	"gopkg.in/dedis/onet.v1/log"
 	"sync"
 	"time"
 )
+
+type ByteArray struct {
+	Data []byte
+}
 
 // DCNetRound counts how many (upstream) messages we received for a given DC-net round.
 type DCNetRoundManager struct {
 	sync.Mutex
 	currentRound                int32
 	maxNumberOfConcurrentRounds int
-	dataAlreadySent             map[int32]*net.REL_CLI_DOWNSTREAM_DATA
+	dataAlreadySent             map[int32]*ByteArray
 	startTimes                  map[int32]time.Time
 }
 
@@ -22,7 +25,7 @@ func NewDCNetRoundManager(maxNumberOfConcurrentRounds int) *DCNetRoundManager {
 	dcRM.currentRound = 0
 	dcRM.maxNumberOfConcurrentRounds = maxNumberOfConcurrentRounds
 	dcRM.startTimes = make(map[int32]time.Time)
-	dcRM.dataAlreadySent = make(map[int32]*net.REL_CLI_DOWNSTREAM_DATA)
+	dcRM.dataAlreadySent = make(map[int32]*ByteArray)
 
 	return dcRM
 }
@@ -89,18 +92,18 @@ func (dc *DCNetRoundManager) TimeSpentInRound(roundID int32) time.Duration {
 }
 
 //Set the "DataAlreadySent" field for the given round
-func (dc *DCNetRoundManager) SetDataAlreadySent(roundID int32, data *net.REL_CLI_DOWNSTREAM_DATA) {
+func (dc *DCNetRoundManager) SetDataAlreadySent(roundID int32, data []byte) {
 	dc.Lock()
 	defer dc.Unlock()
-	dc.dataAlreadySent[roundID] = data
+	dc.dataAlreadySent[roundID] = &ByteArray{data}
 }
 
 //Gets the "DataAlreadySent" field for the given round
-func (dc *DCNetRoundManager) GetDataAlreadySent(roundID int32) *net.REL_CLI_DOWNSTREAM_DATA {
+func (dc *DCNetRoundManager) GetDataAlreadySent(roundID int32) []byte {
 	dc.Lock()
 	defer dc.Unlock()
 	if data, found := dc.dataAlreadySent[roundID]; found {
-		return data
+		return data.Data
 	}
 	log.Fatal("Requested data already sent for round", roundID, ", but round has been closed already (or was not found).")
 	return nil

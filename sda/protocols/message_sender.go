@@ -32,6 +32,7 @@ func (p *PriFiSDAProtocol) buildMessageSender(identities map[string]PriFiIdentit
 	for i := 0; i < len(nodes); i++ {
 		identifier := nodes[i].ServerIdentity.Public.String()
 		id, ok := identities[identifier]
+		log.Info("Found identity", identifier," -> ", id)
 
 		if !ok {
 			log.Lvl3("Skipping unknow node with address", identifier)

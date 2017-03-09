@@ -7,11 +7,7 @@ import (
 
 func TestDCNetRound(test *testing.T) {
 
-	data := net.REL_CLI_DOWNSTREAM_DATA{
-		RoundID:    101,
-		Data:       make([]byte, 101),
-		FlagResync: true,
-	}
+	data := make([]byte, 101)
 	window := 10
 	dcmr := NewDCNetRoundManager(window)
 
