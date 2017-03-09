@@ -20,14 +20,14 @@ type MessageSender interface {
 
 	// FastSendToClient tries to deliver the bytes to the client i, possibly skipping the marshalling imposed
 	// by the methods above.
-	FastSendToClient(i int, msg []byte) error
+	FastSendToClient(i int, msg *REL_CLI_DOWNSTREAM_DATA) error
 
 	// FastSendToClient tries to deliver the bytes to the client i, possibly skipping the marshalling imposed
 	// by the methods above.
-	FastSendToRelay(msg []byte) error
+	FastSendToRelay(msg *CLI_REL_UPSTREAM_DATA) error
 
 	// BroadcastToAllClients tries to deliver the message "msg" to every client, possibly using broadcast.
-	BroadcastToAllClients(msg []byte) error
+	BroadcastToAllClients(msg *REL_CLI_DOWNSTREAM_DATA) error
 
 	// ClientSubscribeToBroadcast should be called by the Clients in order to receive the Broadcast messages.
 	// Calling the function starts the handler but does not actually listen for broadcast messages.
@@ -121,7 +121,7 @@ func (m *MessageSenderWrapper) SendToRelayWithLog(msg interface{}, extraInfos st
  * Send a message to client i. will automatically print what it does (Lvl3) if loggingenabled, and
  * will call networkErrorHappened on error
  */
-func (m *MessageSenderWrapper) FastSendToClientWithLog(i int, msg []byte, extraInfos string) bool {
+func (m *MessageSenderWrapper) FastSendToClientWithLog(i int, msg *REL_CLI_DOWNSTREAM_DATA, extraInfos string) bool {
 	err := m.MessageSender.FastSendToClient(i, msg)
 	if err != nil {
 		e := "Tried to fast-send a message to client "+strconv.Itoa(i)+", but some network error occurred. Err is: " + err.Error()
@@ -144,7 +144,7 @@ func (m *MessageSenderWrapper) FastSendToClientWithLog(i int, msg []byte, extraI
  * Send a message to client i. will automatically print what it does (Lvl3) if loggingenabled, and
  * will call networkErrorHappened on error
  */
-func (m *MessageSenderWrapper) FastSendToRelayWithLog(msg []byte, extraInfos string) bool {
+func (m *MessageSenderWrapper) FastSendToRelayWithLog(msg *CLI_REL_UPSTREAM_DATA, extraInfos string) bool {
 	err := m.MessageSender.FastSendToRelay(msg)
 	if err != nil {
 		e := "Tried to fast-send a message to relay, but some network error occurred. Err is: " + err.Error()
