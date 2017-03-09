@@ -27,7 +27,7 @@ type MessageSender interface {
 	FastSendToRelay(msg *CLI_REL_UPSTREAM_DATA) error
 
 	// BroadcastToAllClients tries to deliver the message "msg" to every client, possibly using broadcast.
-	BroadcastToAllClients(msg *REL_CLI_DOWNSTREAM_DATA) error
+	BroadcastToAllClients(msg interface{}) error
 
 	// ClientSubscribeToBroadcast should be called by the Clients in order to receive the Broadcast messages.
 	// Calling the function starts the handler but does not actually listen for broadcast messages.
@@ -124,7 +124,7 @@ func (m *MessageSenderWrapper) SendToRelayWithLog(msg interface{}, extraInfos st
 func (m *MessageSenderWrapper) FastSendToClientWithLog(i int, msg *REL_CLI_DOWNSTREAM_DATA, extraInfos string) bool {
 	err := m.MessageSender.FastSendToClient(i, msg)
 	if err != nil {
-		e := "Tried to fast-send a message to client "+strconv.Itoa(i)+", but some network error occurred. Err is: " + err.Error()
+		e := "Tried to fast-send a message to client " + strconv.Itoa(i) + ", but some network error occurred. Err is: " + err.Error()
 		if m.networkErrorHappened != nil {
 			m.networkErrorHappened(errors.New(e))
 		}
@@ -135,7 +135,7 @@ func (m *MessageSenderWrapper) FastSendToClientWithLog(i int, msg *REL_CLI_DOWNS
 	}
 
 	if m.loggingEnabled {
-		m.logSuccessFunction("Fast-sent a message to client "+strconv.Itoa(i)+"." + extraInfos)
+		m.logSuccessFunction("Fast-sent a message to client " + strconv.Itoa(i) + "." + extraInfos)
 	}
 	return true
 }
@@ -163,7 +163,6 @@ func (m *MessageSenderWrapper) FastSendToRelayWithLog(msg *CLI_REL_UPSTREAM_DATA
 
 	return true
 }
-
 
 /**
  * Helper function for both SendToClientWithLog and SendToTrusteeWithLog

@@ -349,7 +349,8 @@ func (p *PriFiLibRelayInstance) sendDownstreamData() error {
 
 		p.relayState.bitrateStatistics.AddDownstreamCell(int64(len(downstreamCellContent)))
 	} else {
-		p.messageSender.MessageSender.BroadcastToAllClients(toSend)
+		toSend2 := &net.REL_CLI_DOWNSTREAM_DATA_UDP{REL_CLI_DOWNSTREAM_DATA: *toSend}
+		p.messageSender.MessageSender.BroadcastToAllClients(toSend2)
 
 		p.relayState.bitrateStatistics.AddDownstreamUDPCell(int64(len(downstreamCellContent)), p.relayState.nClients)
 	}

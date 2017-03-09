@@ -10,10 +10,10 @@ import (
 // DCNetRound counts how many (upstream) messages we received for a given DC-net round.
 type DCNetRoundManager struct {
 	sync.Mutex
-	currentRound    int32
-	maxNumberOfConcurrentRounds    int
-	dataAlreadySent map[int32]*net.REL_CLI_DOWNSTREAM_DATA
-	startTimes      map[int32]time.Time
+	currentRound                int32
+	maxNumberOfConcurrentRounds int
+	dataAlreadySent             map[int32]*net.REL_CLI_DOWNSTREAM_DATA
+	startTimes                  map[int32]time.Time
 }
 
 // Creates a DCNetRound that hold a roundID, some data (sent at the beginning of the round, in case some client missed it), and the time the round started
@@ -34,7 +34,7 @@ func (dc *DCNetRoundManager) OpenRound(roundID int32) {
 
 	//make sure not to open more rounds than allowed (or we won't count correctly)
 	if len(dc.startTimes) >= dc.maxNumberOfConcurrentRounds {
-		log.Fatal("Tried to OpenRound(",roundID,"), but we have already", len(dc.startTimes), "rounds opened.")
+		log.Fatal("Tried to OpenRound(", roundID, "), but we have already", len(dc.startTimes), "rounds opened.")
 	}
 
 	dc.dataAlreadySent[roundID] = nil
@@ -47,16 +47,16 @@ func (dc *DCNetRoundManager) CloseRound(roundID int32) {
 	defer dc.Unlock()
 
 	//this is a DC-net, devices are in lock-step, never close a round if another with smaller ID is open
-	for i:=1; i<=dc.maxNumberOfConcurrentRounds; i++ {
+	for i := 1; i <= dc.maxNumberOfConcurrentRounds; i++ {
 		indexToCheck := roundID - int32(i)
 		if indexToCheck >= 0 {
 			if _, found := dc.startTimes[indexToCheck]; found {
-				log.Fatal("Tried to CloseRound(",roundID,"), but round", indexToCheck, "is still opened.")
+				log.Fatal("Tried to CloseRound(", roundID, "), but round", indexToCheck, "is still opened.")
 			}
 		}
 	}
 
-	dc.currentRound += 1
+	dc.currentRound++
 
 	delete(dc.dataAlreadySent, roundID)
 	delete(dc.startTimes, roundID)
