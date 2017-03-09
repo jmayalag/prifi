@@ -12,13 +12,16 @@ func TestDCNetRound(test *testing.T) {
 		Data:       make([]byte, 101),
 		FlagResync: true,
 	}
-	dc := NewDCNetRound(100, &data)
+	window := 10
+	dcmr := NewDCNetRoundManager(window)
 
-	if dc.CurrentRound() != 100 {
-		test.Error("Should be in round 100")
+	if dcmr.CurrentRound() != 0 {
+		test.Error("Should be in round 0")
 	}
-	if !dc.isStillInRound(100) {
-		test.Error("Should still be in round 100")
+	if !dcmr.CurrentRoundIsStill(0) {
+		test.Error("Should still be in round 0")
 	}
+
+	_ = data
 
 }

@@ -167,12 +167,15 @@ func (p *PriFiLibClientInstance) ProcessDownStreamData(msg net.REL_CLI_DOWNSTREA
 		if p.clientState.LatencyTest.DoLatencyTests && len(msg.Data) > 2 {
 
 			pattern := int(binary.BigEndian.Uint16(msg.Data[0:2]))
-			if pattern == 43690 {
-					//1010101010101010
-					clientID := int(binary.BigEndian.Uint16(msg.Data[2:4]))
-					if clientID == p.clientState.ID {
-						timestamp := int64(binary.BigEndian.Uint64(msg.Data[4:12]))
-						diff := MsTimeStamp() - timestamp
+			if pattern == 43690 { //1010101010101010
+				clientID := int(binary.BigEndian.Uint16(msg.Data[2:4]))
+				if clientID == p.clientState.ID {
+					timestamp := int64(binary.BigEndian.Uint64(msg.Data[4:12]))
+					originalRoundID := int32(binary.BigEndian.Uint32(msg.Data[12:16]))
+					diff := MsTimeStamp() - timestamp
+					roundDiff := msg.RoundID - originalRoundID
+
+					log.Info("Measured latency is", diff, ", for client", clientID, ", roundDiff", roundDiff, ", received on round", msg.RoundID)
 
 					p.clientState.statistics.AddTime(diff)
 					p.clientState.statistics.ReportWithInfo("measured-latency")
@@ -227,7 +230,7 @@ func (p *PriFiLibClientInstance) SendUpstreamData() error {
 			now := time.Now()
 			if p.clientState.LatencyTest.DoLatencyTests && now.After(p.clientState.LatencyTest.NextLatencyTest) {
 
-				if p.clientState.PayloadLength < 12 {
+				if p.clientState.PayloadLength < 16 {
 					panic("Trying to do a Latency test, but payload is smaller than 10 bytes.")
 				}
 
@@ -238,9 +241,12 @@ func (p *PriFiLibClientInstance) SendUpstreamData() error {
 				binary.BigEndian.PutUint16(buffer[0:2], pattern)
 				binary.BigEndian.PutUint16(buffer[2:4], uint16(p.clientState.ID))
 				binary.BigEndian.PutUint64(buffer[4:12], uint64(currTime))
+				binary.BigEndian.PutUint32(buffer[12:16], uint32(p.clientState.RoundNo))
 
 				upstreamCellContent = buffer
 				p.clientState.LatencyTest.NextLatencyTest = now.Add(p.clientState.LatencyTest.LatencyTestsInterval)
+
+				log.Info("Client", p.clientState.ID, "sent a latency-test message on round", p.clientState.RoundNo)
 			}
 		}
 	}

@@ -80,7 +80,6 @@ func NewRelay(dataOutputEnabled bool, dataForClients chan []byte, dataFromDCNet 
 	relayState.timeStatistics["sending-data"] = prifilog.NewTimeStatistics()
 	relayState.PublicKey, relayState.privateKey = crypto.NewKeyPair()
 	relayState.bufferManager = new(BufferManager)
-	relayState.currentDCNetRound = NewDCNetRound(0, nil)
 	neffShuffle := new(scheduler.NeffShuffle)
 	neffShuffle.Init()
 	relayState.neffShuffle = neffShuffle.RelayView
@@ -137,7 +136,7 @@ type RelayState struct {
 	bufferManager                     *BufferManager
 	CellCoder                         dcnet.CellCoder
 	clients                           []NodeRepresentation
-	currentDCNetRound                 *DCNetRound
+	dcnetRoundManager                 *DCNetRoundManager
 	neffShuffle                       *scheduler.NeffShuffleRelay
 	currentState                      int16
 	DataForClients                    chan []byte // VPN / SOCKS should put data there !
