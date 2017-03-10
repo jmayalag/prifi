@@ -637,6 +637,16 @@ case $1 in
 
 	simul|Simul|SIMUL)
 
+
+		#create a file ~/pings.sh with this content
+		#  #!/bin/sh
+		#  for ip in 10.0.1.1 10.1.0.1; do
+		#      echo "Pinging $ip"
+		#      ssh relay.LB-LLD.SAFER.isi.deterlab.net "ping $ip -w 10 -c 10 | grep rtt"
+		#	   echo -n ";"
+		#  done
+		# [EOF]
+
 		EXPERIMENT_ID_VALUE=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
 		SIMUL_FILE="prifi_simul.toml"
 		PLATFORM="deterlab"
@@ -651,9 +661,14 @@ case $1 in
 		cd "$SIMUL_DIR"; go build -o "$EXEC_NAME" *.go | tee ../../last-simul.log
 		echo -e "$okMsg" | tee last-simul.log
 
-		echo -e "Simulation ID is ${highlightOn}${EXPERIMENT_ID_VALUE}${highlightOff}, storing it in ${highlightOn}~/remote/.simID${highlightOff} on remote" | tee last-simul.log
+		echo -en "Simulation ID is ${highlightOn}${EXPERIMENT_ID_VALUE}${highlightOff}, storing it in ${highlightOn}~/remote/.simID${highlightOff} on remote... " | tee last-simul.log
 		ssh $deterlabUser@users.deterlab.net "echo ${EXPERIMENT_ID_VALUE} > ~/remote/.simID"
 		echo -e "$okMsg" | tee last-simul.log
+
+		echo -n "Mesuring latencies... " | tee last-simul.log
+		pings=$(ssh $deterlabUser@users.deterlab.net "./pings.sh")
+		echo -e "$okMsg" | tee last-simul.log
+		echo $pings | sed -e "s/10.0.1.1/client0/" | sed -e "s/10.1.0.1/trustee0/" | tr ';' '\n' | tee last-simul.log
 
 		echo -e "Starting simulation ${highlightOn}${SIMUL_FILE}${highlightOff} on ${highlightOn}${PLATFORM}${highlightOff}." | tee ../../last-simul.log
 		DEBUG_LVL=$dbg_lvl DEBUG_COLOR=$colors ./"$EXEC_NAME" -platform "$PLATFORM" "$SIMUL_FILE" | tee ../../last-simul.log
