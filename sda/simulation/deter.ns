@@ -9,8 +9,10 @@ source tb_compat.tcl
 set n_trustees 5
 set n_clients 10
 
-set trustee_bandwidth 10Mb
-set trustee_delay 100ms
+set trustee_bandwidth 100Mb
+set client_bandwidth 1000Mb
+set trustee_delay 90ms
+set client_delay 9ms
 
 set lanstr_trustees ""
 set lanstr_clients ""
@@ -45,8 +47,8 @@ for {set i 0} {$i < $n_clients} {incr i} {
 }
 
 
-set lanclients [$ns make-lan "$lanstr_clients" 100Mb 10ms]
-set lantrustees [$ns make-lan "$lanstr_trustees" 100Mb $trustee_delay]
+set lanclients [$ns make-lan "$lanstr_clients" $client_bandwidth $client_delay]
+set lantrustees [$ns make-lan "$lanstr_trustees" $trustee_bandwidth $trustee_delay]
 
 # set the relay in both lan
 tb-set-ip-lan $relay $lantrustees 10.1.0.254
