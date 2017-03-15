@@ -33,7 +33,7 @@ func (p *PriFiSDAProtocol) buildMessageSender(identities map[string]PriFiIdentit
 		identifier := nodes[i].ServerIdentity.Public.String()
 		id, ok := identities[identifier]
 		port, _ := strconv.Atoi(nodes[i].ServerIdentity.Address.Port())
-		portForFastChannel := port+3
+		portForFastChannel := port + 3
 
 		log.Lvl3("Found identity", identifier, " -> ", port, portForFastChannel)
 

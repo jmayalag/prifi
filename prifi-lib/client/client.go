@@ -35,8 +35,8 @@ import (
 
 	"github.com/lbarman/prifi/prifi-lib/scheduler"
 	socks "github.com/lbarman/prifi/prifi-socks"
-	"time"
 	"github.com/lbarman/prifi2/utils/timing"
+	"time"
 )
 
 // Received_ALL_CLI_SHUTDOWN handles ALL_CLI_SHUTDOWN messages.
