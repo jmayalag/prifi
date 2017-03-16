@@ -213,11 +213,11 @@ func (c *churnHandler) handleConnection(msg *network.Envelope) {
 	isTrustee := c.isATrustee(msg.ServerIdentity)
 
 	if c.waitQueue.contains(ID, isTrustee) {
-		log.Lvl3("Ignored new connection request from", ID, " (isATrustee:", isTrustee, "), already in the list")
+		log.Lvl2("Ignored new connection request from", ID, " (isATrustee:", isTrustee, "), already in the list")
 		return
 	}
 
-	log.Lvl3("Received new connection request from", ID, " (isATrustee:", isTrustee, ")")
+	log.Lvl2("Received new connection request from", ID, " (isATrustee:", isTrustee, ")")
 
 	if isTrustee {
 		c.waitQueue.trustees[ID] = &waitQueueEntry{

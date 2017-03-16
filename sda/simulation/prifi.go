@@ -24,9 +24,12 @@ import (
 // FILE_SIMULATION_ID is the file where the simulation ID is stored
 const FILE_SIMULATION_ID = ".simID"
 
+// SIMULATION_ROUND_TIMEOUT_SECONDS is define the max duration of one round of the simulation
+const SIMULATION_ROUND_TIMEOUT_SECONDS = 180
 /*
  * Defines the simulation for the service-template
  */
+
 
 func init() {
 	onet.SimulationRegister("PriFi", NewSimulationService)
@@ -174,6 +177,7 @@ func (s *SimulationService) Run(config *onet.SimulationConfig) error {
 		time.Sleep(10 * time.Second)
 
 		log.Info("Starting experiment", simulationID, "round", round)
+		startTime := time.Now()
 
 		for !service.HasEnoughParticipants() {
 			t, c := service.CountParticipants()
@@ -183,7 +187,7 @@ func (s *SimulationService) Run(config *onet.SimulationConfig) error {
 
 		service.StartPriFiCommunicateProtocol()
 
-		//the art of programming : waiting for an event (not even thread safe!)
+		//the art of programming : waiting for the channel to be created (not even thread safe!)
 		for service.PriFiSDAProtocol == nil {
 			time.Sleep(10 * time.Millisecond)
 		}
@@ -192,38 +196,53 @@ func (s *SimulationService) Run(config *onet.SimulationConfig) error {
 		}
 
 		//block and get the result from the channel
-		res := <-service.PriFiSDAProtocol.ResultChannel
-		resStringArray := res.([]string)
+		var resStringArray []string
 
-		//create folder for this experiment
-		folderName := "output_" + simulationID + "/" + hashString(config.Config)
-		if _, err := os.Stat(folderName); err != nil {
-			os.MkdirAll(folderName, 0777)
+		select {
+		case res := <-service.PriFiSDAProtocol.ResultChannel:
+			resStringArray = res.([]string)
 
-			//write config
-			filePath := path.Join(folderName, "config")
-			err = ioutil.WriteFile(filePath, []byte(fmt.Sprintf("%+v", config)), 0777)
-			if err != nil {
-				log.Error("Could not write config into file", filePath)
-			}
+		case <-time.After(SIMULATION_ROUND_TIMEOUT_SECONDS * time.Second):
+			resStringArray = make([]string, 1)
+			resStringArray[0] = "Simulation timed out."
 		}
 
-		//write to file
-		o := new(output.FileOutput)
-		filePath := path.Join(folderName, "output_r"+strconv.Itoa(round)+".txt")
-		o.Filename = filePath
-		log.Info("Simulation results stored in", o.Filename)
-		for _, s := range resStringArray {
-			o.Print(s)
-		}
-
+		//finish the round, kill the protocol, and writes log
+		writeExperimentResult(resStringArray, round, simulationID, config)
 		service.StopPriFiCommunicateProtocol()
+
+		duration := time.Now().Sub(startTime)
+		log.Info("Experiment", simulationID+"round", round, "finished after", duration)
 	}
 	service.GlobalShutDownSocks()
 
 	//stop the SOCKS stuff (will be restarted next round)
 
 	return nil
+}
+
+func writeExperimentResult(data []string, round int, simulationID string, config *onet.SimulationConfig) {
+	//create folder for this experiment
+	folderName := "output_" + simulationID + "/" + hashString(config.Config)
+	if _, err := os.Stat(folderName); err != nil {
+		os.MkdirAll(folderName, 0777)
+
+		//write config
+		filePath := path.Join(folderName, "config")
+		err = ioutil.WriteFile(filePath, []byte(fmt.Sprintf("%+v", config)), 0777)
+		if err != nil {
+			log.Error("Could not write config into file", filePath)
+		}
+	}
+
+	//write to file
+	o := new(output.FileOutput)
+	filePath := path.Join(folderName, "output_r"+strconv.Itoa(round)+".txt")
+	o.Filename = filePath
+	log.Info("Simulation results stored in", o.Filename)
+	for _, s := range data {
+		o.Print(s)
+	}
 }
 func hashString(data string) string {
 	hasher := sha1.New() //this is not a crypto hash, and 256 is too long to be human-readable
