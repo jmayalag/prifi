@@ -12,7 +12,7 @@
 
 # variables that you might change often
 
-dbg_lvl=3                       # 1=less verbose, 3=more verbose. goes up to 5, but then prints the SDA's message (network framework)
+dbg_lvl=1                       # 1=less verbose, 3=more verbose. goes up to 5, but then prints the SDA's message (network framework)
 try_use_real_identities="false" # if "true", will try to use "self-generated" public/private key as a replacement for the dummy keys
                                 # we generated for you. It asks you if it does not find real keys. If false, will always use the dummy keys.
 colors="true"                   # if  "false", the output of PriFi (and this script) will be in black-n-white
@@ -653,6 +653,7 @@ case $1 in
 		EXEC_NAME="prifi_simul"
 		SIMUL_DIR="sda/simulation"
 		deterlabUser="lbarman"
+		MPORT="10002"
 		dbg_lvl=1
 
 		rm -f last-simul.log
@@ -671,7 +672,7 @@ case $1 in
 		echo $pings | sed -e "s/10.0.1.1/client0/" | sed -e "s/10.1.0.1/trustee0/" | tr ';' '\n' | tee ../../last-simul.log
 
 		echo -e "Starting simulation ${highlightOn}${SIMUL_FILE}${highlightOff} on ${highlightOn}${PLATFORM}${highlightOff}." | tee ../../last-simul.log
-		DEBUG_LVL=$dbg_lvl DEBUG_COLOR=$colors ./"$EXEC_NAME" -platform "$PLATFORM" "$SIMUL_FILE" | tee ../../last-simul.log
+		DEBUG_LVL=$dbg_lvl DEBUG_COLOR=$colors ./"$EXEC_NAME" -platform "$PLATFORM" -mport "$MPORT" "$SIMUL_FILE" | tee ../../last-simul.log
 
 		echo -n "Simulation done, cleaning up... " | tee ../../last-simul.log
 		rm -f "$EXEC_NAME" | tee ../../last-simul.log

@@ -64,7 +64,6 @@ func (s *SimulationService) Setup(dir string, hosts []string) (*onet.SimulationC
 	if err != nil {
 		return nil, err
 	}
-
 	return sc, nil
 }
 

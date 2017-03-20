@@ -94,22 +94,27 @@ func (s *SimulationManualAssignment) CreateRoster(sc *onet.SimulationConfig, add
 		log.Fatal("Could not decode " + HostsMappingFile)
 	}
 
+	//prepare the ports mapping
+	portsMapping := make(map[string]int, 0)
+	for _, hostMapping := range mapping.Hosts{
+		portsMapping[hostMapping.IP] = port
+	}
+
 	for c := 0; c < hosts; c++ {
 		key.Secret.Add(key.Secret, key.Suite.Scalar().One())
 		key.Public.Add(key.Public, key.Suite.Point().Base())
 
-		addr := ""
+		address := ""
 		for _, hostMapping := range mapping.Hosts {
 			if hostMapping.ID == c {
-				addr = hostMapping.IP
+				address = hostMapping.IP
 			}
 		}
 
-		if addr == "" {
+		if address == "" {
 			log.Fatal("Host index", c, "not specified in hosts_mapping.toml")
 		}
 
-		address := addr + ":"
 		var add network.Address
 		if localhosts {
 			// If we have localhosts, we have to search for an empty port
@@ -128,12 +133,14 @@ func (s *SimulationManualAssignment) CreateRoster(sc *onet.SimulationConfig, add
 					port = 0
 				}
 			}
-			address += strconv.Itoa(port)
+			address += ":" + strconv.Itoa(port)
 			add = network.NewTCPAddress(address)
 			log.Lvl4("Found free port", address)
 		} else {
-			address += strconv.Itoa(port + (c/nbrAddr)*2)
-			add = network.NewTCPAddress(address)
+			nextFreePort := portsMapping[address]
+			portsMapping[address] += 2
+			addressAndPort := address + ":" + strconv.Itoa(nextFreePort)
+			add = network.NewTCPAddress(addressAndPort)
 		}
 		log.Lvl3("Adding server", address, "to Roster")
 		entities[c] = network.NewServerIdentity(key.Public.Clone(), add)
