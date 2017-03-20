@@ -96,7 +96,7 @@ func (s *SimulationManualAssignment) CreateRoster(sc *onet.SimulationConfig, add
 
 	//prepare the ports mapping
 	portsMapping := make(map[string]int, 0)
-	for _, hostMapping := range mapping.Hosts{
+	for _, hostMapping := range mapping.Hosts {
 		portsMapping[hostMapping.IP] = port
 	}
 

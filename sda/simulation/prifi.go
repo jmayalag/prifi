@@ -26,10 +26,10 @@ const FILE_SIMULATION_ID = ".simID"
 
 // SIMULATION_ROUND_TIMEOUT_SECONDS is define the max duration of one round of the simulation
 const SIMULATION_ROUND_TIMEOUT_SECONDS = 180
+
 /*
  * Defines the simulation for the service-template
  */
-
 
 func init() {
 	onet.SimulationRegister("PriFi", NewSimulationService)
