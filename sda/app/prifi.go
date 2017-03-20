@@ -142,11 +142,11 @@ func readConfigAndStartCothority(c *cli.Context) (*onet.Server, *app.Group, *pri
 
 	//override log level and color
 	if prifiTomlConfig.OverrideLogLevel > 0 {
-		log.Lvl1("Overriding log level (from .toml) to", prifiTomlConfig.OverrideLogLevel)
+		log.Lvl3("Overriding log level (from .toml) to", prifiTomlConfig.OverrideLogLevel)
 		log.SetDebugVisible(prifiTomlConfig.OverrideLogLevel)
 	}
 	if prifiTomlConfig.ForceConsoleColor {
-		log.Lvl1("Forcing the console output to be colored (from .toml)")
+		log.Lvl3("Forcing the console output to be colored (from .toml)")
 		log.SetUseColors(true)
 	}
 

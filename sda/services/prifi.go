@@ -214,7 +214,7 @@ func (s *ServiceState) connectToRelay(relayID *network.ServerIdentity, stopChan 
 
 	tick := time.Tick(DELAY_BEFORE_CONNECT_TO_RELAY)
 	for range tick {
-		log.Info("Service", s, ": Still pinging relay", !s.IsPriFiProtocolRunning())
+		//log.Info("Service", s, ": Still pinging relay", !s.IsPriFiProtocolRunning())
 		if !s.IsPriFiProtocolRunning() {
 			s.sendConnectionRequest(relayID)
 		}
