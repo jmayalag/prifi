@@ -664,6 +664,7 @@ case $1 in
 
 		echo -en "Simulation ID is ${highlightOn}${EXPERIMENT_ID_VALUE}${highlightOff}, storing it in ${highlightOn}~/remote/.simID${highlightOff} on remote... " | tee ../../last-simul.log
 		ssh $deterlabUser@users.deterlab.net "echo ${EXPERIMENT_ID_VALUE} > ~/remote/.simID"  | tee ../../last-simul.log
+		ssh $deterlabUser@users.deterlab.net "rm ~/remote/.lastsimul"
 		echo -e "$okMsg" | tee ../../last-simul.log
 
 		if [ "$2" == "noping" ]; then
@@ -681,7 +682,12 @@ case $1 in
 		echo -n "Simulation done, cleaning up... " | tee ../../last-simul.log
 		rm -f "$EXEC_NAME" | tee ../../last-simul.log
 		echo -e "$okMsg" | tee ../../last-simul.log
+		
+		status=$(ssh $deterlabUser@users.deterlab.net "cat ~/remote/.lastsimul")
+		echo -e "Status is ${highlightOn}${status}${highlightOff}." | tee ../../last-simul.log
+
 		;;
+
 
 	simul-gl|simul-get-logs)
 

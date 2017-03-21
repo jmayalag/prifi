@@ -25,7 +25,7 @@ import (
 const FILE_SIMULATION_ID = ".simID"
 
 // SIMULATION_ROUND_TIMEOUT_SECONDS is define the max duration of one round of the simulation
-const SIMULATION_ROUND_TIMEOUT_SECONDS = 180
+const SIMULATION_ROUND_TIMEOUT_SECONDS = 360
 
 /*
  * Defines the simulation for the service-template
@@ -125,11 +125,11 @@ func (s *SimulationService) Node(config *onet.SimulationConfig) error {
 
 	//override log level, maybe
 	if s.OverrideLogLevel > 0 {
-		log.Lvl1("Overriding log level (from .toml) to", s.OverrideLogLevel)
+		log.Lvl3("Overriding log level (from .toml) to", s.OverrideLogLevel)
 		log.SetDebugVisible(s.OverrideLogLevel)
 	}
 	if s.ForceConsoleColor {
-		log.Lvl1("Forcing the console output to be colored (from .toml)")
+		log.Lvl3("Forcing the console output to be colored (from .toml)")
 		log.SetUseColors(true)
 	}
 
@@ -143,9 +143,11 @@ func (s *SimulationService) Node(config *onet.SimulationConfig) error {
 		err = service.StartRelay(group)
 	} else if index > 0 && index <= s.NTrustees {
 		log.Lvl1("Initiating this node (index ", index, ") as trustee")
+		time.Sleep(5 * time.Second)
 		err = service.StartTrustee(group)
 	} else {
 		log.Lvl1("Initiating this node (index ", index, ") as client")
+		time.Sleep(5 * time.Second)
 		err = service.StartClient(group)
 	}
 
@@ -170,57 +172,66 @@ func (s *SimulationService) Run(config *onet.SimulationConfig) error {
 	//finds the PriFi service
 	service := config.GetService(prifi_service.ServiceName).(*prifi_service.ServiceState)
 
-	for round := 0; round < s.Rounds; round++ {
+	//give time to the nodes to initialize
+	log.Info("Sleeping 15 seconds before starting the experiment...")
+	time.Sleep(15 * time.Second)
 
-		log.Info("Sleeping 10 seconds before next round...")
+	log.Info("Starting experiment", simulationID)
+	startTime := time.Now()
+
+	//Give more time to the nodes to initialize (specifically, to
+	for !service.HasEnoughParticipants() {
+		t, c := service.CountParticipants()
+		log.Info("Not enough participants (", t, "trustees,", c, "clients), sleeping 10 seconds...")
 		time.Sleep(10 * time.Second)
-
-		log.Info("Starting experiment", simulationID, "round", round)
-		startTime := time.Now()
-
-		for !service.HasEnoughParticipants() {
-			t, c := service.CountParticipants()
-			log.Info("Not enough participants (", t, "trustees,", c, "clients), sleeping 10 seconds...")
-			time.Sleep(10 * time.Second)
-		}
-
-		service.StartPriFiCommunicateProtocol()
-
-		//the art of programming : waiting for the channel to be created (not even thread safe!)
-		for service.PriFiSDAProtocol == nil {
-			time.Sleep(10 * time.Millisecond)
-		}
-		for service.PriFiSDAProtocol.ResultChannel == nil {
-			time.Sleep(10 * time.Millisecond)
-		}
-
-		//block and get the result from the channel
-		var resStringArray []string
-
-		select {
-		case res := <-service.PriFiSDAProtocol.ResultChannel:
-			resStringArray = res.([]string)
-
-		case <-time.After(SIMULATION_ROUND_TIMEOUT_SECONDS * time.Second):
-			resStringArray = make([]string, 1)
-			resStringArray[0] = "Simulation timed out."
-		}
-
-		//finish the round, kill the protocol, and writes log
-		writeExperimentResult(resStringArray, round, simulationID, config)
-		service.StopPriFiCommunicateProtocol()
-
-		duration := time.Now().Sub(startTime)
-		log.Info("Experiment", simulationID+"round", round, "finished after", duration)
 	}
+
+	service.RelayAllowAutoStart()
+	service.StartPriFiCommunicateProtocol()
+
+	//the art of programming : waiting for the channel to be created (not even thread safe!)
+	for service.PriFiSDAProtocol == nil {
+		time.Sleep(10 * time.Millisecond)
+	}
+	for service.PriFiSDAProtocol.ResultChannel == nil {
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	//block and get the result from the channel
+	var resStringArray []string
+
+	log.Info("Giving the experiment", SIMULATION_ROUND_TIMEOUT_SECONDS, " seconds to finish before aborting...")
+	select {
+	case res := <-service.PriFiSDAProtocol.ResultChannel:
+		resStringArray = res.([]string)
+
+	case <-time.After(SIMULATION_ROUND_TIMEOUT_SECONDS * time.Second):
+		resStringArray = make([]string, 1)
+		resStringArray[0] = "!!simulation timed out."
+	}
+
+	//finish the round, kill the protocol, and writes log
+	writeExperimentResult(resStringArray, simulationID, config)
+	service.StopPriFiCommunicateProtocol()
+
+	duration := time.Now().Sub(startTime)
+	log.Info("Experiment", simulationID, "finished after", duration)
+
+	//stop the SOCKS stuff
 	service.GlobalShutDownSocks()
 
-	//stop the SOCKS stuff (will be restarted next round)
+	lastItem := resStringArray[len(resStringArray)-1]
+	outBit := "0"
+	if strings.HasPrefix(lastItem, "!!") {
+		outBit = "1"
+	}
+	log.Error("Last log was", lastItem, ", writing status ", outBit, " in .lastsimul")
+	err = ioutil.WriteFile(".lastsimul", []byte(outBit), 0777)
 
 	return nil
 }
 
-func writeExperimentResult(data []string, round int, simulationID string, config *onet.SimulationConfig) {
+func writeExperimentResult(data []string, simulationID string, config *onet.SimulationConfig) {
 	//create folder for this experiment
 	folderName := "output_" + simulationID + "/" + hashString(config.Config)
 	if _, err := os.Stat(folderName); err != nil {
@@ -236,7 +247,7 @@ func writeExperimentResult(data []string, round int, simulationID string, config
 
 	//write to file
 	o := new(output.FileOutput)
-	filePath := path.Join(folderName, "output_r"+strconv.Itoa(round)+".txt")
+	filePath := path.Join(folderName, "output.json")
 	o.Filename = filePath
 	log.Info("Simulation results stored in", o.Filename)
 	for _, s := range data {
