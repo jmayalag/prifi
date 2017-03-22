@@ -174,7 +174,7 @@ func (p *PriFiLibClientInstance) ProcessDownStreamData(msg net.REL_CLI_DOWNSTREA
 				clientID := int(binary.BigEndian.Uint16(msg.Data[2:4]))
 				if clientID == p.clientState.ID {
 					timestamp := int64(binary.BigEndian.Uint64(msg.Data[4:12]))
-					diff := MsTimeStamp() - timestamp
+					diff := MsTimeStampNow() - timestamp
 
 					//originalRoundID := int32(binary.BigEndian.Uint32(msg.Data[12:16]))
 					//roundDiff := msg.RoundID - originalRoundID
@@ -215,6 +215,16 @@ func (p *PriFiLibClientInstance) SendUpstreamData() error {
 		isMySlot = true
 	}
 
+	//test if we have latency test to send
+	now := time.Now()
+	if p.clientState.LatencyTest.DoLatencyTests && now.After(p.clientState.LatencyTest.NextLatencyTest) {
+
+		newLatTest := &LatencyTestToSend{
+			createdAt: now,
+		}
+		p.clientState.LatencyTest.LatencyTestsToSend = append(p.clientState.LatencyTest.LatencyTestsToSend, newLatTest)
+		p.clientState.LatencyTest.NextLatencyTest = now.Add(p.clientState.LatencyTest.LatencyTestsInterval)
+	}
 	var upstreamCellContent []byte
 
 	//if we can...
@@ -230,16 +240,15 @@ func (p *PriFiLibClientInstance) SendUpstreamData() error {
 			emptyData := socks.NewSocksPacket(socks.DummyData, 0, 0, uint16(p.clientState.PayloadLength), make([]byte, 0))
 			upstreamCellContent = emptyData.ToBytes()
 
-			now := time.Now()
-			if p.clientState.LatencyTest.DoLatencyTests && now.After(p.clientState.LatencyTest.NextLatencyTest) {
+			if len(p.clientState.LatencyTest.LatencyTestsToSend) > 0 {
 
 				if p.clientState.PayloadLength < 16 {
 					panic("Trying to do a Latency test, but payload is smaller than 10 bytes.")
 				}
 
 				buffer := make([]byte, p.clientState.PayloadLength)
-				pattern := uint16(43690)  //1010101010101010
-				currTime := MsTimeStamp() //timestamp in Ms
+				pattern := uint16(43690)                                                           //1010101010101010
+				currTime := MsTimeStamp(p.clientState.LatencyTest.LatencyTestsToSend[0].createdAt) //timestamp in Ms
 
 				binary.BigEndian.PutUint16(buffer[0:2], pattern)
 				binary.BigEndian.PutUint16(buffer[2:4], uint16(p.clientState.ID))
@@ -247,9 +256,18 @@ func (p *PriFiLibClientInstance) SendUpstreamData() error {
 				binary.BigEndian.PutUint32(buffer[12:16], uint32(p.clientState.RoundNo))
 
 				upstreamCellContent = buffer
-				p.clientState.LatencyTest.NextLatencyTest = now.Add(p.clientState.LatencyTest.LatencyTestsInterval)
 
 				//log.Info("Client", p.clientState.ID, "sent a latency-test message on round", p.clientState.RoundNo)
+
+				if len(p.clientState.LatencyTest.LatencyTestsToSend) == 1 {
+					p.clientState.LatencyTest.LatencyTestsToSend = make([]*LatencyTestToSend, 0)
+				} else {
+					p.clientState.LatencyTest.LatencyTestsToSend = p.clientState.LatencyTest.LatencyTestsToSend[1:]
+				}
+
+				diff := MsTimeStampNow() - currTime
+				p.clientState.timeStatistics["latency-msg-stayed-in-buffer"].AddTime(diff)
+				p.clientState.timeStatistics["latency-msg-stayed-in-buffer"].ReportWithInfo("latency-msg-stayed-in-buffer")
 			}
 		}
 	}
