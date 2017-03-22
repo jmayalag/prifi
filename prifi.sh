@@ -111,7 +111,7 @@ test_go(){
 		echo -e "$errorMsg GOPATH ($GOPATH) is not a folder ! make sure you installed the Go language correctly."
 		exit 1
 	fi
-	GO_VER=$(go version 2>&1 | sed 's/.*version go\(.*\)\.\(.*\)\..*/\1\2/; 1q')
+	GO_VER=$(go version 2>&1 | sed 's/.*version go\(.*\)\.\(.*\)\ \(.*\)/\1\2/; 1q')
 	if [ "$GO_VER" -lt "$min_go_version" ]; then
 		echo -e "$errorMsg Go >= 1.7.0 is required"
 		exit 1
@@ -717,7 +717,7 @@ case $1 in
 		echo -e "$okMsg"
 
 		echo -ne "Fetching all experiments of the form ${highlightOn}output_*${highlightOff} "
-		cd "$expFolder/$expName"; 
+		cd "$expFolder/$expName";
 		out=$(scp -r $deterlabUser@users.deterlab.net:~/remote/output_\* . )
 		echo -e "$okMsg"
 
@@ -752,7 +752,7 @@ case $1 in
 
 		if [ $ans = y -o $ans = Y -o $ans = yes -o $ans = Yes -o $ans = YES ]
 		then
-		
+
 			echo -n "Making logs R/W... " #this is needed since simul runs and writes log as root
 			ssh $deterlabUser@users.deterlab.net './makelogsrw.sh'
 			echo -e "$okMsg"
