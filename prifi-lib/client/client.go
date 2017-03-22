@@ -171,17 +171,23 @@ func (p *PriFiLibClientInstance) ProcessDownStreamData(msg net.REL_CLI_DOWNSTREA
 
 			pattern := int(binary.BigEndian.Uint16(msg.Data[0:2]))
 			if pattern == 43690 { //1010101010101010
-				clientID := int(binary.BigEndian.Uint16(msg.Data[2:4]))
-				if clientID == p.clientState.ID {
-					timestamp := int64(binary.BigEndian.Uint64(msg.Data[4:12]))
-					diff := MsTimeStampNow() - timestamp
+				posInBuffer := 2
+				latencyMsgLength := 14
 
-					//originalRoundID := int32(binary.BigEndian.Uint32(msg.Data[12:16]))
-					//roundDiff := msg.RoundID - originalRoundID
-					//log.Info("Measured latency is", diff, ", for client", clientID, ", roundDiff", roundDiff, ", received on round", msg.RoundID)
+				for posInBuffer+latencyMsgLength <= len(msg.Data) {
+					clientID := int(binary.BigEndian.Uint16(msg.Data[posInBuffer : posInBuffer+2]))
+					if clientID == p.clientState.ID {
+						timestamp := int64(binary.BigEndian.Uint64(msg.Data[posInBuffer+2 : posInBuffer+10]))
+						diff := MsTimeStampNow() - timestamp
 
-					p.clientState.timeStatistics["measured-latency"].AddTime(diff)
-					p.clientState.timeStatistics["measured-latency"].ReportWithInfo("measured-latency")
+						//originalRoundID := int32(binary.BigEndian.Uint32(msg.Data[posInBuffer+10:posInBuffer+14]))
+						//roundDiff := msg.RoundID - originalRoundID
+						//log.Info("Measured latency is", diff, ", for client", clientID, ", roundDiff", roundDiff, ", received on round", msg.RoundID)
+
+						p.clientState.timeStatistics["measured-latency"].AddTime(diff)
+						p.clientState.timeStatistics["measured-latency"].ReportWithInfo("measured-latency")
+					}
+					posInBuffer += latencyMsgLength
 				}
 			}
 		}
@@ -247,27 +253,36 @@ func (p *PriFiLibClientInstance) SendUpstreamData() error {
 				}
 
 				buffer := make([]byte, p.clientState.PayloadLength)
-				pattern := uint16(43690)                                                           //1010101010101010
-				currTime := MsTimeStamp(p.clientState.LatencyTest.LatencyTestsToSend[0].createdAt) //timestamp in Ms
-
+				pattern := uint16(43690) //1010101010101010
 				binary.BigEndian.PutUint16(buffer[0:2], pattern)
-				binary.BigEndian.PutUint16(buffer[2:4], uint16(p.clientState.ID))
-				binary.BigEndian.PutUint64(buffer[4:12], uint64(currTime))
-				binary.BigEndian.PutUint32(buffer[12:16], uint32(p.clientState.RoundNo))
+				posInBuffer := 2
+				latencyMsgLength := 14
 
-				upstreamCellContent = buffer
+				//pack all the latency messages we can in one
+				for len(p.clientState.LatencyTest.LatencyTestsToSend) > 0 && posInBuffer+latencyMsgLength <= p.clientState.PayloadLength {
+					latencyMsgBytes := make([]byte, 14)
+					currTime := MsTimeStamp(p.clientState.LatencyTest.LatencyTestsToSend[0].createdAt) //timestamp in Ms
+					binary.BigEndian.PutUint16(latencyMsgBytes[0:2], uint16(p.clientState.ID))
+					binary.BigEndian.PutUint64(latencyMsgBytes[2:10], uint64(currTime))
+					binary.BigEndian.PutUint32(latencyMsgBytes[10:14], uint32(p.clientState.RoundNo))
 
-				//log.Info("Client", p.clientState.ID, "sent a latency-test message on round", p.clientState.RoundNo)
+					copy(buffer[posInBuffer:], latencyMsgBytes)
+					posInBuffer += latencyMsgLength
 
-				if len(p.clientState.LatencyTest.LatencyTestsToSend) == 1 {
-					p.clientState.LatencyTest.LatencyTestsToSend = make([]*LatencyTestToSend, 0)
-				} else {
-					p.clientState.LatencyTest.LatencyTestsToSend = p.clientState.LatencyTest.LatencyTestsToSend[1:]
+					//log.Info("Client", p.clientState.ID, "sent a latency-test message on round", p.clientState.RoundNo)
+
+					if len(p.clientState.LatencyTest.LatencyTestsToSend) == 1 {
+						p.clientState.LatencyTest.LatencyTestsToSend = make([]*LatencyTestToSend, 0)
+					} else {
+						p.clientState.LatencyTest.LatencyTestsToSend = p.clientState.LatencyTest.LatencyTestsToSend[1:]
+					}
+
+					diff := MsTimeStampNow() - currTime
+					p.clientState.timeStatistics["latency-msg-stayed-in-buffer"].AddTime(diff)
+					p.clientState.timeStatistics["latency-msg-stayed-in-buffer"].ReportWithInfo("latency-msg-stayed-in-buffer")
 				}
 
-				diff := MsTimeStampNow() - currTime
-				p.clientState.timeStatistics["latency-msg-stayed-in-buffer"].AddTime(diff)
-				p.clientState.timeStatistics["latency-msg-stayed-in-buffer"].ReportWithInfo("latency-msg-stayed-in-buffer")
+				upstreamCellContent = buffer
 			}
 		}
 	}

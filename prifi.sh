@@ -779,7 +779,7 @@ case $1 in
 
 		"$thisScript" simul-cl
 
-		for i in {1..95}
+		for i in {5..95..5}
 		do
 			hosts=$(($NTRUSTEES + $NRELAY + $i))
 			echo "Simulating for HOSTS=$hosts..."
@@ -787,7 +787,6 @@ case $1 in
 			#fix the config
 			rm -f "$CONFIG_FILE"
 			sed "s/Hosts = x/Hosts = $hosts/g" "$TEMPLATE_FILE" > "$CONFIG_FILE"
-
 
 			timeout "$TIMEOUT" "$thisScript" simul
 		done
