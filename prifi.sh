@@ -769,17 +769,27 @@ case $1 in
 
 	simul-vary-nclients)
 
+		thisScript="$0"
+
 		NTRUSTEES=3
 		NRELAY=1
-		CONFIG_FILE="prifi_simul2.toml"
+		TEMPLATE_FILE="sda/simulation/prifi_simul_template.toml"
+		CONFIG_FILE="sda/simulation/prifi_simul.toml"
+		TIMEOUT="400"
 
-		for i in {1..1}
+		"$thisScript" simul-cl
+
+		for i in {1..95}
 		do
 			hosts=$(($NTRUSTEES + $NRELAY + $i))
 			echo "Simulating for HOSTS=$hosts..."
-			sed -i "Ns/Hosts = ([0-9]+)/Hosts = $hosts/" "$CONFIG_FILE"
-			tail -n 1 "$CONFIG_FILE"
-			echo -e "\n"
+
+			#fix the config
+			rm -f "$CONFIG_FILE"
+			sed "s/Hosts = x/Hosts = $hosts/g" "$TEMPLATE_FILE" > "$CONFIG_FILE"
+
+
+			timeout "$TIMEOUT" "$thisScript" simul
 		done
 
 		;;
