@@ -788,7 +788,7 @@ case $1 in
 			rm -f "$CONFIG_FILE"
 			sed "s/Hosts = x/Hosts = $hosts/g" "$TEMPLATE_FILE" > "$CONFIG_FILE"
 
-			timeout "$TIMEOUT" "$thisScript" simul
+			timeout "$TIMEOUT" "$thisScript" simul | tee experiment_$i.txt
 		done
 
 		;;
