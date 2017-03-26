@@ -416,7 +416,7 @@ func (p *PriFiLibClientInstance) Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(
 		RoundID:  p.clientState.RoundNo,
 		Data:     upstreamCell,
 	}
-	p.messageSender.FastSendToRelayWithLog(toSend, "(round "+strconv.Itoa(int(p.clientState.RoundNo))+")")
+	p.messageSender.SendToRelayWithLog(toSend, "(round "+strconv.Itoa(int(p.clientState.RoundNo))+")")
 
 	p.clientState.RoundNo++
 

@@ -356,13 +356,13 @@ func (p *PriFiLibRelayInstance) sendDownstreamData() error {
 		// broadcast to all clients
 		for i := 0; i < p.relayState.nClients; i++ {
 			//send to the i-th client
-			p.messageSender.FastSendToClientWithLog(i, toSend, "(client "+strconv.Itoa(i)+", round "+strconv.Itoa(int(p.relayState.nextDownStreamRoundToSend))+")")
+			p.messageSender.SendToClientWithLog(i, toSend, "(client "+strconv.Itoa(i)+", round "+strconv.Itoa(int(p.relayState.nextDownStreamRoundToSend))+")")
 		}
 
 		p.relayState.bitrateStatistics.AddDownstreamCell(int64(len(downstreamCellContent)))
 	} else {
 		toSend2 := &net.REL_CLI_DOWNSTREAM_DATA_UDP{REL_CLI_DOWNSTREAM_DATA: *toSend}
-		p.messageSender.MessageSender.BroadcastToAllClients(toSend2)
+		p.messageSender.BroadcastToAllClientsWithLog(toSend2, "(UDP broadcast, round "+strconv.Itoa(int(p.relayState.nextDownStreamRoundToSend))+")")
 
 		p.relayState.bitrateStatistics.AddDownstreamUDPCell(int64(len(downstreamCellContent)), p.relayState.nClients)
 	}
