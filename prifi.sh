@@ -667,15 +667,6 @@ case $1 in
 		ssh $deterlabUser@users.deterlab.net "rm .f ~/remote/.lastsimul"
 		echo -e "$okMsg" | tee ../../last-simul.log
 
-		if [ "$2" == "noping" ]; then
-			echo "Skipping latencies measurement..."
-		else
-			echo -n "Mesuring latencies... " | tee ../../last-simul.log
-			pings=$(ssh $deterlabUser@users.deterlab.net "./pings.sh")
-			echo -e "$okMsg" | tee ../../last-simul.log
-			echo $pings | sed -e "s/10.0.1.1/client0/" | sed -e "s/10.1.0.1/trustee0/" | tr ';' '\n' | tee ../../last-simul.log
-		fi
-
 		echo -e "Starting simulation ${highlightOn}${SIMUL_FILE}${highlightOff} on ${highlightOn}${PLATFORM}${highlightOff}." | tee ../../last-simul.log
 		DEBUG_LVL=$dbg_lvl DEBUG_COLOR=$colors ./"$EXEC_NAME" -platform "$PLATFORM" -mport "$MPORT" "$SIMUL_FILE" | tee ../../last-simul.log
 
@@ -688,6 +679,15 @@ case $1 in
 
 		;;
 
+	simul-p|simul-ping)
+
+		deterlabUser="lbarman"
+		
+		echo -n "Mesuring latencies... "
+		pings=$(ssh $deterlabUser@users.deterlab.net "./pings.sh")
+		echo -e "$okMsg"
+		echo $pings | sed -e "s/10.0.1.1/client0/" | sed -e "s/10.1.0.1/trustee0/" | tr ';' '\n'
+		;;
 
 	simul-gl|simul-get-logs)
 
