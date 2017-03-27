@@ -664,7 +664,7 @@ case $1 in
 
 		echo -en "Simulation ID is ${highlightOn}${EXPERIMENT_ID_VALUE}${highlightOff}, storing it in ${highlightOn}~/remote/.simID${highlightOff} on remote... " | tee ../../last-simul.log
 		ssh $deterlabUser@users.deterlab.net "echo ${EXPERIMENT_ID_VALUE} > ~/remote/.simID"  | tee ../../last-simul.log
-		ssh $deterlabUser@users.deterlab.net "rm .f ~/remote/.lastsimul"
+		ssh $deterlabUser@users.deterlab.net "rm -f ~/remote/.lastsimul"
 		echo -e "$okMsg" | tee ../../last-simul.log
 
 		echo -e "Starting simulation ${highlightOn}${SIMUL_FILE}${highlightOff} on ${highlightOn}${PLATFORM}${highlightOff}." | tee ../../last-simul.log
@@ -682,7 +682,7 @@ case $1 in
 	simul-p|simul-ping)
 
 		deterlabUser="lbarman"
-		
+
 		echo -n "Mesuring latencies... "
 		pings=$(ssh $deterlabUser@users.deterlab.net "./pings.sh")
 		echo -e "$okMsg"

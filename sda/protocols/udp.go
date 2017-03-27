@@ -8,7 +8,6 @@ package protocols
  */
 
 import (
-	"fmt"
 	"math/rand"
 	"net"
 	"strconv"
@@ -200,7 +199,7 @@ func (c *RealUDPChannel) ListenAndBlock(emptyMessage MarshallableMessage, lastSe
 	buf := make([]byte, MAX_UDP_SIZE)
 
 	n, addr, err := c.localConn.ReadFromUDP(buf)
-	fmt.Println("Received ", string(buf[0:n]), " from ", addr)
+	log.Fatal("Received UDP Broadcast ", string(buf[0:n]), " from ", addr)
 
 	if err != nil {
 		log.Error("ListenAndBlock: could not receive message, error is", err.Error())

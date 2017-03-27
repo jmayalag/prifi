@@ -95,7 +95,7 @@ func (p *PriFiLibClientInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PAR
 
 	//start the broadcast-listener goroutine
 	if useUDP {
-		log.Lvl2("Client " + strconv.Itoa(p.clientState.ID) + " : starting the broadcast-listener goroutine")
+		log.Fatal("Client " + strconv.Itoa(p.clientState.ID) + " : starting the broadcast-listener goroutine")
 		go p.messageSender.MessageSender.ClientSubscribeToBroadcast(p.clientState.Name, p.ReceivedMessage, p.clientState.StartStopReceiveBroadcast)
 	}
 
