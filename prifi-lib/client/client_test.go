@@ -81,7 +81,7 @@ func TestClient(t *testing.T) {
 	if cs.privateKey == nil || cs.PublicKey == nil {
 		t.Error("Private/Public key not set")
 	}
-	if cs.statistics == nil {
+	if cs.timeStatistics == nil {
 		t.Error("Statistics should have been set")
 	}
 	if cs.StartStopReceiveBroadcast != nil {
@@ -387,9 +387,9 @@ func TestClient(t *testing.T) {
 	}
 	dataDown = []byte{100, 101, 102}
 
-	currenTime := MsTimeStamp()
+	currentTime := MsTimeStampNow()
 	latencyMessage := []byte{170, 170, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0}
-	binary.BigEndian.PutUint64(latencyMessage[4:12], uint64(currenTime))
+	binary.BigEndian.PutUint64(latencyMessage[4:12], uint64(currentTime))
 	msg12 := net.REL_CLI_DOWNSTREAM_DATA{
 		RoundID:    4,
 		Data:       latencyMessage,

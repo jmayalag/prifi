@@ -1,7 +1,6 @@
 package relay
 
 import (
-	"github.com/lbarman/prifi/prifi-lib/net"
 	"testing"
 )
 

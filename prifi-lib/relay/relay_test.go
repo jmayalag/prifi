@@ -774,7 +774,7 @@ func TestRelayRun3(t *testing.T) {
 	}
 
 	// should receive a CLI_REL_UPSTREAM_DATA
-	currentTime := client.MsTimeStamp()
+	currentTime := client.MsTimeStampNow()
 	latencyMessage := []byte{170, 170, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0}
 	binary.BigEndian.PutUint64(latencyMessage[4:12], uint64(currentTime))
 	msg18 := net.CLI_REL_UPSTREAM_DATA{
