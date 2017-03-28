@@ -35,7 +35,7 @@ import (
 
 	"github.com/lbarman/prifi/prifi-lib/scheduler"
 	socks "github.com/lbarman/prifi/prifi-socks"
-	"github.com/lbarman/prifi2/utils/timing"
+	"github.com/lbarman/prifi/utils/timing"
 	"time"
 )
 
