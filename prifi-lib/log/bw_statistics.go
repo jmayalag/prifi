@@ -107,6 +107,7 @@ func (stats *BitrateStatistics) ReportWithInfo(info string) string {
 			}
 		*/
 
+		//human-readable output
 		str := fmt.Sprintf("[%v] %0.1f round/sec, %0.1f kB/s up, %0.1f kB/s down, %0.1f kB/s down(udp)",
 			stats.reportNo,
 			float64(stats.instantUpstreamCells)/stats.period.Seconds(),
@@ -116,6 +117,15 @@ func (stats *BitrateStatistics) ReportWithInfo(info string) string {
 
 		log.Lvlf1(str)
 
+		//json output
+		strJSON := fmt.Sprintf("{ \"type\"=\"relay_bw\", \"report_id\"=\"%v\", \"round_per_sec\"=\"%0.1f\", \"up_kbps\"=\"%0.1f\", \"down_kbps\"=\"%0.1f\", \"down_udp_kbps\"=\"%0.1f\" }\n",
+			stats.reportNo,
+			float64(stats.instantUpstreamCells)/stats.period.Seconds(),
+			float64(stats.instantUpstreamBytes)/1024/stats.period.Seconds(),
+			float64(stats.instantDownstreamBytes)/1024/stats.period.Seconds(),
+			float64(stats.instantDownstreamUDPBytes)/1024/stats.period.Seconds())
+
+		//report to website
 		data := fmt.Sprintf("no=%v&round=%0.1f&up=%0.1f&down=%0.1f&udp_down%0.1f&info=%s",
 			stats.reportNo,
 			float64(stats.instantUpstreamCells)/stats.period.Seconds(),
@@ -124,7 +134,7 @@ func (stats *BitrateStatistics) ReportWithInfo(info string) string {
 			float64(stats.instantDownstreamUDPBytes)/1024/stats.period.Seconds(),
 			info)
 
-		go performGETRequest("http://lbarman.ch/prifi/?" + data)
+		go performGETRequest("http://prifi.net/reporting/?" + data)
 
 		// Next report time
 		stats.instantUpstreamCells = 0
@@ -137,7 +147,7 @@ func (stats *BitrateStatistics) ReportWithInfo(info string) string {
 		stats.nextReport = now.Add(stats.period)
 		stats.reportNo++
 
-		return str
+		return strJSON
 	}
 
 	return ""

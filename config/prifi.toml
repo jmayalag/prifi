@@ -1,6 +1,6 @@
 CellSizeUp = 100
 CellSizeDown = 1000
-RelayWindowSize = 10
+RelayWindowSize = 1
 RelayUseDummyDataDown = false
 RelayReportingLimit = -1
 RelayDataOutputEnabled = true
@@ -9,5 +9,5 @@ UseUDP = false
 DoLatencyTests = true
 SocksServerPort = 8080
 SocksClientPort = 8090
-OverrideLogLevel = 3
+OverrideLogLevel = -1
 ForceConsoleColor = false

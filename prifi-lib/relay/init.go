@@ -78,9 +78,12 @@ func NewRelay(dataOutputEnabled bool, dataForClients chan []byte, dataFromDCNet 
 	relayState.timeStatistics["waiting-on-clients"] = prifilog.NewTimeStatistics()
 	relayState.timeStatistics["waiting-on-trustees"] = prifilog.NewTimeStatistics()
 	relayState.timeStatistics["sending-data"] = prifilog.NewTimeStatistics()
+	relayState.timeStatistics["dcnet-add"] = prifilog.NewTimeStatistics()
+	relayState.timeStatistics["dcnet-decode"] = prifilog.NewTimeStatistics()
+	relayState.timeStatistics["socks-out"] = prifilog.NewTimeStatistics()
+	relayState.timeStatistics["round-transition"] = prifilog.NewTimeStatistics()
 	relayState.PublicKey, relayState.privateKey = crypto.NewKeyPair()
 	relayState.bufferManager = new(BufferManager)
-	relayState.currentDCNetRound = NewDCNetRound(0, nil)
 	neffShuffle := new(scheduler.NeffShuffle)
 	neffShuffle.Init()
 	relayState.neffShuffle = neffShuffle.RelayView
@@ -94,7 +97,7 @@ func NewRelay(dataOutputEnabled bool, dataForClients chan []byte, dataFromDCNet 
 	}
 	errFn := func(s interface{}) {
 		if strings.Contains(s.(string), ", but in state SHUTDOWN") { //it's an "acceptable error"
-			log.Lvl2(s)
+			log.Lvl3(s)
 		} else {
 			log.Error(s)
 		}
@@ -137,7 +140,7 @@ type RelayState struct {
 	bufferManager                     *BufferManager
 	CellCoder                         dcnet.CellCoder
 	clients                           []NodeRepresentation
-	currentDCNetRound                 *DCNetRound
+	dcnetRoundManager                 *DCNetRoundManager
 	neffShuffle                       *scheduler.NeffShuffleRelay
 	currentState                      int16
 	DataForClients                    chan []byte // VPN / SOCKS should put data there !

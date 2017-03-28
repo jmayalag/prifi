@@ -35,6 +35,7 @@ import (
 
 	"github.com/lbarman/prifi/prifi-lib/scheduler"
 	socks "github.com/lbarman/prifi/prifi-socks"
+	"github.com/lbarman/prifi/utils/timing"
 	"time"
 )
 
@@ -94,7 +95,7 @@ func (p *PriFiLibClientInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PAR
 
 	//start the broadcast-listener goroutine
 	if useUDP {
-		log.Lvl2("Client " + strconv.Itoa(p.clientState.ID) + " : starting the broadcast-listener goroutine")
+		//log.Fatal("Client " + strconv.Itoa(p.clientState.ID) + " : starting the broadcast-listener goroutine")
 		go p.messageSender.MessageSender.ClientSubscribeToBroadcast(p.clientState.Name, p.ReceivedMessage, p.clientState.StartStopReceiveBroadcast)
 	}
 
@@ -152,6 +153,8 @@ When this function ends, it calls SendUpstreamData() which continues the communi
 */
 func (p *PriFiLibClientInstance) ProcessDownStreamData(msg net.REL_CLI_DOWNSTREAM_DATA) error {
 
+	timing.StartMeasure("round-processing")
+
 	/*
 	 * HANDLE THE DOWNSTREAM DATA
 	 */
@@ -167,15 +170,24 @@ func (p *PriFiLibClientInstance) ProcessDownStreamData(msg net.REL_CLI_DOWNSTREA
 		if p.clientState.LatencyTest.DoLatencyTests && len(msg.Data) > 2 {
 
 			pattern := int(binary.BigEndian.Uint16(msg.Data[0:2]))
-			if pattern == 43690 {
-				//1010101010101010
-				clientID := int(binary.BigEndian.Uint16(msg.Data[2:4]))
-				if clientID == p.clientState.ID {
-					timestamp := int64(binary.BigEndian.Uint64(msg.Data[4:12]))
-					diff := MsTimeStamp() - timestamp
+			if pattern == 43690 { //1010101010101010
+				posInBuffer := 2
+				latencyMsgLength := 14
 
-					p.clientState.statistics.AddTime(diff)
-					p.clientState.statistics.ReportWithInfo("measured-latency")
+				for posInBuffer+latencyMsgLength <= len(msg.Data) {
+					clientID := int(binary.BigEndian.Uint16(msg.Data[posInBuffer : posInBuffer+2]))
+					if clientID == p.clientState.ID {
+						timestamp := int64(binary.BigEndian.Uint64(msg.Data[posInBuffer+2 : posInBuffer+10]))
+						diff := MsTimeStampNow() - timestamp
+
+						//originalRoundID := int32(binary.BigEndian.Uint32(msg.Data[posInBuffer+10:posInBuffer+14]))
+						//roundDiff := msg.RoundID - originalRoundID
+						//log.Info("Measured latency is", diff, ", for client", clientID, ", roundDiff", roundDiff, ", received on round", msg.RoundID)
+
+						p.clientState.timeStatistics["measured-latency"].AddTime(diff)
+						p.clientState.timeStatistics["measured-latency"].ReportWithInfo("measured-latency")
+					}
+					posInBuffer += latencyMsgLength
 				}
 			}
 		}
@@ -209,6 +221,16 @@ func (p *PriFiLibClientInstance) SendUpstreamData() error {
 		isMySlot = true
 	}
 
+	//test if we have latency test to send
+	now := time.Now()
+	if p.clientState.LatencyTest.DoLatencyTests && now.After(p.clientState.LatencyTest.NextLatencyTest) {
+
+		newLatTest := &LatencyTestToSend{
+			createdAt: now,
+		}
+		p.clientState.LatencyTest.LatencyTestsToSend = append(p.clientState.LatencyTest.LatencyTestsToSend, newLatTest)
+		p.clientState.LatencyTest.NextLatencyTest = now.Add(p.clientState.LatencyTest.LatencyTestsInterval)
+	}
 	var upstreamCellContent []byte
 
 	//if we can...
@@ -224,23 +246,43 @@ func (p *PriFiLibClientInstance) SendUpstreamData() error {
 			emptyData := socks.NewSocksPacket(socks.DummyData, 0, 0, uint16(p.clientState.PayloadLength), make([]byte, 0))
 			upstreamCellContent = emptyData.ToBytes()
 
-			now := time.Now()
-			if p.clientState.LatencyTest.DoLatencyTests && now.After(p.clientState.LatencyTest.NextLatencyTest) {
+			if len(p.clientState.LatencyTest.LatencyTestsToSend) > 0 {
 
-				if p.clientState.PayloadLength < 12 {
+				if p.clientState.PayloadLength < 16 {
 					panic("Trying to do a Latency test, but payload is smaller than 10 bytes.")
 				}
 
 				buffer := make([]byte, p.clientState.PayloadLength)
-				pattern := uint16(43690)  //1010101010101010
-				currTime := MsTimeStamp() //timestamp in Ms
-
+				pattern := uint16(43690) //1010101010101010
 				binary.BigEndian.PutUint16(buffer[0:2], pattern)
-				binary.BigEndian.PutUint16(buffer[2:4], uint16(p.clientState.ID))
-				binary.BigEndian.PutUint64(buffer[4:12], uint64(currTime))
+				posInBuffer := 2
+				latencyMsgLength := 14
+
+				//pack all the latency messages we can in one
+				for len(p.clientState.LatencyTest.LatencyTestsToSend) > 0 && posInBuffer+latencyMsgLength <= p.clientState.PayloadLength {
+					latencyMsgBytes := make([]byte, 14)
+					currTime := MsTimeStamp(p.clientState.LatencyTest.LatencyTestsToSend[0].createdAt) //timestamp in Ms
+					binary.BigEndian.PutUint16(latencyMsgBytes[0:2], uint16(p.clientState.ID))
+					binary.BigEndian.PutUint64(latencyMsgBytes[2:10], uint64(currTime))
+					binary.BigEndian.PutUint32(latencyMsgBytes[10:14], uint32(p.clientState.RoundNo))
+
+					copy(buffer[posInBuffer:], latencyMsgBytes)
+					posInBuffer += latencyMsgLength
+
+					//log.Info("Client", p.clientState.ID, "sent a latency-test message on round", p.clientState.RoundNo)
+
+					if len(p.clientState.LatencyTest.LatencyTestsToSend) == 1 {
+						p.clientState.LatencyTest.LatencyTestsToSend = make([]*LatencyTestToSend, 0)
+					} else {
+						p.clientState.LatencyTest.LatencyTestsToSend = p.clientState.LatencyTest.LatencyTestsToSend[1:]
+					}
+
+					diff := MsTimeStampNow() - currTime
+					p.clientState.timeStatistics["latency-msg-stayed-in-buffer"].AddTime(diff)
+					p.clientState.timeStatistics["latency-msg-stayed-in-buffer"].ReportWithInfo("latency-msg-stayed-in-buffer")
+				}
 
 				upstreamCellContent = buffer
-				p.clientState.LatencyTest.NextLatencyTest = now.Add(p.clientState.LatencyTest.LatencyTestsInterval)
 			}
 		}
 	}
@@ -264,6 +306,10 @@ func (p *PriFiLibClientInstance) SendUpstreamData() error {
 	if msg, hasAMessage := p.clientState.BufferedRoundData[int32(p.clientState.RoundNo)]; hasAMessage {
 		p.Received_REL_CLI_DOWNSTREAM_DATA(msg)
 	}
+
+	timeMs := timing.StopMeasure("round-processing").Nanoseconds() / 1e6
+	p.clientState.timeStatistics["round-processing"].AddTime(timeMs)
+	p.clientState.timeStatistics["round-processing"].ReportWithInfo("round-processing")
 
 	return nil
 }

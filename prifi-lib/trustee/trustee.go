@@ -114,7 +114,7 @@ func (p *PriFiLibTrusteeInstance) Send_TRU_REL_DC_CIPHER(rateChan chan int16) {
 		case newRate := <-rateChan:
 
 			if currentRate != newRate {
-				log.Lvl2("Trustee " + strconv.Itoa(p.trusteeState.ID) + " : rate changed from " + strconv.Itoa(int(currentRate)) + " to " + strconv.Itoa(int(newRate)))
+				log.Lvl1("Trustee " + strconv.Itoa(p.trusteeState.ID) + " : rate changed from " + strconv.Itoa(int(currentRate)) + " to " + strconv.Itoa(int(newRate)))
 				currentRate = newRate
 			}
 
@@ -127,7 +127,8 @@ func (p *PriFiLibTrusteeInstance) Send_TRU_REL_DC_CIPHER(rateChan chan int16) {
 				roundID, _ = sendData(p, roundID)
 
 			} else if currentRate == TRUSTEE_RATE_STOPPED {
-				time.Sleep(TRUSTEE_BASE_SLEEP_TIME)
+				time.Sleep(0 * TRUSTEE_BASE_SLEEP_TIME)
+				roundID, _ = sendData(p, roundID)
 
 			} else {
 				log.Lvl2("Trustee " + strconv.Itoa(p.trusteeState.ID) + " : In unrecognized sending state")

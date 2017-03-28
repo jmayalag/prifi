@@ -116,6 +116,15 @@ func (s *ServiceState) NewProtocol(tn *onet.TreeNodeInstance, conf *onet.Generic
 	return wrapper, nil
 }
 
+// Give the churnHandler the capacity to start the protocol by itself
+func (s *ServiceState) RelayAllowAutoStart() {
+
+	if s.churnHandler == nil {
+		log.Fatal("Cannot allow auto start when relay has not been initialized")
+	}
+	s.churnHandler.isProtocolRunning = s.IsPriFiProtocolRunning
+}
+
 // StartRelay starts the necessary
 // protocols to enable the relay-mode.
 // In this example it simply starts the demo protocol

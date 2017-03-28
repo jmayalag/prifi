@@ -61,7 +61,7 @@ type ClientState struct {
 	UseUDP                    bool
 	MessageHistory            abstract.Cipher
 	StartStopReceiveBroadcast chan bool
-	statistics                *prifilog.TimeStatistics
+	timeStatistics            map[string]*prifilog.TimeStatistics
 
 	//concurrent stuff
 	RoundNo           int32
@@ -80,6 +80,12 @@ type LatencyTests struct {
 	DoLatencyTests       bool
 	LatencyTestsInterval time.Duration
 	NextLatencyTest      time.Time
+	LatencyTestsToSend   []*LatencyTestToSend
+}
+
+// One buffered latency test message. We only need to store the "createdAt" time.
+type LatencyTestToSend struct {
+	createdAt time.Time
 }
 
 // NewClient creates a new PriFi client entity state.
@@ -88,14 +94,18 @@ func NewClient(doLatencyTest bool, dataOutputEnabled bool, dataForDCNet chan []b
 	clientState := new(ClientState)
 
 	//instantiates the static stuff
-	clientState.statistics = prifilog.NewTimeStatistics()
 	clientState.PublicKey, clientState.privateKey = crypto.NewKeyPair()
 	//clientState.StartStopReceiveBroadcast = make(chan bool) //this should stay nil, !=nil -> we have a listener goroutine active
 	clientState.LatencyTest = &LatencyTests{
 		DoLatencyTests:       doLatencyTest,
 		LatencyTestsInterval: 5 * time.Second,
 		NextLatencyTest:      time.Now(),
+		LatencyTestsToSend:   make([]*LatencyTestToSend, 0),
 	}
+	clientState.timeStatistics = make(map[string]*prifilog.TimeStatistics)
+	clientState.timeStatistics["latency-msg-stayed-in-buffer"] = prifilog.NewTimeStatistics()
+	clientState.timeStatistics["measured-latency"] = prifilog.NewTimeStatistics()
+	clientState.timeStatistics["round-processing"] = prifilog.NewTimeStatistics()
 	clientState.CellCoder = config.Factory()
 	clientState.DataForDCNet = dataForDCNet
 	clientState.DataFromDCNet = dataFromDCNet
