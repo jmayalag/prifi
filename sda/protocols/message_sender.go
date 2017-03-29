@@ -3,7 +3,6 @@ package protocols
 import (
 	"errors"
 	"strconv"
-	"time"
 
 	"github.com/lbarman/prifi/prifi-lib/net"
 	"gopkg.in/dedis/onet.v1"
@@ -126,7 +125,7 @@ func (ms MessageSender) BroadcastToAllClients(msg interface{}) error {
 //ClientSubscribeToBroadcast allows a client to subscribe to UDP broadcast
 func (ms MessageSender) ClientSubscribeToBroadcast(clientName string, messageReceived func(interface{}) error, startStopChan chan bool) error {
 
-	log.Fatal(clientName, " started UDP-listener helper.")
+	log.Info(clientName, " started UDP-listener helper.")
 	listening := false
 	lastSeenMessage := 0 //the first real message has ID 1; this means that we saw the empty struct.
 
@@ -164,7 +163,5 @@ func (ms MessageSender) ClientSubscribeToBroadcast(clientName string, messageRec
 			messageReceived(filledMessage)
 
 		}
-
-		time.Sleep(time.Second)
 	}
 }

@@ -139,6 +139,7 @@ func (p *PriFiLibRelayInstance) BroadcastParameters() error {
 	msg := new(net.ALL_ALL_PARAMETERS_NEW)
 	msg.Add("NClients", p.relayState.nClients)
 	msg.Add("NTrustees", p.relayState.nTrustees)
+	msg.Add("UseUDP", p.relayState.UseUDP)
 	msg.Add("StartNow", true)
 	msg.Add("UpstreamCellSize", p.relayState.UpstreamCellSize)
 	msg.ForceParams = true

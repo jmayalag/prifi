@@ -199,12 +199,11 @@ func (c *RealUDPChannel) ListenAndBlock(emptyMessage MarshallableMessage, lastSe
 	buf := make([]byte, MAX_UDP_SIZE)
 
 	n, addr, err := c.localConn.ReadFromUDP(buf)
-	log.Fatal("Received UDP Broadcast ", string(buf[0:n]), " from ", addr)
 
 	if err != nil {
 		log.Error("ListenAndBlock: could not receive message, error is", err.Error())
 	} else {
-		log.Error("ListenAndBlock: Received a message of", n, "bytes, from addr", addr)
+		log.Lvl4("ListenAndBlock: Received a message of", n, "bytes, from addr", addr)
 	}
 
 	emptyMessage.FromBytes(buf)
