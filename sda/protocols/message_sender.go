@@ -158,8 +158,6 @@ func (ms MessageSender) ClientSubscribeToBroadcast(clientName string, messageRec
 				log.Error(clientName, " an error occurred : ", err)
 			}
 
-			//forward to PriFi
-			//prifiLibInstance.ReceivedMessage(filledMessage)
 			messageReceived(filledMessage)
 
 		}

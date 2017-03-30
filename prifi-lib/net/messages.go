@@ -3,7 +3,6 @@ package net
 import (
 	"encoding/binary"
 	"errors"
-	"strconv"
 
 	"gopkg.in/dedis/crypto.v0/abstract"
 	"gopkg.in/dedis/onet.v1/log"
@@ -189,16 +188,15 @@ func (m *REL_CLI_DOWNSTREAM_DATA_UDP) SetContent(data REL_CLI_DOWNSTREAM_DATA) {
 func (m *REL_CLI_DOWNSTREAM_DATA_UDP) ToBytes() ([]byte, error) {
 
 	//convert the message to bytes
-	buf := make([]byte, 4+4+len(m.REL_CLI_DOWNSTREAM_DATA.Data)+4)
+	buf := make([]byte, 4+len(m.REL_CLI_DOWNSTREAM_DATA.Data)+4)
 	resyncInt := 0
 	if m.REL_CLI_DOWNSTREAM_DATA.FlagResync {
 		resyncInt = 1
 	}
 
-	binary.BigEndian.PutUint32(buf[0:4], uint32(len(buf)))
-	binary.BigEndian.PutUint32(buf[4:8], uint32(m.REL_CLI_DOWNSTREAM_DATA.RoundID))
+	binary.BigEndian.PutUint32(buf[0:4], uint32(m.REL_CLI_DOWNSTREAM_DATA.RoundID))
 	binary.BigEndian.PutUint32(buf[len(buf)-4:], uint32(resyncInt)) //todo : to be coded on one byte
-	copy(buf[8:len(buf)-4], m.REL_CLI_DOWNSTREAM_DATA.Data)
+	copy(buf[4:len(buf)-4], m.REL_CLI_DOWNSTREAM_DATA.Data)
 
 	return buf, nil
 
@@ -208,21 +206,14 @@ func (m *REL_CLI_DOWNSTREAM_DATA_UDP) ToBytes() ([]byte, error) {
 func (m *REL_CLI_DOWNSTREAM_DATA_UDP) FromBytes(buffer []byte) (interface{}, error) {
 
 	//the smallest message is 4 bytes, indicating a length of 0
-	if len(buffer) < 4 {
-		e := "Messages.go : FromBytes() : cannot decode, smaller than 4 bytes"
+	if len(buffer) < 8 { //4 (roundID) + 4 (flagResync)
+		e := "Messages.go : FromBytes() : cannot decode, smaller than 8 bytes"
 		return REL_CLI_DOWNSTREAM_DATA_UDP{}, errors.New(e)
 	}
 
-	messageSize := int(binary.BigEndian.Uint32(buffer[0:4]))
-
-	if len(buffer) != messageSize {
-		e := "Messages.go : FromBytes() : cannot decode, advertised length is " + strconv.Itoa(messageSize) + ", actual length is " + strconv.Itoa(len(buffer))
-		return REL_CLI_DOWNSTREAM_DATA_UDP{}, errors.New(e)
-	}
-
-	roundID := int32(binary.BigEndian.Uint32(buffer[4:8]))
+	roundID := int32(binary.BigEndian.Uint32(buffer[0:4]))
 	flagResyncInt := int(binary.BigEndian.Uint32(buffer[len(buffer)-4:]))
-	data := buffer[8 : len(buffer)-4]
+	data := buffer[4 : len(buffer)-4]
 
 	flagResync := false
 	if flagResyncInt == 1 {
