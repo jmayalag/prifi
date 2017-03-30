@@ -75,6 +75,7 @@ func (p *PriFiLibTrusteeInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PA
 	//placeholders for pubkeys and secrets
 	p.trusteeState.ClientPublicKeys = make([]abstract.Point, nClients)
 	p.trusteeState.sharedSecrets = make([]abstract.Point, nClients)
+	p.trusteeState.MessageHistory = config.CryptoSuite.Cipher(make([]byte,1))
 
 	if startNow {
 		// send our public key to the relay
@@ -217,9 +218,9 @@ func (p *PriFiLibTrusteeInstance) Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_
 		}
 		sharedPRNGs[i] = config.CryptoSuite.Cipher(bytes)
 	}
-	p.trusteeState.CellCoder.TrusteeSetup(config.CryptoSuite, sharedPRNGs)
+	vkey := p.trusteeState.CellCoder.TrusteeSetup(config.CryptoSuite, sharedPRNGs)
 
-	toSend, err := p.trusteeState.neffShuffle.ReceivedShuffleFromRelay(msg.Base, msg.EphPks, true)
+	toSend, err := p.trusteeState.neffShuffle.ReceivedShuffleFromRelay(msg.Base, msg.EphPks, true, vkey)
 	if err != nil {
 		return errors.New("Could not do ReceivedShuffleFromRelay, error is " + err.Error())
 	}

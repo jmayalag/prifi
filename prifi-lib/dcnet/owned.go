@@ -8,29 +8,29 @@ import (
 )
 
 type ownedCoder struct {
-	suite abstract.Suite
+	suite                abstract.Suite
 
 	// Length of Key and MAC part of verifiable DC-net point
-	keylen, maclen int
+	keyLength, macLength int
 
 	// Verifiable DC-nets secrets shared with each peer.
-	vkeys []abstract.Scalar
+	vkeys                []abstract.Scalar
 
 	// The sum of all our verifiable DC-nets secrets.
-	vkey abstract.Scalar
+	vkey      abstract.Scalar
 
 	// Pseudorandom DC-nets ciphers shared with each peer.
 	// On clients, there is one DC-nets cipher per trustee.
 	// On trustees, there ois one DC-nets cipher per client.
-	dcciphers []abstract.Cipher
+	dcCiphers []abstract.Cipher
 
 	// Pseudorandom stream
-	random abstract.Cipher
+	random    abstract.Cipher
 
 	// Decoding state, used only by the relay
-	point  abstract.Point
-	pnull  abstract.Point // neutral/identity element
-	xorbuf []byte
+	point     abstract.Point
+	pnull     abstract.Point // neutral/identity element
+	xorBuffer []byte
 }
 
 // OwnedCoderFactory creates a DC-net cell coder for "owned" cells:
@@ -49,27 +49,27 @@ func OwnedCoderFactory() CellCoder {
 // For now just hard-code a single choice of trap-encoding word size
 // for maximum simplicity and efficiency.
 // We'll evaluate later whether we need to make it dynamic.
-const wordbits = 32
+const wordBits = 32
 
 type word uint32
 
 ///// Common methods /////
 
 // Compute the size of the symmetric AES-encoded part of an encoded ciphertext.
-func (c *ownedCoder) symmCellSize(payloadlen int) int {
+func (c *ownedCoder) symmCellSize(payloadLength int) int {
 
 	// If data fits in the space reserved for the key
 	// in the verifiable DC-net point,
 	// we can just inline the data in the point instead of the key.
 	// (We'll still use the MAC part of the point for validation.)
-	if payloadlen <= c.keylen {
+	if payloadLength <= c.keyLength {
 		return 0
 	}
 
 	// Otherwise the point is used to hold an encryption key and a MAC,
 	// and the payload is symmetric-key encrypted.
 	// XXX trap encoding
-	return payloadlen
+	return payloadLength
 
 	// Compute number of payload words we will need for trap-encoding.
 	// words := (payloadlen*8 + wordbits-1) / wordbits
@@ -92,47 +92,47 @@ func (c *ownedCoder) commonSetup(suite abstract.Suite) {
 
 	// Divide the embeddable data in the verifiable point
 	// between an encryption key and a MAC check
-	c.keylen = suite.Cipher(nil).KeySize()
-	c.maclen = suite.Point().PickLen() - c.keylen
-	if c.maclen < c.keylen*3/4 {
+	c.keyLength = suite.Cipher(nil).KeySize()
+	c.macLength = suite.Point().PickLen() - c.keyLength
+	if c.macLength < c.keyLength *3/4 {
 		panic("misconfigured ciphersuite: MAC too small!")
 	}
 
-	randkey := make([]byte, suite.Cipher(nil).KeySize())
-	rand.Read(randkey)
-	c.random = suite.Cipher(randkey)
+	randomKey := make([]byte, suite.Cipher(nil).KeySize())
+	rand.Read(randomKey)
+	c.random = suite.Cipher(randomKey)
 }
 
 ///// Client methods /////
 
-func (c *ownedCoder) ClientCellSize(payloadlen int) int {
+func (c *ownedCoder) ClientCellSize(payloadLength int) int {
 
 	// Clients must produce a point plus the symmetric ciphertext
-	return c.suite.PointLen() + c.symmCellSize(payloadlen)
+	return 32 + c.symmCellSize(payloadLength)
 }
 
 func (c *ownedCoder) ClientSetup(suite abstract.Suite,
-	sharedsecrets []abstract.Cipher) {
+	sharedSecrets []abstract.Cipher) {
 	c.commonSetup(suite)
-	keysize := suite.Cipher(nil).KeySize()
+	keySize := suite.Cipher(nil).KeySize()
 
 	// Use the provided shared secrets to seed
 	// a pseudorandom public-key encryption secret, and
 	// a pseudorandom DC-nets cipher shared with each peer.
-	npeers := len(sharedsecrets)
-	c.vkeys = make([]abstract.Scalar, npeers)
+	nPeers := len(sharedSecrets)
+	c.vkeys = make([]abstract.Scalar, nPeers)
 	c.vkey = suite.Scalar()
-	c.dcciphers = make([]abstract.Cipher, npeers)
-	for i := range sharedsecrets {
-		c.vkeys[i] = suite.Scalar().Pick(sharedsecrets[i])
+	c.dcCiphers = make([]abstract.Cipher, nPeers)
+	for i := range sharedSecrets {
+		c.vkeys[i] = suite.Scalar().Pick(sharedSecrets[i])
 		c.vkey.Add(c.vkey, c.vkeys[i])
-		key := make([]byte, keysize)
-		sharedsecrets[i].Partial(key, key, nil)
-		c.dcciphers[i] = suite.Cipher(key)
+		key := make([]byte, keySize)
+		sharedSecrets[i].Partial(key, key, nil)
+		c.dcCiphers[i] = suite.Cipher(key)
 	}
 }
 
-func (c *ownedCoder) ClientEncode(payload []byte, payloadlen int,
+func (c *ownedCoder) ClientEncode(payload []byte, payloadLength int,
 	history abstract.Cipher) []byte {
 
 	// Compute the verifiable blinding point for this cell.
@@ -146,61 +146,84 @@ func (c *ownedCoder) ClientEncode(payload []byte, payloadlen int,
 	// so that any data the client might be sending based on
 	// having seen a divergent history gets suppressed.
 	p := c.suite.Point()
+	/*po := c.suite.Point()
+
+	println("point : ", p.String(), c.vkey.String())*/
 	p.Pick(nil, history)
+	println("point : ", p.String())
+/*	poi, nil := p.MarshalBinary()
+	po.UnmarshalBinary(poi)*/
 	p.Mul(p, c.vkey)
+	/*c.vkey.Neg(c.vkey)
+	println("point po : ", po.String(), c.vkey.String())
+	po.Mul(po, c.vkey)
+	c.vkey.Neg(c.vkey)
+	println("point : ", po.String(), c.vkey.String(), p.String())
+	po.Add(po, p)
+	println("point : ", po.String(), c.vkey.String())*/
+
 
 	// Encode the payload data, if any.
-	payout := make([]byte, c.symmCellSize(payloadlen))
+	payOut := make([]byte, c.symmCellSize(payloadLength))
+	//if payload == nil {
+	println("payload : ", payload)
+	//	payload = make([]byte, payloadLength)
+	//}
 	if payload != nil {
 		// We're the owner of this cell.
-		if len(payload) <= c.keylen {
+		if len(payload) <= c.keyLength {
+			println("inline")
 			c.inlineEncode(payload, p)
 		} else {
-			c.ownerEncode(payload, payout, p)
+			println("owner")
+			c.ownerEncode(payload, payOut, p)
 		}
 	}
 
 	// XOR the symmetric DC-net streams into the payload part
-	for i := range c.dcciphers {
-		c.dcciphers[i].XORKeyStream(payout, payout)
+	for i := range c.dcCiphers {
+		c.dcCiphers[i].XORKeyStream(payOut, payOut)
 	}
 
 	// Build the full cell ciphertext
 	out, _ := p.MarshalBinary()
-	out = append(out, payout...)
+	out = append(out, payOut...)
 	return out
 }
 
 func (c *ownedCoder) inlineEncode(payload []byte, p abstract.Point) {
 
 	// Hash the cleartext payload to produce the MAC
-	h := c.suite.Hash()
-	h.Write(payload)
-	mac := h.Sum(nil)[:c.maclen]
+	hash := c.suite.Hash()
+	hash.Write(payload)
+	mac := hash.Sum(nil)[:c.macLength]
 
 	// Embed the payload and MAC into a Point representing the message
 	hdr := append(payload, mac...)
 	mp, _ := c.suite.Point().Pick(hdr, c.random)
 
+	println("Point with data : ", mp.String())
+	println("point with key: ", p.String())
 	// Add this to the blinding point we already computed to transmit.
 	p.Add(p, mp)
+	println("Point blinding : ", p.String())
 }
 
-func (c *ownedCoder) ownerEncode(payload, payout []byte, p abstract.Point) {
+func (c *ownedCoder) ownerEncode(payload, payOut []byte, p abstract.Point) {
 
 	// XXX trap-encode
 
 	// Pick a fresh random key with which to encrypt the payload
-	key := make([]byte, c.keylen)
+	key := make([]byte, c.keyLength)
 	c.random.XORKeyStream(key, key)
 
 	// Encrypt the payload with it
-	c.suite.Cipher(key).XORKeyStream(payout, payload)
+	c.suite.Cipher(key).XORKeyStream(payOut, payload)
 
 	// Compute a MAC over the encrypted payload
-	h := c.suite.Hash()
-	h.Write(payout)
-	mac := h.Sum(nil)[:c.maclen]
+	hash := c.suite.Hash()
+	hash.Write(payOut)
+	mac := hash.Sum(nil)[:c.macLength]
 
 	// Combine the key and the MAC into the Point for this cell header
 	hdr := append(key, mac...)
@@ -208,94 +231,106 @@ func (c *ownedCoder) ownerEncode(payload, payout []byte, p abstract.Point) {
 		panic("oops, length of key+mac turned out wrong")
 	}
 	mp, _ := c.suite.Point().Pick(hdr, c.random)
-
+	println("Point with data : ", mp.String())
+	println("point with key: ", p.String())
 	// Add this to the blinding point we already computed to transmit.
 	p.Add(p, mp)
+	println("Point blinding : ", p.String())
+	hdr, err := mp.Data()
+	if err!= nil {
+		println("ownerEncode doesn't work ?")
+	}
 }
 
 ///// Trustee methods /////
 
-func (c *ownedCoder) TrusteeCellSize(payloadlen int) int {
+func (c *ownedCoder) TrusteeCellSize(payloadLength int) int {
 
 	// Trustees produce only the symmetric ciphertext, if any
-	return c.symmCellSize(payloadlen)
+	return c.symmCellSize(payloadLength)
 }
 
 // Setup the trustee side.
 // May produce coder configuration info to be passed to the relay,
 // which will become available to the RelaySetup() method below.
 func (c *ownedCoder) TrusteeSetup(suite abstract.Suite,
-	clientstreams []abstract.Cipher) []byte {
+	clientStreams []abstract.Cipher) []byte {
 
 	// Compute shared secrets
-	c.ClientSetup(suite, clientstreams)
+	c.ClientSetup(suite, clientStreams)
 
 	// Release the negation of the composite shared verifiable secret
 	// to the relay, so the relay can decode each cell's header.
+	println("vkey : ", c.vkey.String())
 	c.vkey.Neg(c.vkey)
+	println("vkey neg : ", c.vkey.String())
 	rv, _ := c.vkey.MarshalBinary()
 	return rv
 }
 
-func (c *ownedCoder) TrusteeEncode(payloadlen int) []byte {
+func (c *ownedCoder) TrusteeEncode(payloadLength int) []byte {
 
 	// Trustees produce only symmetric DC-nets streams
 	// for the payload portion of each cell.
-	payout := make([]byte, payloadlen) // XXX trap expansion
-	for i := range c.dcciphers {
-		c.dcciphers[i].XORKeyStream(payout, payout)
+	payOut := make([]byte, payloadLength) // XXX trap expansion
+	for i := range c.dcCiphers {
+		c.dcCiphers[i].XORKeyStream(payOut, payOut)
 	}
-	return payout
+	return payOut
 }
 
 ///// Relay methods /////
 
-func (c *ownedCoder) RelaySetup(suite abstract.Suite, trusteeinfo [][]byte) {
+func (c *ownedCoder) RelaySetup(suite abstract.Suite, trusteeInfo [][]byte) {
 
 	c.commonSetup(suite)
 
 	// Decode the trustees' composite verifiable DC-net secrets
-	ntrustees := len(trusteeinfo)
-	c.vkeys = make([]abstract.Scalar, ntrustees)
+	nTrustees := len(trusteeInfo)
+	c.vkeys = make([]abstract.Scalar, nTrustees)
 	c.vkey = suite.Scalar()
 	for i := range c.vkeys {
 		c.vkeys[i] = c.suite.Scalar()
-		c.vkeys[i].UnmarshalBinary(trusteeinfo[i])
+		c.vkeys[i].UnmarshalBinary(trusteeInfo[i])
+		println("vkey : ", c.vkeys[i].String())
 		c.vkey.Add(c.vkey, c.vkeys[i])
 	}
 
 	c.pnull = c.suite.Point().Null()
 }
 
-func (c *ownedCoder) DecodeStart(payloadlen int, history abstract.Cipher) {
+func (c *ownedCoder) DecodeStart(payloadLength int, history abstract.Cipher) {
 
 	// Compute the composite trustees-side verifiable DC-net unblinder
 	// based on the appropriate message history.
 	p := c.suite.Point()
 	p.Pick(nil, history)
+	println("point : ", p.String())
 	p.Mul(p, c.vkey)
 	c.point = p
+	println("point with key: ", p.String())
 
 	// Initialize the symmetric ciphertext XOR buffer
-	if payloadlen > c.keylen {
-		c.xorbuf = make([]byte, payloadlen)
+	if payloadLength > c.keyLength {
+		c.xorBuffer = make([]byte, payloadLength)
 	}
 }
 
 func (c *ownedCoder) DecodeClient(slice []byte) {
 	// Decode and add in the point in the slice header
-	plen := c.suite.PointLen()
+	pLength := c.suite.PointLen()
 	p := c.suite.Point()
-	if err := p.UnmarshalBinary(slice[:plen]); err != nil {
+	if err := p.UnmarshalBinary(slice[:pLength]); err != nil {
 		println("warning: error decoding point")
 	}
+	println("Unmarshalled Point from client : ", p.String())
 	c.point.Add(c.point, p)
-
+	println("Unmarshalled Point added : ", c.point.String())
 	// Combine in the symmetric ciphertext streams
-	if c.xorbuf != nil {
-		slice = slice[plen:]
+	if c.xorBuffer != nil {
+		slice = slice[pLength:]
 		for i := range slice {
-			c.xorbuf[i] ^= slice[i]
+			c.xorBuffer[i] ^= slice[i]
 		}
 	}
 }
@@ -303,9 +338,9 @@ func (c *ownedCoder) DecodeClient(slice []byte) {
 func (c *ownedCoder) DecodeTrustee(slice []byte) {
 
 	// Combine in the trustees' symmetric ciphertext streams
-	if c.xorbuf != nil {
+	if c.xorBuffer != nil {
 		for i := range slice {
-			c.xorbuf[i] ^= slice[i]
+			c.xorBuffer[i] ^= slice[i]
 		}
 	}
 }
@@ -318,13 +353,14 @@ func (c *ownedCoder) DecodeCell() []byte {
 	}
 
 	// Decode the header from the decrypted point.
+	println("Point where we try to read data : ", c.point.String())
 	hdr, err := c.point.Data()
-	if err != nil || len(hdr) < c.maclen {
-		println("warning: undecipherable cell header")
+	if err != nil || len(hdr) < c.macLength {
+		println("warning: undecipherable cell header, err : ", hdr)
 		return nil // XXX differentiate from no transmission?
 	}
 
-	if c.xorbuf == nil { // short inline cell
+	if c.xorBuffer == nil { // short inline cell
 		return c.inlineDecode(hdr)
 	}
 	// long payload cell
@@ -334,44 +370,44 @@ func (c *ownedCoder) DecodeCell() []byte {
 func (c *ownedCoder) inlineDecode(hdr []byte) []byte {
 
 	// Split the inline payload from the MAC
-	datlen := len(hdr) - c.maclen
-	dat := hdr[:datlen]
-	mac := hdr[datlen:]
+	dataLength := len(hdr) - c.macLength
+	data := hdr[:dataLength]
+	mac := hdr[dataLength:]
 
 	// Check the MAC
-	h := c.suite.Hash()
-	h.Write(dat)
-	check := h.Sum(nil)[:c.maclen]
+	hash := c.suite.Hash()
+	hash.Write(data)
+	check := hash.Sum(nil)[:c.macLength]
 	if !bytes.Equal(mac, check) {
 		println("warning: MAC check failed on inline cell")
 		return nil
 	}
 
-	return dat
+	return data
 }
 
 func (c *ownedCoder) ownerDecode(hdr []byte) []byte {
 
 	// Split the payload encryption key from the MAC
-	keylen := len(hdr) - c.maclen
-	if keylen != c.keylen {
+	keyLength := len(hdr) - c.macLength
+	if keyLength != c.keyLength {
 		println("warning: wrong size cell encryption key")
 		return nil
 	}
-	key := hdr[:keylen]
-	mac := hdr[keylen:]
-	dat := c.xorbuf
+	key := hdr[:keyLength]
+	mac := hdr[keyLength:]
+	data := c.xorBuffer
 
 	// Check the MAC on the still-encrypted data
-	h := c.suite.Hash()
-	h.Write(dat)
-	check := h.Sum(nil)[:c.maclen]
+	hash := c.suite.Hash()
+	hash.Write(data)
+	check := hash.Sum(nil)[:c.macLength]
 	if !bytes.Equal(mac, check) {
 		println("warning: MAC check failed on out-of-line cell")
 		return nil
 	}
 
 	// Decrypt and return the payload data
-	c.suite.Cipher(key).XORKeyStream(dat, dat)
-	return dat
+	c.suite.Cipher(key).XORKeyStream(data, data)
+	return data
 }

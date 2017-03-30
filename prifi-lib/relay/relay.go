@@ -42,6 +42,7 @@ import (
 	"github.com/lbarman/prifi/utils/timing"
 	"gopkg.in/dedis/crypto.v0/abstract"
 	"gopkg.in/dedis/onet.v1/log"
+	"github.com/lbarman/prifi/prifi-lib/config"
 )
 
 /*
@@ -103,6 +104,11 @@ func (p *PriFiLibRelayInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARA
 	p.relayState.nextDownStreamRoundToSend = int32(1) //since first round is half-round
 	p.relayState.WindowSize = windowSize
 	p.relayState.numberOfNonAckedDownstreamPackets = 0
+	p.relayState.MessageHistory = config.CryptoSuite.Cipher([]byte("DCCipher"))
+	p.relayState.vkeys = make([][]byte,nTrustees)
+
+	//placeholder
+	p.relayState.j = 0
 
 	//this should be in NewRelayState, but we need p
 	if !p.relayState.bufferManager.DoSendStopResumeMessages {
@@ -434,6 +440,8 @@ func (p *PriFiLibRelayInstance) Received_TRU_REL_TELL_PK(msg net.TRU_REL_TELL_PK
 			p.messageSender.SendToClientWithLog(i, toSend, "(client "+strconv.Itoa(i)+")")
 		}
 
+
+
 		p.stateMachine.ChangeState("COLLECTING_CLIENT_PKS")
 	}
 	return nil
@@ -495,6 +503,8 @@ When this happens, we pack a transcript, and broadcast it to all the trustees wh
 */
 func (p *PriFiLibRelayInstance) Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS(msg net.TRU_REL_TELL_NEW_BASE_AND_EPH_PKS) error {
 
+	p.relayState.vkeys[p.relayState.j] = msg.Vkey
+	p.relayState.j++
 	done, err := p.relayState.neffShuffle.ReceivedShuffleFromTrustee(msg.NewBase, msg.NewEphPks, msg.Proof)
 	if err != nil {
 		e := "Relay : error in p.relayState.neffShuffle.ReceivedShuffleFromTrustee " + err.Error()
@@ -539,6 +549,8 @@ func (p *PriFiLibRelayInstance) Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS(msg n
 			// send to the j-th trustee
 			p.messageSender.SendToTrusteeWithLog(j, toSend, "(trustee "+strconv.Itoa(j+1)+")")
 		}
+
+		p.relayState.CellCoder.RelaySetup(config.CryptoSuite, p.relayState.vkeys)
 
 		// prepare to collect the ciphers
 		p.relayState.currentDCNetRound.ChangeRound(0)

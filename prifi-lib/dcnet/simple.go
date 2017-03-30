@@ -5,14 +5,14 @@ import (
 )
 
 type simpleCoder struct {
-	suite abstract.Suite
+	suite     abstract.Suite
 
 	// Pseudorandom DC-nets ciphers shared with each peer.
 	// On clients, there is one DC-nets cipher per trustee.
 	// On trustees, there is one DC-nets cipher per client.
-	dcciphers []abstract.Cipher
+	dcCiphers []abstract.Cipher
 
-	xorbuf []byte
+	xorBuffer []byte
 }
 
 // SimpleCoderFactory is a simple DC-net encoder providing no disruption or equivocation protection,
@@ -23,73 +23,73 @@ func SimpleCoderFactory() CellCoder {
 
 ///// Client methods /////
 
-func (c *simpleCoder) ClientCellSize(payloadlen int) int {
-	return payloadlen // no expansion
+func (c *simpleCoder) ClientCellSize(payloadLength int) int {
+	return payloadLength // no expansion
 }
 
 func (c *simpleCoder) ClientSetup(suite abstract.Suite,
-	sharedsecrets []abstract.Cipher) {
+	sharedSecrets []abstract.Cipher) {
 	c.suite = suite
-	keysize := suite.Cipher(nil).KeySize()
+	keySize := suite.Cipher(nil).KeySize()
 
 	// Use the provided shared secrets to seed
 	// a pseudorandom DC-nets ciphers shared with each peer.
-	npeers := len(sharedsecrets)
-	c.dcciphers = make([]abstract.Cipher, npeers)
-	for i := range sharedsecrets {
-		key := make([]byte, keysize)
-		sharedsecrets[i].Partial(key, key, nil)
-		c.dcciphers[i] = suite.Cipher(key)
+	npeers := len(sharedSecrets)
+	c.dcCiphers = make([]abstract.Cipher, npeers)
+	for i := range sharedSecrets {
+		key := make([]byte, keySize)
+		sharedSecrets[i].Partial(key, key, nil)
+		c.dcCiphers[i] = suite.Cipher(key)
 	}
 }
 
-func (c *simpleCoder) ClientEncode(payload []byte, payloadlen int,
+func (c *simpleCoder) ClientEncode(payload []byte, payloadLength int,
 	history abstract.Cipher) []byte {
 
 	if payload == nil {
-		payload = make([]byte, payloadlen)
+		payload = make([]byte, payloadLength)
 	}
-	if len(payload) < payloadlen {
-		payload2 := make([]byte, payloadlen)
+	if len(payload) < payloadLength {
+		payload2 := make([]byte, payloadLength)
 		copy(payload2[0:len(payload)], payload)
 		payload = payload2
 	}
-	for i := range c.dcciphers {
-		c.dcciphers[i].XORKeyStream(payload, payload)
+	for i := range c.dcCiphers {
+		c.dcCiphers[i].XORKeyStream(payload, payload)
 	}
 	return payload
 }
 
 ///// Trustee methods /////
 
-func (c *simpleCoder) TrusteeCellSize(payloadlen int) int {
-	return payloadlen // no expansion
+func (c *simpleCoder) TrusteeCellSize(payloadLength int) int {
+	return payloadLength // no expansion
 }
 
 func (c *simpleCoder) TrusteeSetup(suite abstract.Suite,
-	sharedsecrets []abstract.Cipher) []byte {
-	c.ClientSetup(suite, sharedsecrets)
+	sharedSecrets []abstract.Cipher) []byte {
+	c.ClientSetup(suite, sharedSecrets)
 	return nil
 }
 
-func (c *simpleCoder) TrusteeEncode(payloadlen int) []byte {
+func (c *simpleCoder) TrusteeEncode(payloadLength int) []byte {
 	emptyCode := abstract.Cipher{}
-	return c.ClientEncode(nil, payloadlen, emptyCode)
+	return c.ClientEncode(nil, payloadLength, emptyCode)
 }
 
 ///// Relay methods /////
 
-func (c *simpleCoder) RelaySetup(suite abstract.Suite, trusteeinfo [][]byte) {
+func (c *simpleCoder) RelaySetup(suite abstract.Suite, trusteeInfo [][]byte) {
 	// nothing to do
 }
 
-func (c *simpleCoder) DecodeStart(payloadlen int, history abstract.Cipher) {
-	c.xorbuf = make([]byte, payloadlen)
+func (c *simpleCoder) DecodeStart(payloadLength int, history abstract.Cipher) {
+	c.xorBuffer = make([]byte, payloadLength)
 }
 
 func (c *simpleCoder) DecodeClient(slice []byte) {
 	for i := range slice {
-		c.xorbuf[i] ^= slice[i]
+		c.xorBuffer[i] ^= slice[i]
 	}
 }
 
@@ -98,5 +98,5 @@ func (c *simpleCoder) DecodeTrustee(slice []byte) {
 }
 
 func (c *simpleCoder) DecodeCell() []byte {
-	return c.xorbuf
+	return c.xorBuffer
 }

@@ -85,6 +85,7 @@ func (p *PriFiLibClientInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PAR
 	p.clientState.sharedSecrets = make([]abstract.Point, nTrustees)
 	p.clientState.RoundNo = int32(0)
 	p.clientState.BufferedRoundData = make(map[int32]net.REL_CLI_DOWNSTREAM_DATA)
+	p.clientState.MessageHistory = config.CryptoSuite.Cipher([]byte("DCCipher"))
 
 	//if by chance we had a broadcast-listener goroutine, kill it
 	if p.clientState.StartStopReceiveBroadcast != nil {
@@ -362,7 +363,7 @@ func (p *PriFiLibClientInstance) Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(
 	log.Lvl3("Client " + strconv.Itoa(p.clientState.ID) + " is ready to communicate.")
 
 	//produce a blank cell (we could embed data, but let's keep the code simple, one wasted message is not much)
-	upstreamCell := p.clientState.CellCoder.ClientEncode(make([]byte, 0), p.clientState.PayloadLength, p.clientState.MessageHistory)
+	upstreamCell := p.clientState.CellCoder.ClientEncode(make([]byte, 100), p.clientState.PayloadLength, p.clientState.MessageHistory)
 
 	//send the data to the relay
 	toSend := &net.CLI_REL_UPSTREAM_DATA{

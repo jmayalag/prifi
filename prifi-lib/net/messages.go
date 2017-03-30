@@ -156,6 +156,7 @@ type TRU_REL_TELL_NEW_BASE_AND_EPH_PKS struct {
 	NewBase   abstract.Point
 	NewEphPks []abstract.Point
 	Proof     []byte
+	Vkey      []byte
 }
 
 // TRU_REL_TELL_PK message contains the public key of a trustee and is sent to the relay.
