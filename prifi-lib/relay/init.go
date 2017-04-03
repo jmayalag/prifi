@@ -167,7 +167,7 @@ type RelayState struct {
 	bitrateStatistics                 *prifilog.BitrateStatistics
 	timeStatistics                    map[string]*prifilog.TimeStatistics
 	vkeys                             [][]byte
-	j                                 int
+	nVkeysCollected                   int
 }
 
 // ReceivedMessage must be called when a PriFi host receives a message.

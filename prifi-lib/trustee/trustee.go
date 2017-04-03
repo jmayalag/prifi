@@ -75,7 +75,6 @@ func (p *PriFiLibTrusteeInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PA
 	//placeholders for pubkeys and secrets
 	p.trusteeState.ClientPublicKeys = make([]abstract.Point, nClients)
 	p.trusteeState.sharedSecrets = make([]abstract.Point, nClients)
-	p.trusteeState.MessageHistory = config.CryptoSuite.Cipher(make([]byte,1))
 
 	if startNow {
 		// send our public key to the relay

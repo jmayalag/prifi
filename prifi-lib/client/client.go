@@ -85,7 +85,7 @@ func (p *PriFiLibClientInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PAR
 	p.clientState.sharedSecrets = make([]abstract.Point, nTrustees)
 	p.clientState.RoundNo = int32(0)
 	p.clientState.BufferedRoundData = make(map[int32]net.REL_CLI_DOWNSTREAM_DATA)
-	p.clientState.MessageHistory = config.CryptoSuite.Cipher([]byte("DCCipher"))
+	p.clientState.MessageHistory = config.CryptoSuite.Cipher([]byte("DCCipher")) //XXX different initialization ? just needs to be a []byte with some data (not only 0s) and same as Relay
 
 	//if by chance we had a broadcast-listener goroutine, kill it
 	if p.clientState.StartStopReceiveBroadcast != nil {

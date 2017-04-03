@@ -104,11 +104,11 @@ func (p *PriFiLibRelayInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARA
 	p.relayState.nextDownStreamRoundToSend = int32(1) //since first round is half-round
 	p.relayState.WindowSize = windowSize
 	p.relayState.numberOfNonAckedDownstreamPackets = 0
-	p.relayState.MessageHistory = config.CryptoSuite.Cipher([]byte("DCCipher"))
+	p.relayState.MessageHistory = config.CryptoSuite.Cipher([]byte("DCCipher")) //XXX different initialization ? just needs to be a []byte with some data (not only 0s) and same as clients
 	p.relayState.vkeys = make([][]byte,nTrustees)
 
 	//placeholder
-	p.relayState.j = 0
+	p.relayState.nVkeysCollected = 0
 
 	//this should be in NewRelayState, but we need p
 	if !p.relayState.bufferManager.DoSendStopResumeMessages {
@@ -505,8 +505,8 @@ When this happens, we pack a transcript, and broadcast it to all the trustees wh
 */
 func (p *PriFiLibRelayInstance) Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS(msg net.TRU_REL_TELL_NEW_BASE_AND_EPH_PKS) error {
 
-	p.relayState.vkeys[p.relayState.j] = msg.Vkey
-	p.relayState.j++
+	p.relayState.vkeys[p.relayState.nVkeysCollected] = msg.Vkey
+	p.relayState.nVkeysCollected++
 	done, err := p.relayState.neffShuffle.ReceivedShuffleFromTrustee(msg.NewBase, msg.NewEphPks, msg.Proof)
 	if err != nil {
 		e := "Relay : error in p.relayState.neffShuffle.ReceivedShuffleFromTrustee " + err.Error()
