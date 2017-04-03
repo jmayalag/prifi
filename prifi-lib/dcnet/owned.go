@@ -8,16 +8,16 @@ import (
 )
 
 type ownedCoder struct {
-	suite                abstract.Suite
+	suite abstract.Suite
 
 	// Length of Key and MAC part of verifiable DC-net point
 	keyLength, macLength int
 
 	// Verifiable DC-nets secrets shared with each peer.
-	vkeys                []abstract.Scalar
+	vkeys []abstract.Scalar
 
 	// The sum of all our verifiable DC-nets secrets.
-	vkey      abstract.Scalar
+	vkey abstract.Scalar
 
 	// Pseudorandom DC-nets ciphers shared with each peer.
 	// On clients, there is one DC-nets cipher per trustee.
@@ -25,7 +25,7 @@ type ownedCoder struct {
 	dcCiphers []abstract.Cipher
 
 	// Pseudorandom stream
-	random    abstract.Cipher
+	random abstract.Cipher
 
 	// Decoding state, used only by the relay
 	point     abstract.Point
@@ -94,7 +94,7 @@ func (c *ownedCoder) commonSetup(suite abstract.Suite) {
 	// between an encryption key and a MAC check
 	c.keyLength = suite.Cipher(nil).KeySize()
 	c.macLength = suite.Point().PickLen() - c.keyLength
-	if c.macLength < c.keyLength *3/4 {
+	if c.macLength < c.keyLength*3/4 {
 		panic("misconfigured ciphersuite: MAC too small!")
 	}
 

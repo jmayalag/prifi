@@ -37,8 +37,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/lbarman/prifi/prifi-lib/net"
 	"github.com/lbarman/prifi/prifi-lib/config"
+	"github.com/lbarman/prifi/prifi-lib/net"
 	socks "github.com/lbarman/prifi/prifi-socks"
 	"github.com/lbarman/prifi/utils/timing"
 	"gopkg.in/dedis/crypto.v0/abstract"
@@ -105,7 +105,7 @@ func (p *PriFiLibRelayInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARA
 	p.relayState.WindowSize = windowSize
 	p.relayState.numberOfNonAckedDownstreamPackets = 0
 	p.relayState.MessageHistory = config.CryptoSuite.Cipher([]byte("DCCipher")) //XXX different initialization ? needs to be a []byte with some data (not only 0s) and same as clients
-	p.relayState.vkeys = make([][]byte,nTrustees)
+	p.relayState.vkeys = make([][]byte, nTrustees)
 	p.relayState.nVkeysCollected = 0
 	p.relayState.dcnetRoundManager = NewDCNetRoundManager(windowSize)
 

@@ -5,7 +5,7 @@ import (
 )
 
 type simpleCoder struct {
-	suite     abstract.Suite
+	suite abstract.Suite
 
 	// Pseudorandom DC-nets ciphers shared with each peer.
 	// On clients, there is one DC-nets cipher per trustee.
