@@ -264,6 +264,8 @@ func (p *PriFiLibRelayInstance) finalizeUpstreamData() error {
 
 	if upstreamPlaintext == nil {
 		// empty upstream cell
+		p.roundFinished()
+		return nil
 	}
 
 	if len(upstreamPlaintext) != p.relayState.UpstreamCellSize {

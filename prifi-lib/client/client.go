@@ -363,7 +363,7 @@ func (p *PriFiLibClientInstance) Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(
 	log.Lvl3("Client " + strconv.Itoa(p.clientState.ID) + " is ready to communicate.")
 
 	//produce a blank cell (we could embed data, but let's keep the code simple, one wasted message is not much)
-	upstreamCell := p.clientState.CellCoder.ClientEncode(make([]byte, 100), p.clientState.PayloadLength, p.clientState.MessageHistory)
+	upstreamCell := p.clientState.CellCoder.ClientEncode(nil, p.clientState.PayloadLength, p.clientState.MessageHistory)
 
 	//send the data to the relay
 	toSend := &net.CLI_REL_UPSTREAM_DATA{
