@@ -38,6 +38,7 @@ import (
 	"time"
 
 	"github.com/lbarman/prifi/prifi-lib/net"
+	"github.com/lbarman/prifi/prifi-lib/config"
 	socks "github.com/lbarman/prifi/prifi-socks"
 	"github.com/lbarman/prifi/utils/timing"
 	"gopkg.in/dedis/crypto.v0/abstract"
@@ -103,10 +104,8 @@ func (p *PriFiLibRelayInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARA
 	p.relayState.nextDownStreamRoundToSend = int32(1) //since first round is half-round
 	p.relayState.WindowSize = windowSize
 	p.relayState.numberOfNonAckedDownstreamPackets = 0
-	p.relayState.MessageHistory = config.CryptoSuite.Cipher([]byte("DCCipher")) //XXX different initialization ? just needs to be a []byte with some data (not only 0s) and same as clients
+	p.relayState.MessageHistory = config.CryptoSuite.Cipher([]byte("DCCipher")) //XXX different initialization ? needs to be a []byte with some data (not only 0s) and same as clients
 	p.relayState.vkeys = make([][]byte,nTrustees)
-
-	//placeholder
 	p.relayState.nVkeysCollected = 0
 	p.relayState.dcnetRoundManager = NewDCNetRoundManager(windowSize)
 
@@ -273,8 +272,8 @@ func (p *PriFiLibRelayInstance) finalizeUpstreamData() error {
 	}
 
 	if upstreamPlaintext == nil {
-		// empty upstream cell
-		p.roundFinished()
+		// empty upstream cell, need to finish round otherwise will enter next if clause
+		p.roundFinished(p.relayState.dcnetRoundManager.CurrentRound())
 		return nil
 	}
 
@@ -350,6 +349,7 @@ func (p *PriFiLibRelayInstance) sendDownstreamData() error {
 
 	flagResync := false
 	log.Lvl3("Relay is gonna broadcast messages for round " + strconv.Itoa(int(p.relayState.nextDownStreamRoundToSend)) + ".")
+
 	toSend := &net.REL_CLI_DOWNSTREAM_DATA{
 		RoundID:    p.relayState.nextDownStreamRoundToSend,
 		Data:       downstreamCellContent,
@@ -523,6 +523,7 @@ func (p *PriFiLibRelayInstance) Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS(msg n
 
 	p.relayState.vkeys[p.relayState.nVkeysCollected] = msg.Vkey
 	p.relayState.nVkeysCollected++
+
 	done, err := p.relayState.neffShuffle.ReceivedShuffleFromTrustee(msg.NewBase, msg.NewEphPks, msg.Proof)
 	if err != nil {
 		e := "Relay : error in p.relayState.neffShuffle.ReceivedShuffleFromTrustee " + err.Error()

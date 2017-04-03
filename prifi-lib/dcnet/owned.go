@@ -146,36 +146,16 @@ func (c *ownedCoder) ClientEncode(payload []byte, payloadLength int,
 	// so that any data the client might be sending based on
 	// having seen a divergent history gets suppressed.
 	p := c.suite.Point()
-	/*po := c.suite.Point()
-
-	println("point : ", p.String(), c.vkey.String())*/
 	p.Pick(nil, history)
-	println("point : ", p.String())
-/*	poi, nil := p.MarshalBinary()
-	po.UnmarshalBinary(poi)*/
 	p.Mul(p, c.vkey)
-	/*c.vkey.Neg(c.vkey)
-	println("point po : ", po.String(), c.vkey.String())
-	po.Mul(po, c.vkey)
-	c.vkey.Neg(c.vkey)
-	println("point : ", po.String(), c.vkey.String(), p.String())
-	po.Add(po, p)
-	println("point : ", po.String(), c.vkey.String())*/
-
 
 	// Encode the payload data, if any.
 	payOut := make([]byte, c.symmCellSize(payloadLength))
-	//if payload == nil {
-	println("payload : ", payload)
-	//	payload = make([]byte, payloadLength)
-	//}
 	if payload != nil {
 		// We're the owner of this cell.
 		if len(payload) <= c.keyLength {
-			println("inline")
 			c.inlineEncode(payload, p)
 		} else {
-			println("owner")
 			c.ownerEncode(payload, payOut, p)
 		}
 	}
@@ -202,11 +182,8 @@ func (c *ownedCoder) inlineEncode(payload []byte, p abstract.Point) {
 	hdr := append(payload, mac...)
 	mp, _ := c.suite.Point().Pick(hdr, c.random)
 
-	println("Point with data : ", mp.String())
-	println("point with key: ", p.String())
 	// Add this to the blinding point we already computed to transmit.
 	p.Add(p, mp)
-	println("Point blinding : ", p.String())
 }
 
 func (c *ownedCoder) ownerEncode(payload, payOut []byte, p abstract.Point) {
@@ -231,15 +208,9 @@ func (c *ownedCoder) ownerEncode(payload, payOut []byte, p abstract.Point) {
 		panic("oops, length of key+mac turned out wrong")
 	}
 	mp, _ := c.suite.Point().Pick(hdr, c.random)
-	println("Point with data : ", mp.String())
-	println("point with key: ", p.String())
+
 	// Add this to the blinding point we already computed to transmit.
 	p.Add(p, mp)
-	println("Point blinding : ", p.String())
-	hdr, err := mp.Data()
-	if err!= nil {
-		println("ownerEncode doesn't work ?")
-	}
 }
 
 ///// Trustee methods /////
@@ -261,9 +232,7 @@ func (c *ownedCoder) TrusteeSetup(suite abstract.Suite,
 
 	// Release the negation of the composite shared verifiable secret
 	// to the relay, so the relay can decode each cell's header.
-	println("vkey : ", c.vkey.String())
 	c.vkey.Neg(c.vkey)
-	println("vkey neg : ", c.vkey.String())
 	rv, _ := c.vkey.MarshalBinary()
 	return rv
 }
@@ -292,7 +261,6 @@ func (c *ownedCoder) RelaySetup(suite abstract.Suite, trusteeInfo [][]byte) {
 	for i := range c.vkeys {
 		c.vkeys[i] = c.suite.Scalar()
 		c.vkeys[i].UnmarshalBinary(trusteeInfo[i])
-		println("vkey : ", c.vkeys[i].String())
 		c.vkey.Add(c.vkey, c.vkeys[i])
 	}
 
@@ -305,10 +273,8 @@ func (c *ownedCoder) DecodeStart(payloadLength int, history abstract.Cipher) {
 	// based on the appropriate message history.
 	p := c.suite.Point()
 	p.Pick(nil, history)
-	println("point : ", p.String())
 	p.Mul(p, c.vkey)
 	c.point = p
-	println("point with key: ", p.String())
 
 	// Initialize the symmetric ciphertext XOR buffer
 	if payloadLength > c.keyLength {
@@ -323,9 +289,8 @@ func (c *ownedCoder) DecodeClient(slice []byte) {
 	if err := p.UnmarshalBinary(slice[:pLength]); err != nil {
 		println("warning: error decoding point")
 	}
-	println("Unmarshalled Point from client : ", p.String())
 	c.point.Add(c.point, p)
-	println("Unmarshalled Point added : ", c.point.String())
+
 	// Combine in the symmetric ciphertext streams
 	if c.xorBuffer != nil {
 		slice = slice[pLength:]
@@ -353,10 +318,9 @@ func (c *ownedCoder) DecodeCell() []byte {
 	}
 
 	// Decode the header from the decrypted point.
-	println("Point where we try to read data : ", c.point.String())
 	hdr, err := c.point.Data()
 	if err != nil || len(hdr) < c.macLength {
-		println("warning: undecipherable cell header, err : ", hdr)
+		println("warning: undecipherable cell header")
 		return nil // XXX differentiate from no transmission?
 	}
 
@@ -367,6 +331,7 @@ func (c *ownedCoder) DecodeCell() []byte {
 	return c.ownerDecode(hdr)
 }
 
+// not used
 func (c *ownedCoder) inlineDecode(hdr []byte) []byte {
 
 	// Split the inline payload from the MAC

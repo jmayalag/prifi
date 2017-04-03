@@ -218,7 +218,12 @@ func (p *PriFiLibTrusteeInstance) Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_
 		}
 		sharedPRNGs[i] = config.CryptoSuite.Cipher(bytes)
 	}
+
 	vkey := p.trusteeState.CellCoder.TrusteeSetup(config.CryptoSuite, sharedPRNGs)
+	//In case we use the simple dcnet, vkey isn't needed
+	if vkey == nil {
+		vkey = make([]byte,1)
+	}
 
 	toSend, err := p.trusteeState.neffShuffle.ReceivedShuffleFromRelay(msg.Base, msg.EphPks, true, vkey)
 	if err != nil {
