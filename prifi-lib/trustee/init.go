@@ -49,7 +49,7 @@ func NewTrustee(msgSender *net.MessageSenderWrapper) *PriFiLibTrusteeInstance {
 	states := []string{"BEFORE_INIT", "INITIALIZING", "SHUFFLE_DONE", "READY", "SHUTDOWN"}
 	sm := new(utils.StateMachine)
 	logFn := func(s interface{}) {
-		log.Lvl2(s)
+		log.Lvl3(s)
 	}
 	errFn := func(s interface{}) {
 		if strings.Contains(s.(string), ", but in state SHUTDOWN") { //it's an "acceptable error"

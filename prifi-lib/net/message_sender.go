@@ -17,20 +17,13 @@ type MessageSender interface {
 	// SendToRelay tries to deliver the message "msg" to the relay.
 	SendToRelay(msg interface{}) error
 
-	/*
-		BroadcastToAllClients tries to deliver the message "msg"
-		to every client, possibly using broadcast.
-	*/
+	// BroadcastToAllClients tries to deliver the message "msg" to every client, possibly using broadcast.
 	BroadcastToAllClients(msg interface{}) error
 
-	/*
-		ClientSubscribeToBroadcast should be called by the Clients
-		in order to receive the Broadcast messages.
-		Calling the function starts the handler but does not actually
-		listen for broadcast messages.
-		Sending true to startStopChan starts receiving the broadcasts.
-		Sending false to startStopChan stops receiving the broadcasts.
-	*/
+	// ClientSubscribeToBroadcast should be called by the Clients in order to receive the Broadcast messages.
+	// Calling the function starts the handler but does not actually listen for broadcast messages.
+	// Sending true to startStopChan starts receiving the broadcasts.
+	// Sending false to startStopChan stops receiving the broadcasts.
 	ClientSubscribeToBroadcast(clientName string, messageReceived func(interface{}) error, startStopChan chan bool) error
 }
 
@@ -79,8 +72,16 @@ func NewMessageSenderWrapper(logging bool, logSuccessFunction func(interface{}),
  * Send a message to client i. will automatically print what it does (Lvl3) if loggingenabled, and
  * will call networkErrorHappened on error
  */
+func (m *MessageSenderWrapper) BroadcastToAllClientsWithLog(msg interface{}, extraInfos string) bool {
+	return m.sendToWithLog(m.MessageSender.BroadcastToAllClients, msg, extraInfos)
+}
+
+/**
+ * Send a message to client i. will automatically print what it does (Lvl3) if loggingenabled, and
+ * will call networkErrorHappened on error
+ */
 func (m *MessageSenderWrapper) SendToClientWithLog(i int, msg interface{}, extraInfos string) bool {
-	return m.sendToWithLog(m.MessageSender.SendToClient, i, msg, extraInfos)
+	return m.sendToWithLog2(m.MessageSender.SendToClient, i, msg, extraInfos)
 }
 
 /**
@@ -88,7 +89,7 @@ func (m *MessageSenderWrapper) SendToClientWithLog(i int, msg interface{}, extra
  * will call networkErrorHappened on error
  */
 func (m *MessageSenderWrapper) SendToTrusteeWithLog(i int, msg interface{}, extraInfos string) bool {
-	return m.sendToWithLog(m.MessageSender.SendToTrustee, i, msg, extraInfos)
+	return m.sendToWithLog2(m.MessageSender.SendToTrustee, i, msg, extraInfos)
 }
 
 /**
@@ -96,7 +97,14 @@ func (m *MessageSenderWrapper) SendToTrusteeWithLog(i int, msg interface{}, extr
  * will call networkErrorHappened on error
  */
 func (m *MessageSenderWrapper) SendToRelayWithLog(msg interface{}, extraInfos string) bool {
-	err := m.MessageSender.SendToRelay(msg)
+	return m.sendToWithLog(m.MessageSender.SendToRelay, msg, extraInfos)
+}
+
+/**
+ * Helper function for both SendToClientWithLog and SendToTrusteeWithLog
+ */
+func (m *MessageSenderWrapper) sendToWithLog(sendingFunc func(interface{}) error, msg interface{}, extraInfos string) bool {
+	err := sendingFunc(msg)
 	msgName := reflect.TypeOf(msg).String()
 	if err != nil {
 		e := "Tried to send a " + msgName + ", but some network error occurred. Err is: " + err.Error()
@@ -118,7 +126,7 @@ func (m *MessageSenderWrapper) SendToRelayWithLog(msg interface{}, extraInfos st
 /**
  * Helper function for both SendToClientWithLog and SendToTrusteeWithLog
  */
-func (m *MessageSenderWrapper) sendToWithLog(sendingFunc func(int, interface{}) error, i int, msg interface{}, extraInfos string) bool {
+func (m *MessageSenderWrapper) sendToWithLog2(sendingFunc func(int, interface{}) error, i int, msg interface{}, extraInfos string) bool {
 	err := sendingFunc(i, msg)
 	msgName := reflect.TypeOf(msg).String()
 	if err != nil {

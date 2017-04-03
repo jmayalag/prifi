@@ -17,7 +17,7 @@ func (p *PriFiLibRelayInstance) checkIfRoundHasEndedAfterTimeOut_Phase1(roundID 
 
 	time.Sleep(TIMEOUT_PHASE_1)
 
-	if !p.relayState.currentDCNetRound.isStillInRound(roundID) {
+	if !p.relayState.dcnetRoundManager.CurrentRoundIsStill(roundID) {
 		return //everything went well, it's great !
 	}
 
@@ -33,8 +33,9 @@ func (p *PriFiLibRelayInstance) checkIfRoundHasEndedAfterTimeOut_Phase1(roundID 
 	if p.relayState.UseUDP {
 		for clientID := range missingClientCiphers {
 			log.Error("Relay : Client " + strconv.Itoa(clientID) + " didn't sent us is cipher for round " + strconv.Itoa(int(roundID)) + ". Phase 1 timeout. Re-sending...")
-			extraInfo := "(client " + strconv.Itoa(clientID) + ", round " + strconv.Itoa(int(p.relayState.currentDCNetRound.CurrentRound())) + ")"
-			p.messageSender.SendToClientWithLog(clientID, p.relayState.currentDCNetRound.GetDataAlreadySent(), extraInfo)
+			extraInfo := "(client " + strconv.Itoa(clientID) + ", round " + strconv.Itoa(int(roundID)) + ")"
+			dataAlreadySent := p.relayState.dcnetRoundManager.GetDataAlreadySent(roundID)
+			p.messageSender.SendToClientWithLog(clientID, dataAlreadySent, extraInfo)
 		}
 	}
 
@@ -53,7 +54,7 @@ func (p *PriFiLibRelayInstance) checkIfRoundHasEndedAfterTimeOut_Phase2(roundID 
 
 	time.Sleep(TIMEOUT_PHASE_2)
 
-	if !p.relayState.currentDCNetRound.isStillInRound(roundID) {
+	if !p.relayState.dcnetRoundManager.CurrentRoundIsStill(roundID) {
 		//everything went well, it's great !
 		return
 	}
@@ -66,8 +67,8 @@ func (p *PriFiLibRelayInstance) checkIfRoundHasEndedAfterTimeOut_Phase2(roundID 
 	log.Error("waitAndCheckIfClientsSentData : We seem to be stuck in round", roundID, ". Phase 2 timeout.")
 
 	log.Lvl3("Stopping experiment, if any.")
-	output := make([]string, 1)
-	output[0] = "aborted-round-" + strconv.Itoa(int(roundID))
+	output := p.relayState.ExperimentResultData
+	output = append(output, "!!aborted-round-"+strconv.Itoa(int(roundID)))
 	p.relayState.ExperimentResultChannel <- output
 
 	missingClientCiphers, missingTrusteesCiphers := p.relayState.bufferManager.MissingCiphersForCurrentRound()

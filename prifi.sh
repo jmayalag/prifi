@@ -12,7 +12,7 @@
 
 # variables that you might change often
 
-dbg_lvl=3                       # 1=less verbose, 3=more verbose. goes up to 5, but then prints the SDA's message (network framework)
+dbg_lvl=1                       # 1=less verbose, 3=more verbose. goes up to 5, but then prints the SDA's message (network framework)
 try_use_real_identities="false" # if "true", will try to use "self-generated" public/private key as a replacement for the dummy keys
                                 # we generated for you. It asks you if it does not find real keys. If false, will always use the dummy keys.
 colors="true"                   # if  "false", the output of PriFi (and this script) will be in black-n-white
@@ -21,7 +21,7 @@ socksServer1Port=8080           # the port for the SOCKS-Server-1 (part of the P
 socksServer2Port=8090           # the port to attempt connect to (from the PriFi relay) for the SOCKS-Server-2
                                 # notes : see <https://github.com/lbarman/prifi/blob/master/README_architecture.md>
 
-all_localhost_n_clients=10      # number of clients to start in the "all-localhost" script
+all_localhost_n_clients=2      # number of clients to start in the "all-localhost" script
 
 # default file names :
 
@@ -359,7 +359,6 @@ case $1 in
 		test_cothority
 
 		#test if a socks proxy is already running (needed for relay), or start ours
-		netstat -tunpl 2>/dev/null | grep "$socksServer2Port"
 		socks=$(netstat -tunpl 2>/dev/null | grep "$socksServer2Port" | wc -l)
 
 		if [ "$socks" -ne 1 ]; then
@@ -372,7 +371,7 @@ case $1 in
 		echo -n "Starting relay...			"
 		"$thisScript" relay > relay.log 2>&1 &
 		RELAYPID=$!
-		THISPGID=$(ps -o pgid= "$RELAYPID")
+		THISPGID=$(ps -o pgid= "$RELAYPID" | sed -e "s/^ //")
 		echo -e "$okMsg"
 
 		sleep "$sleeptime_between_spawns"
@@ -395,6 +394,7 @@ case $1 in
 		done
 
 		read -p "PriFi deployed. Press [enter] to kill all..." key
+		echo "Gonna run kill -TERM -- -\"$THISPGID\""
 
 		kill -TERM -- -"$THISPGID"
 		;;
@@ -637,23 +637,56 @@ case $1 in
 
 	simul|Simul|SIMUL)
 
+
+		#create a file ~/pings.sh with this content
+		#  #!/bin/sh
+		#  for ip in 10.0.1.1 10.1.0.1; do
+		#      echo "Pinging $ip"
+		#      ssh relay.LB-LLD.SAFER.isi.deterlab.net "ping $ip -w 10 -c 10 | grep rtt"
+		#	   echo -n ";"
+		#  done
+		# [EOF]
+
+		EXPERIMENT_ID_VALUE=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
 		SIMUL_FILE="prifi_simul.toml"
 		PLATFORM="deterlab"
 		EXEC_NAME="prifi_simul"
 		SIMUL_DIR="sda/simulation"
+		deterlabUser="lbarman"
+		MPORT="10002"
+		dbg_lvl=1
 
 		rm -f last-simul.log
 
 		echo -n "Building simulation... " | tee last-simul.log
 		cd "$SIMUL_DIR"; go build -o "$EXEC_NAME" *.go | tee ../../last-simul.log
-		echo -e "$okMsg" | tee last-simul.log
+		echo -e "$okMsg" | tee ../../last-simul.log
+
+		echo -en "Simulation ID is ${highlightOn}${EXPERIMENT_ID_VALUE}${highlightOff}, storing it in ${highlightOn}~/remote/.simID${highlightOff} on remote... " | tee ../../last-simul.log
+		ssh $deterlabUser@users.deterlab.net "echo ${EXPERIMENT_ID_VALUE} > ~/remote/.simID"  | tee ../../last-simul.log
+		ssh $deterlabUser@users.deterlab.net "rm -f ~/remote/.lastsimul"
+		echo -e "$okMsg" | tee ../../last-simul.log
 
 		echo -e "Starting simulation ${highlightOn}${SIMUL_FILE}${highlightOff} on ${highlightOn}${PLATFORM}${highlightOff}." | tee ../../last-simul.log
-		DEBUG_LVL=$dbg_lvl DEBUG_COLOR=$colors ./"$EXEC_NAME" -platform "$PLATFORM" "$SIMUL_FILE" | tee ../../last-simul.log
+		DEBUG_LVL=$dbg_lvl DEBUG_COLOR=$colors ./"$EXEC_NAME" -platform "$PLATFORM" -mport "$MPORT" "$SIMUL_FILE" | tee ../../last-simul.log
 
 		echo -n "Simulation done, cleaning up... " | tee ../../last-simul.log
 		rm -f "$EXEC_NAME" | tee ../../last-simul.log
 		echo -e "$okMsg" | tee ../../last-simul.log
+		
+		status=$(ssh $deterlabUser@users.deterlab.net "cat ~/remote/.lastsimul")
+		echo -e "Status is ${highlightOn}${status}${highlightOff}." | tee ../../last-simul.log
+
+		;;
+
+	simul-p|simul-ping)
+
+		deterlabUser="lbarman"
+
+		echo -n "Mesuring latencies... "
+		pings=$(ssh $deterlabUser@users.deterlab.net "./pings.sh")
+		echo -e "$okMsg"
+		echo $pings | sed -e "s/10.0.1.1/client0/" | sed -e "s/10.1.0.1/trustee0/" | tr ';' '\n'
 		;;
 
 	simul-gl|simul-get-logs)
@@ -734,6 +767,37 @@ case $1 in
 
 		;;
 
+	simul-vary-nclients)
+
+		thisScript="$0"
+
+		NTRUSTEES=3
+		NRELAY=1
+		TEMPLATE_FILE="sda/simulation/prifi_simul_template.toml"
+		CONFIG_FILE="sda/simulation/prifi_simul.toml"
+		TIMEOUT="400"
+
+		"$thisScript" simul-cl
+
+		for i in {5..95..5}
+		do
+			hosts=$(($NTRUSTEES + $NRELAY + $i))
+			echo "Simulating for HOSTS=$hosts..."
+
+			#fix the config
+			rm -f "$CONFIG_FILE"
+			sed "s/Hosts = x/Hosts = $hosts/g" "$TEMPLATE_FILE" > "$CONFIG_FILE"
+
+			timeout "$TIMEOUT" "$thisScript" simul | tee experiment_$i.txt
+		done
+
+		;;
+
+	simul-e|simul-edit)
+
+		nano sda/simulation/prifi_simul.toml
+		;;
+
 
 	clean|Clean|CLEAN)
 		echo -n "Cleaning local log files... 			"
@@ -744,5 +808,4 @@ case $1 in
 	*)
 		print_usage
 		;;
-
 esac

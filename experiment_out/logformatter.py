@@ -68,7 +68,7 @@ def openFile(directory, fileName):
 
 if len(sys.argv) < 2:
 	print "Argument 2 must be the folder with the logs"
-	os.exit(1)
+	sys.exit(1)
 
 
 logFolder = str(sys.argv[1])

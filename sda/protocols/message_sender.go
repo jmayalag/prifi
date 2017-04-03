@@ -32,6 +32,10 @@ func (p *PriFiSDAProtocol) buildMessageSender(identities map[string]PriFiIdentit
 	for i := 0; i < len(nodes); i++ {
 		identifier := nodes[i].ServerIdentity.Public.String()
 		id, ok := identities[identifier]
+		port, _ := strconv.Atoi(nodes[i].ServerIdentity.Address.Port())
+		portForFastChannel := port + 3
+
+		log.Lvl3("Found identity", identifier, " -> ", port, portForFastChannel)
 
 		if !ok {
 			log.Lvl3("Skipping unknow node with address", identifier)
@@ -54,6 +58,25 @@ func (p *PriFiSDAProtocol) buildMessageSender(identities map[string]PriFiIdentit
 	}
 
 	return MessageSender{p.TreeNodeInstance, relay, clients, trustees}
+}
+
+//SendToClient sends a message to client i, or fails if it is unknown
+func (ms MessageSender) FastSendToClient(i int, msg *net.REL_CLI_DOWNSTREAM_DATA) error {
+
+	if client, ok := ms.clients[i]; ok {
+		log.Lvl5("Sending a message to client ", i, " (", client.Name(), ") - ", msg)
+		return ms.tree.SendTo(client, msg)
+	}
+
+	e := "Client " + strconv.Itoa(i) + " is unknown !"
+	log.Error(e)
+	return errors.New(e)
+}
+
+//SendToRelay sends a message to the unique relay
+func (ms MessageSender) FastSendToRelay(msg *net.CLI_REL_UPSTREAM_DATA) error {
+	log.Lvl5("Sending a message to relay ", " - ", msg)
+	return ms.tree.SendTo(ms.relay, msg)
 }
 
 //SendToClient sends a message to client i, or fails if it is unknown
@@ -103,7 +126,7 @@ func (ms MessageSender) BroadcastToAllClients(msg interface{}) error {
 //ClientSubscribeToBroadcast allows a client to subscribe to UDP broadcast
 func (ms MessageSender) ClientSubscribeToBroadcast(clientName string, messageReceived func(interface{}) error, startStopChan chan bool) error {
 
-	log.Lvl3(clientName, " started UDP-listener helper.")
+	log.Fatal(clientName, " started UDP-listener helper.")
 	listening := false
 	lastSeenMessage := 0 //the first real message has ID 1; this means that we saw the empty struct.
 

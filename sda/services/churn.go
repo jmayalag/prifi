@@ -7,6 +7,7 @@ import (
 	"gopkg.in/dedis/onet.v1"
 	"gopkg.in/dedis/onet.v1/log"
 	"gopkg.in/dedis/onet.v1/network"
+	"sync"
 )
 
 /*
@@ -38,8 +39,9 @@ type waitQueueEntry struct {
 // waitQueue contains the list of nodes that are currently willing
 // to participate to the protocol.
 type waitQueue struct {
-	trustees map[string]*waitQueueEntry
-	clients  map[string]*waitQueueEntry
+	writeMutex sync.Mutex
+	trustees   map[string]*waitQueueEntry
+	clients    map[string]*waitQueueEntry
 }
 
 func idFromMsg(msg *network.Envelope) string {
@@ -204,15 +206,18 @@ func (c *churnHandler) getTrusteesIdentities() []*network.ServerIdentity {
  */
 func (c *churnHandler) handleConnection(msg *network.Envelope) {
 
+	c.waitQueue.writeMutex.Lock()
+	defer c.waitQueue.writeMutex.Unlock()
+
 	ID := idFromMsg(msg)
 	isTrustee := c.isATrustee(msg.ServerIdentity)
 
 	if c.waitQueue.contains(ID, isTrustee) {
-		log.Lvl3("Ignored new connection request from", ID, " (isATrustee:", isTrustee, "), already in the list")
+		log.Lvl2("Ignored new connection request from", ID, " (isATrustee:", isTrustee, "), already in the list")
 		return
 	}
 
-	log.Lvl3("Received new connection request from", ID, " (isATrustee:", isTrustee, ")")
+	log.Lvl2("Received new connection request from", ID, " (isATrustee:", isTrustee, ")")
 
 	if isTrustee {
 		c.waitQueue.trustees[ID] = &waitQueueEntry{
@@ -236,6 +241,9 @@ func (c *churnHandler) handleConnection(msg *network.Envelope) {
 }
 
 func (c *churnHandler) handleUnknownDisconnection() {
+
+	c.waitQueue.writeMutex.Lock()
+	defer c.waitQueue.writeMutex.Unlock()
 
 	c.waitQueue.clients = make(map[string]*waitQueueEntry)
 	c.waitQueue.trustees = make(map[string]*waitQueueEntry)
