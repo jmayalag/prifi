@@ -231,10 +231,10 @@ func TestOthers(t *testing.T) {
 	cellCoder.suite = nist.NewAES128SHA256P256()
 	cellCoder.random = cellCoder.suite.Cipher([]byte{0, 1, 2})
 
-	if size := cellCoder.ClientCellSize(1500); size != 1565 {
+	if size := cellCoder.ClientCellSize(1500); size != 1532 {
 		t.Error("Size should be", size)
 	}
-	if size := cellCoder.ClientCellSize(0); size != 65 {
+	if size := cellCoder.ClientCellSize(0); size != 32 {
 		t.Error("Size should be", size)
 	}
 	if size := cellCoder.TrusteeCellSize(1500); size != 1500 {
