@@ -86,10 +86,10 @@ func (t *NeffShuffleTrustee) ReceivedShuffleFromRelay(lastBase abstract.Point, c
 
 	//send the answer
 	msg := &net.TRU_REL_TELL_NEW_BASE_AND_EPH_PKS{
-		NewBase:   newBase,
-		NewEphPks: shuffledKeys,
-		Proof:     proof,
-		Vkey:      vkey}
+		NewBase:            newBase,
+		NewEphPks:          shuffledKeys,
+		Proof:              proof,
+		VerifiableDCNetKey: vkey}
 
 	return msg, nil
 }

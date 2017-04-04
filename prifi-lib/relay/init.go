@@ -169,8 +169,10 @@ type RelayState struct {
 	timeoutHandler                    func([]int, []int)
 	bitrateStatistics                 *prifilog.BitrateStatistics
 	timeStatistics                    map[string]*prifilog.TimeStatistics
-	vkeys                             [][]byte
-	nVkeysCollected                   int
+
+	//Used for verifiable DC-net, part of the dcnet/owned.go
+	VerifiableDCNetKeys [][]byte
+	nVkeysCollected     int
 }
 
 // ReceivedMessage must be called when a PriFi host receives a message.
