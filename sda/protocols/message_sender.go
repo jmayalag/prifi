@@ -145,7 +145,7 @@ func (ms MessageSender) ClientSubscribeToBroadcast(clientName string, messageRec
 		if listening {
 			emptyMessage := net.REL_CLI_DOWNSTREAM_DATA_UDP{}
 			//listen and decode
-			filledMessage, err := udpChan.ListenAndBlock(&emptyMessage, lastSeenMessage)
+			filledMessage, err := udpChan.ListenAndBlock(&emptyMessage, lastSeenMessage, clientName)
 			lastSeenMessage++
 
 			if err != nil {

@@ -97,7 +97,7 @@ func NewRelay(dataOutputEnabled bool, dataForClients chan []byte, dataFromDCNet 
 	}
 	errFn := func(s interface{}) {
 		if strings.Contains(s.(string), ", but in state SHUTDOWN") { //it's an "acceptable error"
-			log.Lvl3(s)
+			log.Lvl4(s)
 		} else {
 			log.Error(s)
 		}
