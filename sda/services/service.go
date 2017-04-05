@@ -53,8 +53,10 @@ type ServiceState struct {
 	//this hold the churn handler; protocol is started there. Only relay has this != nil
 	churnHandler *churnHandler
 
-	//this hold the running protocol (when it runs)
-	PriFiSDAProtocol *prifi_protocol.PriFiSDAProtocol
+	//this hold the running protocols (when they run)
+	PriFiExchangeProtocol    *prifi_protocol.PriFiExchangeProtocol
+	PriFiScheduleProtocol    *prifi_protocol.PriFiScheduleProtocol
+	PriFiCommunicateProtocol *prifi_protocol.PriFiCommunicateProtocol
 
 	//used to hold "stoppers" for go-routines; send "true" to kill
 	socksStopChan []chan bool
@@ -104,14 +106,52 @@ func newService(c *onet.Context) onet.Service {
 // give some extra-configuration to your protocol in here.
 func (s *ServiceState) NewProtocol(tn *onet.TreeNodeInstance, conf *onet.GenericConfig) (onet.ProtocolInstance, error) {
 
-	pi, err := prifi_protocol.NewPriFiSDAWrapperProtocol(tn)
+	log.LLvlf2("Protocol: %s", tn.ProtocolName())
+	return s.NewExchangeProtocol(tn, conf)
+}
+
+// NewExchangeProtocol
+func (s *ServiceState) NewExchangeProtocol(tn *onet.TreeNodeInstance, conf *onet.GenericConfig) (onet.ProtocolInstance, error) {
+
+	pi, err := prifi_protocol.NewPriFiExchangeWrapperProtocol(tn)
 	if err != nil {
 		return nil, err
 	}
 
-	wrapper := pi.(*prifi_protocol.PriFiSDAProtocol)
-	s.PriFiSDAProtocol = wrapper
-	s.setConfigToPriFiProtocol(wrapper)
+	wrapper := pi.(*prifi_protocol.PriFiExchangeProtocol)
+	s.PriFiExchangeProtocol = wrapper
+	s.setConfigToPriFiExchangeProtocol(wrapper)
+
+	return wrapper, nil
+}
+
+// NewScheduleProtocol
+func (s *ServiceState) NewScheduleProtocol(tn *onet.TreeNodeInstance, conf *onet.GenericConfig) (onet.ProtocolInstance, error) {
+
+	pi, err := prifi_protocol.NewPriFiScheduleWrapperProtocol(tn)
+	if err != nil {
+		return nil, err
+	}
+
+	wrapper := pi.(*prifi_protocol.PriFiScheduleProtocol)
+	s.PriFiScheduleProtocol = wrapper
+	s.setConfigToPriFiScheduleProtocol(wrapper)
+
+	return wrapper, nil
+}
+
+// NewCommunicateProtocol
+func (s *ServiceState) NewCommunicateProtocol(tn *onet.TreeNodeInstance, conf *onet.GenericConfig) (onet.ProtocolInstance,
+	error) {
+
+	pi, err := prifi_protocol.NewPriFiCommunicateWrapperProtocol(tn)
+	if err != nil {
+		return nil, err
+	}
+
+	wrapper := pi.(*prifi_protocol.PriFiCommunicateProtocol)
+	s.PriFiCommunicateProtocol = wrapper
+	s.setConfigToPriFiCommunicateProtocol(wrapper)
 
 	return wrapper, nil
 }
@@ -122,7 +162,7 @@ func (s *ServiceState) RelayAllowAutoStart() {
 	if s.churnHandler == nil {
 		log.Fatal("Cannot allow auto start when relay has not been initialized")
 	}
-	s.churnHandler.isProtocolRunning = s.IsPriFiProtocolRunning
+	s.churnHandler.isPrifiProtocolRunning = s.IsPriFiProtocolRunning
 }
 
 // StartRelay starts the necessary
@@ -139,13 +179,16 @@ func (s *ServiceState) StartRelay(group *app.Group) error {
 	//creates the ChurnHandler, part of the Relay's Service, that will start/stop the protocol
 	s.churnHandler = new(churnHandler)
 	s.churnHandler.init(relayID, trusteesIDs)
-	s.churnHandler.isProtocolRunning = s.IsPriFiProtocolRunning
+	s.churnHandler.isPrifiProtocolRunning = s.IsPriFiProtocolRunning
+	s.churnHandler.isExchangeProtocolRunning = s.IsPriFiExchangeProtocolRunning
+
 	if s.AutoStart {
-		s.churnHandler.startProtocol = s.StartPriFiCommunicateProtocol
+		s.churnHandler.startExchangeProtocol = s.StartPriFiExchangeProtocol
 	} else {
-		s.churnHandler.startProtocol = nil
+		s.churnHandler.startExchangeProtocol = nil
 	}
-	s.churnHandler.stopProtocol = s.StopPriFiCommunicateProtocol
+	s.churnHandler.stopPrifiProtocol = s.StopAllPriFiProtocols
+	s.churnHandler.stopExchangeProtocol = s.StopPriFiExchangeProtocol
 
 	socksServerConfig = &prifi_protocol.SOCKSConfig{
 		Port:              "127.0.0.1:" + strconv.Itoa(s.prifiTomlConfig.SocksClientPort),

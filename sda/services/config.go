@@ -62,7 +62,8 @@ func mapIdentities(group *app.Group) (*network.ServerIdentity, []*network.Server
 
 	return relay, trustees
 }
-func (s *ServiceState) setConfigToPriFiProtocol(wrapper *prifi_protocol.PriFiSDAProtocol) {
+
+func (s *ServiceState) setConfigToPriFiExchangeProtocol(wrapper *prifi_protocol.PriFiExchangeProtocol) {
 
 	//normal nodes only needs the relay in their identity map
 	identitiesMap := make(map[string]prifi_protocol.PriFiIdentity)
@@ -76,7 +77,63 @@ func (s *ServiceState) setConfigToPriFiProtocol(wrapper *prifi_protocol.PriFiSDA
 		identitiesMap = s.churnHandler.createIdentitiesMap()
 	}
 
-	configMsg := &prifi_protocol.PriFiSDAWrapperConfig{
+	configMsg := &prifi_protocol.PriFiExchangeWrapperConfig{
+		Toml:       s.prifiTomlConfig,
+		Identities: identitiesMap,
+		Role:       s.role,
+		ClientSideSocksConfig: socksClientConfig,
+		RelaySideSocksConfig:  socksServerConfig,
+	}
+
+	wrapper.SetConfigFromPriFiService(configMsg)
+
+	//when PriFi-protocol (via PriFi-lib) detects a slow client, call "handleTimeout"
+	wrapper.SetTimeoutHandler(s.handleTimeout)
+}
+
+func (s *ServiceState) setConfigToPriFiScheduleProtocol(wrapper *prifi_protocol.PriFiScheduleProtocol) {
+
+	//normal nodes only needs the relay in their identity map
+	identitiesMap := make(map[string]prifi_protocol.PriFiIdentity)
+	identitiesMap[idFromServerIdentity(s.relayIdentity)] = prifi_protocol.PriFiIdentity{
+		Role:     prifi_protocol.Relay,
+		ID:       0,
+		ServerID: s.relayIdentity,
+	}
+	//but the relay needs to know everyone, and this is managed by the churnHandler
+	if s.role == prifi_protocol.Relay {
+		identitiesMap = s.churnHandler.createIdentitiesMap()
+	}
+
+	configMsg := &prifi_protocol.PriFiScheduleWrapperConfig{
+		Toml:       s.prifiTomlConfig,
+		Identities: identitiesMap,
+		Role:       s.role,
+		ClientSideSocksConfig: socksClientConfig,
+		RelaySideSocksConfig:  socksServerConfig,
+	}
+
+	wrapper.SetConfigFromPriFiService(configMsg)
+
+	//when PriFi-protocol (via PriFi-lib) detects a slow client, call "handleTimeout"
+	wrapper.SetTimeoutHandler(s.handleTimeout)
+}
+
+func (s *ServiceState) setConfigToPriFiCommunicateProtocol(wrapper *prifi_protocol.PriFiCommunicateProtocol) {
+
+	//normal nodes only needs the relay in their identity map
+	identitiesMap := make(map[string]prifi_protocol.PriFiIdentity)
+	identitiesMap[idFromServerIdentity(s.relayIdentity)] = prifi_protocol.PriFiIdentity{
+		Role:     prifi_protocol.Relay,
+		ID:       0,
+		ServerID: s.relayIdentity,
+	}
+	//but the relay needs to know everyone, and this is managed by the churnHandler
+	if s.role == prifi_protocol.Relay {
+		identitiesMap = s.churnHandler.createIdentitiesMap()
+	}
+
+	configMsg := &prifi_protocol.PriFiCommunicateWrapperConfig{
 		Toml:       s.prifiTomlConfig,
 		Identities: identitiesMap,
 		Role:       s.role,

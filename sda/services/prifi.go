@@ -34,18 +34,49 @@ const DELAY_BEFORE_CONNECT_TO_RELAY = 5 * time.Second
 //Delay before the relay re-tried to connect to the trustees
 const DELAY_BEFORE_CONNECT_TO_TRUSTEES = 30 * time.Second
 
-// returns true if the PriFi SDA protocol is running (in any state : init, communicate, etc)
-func (s *ServiceState) IsPriFiProtocolRunning() bool {
-	if s.PriFiSDAProtocol != nil {
-		return !s.PriFiSDAProtocol.HasStopped
+// returns true if the PriFi exchange protocol is running
+func (s *ServiceState) IsPriFiExchangeProtocolRunning() bool {
+	if s.PriFiExchangeProtocol != nil {
+		return !s.PriFiExchangeProtocol.HasStopped
 	}
 	return false
+}
+
+// returns true if the PriFi schedule protocol is running
+func (s *ServiceState) IsPriFiScheduleProtocolRunning() bool {
+	if s.PriFiScheduleProtocol != nil {
+		return !s.PriFiScheduleProtocol.HasStopped
+	}
+	return false
+}
+
+// returns true if the PriFi communication protocol is running
+func (s *ServiceState) IsPriFiCommunicateProtocolRunning() bool {
+	if s.PriFiCommunicateProtocol != nil {
+		return !s.PriFiCommunicateProtocol.HasStopped
+	}
+	return false
+}
+
+// returns true if the PriFi SDA protocol is running (in any state : init, communicate, etc)
+func (s *ServiceState) IsPriFiProtocolRunning() bool {
+	var running = false
+	if s.PriFiExchangeProtocol != nil {
+		running = running || s.IsPriFiExchangeProtocolRunning()
+	}
+	if s.PriFiScheduleProtocol != nil {
+		running = running || s.IsPriFiScheduleProtocolRunning()
+	}
+	if s.PriFiCommunicateProtocol != nil {
+		running = running || s.IsPriFiCommunicateProtocolRunning()
+	}
+	return running
 }
 
 // Packet send by relay; when we get it, we stop the protocol
 func (s *ServiceState) HandleStop(msg *network.Envelope) {
 	log.Lvl1("Received a Handle Stop (I'm ", s.role, ")")
-	s.StopPriFiCommunicateProtocol()
+	s.StopAllPriFiProtocols()
 }
 
 // Packet send by relay to trustees at start
@@ -130,54 +161,179 @@ func (s *ServiceState) CountParticipants() (int, int) {
 	return s.churnHandler.CountParticipants()
 }
 
-// startPriFi starts a PriFi protocol. It is called
+// startPriFiExchange starts a PriFi exchange protocol. It is called
 // by the relay as soon as enough participants are
 // ready (one trustee and two clients).
-func (s *ServiceState) StartPriFiCommunicateProtocol() {
-	log.Lvl1("Starting PriFi protocol")
+func (s *ServiceState) StartPriFiExchangeProtocol() {
+	log.Lvl1("Starting PriFi exchange protocol")
 
 	if s.role != prifi_protocol.Relay {
-		log.Error("Trying to start PriFi protocol from a non-relay node.")
+		log.Error("Trying to start PriFi exchange protocol from a non-relay node.")
 		return
 	}
 
 	timing.StartMeasure("Resync")
 
-	var wrapper *prifi_protocol.PriFiSDAProtocol
-	roster := s.churnHandler.createRoster()
+	var wrapper *prifi_protocol.PriFiExchangeProtocol
+	s.churnHandler.createRoster()
+	roster := s.churnHandler.roster
 
-	// Start the PriFi protocol on a flat tree with the relay as root
+	// Start the PriFi exchange protocol on a flat tree with the relay as root
 	tree := roster.GenerateNaryTreeWithRoot(100, s.churnHandler.relayIdentity)
-	pi, err := s.CreateProtocol(prifi_protocol.ProtocolName, tree)
+	//	pi, err := s.CreateProtocol(prifi_protocol.ProtocolName, tree)
+	pi, err := s.CreateProtocol("PrifiExchangeProtocol", tree)
 
 	if err != nil {
-		log.Fatal("Unable to start Prifi protocol:", err)
+		log.Fatal("Unable to start Prifi exchange protocol:", err)
 	}
 
-	// Assert that pi has type PriFiSDAWrapper
-	wrapper = pi.(*prifi_protocol.PriFiSDAProtocol)
+	// Assert that pi has type PriFiExchangeProtocol
+	wrapper = pi.(*prifi_protocol.PriFiExchangeProtocol)
 
 	//assign and start the protocol
-	s.PriFiSDAProtocol = wrapper
+	s.PriFiExchangeProtocol = wrapper
 
-	s.setConfigToPriFiProtocol(wrapper)
+	s.setConfigToPriFiExchangeProtocol(wrapper)
 
 	wrapper.Start()
 }
 
-// stopPriFi stops the PriFi protocol currently running.
-func (s *ServiceState) StopPriFiCommunicateProtocol() {
-	log.Lvl1("Stopping PriFi protocol")
+// stopPriFiExchangeProtocol stops the PriFi exchange protocol currently running.
+func (s *ServiceState) StopPriFiExchangeProtocol() {
+	log.Lvl1("Stopping PriFi exchange protocol")
 
-	if !s.IsPriFiProtocolRunning() {
-		log.Lvl3("Would stop PriFi protocol, but it's not running.")
+	if !s.IsPriFiExchangeProtocolRunning() {
+		log.Lvl3("Would stop PriFi exchange protocol, but it's not running.")
 		return
 	}
 
-	if s.PriFiSDAProtocol != nil {
-		s.PriFiSDAProtocol.Stop()
+	s.PriFiExchangeProtocol.Stop()
+
+	s.PriFiExchangeProtocol = nil
+}
+
+// startPriFiScheduleProtocol starts a PriFi schedule protocol. It is called
+// by the relay as soon as enough participants are
+// ready (one trustee and two clients).
+func (s *ServiceState) StartPriFiScheduleProtocol() {
+	log.Lvl1("Starting PriFi schedule protocol")
+
+	if s.role != prifi_protocol.Relay {
+		log.Error("Trying to start PriFi schedule protocol from a non-relay node.")
+		return
 	}
-	s.PriFiSDAProtocol = nil
+
+	timing.StartMeasure("Resync")
+
+	var wrapper *prifi_protocol.PriFiScheduleProtocol
+	s.churnHandler.createRoster()
+	roster := s.churnHandler.roster
+
+	// Start the PriFi schedule protocol on a flat tree with the relay as root
+	tree := roster.GenerateNaryTreeWithRoot(100, s.churnHandler.relayIdentity)
+	//	pi, err := s.CreateProtocol(prifi_protocol.ProtocolName, tree)
+	pi, err := s.CreateProtocol("PrifiScheduleProtocol", tree)
+
+	if err != nil {
+		log.Fatal("Unable to start Prifi schedule protocol:", err)
+	}
+
+	// Assert that pi has type PriFiScheduleProtocol
+	wrapper = pi.(*prifi_protocol.PriFiScheduleProtocol)
+
+	//assign and start the protocol
+	s.PriFiScheduleProtocol = wrapper
+
+	s.setConfigToPriFiScheduleProtocol(wrapper)
+
+	wrapper.Start()
+}
+
+// stopPriFiScheduleProtocol stops the PriFi schedule protocol currently running.
+func (s *ServiceState) StopPriFiScheduleProtocol() {
+	log.Lvl1("Stopping PriFi schedule protocol")
+
+	if !s.IsPriFiScheduleProtocolRunning() {
+		log.Lvl3("Would stop PriFi schedule protocol, but it's not running.")
+		return
+	}
+
+	s.PriFiScheduleProtocol.Stop()
+
+	s.PriFiScheduleProtocol = nil
+}
+
+// startPriFiCommunicateProtocol starts a PriFi communication protocol. It is called
+// by the relay as soon as enough participants are
+// ready (one trustee and two clients).
+func (s *ServiceState) StartPriFiCommunicateProtocol() {
+	log.Lvl1("Starting PriFi communication protocol")
+
+	if s.role != prifi_protocol.Relay {
+		log.Error("Trying to start PriFi communication protocol from a non-relay node.")
+		return
+	}
+
+	timing.StartMeasure("Resync")
+
+	var wrapper *prifi_protocol.PriFiCommunicateProtocol
+	s.churnHandler.createRoster()
+	roster := s.churnHandler.roster
+
+	// Start the PriFi communication protocol on a flat tree with the relay as root
+	tree := roster.GenerateNaryTreeWithRoot(100, s.churnHandler.relayIdentity)
+	//	pi, err := s.CreateProtocol(prifi_protocol.ProtocolName, tree)
+	pi, err := s.CreateProtocol("PrifiCommunicateProtocol", tree)
+
+	if err != nil {
+		log.Fatal("Unable to start Prifi communication protocol:", err)
+	}
+
+	// Assert that pi has type PriFiCommunicateProtocol
+	wrapper = pi.(*prifi_protocol.PriFiCommunicateProtocol)
+
+	//assign and start the protocol
+	s.PriFiCommunicateProtocol = wrapper
+
+	s.setConfigToPriFiCommunicateProtocol(wrapper)
+
+	wrapper.Start()
+}
+
+// stopPriFiCommunicateProtocol stops the PriFi communication protocol currently running.
+func (s *ServiceState) StopPriFiCommunicateProtocol() {
+	log.Lvl1("Stopping PriFi communication protocol")
+
+	if !s.IsPriFiCommunicateProtocolRunning() {
+		log.Lvl3("Would stop PriFi communication protocol, but it's not running.")
+		return
+	}
+
+	s.PriFiCommunicateProtocol.Stop()
+
+	s.PriFiCommunicateProtocol = nil
+}
+
+// stopAllPriFiProtocols stops all the PriFi protocols currently running.
+func (s *ServiceState) StopAllPriFiProtocols() {
+	log.Lvl1("Stopping All PriFi protocols")
+
+	if !s.IsPriFiProtocolRunning() {
+		log.Lvl3("Would stop All PriFi protocols, but none are running.")
+		return
+	}
+
+	for s.IsPriFiProtocolRunning() {
+		if s.IsPriFiExchangeProtocolRunning() {
+			s.StopPriFiExchangeProtocol()
+		}
+		if s.IsPriFiScheduleProtocolRunning() {
+			s.StopPriFiScheduleProtocol()
+		}
+		if s.IsPriFiCommunicateProtocolRunning() {
+			s.StopPriFiCommunicateProtocol()
+		}
+	}
 }
 
 // TODO : change function comment

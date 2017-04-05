@@ -1,10 +1,10 @@
 package protocols
 
 /*
- * PRIFI SDA WRAPPER
+ * PRIFI Schedule WRAPPER
  *
  * Caution : this is not the "PriFi protocol", which is really a "PriFi Library" which you need to import, and feed with some network methods.
- * This is the "PriFi-SDA-Wrapper" protocol, which imports the PriFi lib, gives it "SendToXXX()" methods and calls the "prifi_library.MessageReceived()"
+ * This is the "PriFi-Schedule-Wrapper" protocol, which imports the PriFi lib, gives it "SendToXXX()" methods and calls the "prifi_library.MessageReceived()"
  * methods (it build a map that converts the SDA tree into identities), and starts the PriFi Library.
  *
  * The call order is :
@@ -14,7 +14,7 @@ package protocols
  * 4) when he decides so, the relay (via ChurnHandler) spawns a new protocol :
  * 5) this file is called; in order :
  * 5.1) init() that registers the messages
- * 5.2) NewPriFiSDAWrapperProtocol() that creates a protocol (and contains the tree given by the service)
+ * 5.2) NewPriFiScheduleWrapperProtocol() that creates a protocol (and contains the tree given by the service)
  * 5.3) in the service, setConfigToPriFiProtocol() is called, which calls the protocol (this file) 's SetConfigFromPriFiService()
  * 5.3.1) SetConfigFromPriFiService() calls both buildMessageSender() and registerHandlers()
  * 5.3.2) SetConfigFromPriFiService() calls New[Relay|Client|Trustee]State(); at this point, the protocol is ready to run
@@ -32,14 +32,11 @@ import (
 	"gopkg.in/dedis/onet.v1/network"
 )
 
-// ProtocolName is the name used to register the SDA wrapper protocol with SDA.
-const ProtocolName = "PrifiProtocol"
-
-//PriFiSDAProtocol is the SDA-protocol struct. It contains the SDA-tree, and a chanel that stops the simulation when it receives a "true"
-type PriFiSDAProtocol struct {
+//PriFiScheduleProtocol is the SDA-protocol struct. It contains the SDA-tree, and a chanel that stops the simulation when it receives a "true"
+type PriFiScheduleProtocol struct {
 	*onet.TreeNodeInstance
 	configSet     bool
-	config        PriFiSDAWrapperConfig
+	config        PriFiScheduleWrapperConfig
 	role          PriFiRole
 	ms            MessageSender
 	toHandler     func([]string, []string)
@@ -51,7 +48,7 @@ type PriFiSDAProtocol struct {
 }
 
 //Start is called on the Relay by the service when ChurnHandler decides so
-func (p *PriFiSDAProtocol) Start() error {
+func (p *PriFiScheduleProtocol) Start() error {
 
 	if !p.configSet {
 		log.Fatal("Trying to start PriFi-lib, but config not set !")
@@ -59,7 +56,7 @@ func (p *PriFiSDAProtocol) Start() error {
 
 	//At the protocol is ready,
 
-	log.Lvl3("Starting PriFi-SDA-Wrapper Protocol")
+	log.Lvl3("Starting PriFi-Schedule-Wrapper Protocol")
 
 	//emulate the reception of a ALL_ALL_PARAMETERS with StartNow=true
 	msg := new(net.ALL_ALL_PARAMETERS_NEW)
@@ -80,7 +77,7 @@ func (p *PriFiSDAProtocol) Start() error {
 }
 
 // Stop aborts the current execution of the protocol.
-func (p *PriFiSDAProtocol) Stop() {
+func (p *PriFiScheduleProtocol) Stop() {
 
 	if p.prifiLibInstance != nil {
 		switch p.role {
@@ -100,7 +97,7 @@ func (p *PriFiSDAProtocol) Stop() {
 }
 
 /**
- * On initialization of the PriFi-SDA-Wrapper protocol, it need to register the PriFi-Lib messages to be able to marshall them.
+ * On initialization of the PriFi-Schedule-Wrapper protocol, it need to register the PriFi-Lib messages to be able to marshall them.
  * If we forget some messages there, it will crash when PriFi-Lib will call SendToXXX() with this message !
  */
 func init() {
@@ -120,12 +117,12 @@ func init() {
 	network.RegisterMessage(net.TRU_REL_TELL_NEW_BASE_AND_EPH_PKS{})
 	network.RegisterMessage(net.TRU_REL_TELL_PK{})
 
-	onet.GlobalProtocolRegister(ProtocolName, NewPriFiSDAWrapperProtocol)
+	onet.GlobalProtocolRegister("PrifiScheduleProtocol", NewPriFiScheduleWrapperProtocol)
 }
 
 // handleTimeout translates ids int ServerIdentities
 // and calls the timeout handler.
-func (p *PriFiSDAProtocol) handleTimeout(clientsIds []int, trusteesIds []int) {
+func (p *PriFiScheduleProtocol) handleTimeout(clientsIds []int, trusteesIds []int) {
 	clients := make([]string, len(clientsIds))
 	trustees := make([]string, len(trusteesIds))
 
@@ -140,11 +137,11 @@ func (p *PriFiSDAProtocol) handleTimeout(clientsIds []int, trusteesIds []int) {
 	p.toHandler(clients, trustees)
 }
 
-// NewPriFiSDAWrapperProtocol creates a bare PrifiSDAWrapper struct.
+// NewPriFiScheduleWrapperProtocol creates a bare PrifiScheduleWrapper struct.
 // SetConfig **MUST** be called on it before it can participate
 // to the protocol.
-func NewPriFiSDAWrapperProtocol(n *onet.TreeNodeInstance) (onet.ProtocolInstance, error) {
-	p := &PriFiSDAProtocol{
+func NewPriFiScheduleWrapperProtocol(n *onet.TreeNodeInstance) (onet.ProtocolInstance, error) {
+	p := &PriFiScheduleProtocol{
 		TreeNodeInstance: n,
 		ResultChannel:    make(chan interface{}),
 	}
@@ -154,7 +151,7 @@ func NewPriFiSDAWrapperProtocol(n *onet.TreeNodeInstance) (onet.ProtocolInstance
 
 // registerHandlers contains the verbose code
 // that registers handlers for all prifi messages.
-func (p *PriFiSDAProtocol) registerHandlers() error {
+func (p *PriFiScheduleProtocol) registerHandlers() error {
 	//register handlers
 	err := p.RegisterHandler(p.Received_ALL_ALL_PARAMETERS_NEW)
 	if err != nil {
