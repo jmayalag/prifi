@@ -118,7 +118,9 @@ func (p *PriFiLibRelayInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARA
 	case "Verifiable":
 		p.relayState.CellCoder = dcnet.OwnedCoderFactory()
 	default:
-		log.Fatal("DCNetType must be Simple or Verifiable")
+		e := "DCNetType must be Simple or Verifiable"
+		log.Error(e)
+		return errors.New(e)
 	}
 
 	//this should be in NewRelayState, but we need p

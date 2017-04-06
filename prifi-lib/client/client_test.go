@@ -442,6 +442,11 @@ func TestClient(t *testing.T) {
 		t.Error("Should be in state CLIENT_STATE_INITIALIZING")
 	}
 
+	randomMsg := net.CLI_REL_TELL_PK_AND_EPH_PK{}
+	if err := client.ReceivedMessage(randomMsg); err == nil {
+		t.Error("Should not accept this CLI_REL_TELL_PK_AND_EPH_PK message")
+	}
+
 	//if we send a shutdown
 	shutdownMsg := net.ALL_ALL_SHUTDOWN{}
 	client.ReceivedMessage(shutdownMsg)
