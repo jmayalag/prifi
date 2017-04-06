@@ -793,6 +793,26 @@ case $1 in
 
 		;;
 
+	simul-udp|simul-udp-rules)
+
+		#create a file ~/makelogsrw.sh with this content
+		# #!/bin/sh
+		# ssh relay.LB-LLD.SAFER.isi.deterlab.net "ifconfig"
+		# ssh relay.LB-LLD.SAFER.isi.deterlab.net "sudo iptables -F"
+		# ssh relay.LB-LLD.SAFER.isi.deterlab.net "sudo iptables -A OUTPUT -o eth3 -p udp -j DROP"
+		# ssh relay.LB-LLD.SAFER.isi.deterlab.net "sudo iptables -S"
+		# [EOF]
+		
+		deterlabUser="lbarman"
+
+		echo -e "${warningMsg} This tool *deletes* all experiment data on the remote server. Make sure you backuped what you need !"
+
+		echo -n "Making logs R/W... " #this is needed since simul runs and writes log as root
+		ssh $deterlabUser@users.deterlab.net 'sudo iptables -F'
+		echo -e "$okMsg"
+
+		;;
+
 	simul-e|simul-edit)
 
 		nano sda/simulation/prifi_simul.toml
