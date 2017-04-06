@@ -11,7 +11,6 @@ import (
 //CryptoSuite contains crypto suite used, here ED25519
 var CryptoSuite abstract.Suite
 
-
 func init() {
 	CryptoSuite = ed25519.NewAES128SHA256Ed25519(false) //nist.NewAES128SHA256P256()
 }

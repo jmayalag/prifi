@@ -815,8 +815,8 @@ func TestRelayRun3(t *testing.T) {
 
 	msg21 := net.CLI_REL_UPSTREAM_DATA{
 		ClientID: 1,
-		RoundID: 0,
-		Data: nil,
+		RoundID:  0,
+		Data:     nil,
 	}
 	if err := relay.Received_CLI_REL_UPSTREAM_DATA(msg21); err != nil {
 		t.Error("Relay should be able to receive this message but", err)
@@ -864,7 +864,7 @@ func TestRelayRun4(t *testing.T) {
 		t.Error("DCNetType not set correctly")
 	}
 
-		// should send ALL_ALL_PARAMETERS to clients
+	// should send ALL_ALL_PARAMETERS to clients
 	msg2, err := getClientMessage("ALL_ALL_PARAMETERS")
 	if err != nil {
 		t.Error(err)
