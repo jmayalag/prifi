@@ -153,10 +153,10 @@ type REL_TRU_TELL_RATE_CHANGE struct {
 // TRU_REL_TELL_NEW_BASE_AND_EPH_PKS message contains the new ephemeral key of a trustee and
 // is sent to the relay.
 type TRU_REL_TELL_NEW_BASE_AND_EPH_PKS struct {
-	NewBase   abstract.Point
-	NewEphPks []abstract.Point
-	Proof     []byte
-	Vkey      []byte
+	NewBase            abstract.Point
+	NewEphPks          []abstract.Point
+	Proof              []byte
+	VerifiableDCNetKey []byte
 }
 
 // TRU_REL_TELL_PK message contains the public key of a trustee and is sent to the relay.
