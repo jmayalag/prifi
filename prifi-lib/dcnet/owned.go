@@ -36,7 +36,7 @@ type ownedCoder struct {
 // OwnedCoderFactory creates a DC-net cell coder for "owned" cells:
 // cells having a single owner identified by a public pseudonym key.
 //
-// This CellCoder upports variable-length payloads.
+// This CellCoder supports variable-length payloads.
 // For small payloads that can be embedded into half a Point,
 // the encoding consists of a single verifiable DC-net point.
 // For larger payloads, we use one verifiable DC-net point

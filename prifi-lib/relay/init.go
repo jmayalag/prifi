@@ -35,7 +35,6 @@ import (
 	"errors"
 	"time"
 
-	"github.com/lbarman/prifi/prifi-lib/config"
 	"github.com/lbarman/prifi/prifi-lib/dcnet"
 	prifilog "github.com/lbarman/prifi/prifi-lib/log"
 	"github.com/lbarman/prifi/prifi-lib/net"
@@ -64,7 +63,7 @@ func NewRelay(dataOutputEnabled bool, dataForClients chan []byte, dataFromDCNet 
 	relayState := new(RelayState)
 
 	//init the static stuff
-	relayState.CellCoder = config.Factory()
+	//relayState.CellCoder = config.Factory()
 	relayState.DataForClients = dataForClients
 	relayState.DataFromDCNet = dataFromDCNet
 	relayState.DataOutputEnabled = dataOutputEnabled
@@ -171,6 +170,7 @@ type RelayState struct {
 	timeStatistics                    map[string]*prifilog.TimeStatistics
 	vkeys                             [][]byte
 	nVkeysCollected                   int
+	dcNetType                         string
 }
 
 // ReceivedMessage must be called when a PriFi host receives a message.

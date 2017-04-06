@@ -2,7 +2,6 @@ package trustee
 
 import (
 	"errors"
-	"github.com/lbarman/prifi/prifi-lib/config"
 	"github.com/lbarman/prifi/prifi-lib/crypto"
 	"github.com/lbarman/prifi/prifi-lib/dcnet"
 	"github.com/lbarman/prifi/prifi-lib/net"
@@ -39,7 +38,7 @@ func NewTrustee(msgSender *net.MessageSenderWrapper) *PriFiLibTrusteeInstance {
 
 	//init the static stuff
 	trusteeState.sendingRate = make(chan int16, 10)
-	trusteeState.CellCoder = config.Factory()
+	//trusteeState.CellCoder = config.Factory()
 	trusteeState.PublicKey, trusteeState.privateKey = crypto.NewKeyPair()
 	neffShuffle := new(scheduler.NeffShuffle)
 	neffShuffle.Init()

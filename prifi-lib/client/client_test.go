@@ -72,9 +72,6 @@ func TestClient(t *testing.T) {
 	if cs.DataOutputEnabled != true {
 		t.Error("DataOutputEnabled was not set correctly")
 	}
-	if cs.CellCoder == nil {
-		t.Error("CellCoder should have been created")
-	}
 	if client.stateMachine.State() != "BEFORE_INIT" {
 		t.Error("State was not set correctly")
 	}
@@ -94,11 +91,13 @@ func TestClient(t *testing.T) {
 	clientID := 3
 	nTrustees := 2
 	upCellSize := 1500
+	dcNetType := "Simple"
 	msg.Add("NClients", 3)
 	msg.Add("NTrustees", nTrustees)
 	msg.Add("UpstreamCellSize", upCellSize)
 	msg.Add("NextFreeClientID", clientID)
 	msg.Add("UseUDP", true)
+	msg.Add("DCNetType", dcNetType)
 
 	if err := client.ReceivedMessage(*msg); err != nil {
 		t.Error("Client should be able to receive this message:", err)
@@ -124,6 +123,9 @@ func TestClient(t *testing.T) {
 	}
 	if cs.UseUDP != true {
 		t.Error("UseUDP should now have been set to true")
+	}
+	if cs.CellCoder == nil {
+		t.Error("CellCoder should have been created")
 	}
 	if len(cs.TrusteePublicKey) != nTrustees {
 		t.Error("Len(TrusteePKs) should be equal to NTrustees")

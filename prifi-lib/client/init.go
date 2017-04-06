@@ -23,7 +23,6 @@ package client
 
 import (
 	"errors"
-	"github.com/lbarman/prifi/prifi-lib/config"
 	"github.com/lbarman/prifi/prifi-lib/crypto"
 	"github.com/lbarman/prifi/prifi-lib/dcnet"
 	prifilog "github.com/lbarman/prifi/prifi-lib/log"
@@ -106,7 +105,7 @@ func NewClient(doLatencyTest bool, dataOutputEnabled bool, dataForDCNet chan []b
 	clientState.timeStatistics["latency-msg-stayed-in-buffer"] = prifilog.NewTimeStatistics()
 	clientState.timeStatistics["measured-latency"] = prifilog.NewTimeStatistics()
 	clientState.timeStatistics["round-processing"] = prifilog.NewTimeStatistics()
-	clientState.CellCoder = config.Factory()
+	//clientState.CellCoder = config.Factory()
 	clientState.DataForDCNet = dataForDCNet
 	clientState.DataFromDCNet = dataFromDCNet
 	clientState.DataOutputEnabled = dataOutputEnabled

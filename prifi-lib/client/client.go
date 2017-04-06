@@ -33,6 +33,7 @@ import (
 	"gopkg.in/dedis/crypto.v0/abstract"
 	"gopkg.in/dedis/onet.v1/log"
 
+	"github.com/lbarman/prifi/prifi-lib/dcnet"
 	"github.com/lbarman/prifi/prifi-lib/scheduler"
 	socks "github.com/lbarman/prifi/prifi-socks"
 	"github.com/lbarman/prifi/utils/timing"
@@ -58,6 +59,7 @@ func (p *PriFiLibClientInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PAR
 	nClients := msg.IntValueOrElse("NClients", p.clientState.nClients)
 	upCellSize := msg.IntValueOrElse("UpstreamCellSize", p.clientState.PayloadLength) //todo: change this name
 	useUDP := msg.BoolValueOrElse("UseUDP", p.clientState.UseUDP)
+	dcNetType := msg.StringValueOrElse("DCNetType", "not initialized")
 
 	//sanity checks
 	if clientID < -1 {
@@ -71,6 +73,15 @@ func (p *PriFiLibClientInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PAR
 	}
 	if upCellSize < 1 {
 		return errors.New("UpCellSize cannot be 0")
+	}
+
+	switch dcNetType {
+	case "Simple":
+		p.clientState.CellCoder = dcnet.SimpleCoderFactory()
+	case "Verifiable":
+		p.clientState.CellCoder = dcnet.OwnedCoderFactory()
+	default:
+		log.Fatal("DCNetType must be Simple or Verifiable")
 	}
 
 	//set the received parameters

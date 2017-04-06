@@ -72,6 +72,7 @@ func (p *PriFiSDAProtocol) Start() error {
 	msg.Add("UseDummyDataDown", p.config.Toml.RelayUseDummyDataDown)
 	msg.Add("ExperimentRoundLimit", p.config.Toml.RelayReportingLimit)
 	msg.Add("UseUDP", p.config.Toml.UseUDP)
+	msg.Add("DCNetType", p.config.Toml.DCNetType)
 	msg.ForceParams = true
 
 	p.SendTo(p.TreeNode(), msg)

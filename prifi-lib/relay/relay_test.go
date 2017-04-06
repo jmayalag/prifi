@@ -114,9 +114,6 @@ func TestRelayRun1(t *testing.T) {
 	if rs.PriorityDataForClients == nil {
 		t.Error("PriorityDataForClients was not set correctly")
 	}
-	if rs.CellCoder == nil {
-		t.Error("CellCoder should have been created")
-	}
 	if relay.stateMachine.State() != "BEFORE_INIT" {
 		t.Error("State was not set correctly")
 	}
@@ -133,6 +130,7 @@ func TestRelayRun1(t *testing.T) {
 	nClients := 1
 	nTrustees := 1
 	upCellSize := 1500
+	dcNetType := "Simple"
 	msg.Add("StartNow", true)
 	msg.Add("NClients", nClients)
 	msg.Add("NTrustees", nTrustees)
@@ -142,6 +140,7 @@ func TestRelayRun1(t *testing.T) {
 	msg.Add("UseUDP", true)
 	msg.Add("UseDummyDataDown", true)
 	msg.Add("ExperimentRoundLimit", 2)
+	msg.Add("DCNetType", dcNetType)
 
 	if err := relay.ReceivedMessage(*msg); err != nil {
 		t.Error("Relay should be able to receive this message, but", err)
@@ -160,6 +159,9 @@ func TestRelayRun1(t *testing.T) {
 	}
 	if rs.ExperimentRoundLimit != 2 {
 		t.Error("ExperimentRoundLimit was not set correctly")
+	}
+	if rs.CellCoder == nil {
+		t.Error("CellCoder should have been created")
 	}
 	if rs.UpstreamCellSize != upCellSize {
 		t.Error("UpstreamCellSize was not set correctly")
@@ -214,6 +216,9 @@ func TestRelayRun1(t *testing.T) {
 	if msg3.ParamsInt["NextFreeClientID"] != 0 {
 		t.Error("NextFreeTrusteeID not set correctly")
 	}
+	if msg3.ParamsStr["DCNetType"] != "Simple" {
+		t.Error("DCNetType not set correctly")
+	}
 
 	// should send ALL_ALL_PARAMETERS to trustees
 	msg4, err := getTrusteeMessage("ALL_ALL_PARAMETERS")
@@ -236,6 +241,9 @@ func TestRelayRun1(t *testing.T) {
 	}
 	if msg5.ParamsInt["NextFreeTrusteeID"] != 0 {
 		t.Error("NextFreeTrusteeID not set correctly")
+	}
+	if msg5.ParamsStr["DCNetType"] != "Simple" {
+		t.Error("DCNetType not set correctly")
 	}
 
 	//since startNow = true, trustee sends TRU_REL_TELL_PK
@@ -415,6 +423,7 @@ func TestRelayRun2(t *testing.T) {
 	nClients := 1
 	nTrustees := 1
 	upCellSize := 1500
+	dcNetType := "Simple"
 	msg.Add("StartNow", true)
 	msg.Add("NClients", nClients)
 	msg.Add("NTrustees", nTrustees)
@@ -424,6 +433,7 @@ func TestRelayRun2(t *testing.T) {
 	msg.Add("UseUDP", true)
 	msg.Add("UseDummyDataDown", true)
 	msg.Add("ExperimentRoundLimit", 2)
+	msg.Add("DCNetType", dcNetType)
 
 	if err := relay.ReceivedMessage(*msg); err != nil {
 		t.Error("Relay should be able to receive this message, but", err)
@@ -603,6 +613,7 @@ func TestRelayRun3(t *testing.T) {
 	nClients := 1
 	nTrustees := 2
 	upCellSize := 1500
+	dcNetType := "Simple"
 	msg.Add("StartNow", true)
 	msg.Add("NClients", nClients)
 	msg.Add("NTrustees", nTrustees)
@@ -612,6 +623,7 @@ func TestRelayRun3(t *testing.T) {
 	msg.Add("UseUDP", false)
 	msg.Add("UseDummyDataDown", false)
 	msg.Add("ExperimentRoundLimit", -1)
+	msg.Add("DCNetType", dcNetType)
 
 	if err := relay.ReceivedMessage(*msg); err != nil {
 		t.Error("Relay should be able to receive this message, but", err)

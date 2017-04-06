@@ -16,6 +16,7 @@ Then, this file simple handle the answer to the different message kind :
 import (
 	"errors"
 	"github.com/lbarman/prifi/prifi-lib/config"
+	"github.com/lbarman/prifi/prifi-lib/dcnet"
 	"github.com/lbarman/prifi/prifi-lib/net"
 	"gopkg.in/dedis/crypto.v0/abstract"
 	"gopkg.in/dedis/onet.v1/log"
@@ -49,6 +50,7 @@ func (p *PriFiLibTrusteeInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PA
 	nTrustees := msg.IntValueOrElse("NTrustees", p.trusteeState.nTrustees)
 	nClients := msg.IntValueOrElse("NClients", p.trusteeState.nClients)
 	cellSize := msg.IntValueOrElse("UpstreamCellSize", p.trusteeState.PayloadLength) //todo: change this name
+	dcNetType := msg.StringValueOrElse("DCNetType", "not initilaized")
 
 	//sanity checks
 	if trusteeID < -1 {
@@ -62,6 +64,15 @@ func (p *PriFiLibTrusteeInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PA
 	}
 	if cellSize < 1 {
 		return errors.New("UpCellSize cannot be 0")
+	}
+
+	switch dcNetType {
+	case "Simple":
+		p.trusteeState.CellCoder = dcnet.SimpleCoderFactory()
+	case "Verifiable":
+		p.trusteeState.CellCoder = dcnet.OwnedCoderFactory()
+	default:
+		log.Fatal("DCNetType must be Simple or Verifiable")
 	}
 
 	p.trusteeState.ID = trusteeID

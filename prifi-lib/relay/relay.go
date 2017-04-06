@@ -38,6 +38,7 @@ import (
 	"time"
 
 	"github.com/lbarman/prifi/prifi-lib/config"
+	"github.com/lbarman/prifi/prifi-lib/dcnet"
 	"github.com/lbarman/prifi/prifi-lib/net"
 	socks "github.com/lbarman/prifi/prifi-socks"
 	"github.com/lbarman/prifi/utils/timing"
@@ -88,6 +89,7 @@ func (p *PriFiLibRelayInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARA
 	useDummyDown := msg.BoolValueOrElse("UseDummyDataDown", p.relayState.UseDummyDataDown)
 	reportingLimit := msg.IntValueOrElse("ExperimentRoundLimit", p.relayState.ExperimentRoundLimit)
 	useUDP := msg.BoolValueOrElse("UseUDP", p.relayState.UseUDP)
+	dcNetType := msg.StringValueOrElse("DCNetType", p.relayState.dcNetType)
 
 	p.relayState.clients = make([]NodeRepresentation, nClients)
 	p.relayState.trustees = make([]NodeRepresentation, nTrustees)
@@ -108,6 +110,16 @@ func (p *PriFiLibRelayInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARA
 	p.relayState.vkeys = make([][]byte, nTrustees)
 	p.relayState.nVkeysCollected = 0
 	p.relayState.dcnetRoundManager = NewDCNetRoundManager(windowSize)
+	p.relayState.dcNetType = dcNetType
+
+	switch dcNetType {
+	case "Simple":
+		p.relayState.CellCoder = dcnet.SimpleCoderFactory()
+	case "Verifiable":
+		p.relayState.CellCoder = dcnet.OwnedCoderFactory()
+	default:
+		log.Fatal("DCNetType must be Simple or Verifiable")
+	}
 
 	//this should be in NewRelayState, but we need p
 	if !p.relayState.bufferManager.DoSendStopResumeMessages {
@@ -145,6 +157,7 @@ func (p *PriFiLibRelayInstance) BroadcastParameters() error {
 	msg.Add("NTrustees", p.relayState.nTrustees)
 	msg.Add("StartNow", true)
 	msg.Add("UpstreamCellSize", p.relayState.UpstreamCellSize)
+	msg.Add("DCNetType", p.relayState.dcNetType)
 	msg.ForceParams = true
 
 	// Send those parameters to all trustees
@@ -155,7 +168,7 @@ func (p *PriFiLibRelayInstance) BroadcastParameters() error {
 		p.messageSender.SendToTrusteeWithLog(j, msg, "")
 	}
 
-	// Send those parameters to all trustees
+	// Send those parameters to all clients
 	for j := 0; j < p.relayState.nClients; j++ {
 
 		// The ID is unique !
