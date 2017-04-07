@@ -16,7 +16,6 @@ import (
 
 	"encoding/binary"
 	"gopkg.in/dedis/onet.v1/log"
-	"encoding/hex"
 )
 
 //UPD_PORT is the port used for UDP broadcast
@@ -150,7 +149,7 @@ func (c *RealUDPChannel) Broadcast(msg MarshallableMessage) error {
 			log.Error("Broadcast: could not resolve BCast address, error is", err.Error())
 		}
 
-		LocalAddr, err := net.ResolveUDPAddr("udp", ":0")
+		LocalAddr, err := net.ResolveUDPAddr("udp", "10.0.1.254:0")
 		if err != nil {
 			log.Error("Broadcast: could not resolve Local address, error is", err.Error())
 		}
@@ -168,23 +167,15 @@ func (c *RealUDPChannel) Broadcast(msg MarshallableMessage) error {
 		log.Error("Broadcast: could not marshal message, error is", err.Error())
 	}
 
-	header := make([]byte, 8)
-	pattern := uint16(43690) //1010101010101010
-	binary.BigEndian.PutUint16(header[0:2], pattern)
-	binary.BigEndian.PutUint32(header[2:6], uint32(len(data)))
-	binary.BigEndian.PutUint16(header[6:8], pattern)
-	_, err = c.relayConn.Write(header)
-	if err != nil {
-		log.Error("Broadcast: could not write header, error is", err.Error())
-	}
+	message := make([]byte, 4 + len(data))
+	binary.BigEndian.PutUint32(message[0:4], uint32(len(data)))
+	copy(message[4:], data)
 
-	_, err = c.relayConn.Write(data)
+	_, err = c.relayConn.Write(message)
 	if err != nil {
 		log.Error("Broadcast: could not write message, error is", err.Error())
 	} else {
-		log.Lvl3("Broadcast: broadcasted one message of length", len(data))
-		log.Info(hex.Dump(header))
-		log.Info(hex.Dump(data))
+		log.Lvl3("Broadcast: broadcasted one message of length", len(message))
 	}
 
 	return nil
@@ -210,24 +201,23 @@ func (c *RealUDPChannel) ListenAndBlock(emptyMessage MarshallableMessage, lastSe
 		}
 	}
 
-	header := make([]byte, 8)
+	buf := make([]byte, MAX_UDP_SIZE)
 	log.Info("ListenAndBlock(",identityListening,"): Ready to receive")
-	n, addr, err := c.localConn.ReadFromUDP(header)
-	log.Info(hex.Dump(header))
+
+	n, addr, err := c.localConn.ReadFromUDP(buf)
+	log.Info("ListenAndBlock(",identityListening,"): Received a header from",addr,"gonna read message of length...", n, "size is", len(buf))
+	sizeAdvertised := int(binary.BigEndian.Uint32(buf[0:4]))
+
+	if sizeAdvertised + 4 != n {
+		log.Error("ListenAndBlock(",identityListening,"): could not receive read the ",string(sizeAdvertised + 4),", only", n,", error is", err.Error())
+	}
+	message := make([]byte, sizeAdvertised)
+	copy(message[:], buf[4:sizeAdvertised+4])
+
+	//log.Info(identityListening + "->" + hex.Dump(buf))
+
 	if err != nil {
 		log.Error("ListenAndBlock(",identityListening,"): could not receive header, error is", err.Error())
-	}
-
-	messageSize := int(binary.BigEndian.Uint32(header[2:6]))
-	message := make([]byte, messageSize)
-	log.Info("ListenAndBlock(",identityListening,"): Received a header from",addr,"gonna read message of length",messageSize,"...", n)
-	n2, addr2, err2 := c.localConn.ReadFromUDP(message)
-	log.Info(hex.Dump(message))
-
-	if err2 != nil {
-		log.Error("ListenAndBlock(",identityListening,"): could not receive message, error2 is", err.Error())
-	} else {
-		log.Lvl4("ListenAndBlock(",identityListening,"): Received a message of", n2, "bytes, from addr", addr2)
 	}
 
 	newMessage, err3 := emptyMessage.FromBytes(message)
