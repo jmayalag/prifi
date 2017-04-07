@@ -24,7 +24,7 @@ type MessageSender interface {
 	// Calling the function starts the handler but does not actually listen for broadcast messages.
 	// Sending true to startStopChan starts receiving the broadcasts.
 	// Sending false to startStopChan stops receiving the broadcasts.
-	ClientSubscribeToBroadcast(clientName string, messageReceived func(interface{}) error, startStopChan chan bool) error
+	ClientSubscribeToBroadcast(clientID int, messageReceived func(interface{}) error, startStopChan chan bool) error
 }
 
 /**

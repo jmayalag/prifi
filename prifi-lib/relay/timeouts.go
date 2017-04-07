@@ -3,9 +3,9 @@ package relay
 import (
 	"time"
 
+	"github.com/lbarman/prifi/prifi-lib/net"
 	"gopkg.in/dedis/onet.v1/log"
 	"strconv"
-	"github.com/lbarman/prifi/prifi-lib/net"
 )
 
 /*
@@ -33,14 +33,14 @@ func (p *PriFiLibRelayInstance) checkIfRoundHasEndedAfterTimeOut_Phase1(roundID 
 	//If we're using UDP, client might have missed the broadcast, re-sending
 	if p.relayState.UseUDP {
 		/*
-		for clientID := range missingClientCiphers {
-			log.Error("Relay : Client " + strconv.Itoa(clientID) + " didn't sent us is cipher for round " + strconv.Itoa(int(roundID)) + ". Phase 1 timeout. Re-sending...")
-			extraInfo := "(client " + strconv.Itoa(clientID) + ", round " + strconv.Itoa(int(roundID)) + ")"
-			dataAlreadySent := p.relayState.dcnetRoundManager.GetDataAlreadySent(roundID)
-			p.messageSender.SendToClientWithLog(clientID, dataAlreadySent, extraInfo)
-		}
+			for clientID := range missingClientCiphers {
+				log.Error("Relay : Client " + strconv.Itoa(clientID) + " didn't sent us is cipher for round " + strconv.Itoa(int(roundID)) + ". Phase 1 timeout. Re-sending...")
+				extraInfo := "(client " + strconv.Itoa(clientID) + ", round " + strconv.Itoa(int(roundID)) + ")"
+				dataAlreadySent := p.relayState.dcnetRoundManager.GetDataAlreadySent(roundID)
+				p.messageSender.SendToClientWithLog(clientID, dataAlreadySent, extraInfo)
+			}
 		*/
-		log.Error("Relay : Clients", missingClientCiphers, "didn't sent us is cipher for round " + strconv.Itoa(int(roundID)) + ". Phase 1 timeout. Re-sending...")
+		log.Error("Relay : Clients", missingClientCiphers, "didn't sent us is cipher for round "+strconv.Itoa(int(roundID))+". Phase 1 timeout. Re-sending...")
 		dataAlreadySent := p.relayState.dcnetRoundManager.GetDataAlreadySent(roundID)
 		toSend := &net.REL_CLI_DOWNSTREAM_DATA_UDP{REL_CLI_DOWNSTREAM_DATA: *dataAlreadySent}
 		p.messageSender.BroadcastToAllClientsWithLog(toSend, "(UDP retransmission, round "+strconv.Itoa(int(p.relayState.nextDownStreamRoundToSend))+")")
