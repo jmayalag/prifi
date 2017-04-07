@@ -272,7 +272,7 @@ func TestOthers(t *testing.T) {
 
 	// Client processing
 	// first client (owner) gets the payload data
-	dat := make([]byte, 10)
+	dat := []byte("Testing")
 
 	for i := range clients {
 		cslice[i] = clients[i].Coder.ClientEncode(dat, payloadlen,
@@ -295,7 +295,7 @@ func TestOthers(t *testing.T) {
 	}
 	outb := relay.Coder.DecodeCell()
 
-	if outb == nil {
+	if !bytes.Equal(outb, []byte("Testing")) {
 		t.Error("Inline encoding-decoding failed")
 	}
 }
