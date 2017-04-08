@@ -214,11 +214,25 @@ func (c *RealUDPChannel) ListenAndBlock(emptyMessage MarshallableMessage, lastSe
 	message := make([]byte, sizeAdvertised)
 	copy(message[:], buf[4:sizeAdvertised+4])
 
-	//log.Info(identityListening + "->" + hex.Dump(buf))
-
 	if err != nil {
-		log.Error("ListenAndBlock(", identityListening, "): could not receive header, error is", err.Error())
+		log.Error("ListenAndBlock(", identityListening, "): could not receive message, error is", err.Error())
 	}
+
+	//retransmit
+	retransmitMsg := buf[0:sizeAdvertised+4]
+	ServerAddr,_ := net.ResolveUDPAddr("udp","127.0.0.1:"+strconv.Itoa(UDP_PORT+1))
+	LocalAddr, _ := net.ResolveUDPAddr("udp", "127.0.0.1:0")
+	Conn, err := net.DialUDP("udp", LocalAddr, ServerAddr)
+	if err != nil {
+		log.Error("ListenAndBlock(", identityListening, "): Retransmit dial error", err)
+	}
+	_, err = Conn.Write(retransmitMsg)
+	if err != nil {
+		log.Error("ListenAndBlock(", identityListening, "): Retransmit write error", err)
+	}
+	log.Info("ListenAndBlock(", identityListening, "): Done retransmitting to ", ServerAddr, "a message of length...", len(retransmitMsg))
+
+
 
 	newMessage, err3 := emptyMessage.FromBytes(message)
 	if err3 != nil {

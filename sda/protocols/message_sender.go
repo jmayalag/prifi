@@ -127,7 +127,7 @@ func (ms MessageSender) BroadcastToAllClients(msg interface{}) error {
 func (ms MessageSender) ClientSubscribeToBroadcast(clientID int, messageReceived func(interface{}) error, startStopChan chan bool) error {
 
 	clientName := "client-" + strconv.Itoa(clientID)
-	port := UDP_PORT + int(math.Floor(float64(clientID)/5))
+	port := UDP_PORT //int(math.Floor(float64(clientID)/5))
 	log.Info(clientName, " started UDP-listener helper.")
 	listening := false
 	lastSeenMessage := 0 //the first real message has ID 1; this means that we saw the empty struct.
