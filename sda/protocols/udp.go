@@ -43,7 +43,7 @@ type UDPChannel interface {
 	Broadcast(msg MarshallableMessage) error
 
 	//we take an empty MarshallableMessage as input, because the method does know how to parse the message
-	ListenAndBlock(msg MarshallableMessage, lastSeenMessage int, port int, identityListening string) (interface{}, error)
+	ListenAndBlock(msg MarshallableMessage, lastSeenMessage int, addr string, port int, identityListening string) (interface{}, error)
 }
 
 /**
@@ -101,7 +101,7 @@ func (lc *LocalhostChannel) Broadcast(msg MarshallableMessage) error {
 }
 
 //ListenAndBlock of LocalhostChannel is the implementation of message reception for the fake localhost channel
-func (lc *LocalhostChannel) ListenAndBlock(emptyMessage MarshallableMessage, lastSeenMessage int, port int, identityListening string) (interface{}, error) {
+func (lc *LocalhostChannel) ListenAndBlock(emptyMessage MarshallableMessage, lastSeenMessage int, addr string, port int, identityListening string) (interface{}, error) {
 
 	//we wait until there is a new message
 	lc.RLock()
@@ -182,14 +182,14 @@ func (c *RealUDPChannel) Broadcast(msg MarshallableMessage) error {
 }
 
 //ListenAndBlock of RealUDPChannel is the implementation of message reception for the real UDP channel
-func (c *RealUDPChannel) ListenAndBlock(emptyMessage MarshallableMessage, lastSeenMessage int, port int, identityListening string) (interface{}, error) {
+func (c *RealUDPChannel) ListenAndBlock(emptyMessage MarshallableMessage, lastSeenMessage int, listeningAddr string, port int, identityListening string) (interface{}, error) {
 
 	//if we're not ready with the connection yet
 
 	if c.localConn == nil {
 
 		/* Lets prepare a address at any address at port 10001*/
-		ServerAddr, err := net.ResolveUDPAddr("udp", ":"+strconv.Itoa(port))
+		ServerAddr, err := net.ResolveUDPAddr("udp", listeningAddr+":"+strconv.Itoa(port))
 		if err != nil {
 			log.Error("ListenAndBlock(", identityListening, "): could not resolve BCast address, error is", err.Error())
 		}
@@ -202,7 +202,7 @@ func (c *RealUDPChannel) ListenAndBlock(emptyMessage MarshallableMessage, lastSe
 	}
 
 	buf := make([]byte, MAX_UDP_SIZE)
-	log.Info("ListenAndBlock(", identityListening, "): Ready to receive")
+	log.Info("ListenAndBlock(", identityListening, "): Ready to receive on", listeningAddr, ":", port)
 
 	n, addr, err := c.localConn.ReadFromUDP(buf)
 	log.Info("ListenAndBlock(", identityListening, "): Received a header from", addr, "gonna read message of length...", n, "size is", len(buf))
@@ -219,8 +219,8 @@ func (c *RealUDPChannel) ListenAndBlock(emptyMessage MarshallableMessage, lastSe
 	}
 
 	//retransmit
-	retransmitMsg := buf[0:sizeAdvertised+4]
-	ServerAddr,_ := net.ResolveUDPAddr("udp","127.0.0.1:"+strconv.Itoa(UDP_PORT+1))
+	retransmitMsg := buf[0 : sizeAdvertised+4]
+	ServerAddr, _ := net.ResolveUDPAddr("udp", "127.0.0.1:"+strconv.Itoa(UDP_PORT+1))
 	LocalAddr, _ := net.ResolveUDPAddr("udp", "127.0.0.1:0")
 	Conn, err := net.DialUDP("udp", LocalAddr, ServerAddr)
 	if err != nil {
@@ -231,8 +231,6 @@ func (c *RealUDPChannel) ListenAndBlock(emptyMessage MarshallableMessage, lastSe
 		log.Error("ListenAndBlock(", identityListening, "): Retransmit write error", err)
 	}
 	log.Info("ListenAndBlock(", identityListening, "): Done retransmitting to ", ServerAddr, "a message of length...", len(retransmitMsg))
-
-
 
 	newMessage, err3 := emptyMessage.FromBytes(message)
 	if err3 != nil {

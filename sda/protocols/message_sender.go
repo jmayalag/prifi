@@ -7,7 +7,6 @@ import (
 	"github.com/lbarman/prifi/prifi-lib/net"
 	"gopkg.in/dedis/onet.v1"
 	"gopkg.in/dedis/onet.v1/log"
-	"math"
 )
 
 //MessageSender is the struct we need to give PriFi-Lib so it can send messages.
@@ -127,7 +126,8 @@ func (ms MessageSender) BroadcastToAllClients(msg interface{}) error {
 func (ms MessageSender) ClientSubscribeToBroadcast(clientID int, messageReceived func(interface{}) error, startStopChan chan bool) error {
 
 	clientName := "client-" + strconv.Itoa(clientID)
-	port := UDP_PORT //int(math.Floor(float64(clientID)/5))
+	addr := "10.0.1." + strconv.Itoa(clientID+1)
+	port := UDP_PORT
 	log.Info(clientName, " started UDP-listener helper.")
 	listening := false
 	lastSeenMessage := 0 //the first real message has ID 1; this means that we saw the empty struct.
@@ -148,7 +148,7 @@ func (ms MessageSender) ClientSubscribeToBroadcast(clientID int, messageReceived
 		if listening {
 			emptyMessage := net.REL_CLI_DOWNSTREAM_DATA_UDP{}
 			//listen and decode
-			filledMessage, err := udpChan.ListenAndBlock(&emptyMessage, lastSeenMessage, port, clientName)
+			filledMessage, err := udpChan.ListenAndBlock(&emptyMessage, lastSeenMessage, addr, port, clientName)
 			lastSeenMessage++
 
 			if err != nil {
