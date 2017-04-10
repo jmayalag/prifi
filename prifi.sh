@@ -794,6 +794,29 @@ case $1 in
 
 		;;
 
+	simul-vary-window)
+
+		thisScript="$0"
+
+		TEMPLATE_FILE="sda/simulation/prifi_simul_template.toml"
+		CONFIG_FILE="sda/simulation/prifi_simul.toml"
+		TIMEOUT="400"
+
+		"$thisScript" simul-cl
+
+		for window in {1..20}
+		do
+			echo "Simulating for WINDOW=$window..."
+
+			#fix the config
+			rm -f "$CONFIG_FILE"
+			sed "s/RelayWindowSize = x/RelayWindowSize = $window/g" "$TEMPLATE_FILE" > "$CONFIG_FILE"
+
+			timeout "$TIMEOUT" "$thisScript" simul | tee experiment_$window.txt
+		done
+
+		;;
+
 	simul-e|simul-edit)
 
 		nano sda/simulation/prifi_simul.toml
