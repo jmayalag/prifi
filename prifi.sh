@@ -793,22 +793,25 @@ case $1 in
 
 		;;
 
-	simul-udp|simul-udp-rules)
+	simul-ifaces)
 
-		#create a file ~/makelogsrw.sh with this content
+		#create a file ~/virtualifaces.sh with this content
 		# #!/bin/sh
-		# ssh relay.LB-LLD.SAFER.isi.deterlab.net "ifconfig"
-		# ssh relay.LB-LLD.SAFER.isi.deterlab.net "sudo iptables -F"
-		# ssh relay.LB-LLD.SAFER.isi.deterlab.net "sudo iptables -A OUTPUT -o eth3 -p udp -j DROP"
-		# ssh relay.LB-LLD.SAFER.isi.deterlab.net "sudo iptables -S"
+		# ifconfig | grep -E "eth([0-9]):" | cut -d ' ' -f 1 | awk '{print "sudo ifconfig "$1" down\0"}' | xargs -0 bash -c
+		# [EOF]
+		
+		#create a file ~/virtualifacesrec.sh with this content
+		# #!/bin/sh
+		# for i in 0 1 2 3 4; do
+		#     echo "Connecting to client-$i"
+		#     ssh client-$i.LB-LLD.SAFER.isi.deterlab.net './virtualifaces.sh'
+		# done
 		# [EOF]
 		
 		deterlabUser="lbarman"
 
-		echo -e "${warningMsg} This tool *deletes* all experiment data on the remote server. Make sure you backuped what you need !"
-
-		echo -n "Making logs R/W... " #this is needed since simul runs and writes log as root
-		ssh $deterlabUser@users.deterlab.net 'sudo iptables -F'
+		echo -n "Deleting all virtual interfaces... "
+		ssh $deterlabUser@users.deterlab.net './virtualifaces.sh'
 		echo -e "$okMsg"
 
 		;;

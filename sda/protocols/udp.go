@@ -16,6 +16,9 @@ import (
 
 	"encoding/binary"
 	"gopkg.in/dedis/onet.v1/log"
+	"os/exec"
+	"strings"
+	"regexp"
 )
 
 //UPD_PORT is the port used for UDP broadcast
@@ -181,15 +184,56 @@ func (c *RealUDPChannel) Broadcast(msg MarshallableMessage) error {
 	return nil
 }
 
+func findNextFreeListeningIface(identityListening string) string {
+	cmdName := "ifconfig"
+	cmdOut, _ := exec.Command(cmdName).Output()
+	var ifaceDetails = strings.Split(string(cmdOut), "\n\n")
+
+	IPRegex := regexp.MustCompile(`(10\.0\.1\.[0-9]+)`)
+	IfaceRegex := regexp.MustCompile(`(eth[0-9:]+)`)
+	lastIPFound := ""
+	lastIfaceFound := ""
+
+	for _, iface := range ifaceDetails{
+		if strings.Contains(iface, "10.0.1."){
+			//log.Info("findNextFreeListeningIface(",identityListening,"): found IP",IPRegex.FindString(iface))
+			//log.Info("findNextFreeListeningIface(",identityListening,"): found IfaceRegex",IfaceRegex.FindString(iface))
+			lastIPFound = IPRegex.FindString(iface)
+			lastIfaceFound = IfaceRegex.FindString(iface)
+		}
+	}
+
+	nextIface := lastIfaceFound+":1"
+	if strings.Contains(lastIfaceFound, ":") {
+		i := strings.Index(lastIfaceFound, ":")
+		lastID, _ := strconv.Atoi(lastIfaceFound[i+1:])
+		nextIface = lastIfaceFound[0:i+1]+strconv.Itoa(lastID+1)
+	}
+
+	i := strings.LastIndex(lastIPFound, ".")
+	machineID, _ := strconv.Atoi(lastIPFound[i+1:])
+	nextIP := lastIPFound[0:i+1]+strconv.Itoa(machineID+5)
+
+	log.Info("I'm", identityListening, "gonna get IP", lastIPFound, "on iface", lastIfaceFound, "next IP will be", nextIP, "next iface will be", nextIface)
+
+	cmdOut, err := exec.Command("sudo", "ifconfig", nextIface, nextIP, "netmask", "255.255.255.0").Output()
+	log.Info(cmdOut)
+	if err != nil{
+		log.Error(err) //maybe the interface simply already exists
+	}
+	return lastIPFound
+}
+
 //ListenAndBlock of RealUDPChannel is the implementation of message reception for the real UDP channel
 func (c *RealUDPChannel) ListenAndBlock(emptyMessage MarshallableMessage, lastSeenMessage int, listeningAddr string, port int, identityListening string) (interface{}, error) {
 
-	//if we're not ready with the connection yet
+	listeningIP := findNextFreeListeningIface(identityListening)
 
+	//if we're not ready with the connection yet
 	if c.localConn == nil {
 
 		/* Lets prepare a address at any address at port 10001*/
-		ServerAddr, err := net.ResolveUDPAddr("udp", listeningAddr+":"+strconv.Itoa(port))
+		ServerAddr, err := net.ResolveUDPAddr("udp", listeningIP+":"+strconv.Itoa(port))
 		if err != nil {
 			log.Error("ListenAndBlock(", identityListening, "): could not resolve BCast address, error is", err.Error())
 		}
@@ -202,7 +246,7 @@ func (c *RealUDPChannel) ListenAndBlock(emptyMessage MarshallableMessage, lastSe
 	}
 
 	buf := make([]byte, MAX_UDP_SIZE)
-	log.Info("ListenAndBlock(", identityListening, "): Ready to receive on", listeningAddr, ":", port)
+	log.Info("ListenAndBlock(", identityListening, "): Ready to receive on", listeningIP, ":", port)
 
 	n, addr, err := c.localConn.ReadFromUDP(buf)
 	log.Info("ListenAndBlock(", identityListening, "): Received a header from", addr, "gonna read message of length...", n, "size is", len(buf))
