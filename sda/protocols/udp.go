@@ -202,7 +202,7 @@ func (c *RealUDPChannel) ListenAndBlock(emptyMessage MarshallableMessage, lastSe
 	buf := make([]byte, MAX_UDP_SIZE)
 	n, addr, err := c.localConn.ReadFromUDP(buf)
 
-	log.Lvl4("ListenAndBlock(", identityListening, "): Received a UDP message of length",n,"from", addr)
+	log.Lvl4("ListenAndBlock(", identityListening, "): Received a UDP message of length", n, "from", addr)
 	sizeAdvertised := int(binary.BigEndian.Uint32(buf[0:4]))
 
 	if sizeAdvertised+4 != n {
