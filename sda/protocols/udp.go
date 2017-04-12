@@ -182,11 +182,9 @@ func (c *RealUDPChannel) Broadcast(msg MarshallableMessage) error {
 // ListenAndBlock of RealUDPChannel is the implementation of message reception for the real UDP channel
 func (c *RealUDPChannel) ListenAndBlock(emptyMessage MarshallableMessage, lastSeenMessage int, identityListening string) (interface{}, error) {
 
-	log.Info("ListenAndBlock(", identityListening, "): entering")
 	//if we're not ready with the connection yet
 	if c.localConn == nil {
 
-		log.Info("ListenAndBlock(", identityListening, "): connection is nil, creating.....................")
 		mcastAddr, err := net.ResolveUDPAddr("udp", MULTICAST_ADDR+":"+strconv.Itoa(UDP_PORT))
 		if err != nil {
 			log.Error("ListenAndBlock(", identityListening, "): could not resolve BCast address, error is", err.Error())
@@ -197,15 +195,14 @@ func (c *RealUDPChannel) ListenAndBlock(emptyMessage MarshallableMessage, lastSe
 			log.Error("ListenAndBlock(", identityListening, "): could not UDP Dial, error is", err.Error())
 		}
 
-		log.Info("ListenAndBlock(", identityListening, "): listening on", mcastAddr)
+		log.Lvl3("ListenAndBlock(", identityListening, "): listening on", mcastAddr)
 		c.localConn.SetReadBuffer(MAX_UDP_SIZE)
 	}
 
-	log.Info("ListenAndBlock(", identityListening, "): gonna read...")
 	buf := make([]byte, MAX_UDP_SIZE)
 	n, addr, err := c.localConn.ReadFromUDP(buf)
 
-	log.Info("ListenAndBlock(", identityListening, "): Received a header from", addr, "gonna read message of length...", n)
+	log.Lvl4("ListenAndBlock(", identityListening, "): Received a UDP message of length",n,"from", addr)
 	sizeAdvertised := int(binary.BigEndian.Uint32(buf[0:4]))
 
 	if sizeAdvertised+4 != n {
