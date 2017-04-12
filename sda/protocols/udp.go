@@ -147,7 +147,7 @@ func (c *RealUDPChannel) Broadcast(msg MarshallableMessage) error {
 
 	//if we're not ready with the connnection yet
 	if c.relayConn == nil {
-		ServerAddr, err := net.ResolveUDPAddr("udp", "255.255.255.255:"+strconv.Itoa(UDP_PORT))
+		ServerAddr, err := net.ResolveUDPAddr("udp", "10.0.1.255:"+strconv.Itoa(UDP_PORT))
 		if err != nil {
 			log.Error("Broadcast: could not resolve BCast address, error is", err.Error())
 		}
@@ -184,7 +184,9 @@ func (c *RealUDPChannel) Broadcast(msg MarshallableMessage) error {
 	return nil
 }
 
-func findNextFreeListeningIface(identityListening string) string {
+// This function parses the output of "ifconfig", find the latest iface with registered IP 10.0.1.X (a client),
+// gets this one (to be listened on later), and creates a new virtual interface with a different IP
+func findNextFreeListeningIface(identityListening string) (string, string) {
 	cmdName := "ifconfig"
 	cmdOut, _ := exec.Command(cmdName).Output()
 	var ifaceDetails = strings.Split(string(cmdOut), "\n\n")
@@ -196,8 +198,6 @@ func findNextFreeListeningIface(identityListening string) string {
 
 	for _, iface := range ifaceDetails{
 		if strings.Contains(iface, "10.0.1."){
-			//log.Info("findNextFreeListeningIface(",identityListening,"): found IP",IPRegex.FindString(iface))
-			//log.Info("findNextFreeListeningIface(",identityListening,"): found IfaceRegex",IfaceRegex.FindString(iface))
 			lastIPFound = IPRegex.FindString(iface)
 			lastIfaceFound = IfaceRegex.FindString(iface)
 		}
@@ -216,37 +216,37 @@ func findNextFreeListeningIface(identityListening string) string {
 
 	log.Info("I'm", identityListening, "gonna get IP", lastIPFound, "on iface", lastIfaceFound, "next IP will be", nextIP, "next iface will be", nextIface)
 
-	cmdOut, err := exec.Command("sudo", "ifconfig", nextIface, nextIP, "netmask", "255.255.255.0").Output()
-	log.Info(cmdOut)
-	if err != nil{
-		log.Error(err) //maybe the interface simply already exists
-	}
-	return lastIPFound
+	exec.Command("sudo", "ifconfig", nextIface, nextIP, "netmask", "255.255.255.0").Output()
+	return lastIfaceFound, lastIPFound
 }
 
-//ListenAndBlock of RealUDPChannel is the implementation of message reception for the real UDP channel
+// ListenAndBlock of RealUDPChannel is the implementation of message reception for the real UDP channel
 func (c *RealUDPChannel) ListenAndBlock(emptyMessage MarshallableMessage, lastSeenMessage int, listeningAddr string, port int, identityListening string) (interface{}, error) {
 
-	listeningIP := findNextFreeListeningIface(identityListening)
+	ifaceName, ipAddress := findNextFreeListeningIface(identityListening)
+	iface, err := net.InterfaceByName(ifaceName)
+	if err != nil {
+		log.Error("ListenAndBlock(", identityListening, "): could not find iface", ifaceName, "err is", err.Error())
+	}
+	ipAddress = "255.255.255.255"
+	log.Error("ListenAndBlock(", identityListening, "): gonna listen on",ifaceName,"addr", ipAddress)
 
 	//if we're not ready with the connection yet
 	if c.localConn == nil {
 
-		/* Lets prepare a address at any address at port 10001*/
-		ServerAddr, err := net.ResolveUDPAddr("udp", listeningIP+":"+strconv.Itoa(port))
+		broadcastAddr, err := net.ResolveUDPAddr("udp", ipAddress+":"+strconv.Itoa(port))
 		if err != nil {
 			log.Error("ListenAndBlock(", identityListening, "): could not resolve BCast address, error is", err.Error())
 		}
 
 		/* Now listen at selected port */
-		c.localConn, err = net.ListenUDP("udp", ServerAddr)
+		c.localConn, err = net.ListenMulticastUDP("udp", iface, broadcastAddr)
 		if err != nil {
 			log.Error("ListenAndBlock(", identityListening, "): could not UDP Dial, error is", err.Error())
 		}
 	}
 
 	buf := make([]byte, MAX_UDP_SIZE)
-	log.Info("ListenAndBlock(", identityListening, "): Ready to receive on", listeningIP, ":", port)
 
 	n, addr, err := c.localConn.ReadFromUDP(buf)
 	log.Info("ListenAndBlock(", identityListening, "): Received a header from", addr, "gonna read message of length...", n, "size is", len(buf))

@@ -811,7 +811,7 @@ case $1 in
 		deterlabUser="lbarman"
 
 		echo -n "Deleting all virtual interfaces... "
-		ssh $deterlabUser@users.deterlab.net './virtualifaces.sh'
+		ssh $deterlabUser@users.deterlab.net './virtualifacesrec.sh'
 		echo -e "$okMsg"
 
 		;;

@@ -173,8 +173,8 @@ func (s *SimulationService) Run(config *onet.SimulationConfig) error {
 	service := config.GetService(prifi_service.ServiceName).(*prifi_service.ServiceState)
 
 	//give time to the nodes to initialize
-	log.Info("Sleeping 5 seconds before starting the experiment...")
-	time.Sleep(5 * time.Second)
+	log.Info("Sleeping 15 seconds before starting the experiment...")
+	time.Sleep(15 * time.Second)
 
 	log.Info("Starting experiment", simulationID)
 	startTime := time.Now()
