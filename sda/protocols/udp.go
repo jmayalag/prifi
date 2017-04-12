@@ -16,23 +16,23 @@ import (
 
 	"encoding/binary"
 	"gopkg.in/dedis/onet.v1/log"
-	"os/exec"
-	"strings"
-	"regexp"
 )
 
-//UPD_PORT is the port used for UDP broadcast
+// MULTICAST_ADDR is the address used for multicasting
+const MULTICAST_ADDR string = "224.0.0.1"
+
+// UPD_PORT is the port used for UDP broadcast
 const UDP_PORT int = 10101
 
-//MAX_UDP_SIZE is the max size of one broadcasted packet
+// MAX_UDP_SIZE is the max size of one broadcasted packet
 const MAX_UDP_SIZE int = 65507
 
-//FAKE_LOCAL_UDP_SIMULATED_LOSS_PERCENTAGE is the simulated loss percentage when we use a non-lossy local chanel
+// FAKE_LOCAL_UDP_SIMULATED_LOSS_PERCENTAGE is the simulated loss percentage when we use a non-lossy local chanel
 const FAKE_LOCAL_UDP_SIMULATED_LOSS_PERCENTAGE = 0
 
-//MarshallableMessage . Since we can only send []byte over UDP, each interface{} we want to send needs to implement MarshallableMessage.
-//It has methods Print(), used for debug, ToBytes(), that converts it to a raw byte array, SetByte(), which simply store a byte array in the
-//structure (but does not decode it), and FromBytes(), which decodes the interface{} from the inner buffer set by SetBytes()
+// MarshallableMessage . Since we can only send []byte over UDP, each interface{} we want to send needs to implement MarshallableMessage.
+// It has methods Print(), used for debug, ToBytes(), that converts it to a raw byte array, SetByte(), which simply store a byte array in the
+// structure (but does not decode it), and FromBytes(), which decodes the interface{} from the inner buffer set by SetBytes()
 type MarshallableMessage interface {
 	Print()
 
@@ -46,7 +46,7 @@ type UDPChannel interface {
 	Broadcast(msg MarshallableMessage) error
 
 	//we take an empty MarshallableMessage as input, because the method does know how to parse the message
-	ListenAndBlock(msg MarshallableMessage, lastSeenMessage int, addr string, port int, identityListening string) (interface{}, error)
+	ListenAndBlock(msg MarshallableMessage, lastSeenMessage int, identityListening string) (interface{}, error)
 }
 
 /**
@@ -104,7 +104,7 @@ func (lc *LocalhostChannel) Broadcast(msg MarshallableMessage) error {
 }
 
 //ListenAndBlock of LocalhostChannel is the implementation of message reception for the fake localhost channel
-func (lc *LocalhostChannel) ListenAndBlock(emptyMessage MarshallableMessage, lastSeenMessage int, addr string, port int, identityListening string) (interface{}, error) {
+func (lc *LocalhostChannel) ListenAndBlock(emptyMessage MarshallableMessage, lastSeenMessage int, identityListening string) (interface{}, error) {
 
 	//we wait until there is a new message
 	lc.RLock()
@@ -147,17 +147,12 @@ func (c *RealUDPChannel) Broadcast(msg MarshallableMessage) error {
 
 	//if we're not ready with the connnection yet
 	if c.relayConn == nil {
-		ServerAddr, err := net.ResolveUDPAddr("udp", "10.0.1.255:"+strconv.Itoa(UDP_PORT))
+		ServerAddr, err := net.ResolveUDPAddr("udp", MULTICAST_ADDR+":"+strconv.Itoa(UDP_PORT))
 		if err != nil {
-			log.Error("Broadcast: could not resolve BCast address, error is", err.Error())
+			log.Error("Broadcast: could not resolve multicast address, error is", err.Error())
 		}
 
-		LocalAddr, err := net.ResolveUDPAddr("udp", "10.0.1.254:0")
-		if err != nil {
-			log.Error("Broadcast: could not resolve Local address, error is", err.Error())
-		}
-
-		c.relayConn, err = net.DialUDP("udp", LocalAddr, ServerAddr)
+		c.relayConn, err = net.DialUDP("udp", nil, ServerAddr)
 		if err != nil {
 			log.Error("Broadcast: could not UDP Dial, error is", err.Error())
 		}
@@ -184,66 +179,23 @@ func (c *RealUDPChannel) Broadcast(msg MarshallableMessage) error {
 	return nil
 }
 
-// This function parses the output of "ifconfig", find the latest iface with registered IP 10.0.1.X (a client),
-// gets this one (to be listened on later), and creates a new virtual interface with a different IP
-func findNextFreeListeningIface(identityListening string) (string, string) {
-	cmdName := "ifconfig"
-	cmdOut, _ := exec.Command(cmdName).Output()
-	var ifaceDetails = strings.Split(string(cmdOut), "\n\n")
-
-	IPRegex := regexp.MustCompile(`(10\.0\.1\.[0-9]+)`)
-	IfaceRegex := regexp.MustCompile(`(eth[0-9:]+)`)
-	lastIPFound := ""
-	lastIfaceFound := ""
-
-	for _, iface := range ifaceDetails{
-		if strings.Contains(iface, "10.0.1."){
-			lastIPFound = IPRegex.FindString(iface)
-			lastIfaceFound = IfaceRegex.FindString(iface)
-		}
-	}
-
-	nextIface := lastIfaceFound+":1"
-	if strings.Contains(lastIfaceFound, ":") {
-		i := strings.Index(lastIfaceFound, ":")
-		lastID, _ := strconv.Atoi(lastIfaceFound[i+1:])
-		nextIface = lastIfaceFound[0:i+1]+strconv.Itoa(lastID+1)
-	}
-
-	i := strings.LastIndex(lastIPFound, ".")
-	machineID, _ := strconv.Atoi(lastIPFound[i+1:])
-	nextIP := lastIPFound[0:i+1]+strconv.Itoa(machineID+5)
-
-	log.Info("I'm", identityListening, "gonna get IP", lastIPFound, "on iface", lastIfaceFound, "next IP will be", nextIP, "next iface will be", nextIface)
-
-	exec.Command("sudo", "ifconfig", nextIface, nextIP, "netmask", "255.255.255.0").Output()
-	return lastIfaceFound, lastIPFound
-}
-
 // ListenAndBlock of RealUDPChannel is the implementation of message reception for the real UDP channel
-func (c *RealUDPChannel) ListenAndBlock(emptyMessage MarshallableMessage, lastSeenMessage int, listeningAddr string, port int, identityListening string) (interface{}, error) {
-
-	ifaceName, ipAddress := findNextFreeListeningIface(identityListening)
-	iface, err := net.InterfaceByName(ifaceName)
-	if err != nil {
-		log.Error("ListenAndBlock(", identityListening, "): could not find iface", ifaceName, "err is", err.Error())
-	}
-	ipAddress = "255.255.255.255"
-	log.Error("ListenAndBlock(", identityListening, "): gonna listen on",ifaceName,"addr", ipAddress)
+func (c *RealUDPChannel) ListenAndBlock(emptyMessage MarshallableMessage, lastSeenMessage int, identityListening string) (interface{}, error) {
 
 	//if we're not ready with the connection yet
 	if c.localConn == nil {
 
-		broadcastAddr, err := net.ResolveUDPAddr("udp", ipAddress+":"+strconv.Itoa(port))
+		mcastAddr, err := net.ResolveUDPAddr("udp", MULTICAST_ADDR+":"+strconv.Itoa(UDP_PORT))
 		if err != nil {
 			log.Error("ListenAndBlock(", identityListening, "): could not resolve BCast address, error is", err.Error())
 		}
 
-		/* Now listen at selected port */
-		c.localConn, err = net.ListenMulticastUDP("udp", iface, broadcastAddr)
+		c.localConn, err = net.ListenMulticastUDP("udp", nil, mcastAddr)
 		if err != nil {
 			log.Error("ListenAndBlock(", identityListening, "): could not UDP Dial, error is", err.Error())
 		}
+
+		c.localConn.SetReadBuffer(MAX_UDP_SIZE)
 	}
 
 	buf := make([]byte, MAX_UDP_SIZE)

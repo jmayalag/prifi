@@ -126,8 +126,6 @@ func (ms MessageSender) BroadcastToAllClients(msg interface{}) error {
 func (ms MessageSender) ClientSubscribeToBroadcast(clientID int, messageReceived func(interface{}) error, startStopChan chan bool) error {
 
 	clientName := "client-" + strconv.Itoa(clientID)
-	addr := "10.0.1." + strconv.Itoa(clientID+1)
-	port := UDP_PORT
 	log.Info(clientName, " started UDP-listener helper.")
 	listening := false
 	lastSeenMessage := 0 //the first real message has ID 1; this means that we saw the empty struct.
@@ -137,7 +135,7 @@ func (ms MessageSender) ClientSubscribeToBroadcast(clientID int, messageReceived
 		case val := <-startStopChan:
 			if val {
 				listening = true //either we listen or we stop
-				log.Lvl3("client", clientName, " switched on broadcast-listening on port", port)
+				log.Lvl3("client", clientName, " switched on broadcast-listening")
 			} else {
 				log.Lvl3("client", clientName, " killed broadcast-listening.")
 				return nil
@@ -148,7 +146,7 @@ func (ms MessageSender) ClientSubscribeToBroadcast(clientID int, messageReceived
 		if listening {
 			emptyMessage := net.REL_CLI_DOWNSTREAM_DATA_UDP{}
 			//listen and decode
-			filledMessage, err := udpChan.ListenAndBlock(&emptyMessage, lastSeenMessage, addr, port, clientName)
+			filledMessage, err := udpChan.ListenAndBlock(&emptyMessage, lastSeenMessage, clientName)
 			lastSeenMessage++
 
 			if err != nil {

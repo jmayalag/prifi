@@ -793,25 +793,30 @@ case $1 in
 
 		;;
 
-	simul-ifaces)
+	simul-mcast-rules|simul-mr)
 
-		#create a file ~/virtualifaces.sh with this content
+		#create a file ~/mcast2.sh with this content
 		# #!/bin/sh
-		# ifconfig | grep -E "eth([0-9]):" | cut -d ' ' -f 1 | awk '{print "sudo ifconfig "$1" down\0"}' | xargs -0 bash -c
+		# iface=$(ip addr | sed -r ':a;N;$!ba;s/\n\s/ /g' | sed -r -n -e 's/^([0-9]+):\s(\w+).*(link\/(\w+))\s[a-f0-9:.]{,17}\sbrd\s[a-f0-9:.]{,17}\s*(inet\s([0-9]{1,3}(\.[0-9]{1,3}){3})).*/\2 \6 \4/p' -e 's/^([0-9]+):\s(\w+).*(link\/(\w+))\s[a-f0-9:.]{,17}\sbrd\s[a-f0-9:.]{,17}.*/\2 0.0.0.0 \4/p' | grep 10.0.1 | cut -d ' ' -f 1)
+		# echo "Redirecting mcast traffic to $iface"
+		# sudo route del -net 224.0.0.0/8
+		# sudo route add -net 224.0.0.0/8 "$iface"
 		# [EOF]
-		
-		#create a file ~/virtualifacesrec.sh with this content
+
+		#create a file ~/mcast.sh with this content
 		# #!/bin/sh
+		# echo "Connecting to relay"
+		# ssh relay.LB-LLD.SAFER.isi.deterlab.net './mcast2.sh'
 		# for i in 0 1 2 3 4; do
 		#     echo "Connecting to client-$i"
-		#     ssh client-$i.LB-LLD.SAFER.isi.deterlab.net './virtualifaces.sh'
+		#     ssh client-$i.LB-LLD.SAFER.isi.deterlab.net './mcast2.sh'
 		# done
 		# [EOF]
 		
 		deterlabUser="lbarman"
 
-		echo -n "Deleting all virtual interfaces... "
-		ssh $deterlabUser@users.deterlab.net './virtualifacesrec.sh'
+		echo -n "Setting multicast to go through 10.0.1.0/8 network... "
+		ssh $deterlabUser@users.deterlab.net './mcast.sh'
 		echo -e "$okMsg"
 
 		;;
