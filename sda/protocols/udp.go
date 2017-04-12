@@ -182,9 +182,11 @@ func (c *RealUDPChannel) Broadcast(msg MarshallableMessage) error {
 // ListenAndBlock of RealUDPChannel is the implementation of message reception for the real UDP channel
 func (c *RealUDPChannel) ListenAndBlock(emptyMessage MarshallableMessage, lastSeenMessage int, identityListening string) (interface{}, error) {
 
+	log.Info("ListenAndBlock(", identityListening, "): entering")
 	//if we're not ready with the connection yet
 	if c.localConn == nil {
 
+		log.Info("ListenAndBlock(", identityListening, "): connection is nil, creating.....................")
 		mcastAddr, err := net.ResolveUDPAddr("udp", MULTICAST_ADDR+":"+strconv.Itoa(UDP_PORT))
 		if err != nil {
 			log.Error("ListenAndBlock(", identityListening, "): could not resolve BCast address, error is", err.Error())
@@ -195,13 +197,15 @@ func (c *RealUDPChannel) ListenAndBlock(emptyMessage MarshallableMessage, lastSe
 			log.Error("ListenAndBlock(", identityListening, "): could not UDP Dial, error is", err.Error())
 		}
 
+		log.Info("ListenAndBlock(", identityListening, "): listening on", mcastAddr)
 		c.localConn.SetReadBuffer(MAX_UDP_SIZE)
 	}
 
+	log.Info("ListenAndBlock(", identityListening, "): gonna read...")
 	buf := make([]byte, MAX_UDP_SIZE)
-
 	n, addr, err := c.localConn.ReadFromUDP(buf)
-	log.Info("ListenAndBlock(", identityListening, "): Received a header from", addr, "gonna read message of length...", n, "size is", len(buf))
+
+	log.Info("ListenAndBlock(", identityListening, "): Received a header from", addr, "gonna read message of length...", n)
 	sizeAdvertised := int(binary.BigEndian.Uint32(buf[0:4]))
 
 	if sizeAdvertised+4 != n {
@@ -213,20 +217,6 @@ func (c *RealUDPChannel) ListenAndBlock(emptyMessage MarshallableMessage, lastSe
 	if err != nil {
 		log.Error("ListenAndBlock(", identityListening, "): could not receive message, error is", err.Error())
 	}
-
-	//retransmit
-	retransmitMsg := buf[0 : sizeAdvertised+4]
-	ServerAddr, _ := net.ResolveUDPAddr("udp", "127.0.0.1:"+strconv.Itoa(UDP_PORT+1))
-	LocalAddr, _ := net.ResolveUDPAddr("udp", "127.0.0.1:0")
-	Conn, err := net.DialUDP("udp", LocalAddr, ServerAddr)
-	if err != nil {
-		log.Error("ListenAndBlock(", identityListening, "): Retransmit dial error", err)
-	}
-	_, err = Conn.Write(retransmitMsg)
-	if err != nil {
-		log.Error("ListenAndBlock(", identityListening, "): Retransmit write error", err)
-	}
-	log.Info("ListenAndBlock(", identityListening, "): Done retransmitting to ", ServerAddr, "a message of length...", len(retransmitMsg))
 
 	newMessage, err3 := emptyMessage.FromBytes(message)
 	if err3 != nil {

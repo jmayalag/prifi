@@ -12,10 +12,11 @@ import (
 //MessageSender is the struct we need to give PriFi-Lib so it can send messages.
 //It needs to implement the "MessageSender interface" defined in prifi_lib/prifi.go
 type MessageSender struct {
-	tree     *onet.TreeNodeInstance
-	relay    *onet.TreeNode
-	clients  map[int]*onet.TreeNode
-	trustees map[int]*onet.TreeNode
+	tree       *onet.TreeNodeInstance
+	relay      *onet.TreeNode
+	clients    map[int]*onet.TreeNode
+	trustees   map[int]*onet.TreeNode
+	udpChannel UDPChannel
 }
 
 // buildMessageSender creates a MessageSender struct
@@ -56,7 +57,7 @@ func (p *PriFiSDAProtocol) buildMessageSender(identities map[string]PriFiIdentit
 		}
 	}
 
-	return MessageSender{p.TreeNodeInstance, relay, clients, trustees}
+	return MessageSender{p.TreeNodeInstance, relay, clients, trustees, newRealUDPChannel()}
 }
 
 //SendToClient sends a message to client i, or fails if it is unknown
@@ -117,7 +118,7 @@ func (ms MessageSender) BroadcastToAllClients(msg interface{}) error {
 	if !canCast {
 		log.Error("Message sender : could not cast msg to REL_CLI_DOWNSTREAM_DATA_UDP, and I don't know how to send other messages.")
 	}
-	udpChan.Broadcast(castedMsg)
+	ms.udpChannel.Broadcast(castedMsg)
 
 	return nil
 }
@@ -146,7 +147,8 @@ func (ms MessageSender) ClientSubscribeToBroadcast(clientID int, messageReceived
 		if listening {
 			emptyMessage := net.REL_CLI_DOWNSTREAM_DATA_UDP{}
 			//listen and decode
-			filledMessage, err := udpChan.ListenAndBlock(&emptyMessage, lastSeenMessage, clientName)
+			log.Lvl3("client", clientName, " calling listen and block...")
+			filledMessage, err := ms.udpChannel.ListenAndBlock(&emptyMessage, lastSeenMessage, clientName)
 			lastSeenMessage++
 
 			if err != nil {
