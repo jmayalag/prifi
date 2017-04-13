@@ -12,7 +12,7 @@
 
 # variables that you might change often
 
-dbg_lvl=1                       # 1=less verbose, 3=more verbose. goes up to 5, but then prints the SDA's message (network framework)
+dbg_lvl=3                       # 1=less verbose, 3=more verbose. goes up to 5, but then prints the SDA's message (network framework)
 try_use_real_identities="false" # if "true", will try to use "self-generated" public/private key as a replacement for the dummy keys
                                 # we generated for you. It asks you if it does not find real keys. If false, will always use the dummy keys.
 colors="true"                   # if  "false", the output of PriFi (and this script) will be in black-n-white
@@ -21,7 +21,7 @@ socksServer1Port=8080           # the port for the SOCKS-Server-1 (part of the P
 socksServer2Port=8090           # the port to attempt connect to (from the PriFi relay) for the SOCKS-Server-2
                                 # notes : see <https://github.com/lbarman/prifi/blob/master/README_architecture.md>
 
-all_localhost_n_clients=2      # number of clients to start in the "all-localhost" script
+all_localhost_n_clients=3      # number of clients to start in the "all-localhost" script
 
 # default file names :
 
@@ -112,6 +112,7 @@ test_go(){
 		exit 1
 	fi
 	GO_VER=$(go version 2>&1 | sed 's/.*version go\(.*\)\.\(.*\)\ \(.*\)/\1\2/; 1q')
+	GO_VER=18
 	if [ "$GO_VER" -lt "$min_go_version" ]; then
 		echo -e "$errorMsg Go >= 1.7.0 is required"
 		exit 1
@@ -818,7 +819,28 @@ case $1 in
 		echo -n "Setting multicast to go through 10.0.1.0/8 network... "
 		ssh $deterlabUser@users.deterlab.net './mcast.sh'
 		echo -e "$okMsg"
+		;;
 
+	simul-vary-window)
+
+		thisScript="$0"
+
+		TEMPLATE_FILE="sda/simulation/prifi_simul_template.toml"
+		CONFIG_FILE="sda/simulation/prifi_simul.toml"
+		TIMEOUT="400"
+
+		"$thisScript" simul-cl
+
+		for window in {1..20}
+		do
+			echo "Simulating for WINDOW=$window..."
+
+			#fix the config
+			rm -f "$CONFIG_FILE"
+			sed "s/RelayWindowSize = x/RelayWindowSize = $window/g" "$TEMPLATE_FILE" > "$CONFIG_FILE"
+
+			timeout "$TIMEOUT" "$thisScript" simul | tee experiment_$window.txt
+		done
 		;;
 
 	simul-e|simul-edit)
