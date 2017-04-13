@@ -1,11 +1,11 @@
 Simulation = "PriFi"
-Servers = 14
+Servers = 9
 Depth = 1
 CloseWait = 10000000
 RunWait = 10000000
 NTrustees = 3
 CellSizeUp = 100
-CellSizeDown = 140
+CellSizeDown = 1400
 RelayWindowSize = 1
 OverrideLogLevel = 1
 ForceConsoleColor = true

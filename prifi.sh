@@ -831,7 +831,7 @@ case $1 in
 
 		"$thisScript" simul-cl
 
-		for window in {1..20}
+		for window in {1..10}
 		do
 			echo "Simulating for WINDOW=$window..."
 
