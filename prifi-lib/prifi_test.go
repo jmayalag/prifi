@@ -64,6 +64,7 @@ func TestPrifi(t *testing.T) {
 	msg.Add("UseDummyDataDown", true)
 	msg.Add("ExperimentRoundLimit", 10)
 	msg.Add("UseUDP", false)
+	msg.Add("DCNetType", "Simple")
 	msg.ForceParams = true
 
 	relay.ReceivedMessage(*msg)

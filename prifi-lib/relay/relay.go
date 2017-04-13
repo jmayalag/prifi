@@ -37,6 +37,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/lbarman/prifi/prifi-lib/config"
+	"github.com/lbarman/prifi/prifi-lib/dcnet"
 	"github.com/lbarman/prifi/prifi-lib/net"
 	socks "github.com/lbarman/prifi/prifi-socks"
 	"github.com/lbarman/prifi/utils/timing"
@@ -87,6 +89,7 @@ func (p *PriFiLibRelayInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARA
 	useDummyDown := msg.BoolValueOrElse("UseDummyDataDown", p.relayState.UseDummyDataDown)
 	reportingLimit := msg.IntValueOrElse("ExperimentRoundLimit", p.relayState.ExperimentRoundLimit)
 	useUDP := msg.BoolValueOrElse("UseUDP", p.relayState.UseUDP)
+	dcNetType := msg.StringValueOrElse("DCNetType", p.relayState.dcNetType)
 
 	p.relayState.clients = make([]NodeRepresentation, nClients)
 	p.relayState.trustees = make([]NodeRepresentation, nTrustees)
@@ -103,7 +106,22 @@ func (p *PriFiLibRelayInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARA
 	p.relayState.nextDownStreamRoundToSend = int32(1) //since first round is half-round
 	p.relayState.WindowSize = windowSize
 	p.relayState.numberOfNonAckedDownstreamPackets = 0
+	p.relayState.MessageHistory = config.CryptoSuite.Cipher([]byte("init")) //any non-nil, non-empty, constant array
+	p.relayState.VerifiableDCNetKeys = make([][]byte, nTrustees)
+	p.relayState.nVkeysCollected = 0
 	p.relayState.dcnetRoundManager = NewDCNetRoundManager(windowSize)
+	p.relayState.dcNetType = dcNetType
+
+	switch dcNetType {
+	case "Simple":
+		p.relayState.CellCoder = dcnet.SimpleCoderFactory()
+	case "Verifiable":
+		p.relayState.CellCoder = dcnet.OwnedCoderFactory()
+	default:
+		e := "DCNetType must be Simple or Verifiable"
+		log.Error(e)
+		return errors.New(e)
+	}
 
 	//this should be in NewRelayState, but we need p
 	if !p.relayState.bufferManager.DoSendStopResumeMessages {
@@ -141,6 +159,7 @@ func (p *PriFiLibRelayInstance) BroadcastParameters() error {
 	msg.Add("NTrustees", p.relayState.nTrustees)
 	msg.Add("StartNow", true)
 	msg.Add("UpstreamCellSize", p.relayState.UpstreamCellSize)
+	msg.Add("DCNetType", p.relayState.dcNetType)
 	msg.ForceParams = true
 
 	// Send those parameters to all trustees
@@ -151,7 +170,7 @@ func (p *PriFiLibRelayInstance) BroadcastParameters() error {
 		p.messageSender.SendToTrusteeWithLog(j, msg, "")
 	}
 
-	// Send those parameters to all trustees
+	// Send those parameters to all clients
 	for j := 0; j < p.relayState.nClients; j++ {
 
 		// The ID is unique !
@@ -268,7 +287,9 @@ func (p *PriFiLibRelayInstance) finalizeUpstreamData() error {
 	}
 
 	if upstreamPlaintext == nil {
-		// empty upstream cell
+		// empty upstream cell, need to finish round otherwise will enter next if clause
+		p.roundFinished(p.relayState.dcnetRoundManager.CurrentRound())
+		return nil
 	}
 
 	if len(upstreamPlaintext) != p.relayState.UpstreamCellSize {
@@ -515,6 +536,9 @@ When this happens, we pack a transcript, and broadcast it to all the trustees wh
 */
 func (p *PriFiLibRelayInstance) Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS(msg net.TRU_REL_TELL_NEW_BASE_AND_EPH_PKS) error {
 
+	p.relayState.VerifiableDCNetKeys[p.relayState.nVkeysCollected] = msg.VerifiableDCNetKey
+	p.relayState.nVkeysCollected++
+
 	done, err := p.relayState.neffShuffle.ReceivedShuffleFromTrustee(msg.NewBase, msg.NewEphPks, msg.Proof)
 	if err != nil {
 		e := "Relay : error in p.relayState.neffShuffle.ReceivedShuffleFromTrustee " + err.Error()
@@ -559,6 +583,8 @@ func (p *PriFiLibRelayInstance) Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS(msg n
 			// send to the j-th trustee
 			p.messageSender.SendToTrusteeWithLog(j, toSend, "(trustee "+strconv.Itoa(j+1)+")")
 		}
+
+		p.relayState.CellCoder.RelaySetup(config.CryptoSuite, p.relayState.VerifiableDCNetKeys)
 
 		// prepare to collect the ciphers
 		p.relayState.dcnetRoundManager.OpenRound(0)
