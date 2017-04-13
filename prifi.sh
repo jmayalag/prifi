@@ -831,15 +831,18 @@ case $1 in
 
 		"$thisScript" simul-cl
 
-		for window in {1..10}
+		for repeat in {1..10}
 		do
-			echo "Simulating for WINDOW=$window..."
+			for window in {1..20}
+			do
+				echo "Simulating for WINDOW=$window..."
 
-			#fix the config
-			rm -f "$CONFIG_FILE"
-			sed "s/RelayWindowSize = x/RelayWindowSize = $window/g" "$TEMPLATE_FILE" > "$CONFIG_FILE"
+				#fix the config
+				rm -f "$CONFIG_FILE"
+				sed "s/RelayWindowSize = x/RelayWindowSize = $window/g" "$TEMPLATE_FILE" > "$CONFIG_FILE"
 
-			timeout "$TIMEOUT" "$thisScript" simul | tee experiment_$window.txt
+				timeout "$TIMEOUT" "$thisScript" simul | tee experiment_${window}_${repeat}.txt
+			done
 		done
 		;;
 
