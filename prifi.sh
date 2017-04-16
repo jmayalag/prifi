@@ -831,9 +831,9 @@ case $1 in
 
 		"$thisScript" simul-cl
 
-		for repeat in {1..10}
+		for repeat in {1..3}
 		do
-			for window in {1..20}
+			for window in 4 6 8 10 12
 			do
 				echo "Simulating for WINDOW=$window..."
 
@@ -842,6 +842,31 @@ case $1 in
 				sed "s/RelayWindowSize = x/RelayWindowSize = $window/g" "$TEMPLATE_FILE" > "$CONFIG_FILE"
 
 				timeout "$TIMEOUT" "$thisScript" simul | tee experiment_${window}_${repeat}.txt
+			done
+		done
+		;;
+
+	simul-vary-upstream)
+
+		thisScript="$0"
+
+		TEMPLATE_FILE="sda/simulation/prifi_simul_template.toml"
+		CONFIG_FILE="sda/simulation/prifi_simul.toml"
+		TIMEOUT="400"
+
+		"$thisScript" simul-cl
+
+		for repeat in {1..10}
+		do
+			for upsize in 1000 1100 1200 1300 1400 1500 1600 1700 1800 1900 2000
+			do
+				echo "Simulating for WINDOW=$window..."
+
+				#fix the config
+				rm -f "$CONFIG_FILE"
+				sed "s/CellSizeUp = x/CellSizeUp = $upsize/g" "$TEMPLATE_FILE" > "$CONFIG_FILE"
+
+				timeout "$TIMEOUT" "$thisScript" simul | tee experiment_${upsize}_${repeat}.txt
 			done
 		done
 		;;
