@@ -43,7 +43,7 @@ import (
 // Received_ALL_CLI_SHUTDOWN handles ALL_CLI_SHUTDOWN messages.
 // When we receive this message, we should clean up resources.
 func (p *PriFiLibClientInstance) Received_ALL_ALL_SHUTDOWN(msg net.ALL_ALL_SHUTDOWN) error {
-	log.Lvl1("Client " + strconv.Itoa(p.clientState.ID) + " : Received a SHUTDOWN message. ")
+	log.Lvl2("Client " + strconv.Itoa(p.clientState.ID) + " : Received a SHUTDOWN message. ")
 
 	p.stateMachine.ChangeState("SHUTDOWN")
 
