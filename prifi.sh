@@ -858,15 +858,40 @@ case $1 in
 
 		for repeat in {1..10}
 		do
-			for upsize in 1000 1100 1200 1300 1400 1500 1600 1700 1800 1900 2000
+			for upsize in 1000 1500 2000 2500 3000 3500 4000 4500 5000 5500 6000 6500 7000 7500 8000 8500 9000 9500 10000
 			do
-				echo "Simulating for WINDOW=$window..."
+				echo "Simulating for upsize=$upsize  (repeat $repeat)..."
 
 				#fix the config
 				rm -f "$CONFIG_FILE"
 				sed "s/CellSizeUp = x/CellSizeUp = $upsize/g" "$TEMPLATE_FILE" > "$CONFIG_FILE"
 
 				timeout "$TIMEOUT" "$thisScript" simul | tee experiment_${upsize}_${repeat}.txt
+			done
+		done
+		;;
+
+	simul-vary-downstream)
+
+		thisScript="$0"
+
+		TEMPLATE_FILE="sda/simulation/prifi_simul_template.toml"
+		CONFIG_FILE="sda/simulation/prifi_simul.toml"
+		TIMEOUT="400"
+
+		"$thisScript" simul-cl
+
+		for repeat in {1..10}
+		do
+			for downsize in 2000 4000 6000 8000 10000 120000 14000 16000 18000 20000
+			do
+				echo "Simulating for downsize=$downsize  (repeat $repeat)..."
+
+				#fix the config
+				rm -f "$CONFIG_FILE"
+				sed "s/CellSizeDown = x/CellSizeDown = $downsize/g" "$TEMPLATE_FILE" > "$CONFIG_FILE"
+
+				timeout "$TIMEOUT" "$thisScript" simul | tee experiment_${downsize}_${repeat}.txt
 			done
 		done
 		;;
