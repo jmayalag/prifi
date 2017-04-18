@@ -353,18 +353,23 @@ func (p *PriFiLibRelayInstance) sendDownstreamData() error {
 	}
 
 	// TODO : if something went wrong before, this flag should be used to warn the clients that the config has changed
-
 	flagResync := false
+
+	// TODO : periodically, this should be set to True so client can advertise their bitmap
+	flagOpenClosedRequest := false
+
+	//sending data part
+	timing.StartMeasure("sending-data")
 	log.Lvl3("Relay is gonna broadcast messages for round " + strconv.Itoa(int(p.relayState.nextDownStreamRoundToSend)) + ".")
 
 	toSend := &net.REL_CLI_DOWNSTREAM_DATA{
-		RoundID:    p.relayState.nextDownStreamRoundToSend,
-		Data:       downstreamCellContent,
-		FlagResync: flagResync}
+		RoundID:               p.relayState.nextDownStreamRoundToSend,
+		Data:                  downstreamCellContent,
+		FlagResync:            flagResync,
+		FlagOpenClosedRequest: flagOpenClosedRequest}
 	p.relayState.dcnetRoundManager.OpenRound(p.relayState.nextDownStreamRoundToSend)
 	p.relayState.dcnetRoundManager.SetDataAlreadySent(p.relayState.nextDownStreamRoundToSend, toSend)
 
-	timing.StartMeasure("sending-data")
 	if !p.relayState.UseUDP {
 		// broadcast to all clients
 		for i := 0; i < p.relayState.nClients; i++ {
@@ -382,9 +387,11 @@ func (p *PriFiLibRelayInstance) sendDownstreamData() error {
 
 	timeMs := timing.StopMeasure("sending-data").Nanoseconds() / 1e6
 	p.relayState.timeStatistics["sending-data"].AddTime(timeMs)
-	timing.StartMeasure("waiting-on-someone")
 
 	log.Lvl3("Relay is done broadcasting messages for round " + strconv.Itoa(int(p.relayState.nextDownStreamRoundToSend)) + ".")
+
+	//now relay enters a waiting state (collecting all ciphers from clients/trustees)
+	timing.StartMeasure("waiting-on-someone")
 
 	p.relayState.nextDownStreamRoundToSend++
 	p.relayState.numberOfNonAckedDownstreamPackets++
