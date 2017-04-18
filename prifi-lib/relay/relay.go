@@ -355,8 +355,11 @@ func (p *PriFiLibRelayInstance) sendDownstreamData() error {
 	// TODO : if something went wrong before, this flag should be used to warn the clients that the config has changed
 	flagResync := false
 
-	// TODO : periodically, this should be set to True so client can advertise their bitmap
+	// periodically set to True so client can advertise their bitmap
 	flagOpenClosedRequest := false
+	if p.relayState.nextDownStreamRoundToSend%int32(p.relayState.nClients) == 0 {
+		flagOpenClosedRequest = true
+	}
 
 	//sending data part
 	timing.StartMeasure("sending-data")
