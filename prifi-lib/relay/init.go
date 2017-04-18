@@ -188,6 +188,10 @@ func (p *PriFiLibRelayInstance) ReceivedMessage(msg interface{}) error {
 		if p.stateMachine.AssertState("COMMUNICATING") {
 			err = p.Received_CLI_REL_UPSTREAM_DATA(typedMsg)
 		}
+	case net.CLI_REL_OPENCLOSED_DATA:
+		if p.stateMachine.AssertState("COMMUNICATING") {
+			err = p.Received_CLI_REL_OPENCLOSED_DATA(typedMsg)
+		}
 	case net.TRU_REL_DC_CIPHER:
 		if p.stateMachine.AssertStateOrState("COMMUNICATING", "COLLECTING_SHUFFLE_SIGNATURES") {
 			err = p.Received_TRU_REL_DC_CIPHER(typedMsg)

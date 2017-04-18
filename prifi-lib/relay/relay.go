@@ -163,6 +163,16 @@ func (p *PriFiLibRelayInstance) BroadcastParameters() error {
 	return nil
 }
 
+// Received_CLI_REL_OPENCLOSED_DATA handles the reception of the OpenClosed map, which details which
+// pseudonymous clients want to transmit in a given round
+func (p *PriFiLibRelayInstance) Received_CLI_REL_OPENCLOSED_DATA(msg net.CLI_REL_OPENCLOSED_DATA) error {
+
+	log.Fatal("Received an OPENCLOSED data")
+	p.relayState.bufferManager.AddClientCipher(msg.RoundID, msg.ClientID, msg.OpenClosedData)
+
+	return nil
+}
+
 /*
 Received_CLI_REL_UPSTREAM_DATA handles CLI_REL_UPSTREAM_DATA messages and is part of PriFi's main loop.
 This is what happens in one round, for the relay. We receive some upstream data.
