@@ -55,6 +55,13 @@ type CLI_REL_UPSTREAM_DATA struct {
 	Data     []byte
 }
 
+// CLI_REL_OPENCLOSED_DATA message contains whether slots are gonna be Open or Closed in the next round
+type CLI_REL_OPENCLOSED_DATA struct {
+	ClientID       int
+	RoundID        int32
+	OpenClosedData []byte
+}
+
 // REL_CLI_DOWNSTREAM_DATA message contains the downstream data for a client for a given round
 // and is sent by the relay to the clients.
 type REL_CLI_DOWNSTREAM_DATA struct {
