@@ -780,16 +780,19 @@ case $1 in
 
 		"$thisScript" simul-cl
 
-		for i in {5..95..5}
+		for repeat in {1..3}
 		do
-			hosts=$(($NTRUSTEES + $NRELAY + $i))
-			echo "Simulating for HOSTS=$hosts..."
+			for i in {5..95..5}
+			do
+				hosts=$(($NTRUSTEES + $NRELAY + $i))
+				echo "Simulating for HOSTS=$hosts..."
 
-			#fix the config
-			rm -f "$CONFIG_FILE"
-			sed "s/Hosts = x/Hosts = $hosts/g" "$TEMPLATE_FILE" > "$CONFIG_FILE"
+				#fix the config
+				rm -f "$CONFIG_FILE"
+				sed "s/Hosts = x/Hosts = $hosts/g" "$TEMPLATE_FILE" > "$CONFIG_FILE"
 
-			timeout "$TIMEOUT" "$thisScript" simul | tee experiment_$i.txt
+				timeout "$TIMEOUT" "$thisScript" simul | tee experiment_${i}_${repeat}.txt
+			done
 		done
 
 		;;
@@ -883,7 +886,7 @@ case $1 in
 
 		for repeat in {1..10}
 		do
-			for downsize in 2000 4000 6000 8000 10000 120000 14000 16000 18000 20000
+			for downsize in 17400 17500 17600 17800 17900 18000
 			do
 				echo "Simulating for downsize=$downsize  (repeat $repeat)..."
 
