@@ -39,7 +39,7 @@ func (t *TestMessageSender) SendToRelay(msg interface{}) error {
 func (t *TestMessageSender) BroadcastToAllClients(msg interface{}) error {
 	return t.SendToClient(0, msg)
 }
-func (t *TestMessageSender) ClientSubscribeToBroadcast(clientName string, messageReceived func(interface{}) error, startStopChan chan bool) error {
+func (t *TestMessageSender) ClientSubscribeToBroadcast(clientID int, messageReceived func(interface{}) error, startStopChan chan bool) error {
 	return errors.New("Not for relay")
 }
 
