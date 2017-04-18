@@ -9,6 +9,7 @@ CellSizeDown = 17500
 RelayWindowSize = 7
 OverrideLogLevel = 1
 ForceConsoleColor = true
+RelayUseOpenClosedSlots = true
 RelayUseDummyDataDown = true
 RelayReportingLimit = 10000
 RelayDataOutputEnabled = true

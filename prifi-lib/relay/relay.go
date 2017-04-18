@@ -85,6 +85,7 @@ func (p *PriFiLibRelayInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARA
 	downCellSize := msg.IntValueOrElse("DownstreamCellSize", p.relayState.DownstreamCellSize)
 	windowSize := msg.IntValueOrElse("WindowSize", p.relayState.WindowSize)
 	useDummyDown := msg.BoolValueOrElse("UseDummyDataDown", p.relayState.UseDummyDataDown)
+	useOpenClosedSlots := msg.BoolValueOrElse("UseOpenClosedSlots", p.relayState.UseOpenClosedSlots)
 	reportingLimit := msg.IntValueOrElse("ExperimentRoundLimit", p.relayState.ExperimentRoundLimit)
 	useUDP := msg.BoolValueOrElse("UseUDP", p.relayState.UseUDP)
 
@@ -98,6 +99,7 @@ func (p *PriFiLibRelayInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARA
 	p.relayState.UpstreamCellSize = upCellSize
 	p.relayState.DownstreamCellSize = downCellSize
 	p.relayState.UseDummyDataDown = useDummyDown
+	p.relayState.UseOpenClosedSlots = useOpenClosedSlots
 	p.relayState.UseUDP = useUDP
 	p.relayState.bufferManager.Init(nClients, nTrustees)
 	p.relayState.nextDownStreamRoundToSend = int32(1) //since first round is half-round

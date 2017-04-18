@@ -160,6 +160,7 @@ type RelayState struct {
 	trustees                          []NodeRepresentation
 	UpstreamCellSize                  int
 	UseDummyDataDown                  bool
+	UseOpenClosedSlots                bool
 	UseUDP                            bool
 	numberOfNonAckedDownstreamPackets int
 	WindowSize                        int

@@ -69,6 +69,7 @@ func (p *PriFiSDAProtocol) Start() error {
 	msg.Add("UpstreamCellSize", p.config.Toml.CellSizeUp)
 	msg.Add("DownstreamCellSize", p.config.Toml.CellSizeDown)
 	msg.Add("WindowSize", p.config.Toml.RelayWindowSize)
+	msg.Add("UseOpenClosedSlots", p.config.Toml.RelayUseOpenClosedSlots)
 	msg.Add("UseDummyDataDown", p.config.Toml.RelayUseDummyDataDown)
 	msg.Add("ExperimentRoundLimit", p.config.Toml.RelayReportingLimit)
 	msg.Add("UseUDP", p.config.Toml.UseUDP)
