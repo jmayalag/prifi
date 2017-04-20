@@ -202,10 +202,60 @@ func (p *PriFiLibClientInstance) ProcessDownStreamData(msg net.REL_CLI_DOWNSTREA
 		//TODO : regenerate ephemeral keys ?
 
 		return nil
+
+		//if the flag FlagOpenClosedRequest
+	} else if msg.FlagOpenClosedRequest == true {
+
+		log.Lvl1("Client " + strconv.Itoa(p.clientState.ID) + " : Relay wants to open/closed schedule slots ")
+
+		//do the schedule
+		bmc := new(scheduler.BitMaskSlotScheduler_Client)
+		bmc.Client_ReceivedScheduleRequest(p.clientState.RoundNo+1, p.clientState.nClients)
+
+		//since this round nobody sends, move "MySlot" for everybody
+		p.clientState.MySlot = (p.clientState.MySlot + 1) % p.clientState.nClients
+
+		//find the slot that will be ours in the next round
+		i := p.clientState.RoundNo + 1
+		for i%int32(p.clientState.nClients) != int32(p.clientState.MySlot) {
+			i++
+		}
+		mySlotInNextRound := int32(i)
+		log.Lvl1("Client "+strconv.Itoa(p.clientState.ID)+" : Gonna reserve round", mySlotInNextRound)
+		bmc.Client_ReserveSlot(mySlotInNextRound)
+		contribution := bmc.Client_GetOpenScheduleContribution()
+
+		//produce the next upstream cell
+		upstreamCell := p.clientState.CellCoder.ClientEncode(contribution, p.clientState.PayloadLength, p.clientState.MessageHistory)
+
+		//send the data to the relay
+		toSend := &net.CLI_REL_OPENCLOSED_DATA{
+			ClientID:       p.clientState.ID,
+			RoundID:        p.clientState.RoundNo,
+			OpenClosedData: upstreamCell}
+		p.messageSender.SendToRelayWithLog(toSend, "(round "+strconv.Itoa(int(p.clientState.RoundNo))+")")
+
+	} else {
+		//send upstream data for next round
+		p.SendUpstreamData()
 	}
 
-	//send upstream data for next round
-	return p.SendUpstreamData()
+	//clean old buffered messages
+	delete(p.clientState.BufferedRoundData, int32(p.clientState.RoundNo-1))
+
+	//one round just passed
+	p.clientState.RoundNo++
+
+	//now we will be expecting next message. Except if we already received and buffered it !
+	if msg, hasAMessage := p.clientState.BufferedRoundData[int32(p.clientState.RoundNo)]; hasAMessage {
+		p.Received_REL_CLI_DOWNSTREAM_DATA(msg)
+	}
+
+	timeMs := timing.StopMeasure("round-processing").Nanoseconds() / 1e6
+	p.clientState.timeStatistics["round-processing"].AddTime(timeMs)
+	p.clientState.timeStatistics["round-processing"].ReportWithInfo("round-processing")
+
+	return nil
 }
 
 /*
@@ -296,21 +346,6 @@ func (p *PriFiLibClientInstance) SendUpstreamData() error {
 		RoundID:  p.clientState.RoundNo,
 		Data:     upstreamCell}
 	p.messageSender.SendToRelayWithLog(toSend, "(round "+strconv.Itoa(int(p.clientState.RoundNo))+")")
-
-	//clean old buffered messages
-	delete(p.clientState.BufferedRoundData, int32(p.clientState.RoundNo-1))
-
-	//one round just passed
-	p.clientState.RoundNo++
-
-	//now we will be expecting next message. Except if we already received and buffered it !
-	if msg, hasAMessage := p.clientState.BufferedRoundData[int32(p.clientState.RoundNo)]; hasAMessage {
-		p.Received_REL_CLI_DOWNSTREAM_DATA(msg)
-	}
-
-	timeMs := timing.StopMeasure("round-processing").Nanoseconds() / 1e6
-	p.clientState.timeStatistics["round-processing"].AddTime(timeMs)
-	p.clientState.timeStatistics["round-processing"].ReportWithInfo("round-processing")
 
 	return nil
 }
