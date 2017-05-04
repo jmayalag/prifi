@@ -43,10 +43,10 @@ func Test1Client(t *testing.T) {
 	//The contribution is sent to the relay
 	bmr := new(BitMaskSlotScheduler_Relay)
 
-	finalSched := bmr.Relay_ComputeFinalSchedule(contribution, currentRound + 1, nClients)
+	finalSched := bmr.Relay_ComputeFinalSchedule(contribution, currentRound+1, nClients)
 
 	if len(finalSched) != nClients {
-		t.Error("finalSched should have length",nClients,", has length", len(finalSched))
+		t.Error("finalSched should have length", nClients, ", has length", len(finalSched))
 	}
 
 	if !finalSched[mySlotInNextRound] {
@@ -107,10 +107,10 @@ func Test2Client(t *testing.T) {
 	bmr := new(BitMaskSlotScheduler_Relay)
 
 	contributions := bmr.Relay_CombineContributions(contribution1, contribution2)
-	finalSched := bmr.Relay_ComputeFinalSchedule(contributions, currentRound + 1, nClients)
+	finalSched := bmr.Relay_ComputeFinalSchedule(contributions, currentRound+1, nClients)
 
 	if len(finalSched) != nClients {
-		t.Error("finalSched should have length",nClients,", has length", len(finalSched))
+		t.Error("finalSched should have length", nClients, ", has length", len(finalSched))
 	}
 
 	if !finalSched[mySlotInNextRound1] {

@@ -38,11 +38,11 @@ import (
 	"time"
 
 	"github.com/lbarman/prifi/prifi-lib/net"
+	"github.com/lbarman/prifi/prifi-lib/scheduler"
 	socks "github.com/lbarman/prifi/prifi-socks"
 	"github.com/lbarman/prifi/utils/timing"
 	"gopkg.in/dedis/crypto.v0/abstract"
 	"gopkg.in/dedis/onet.v1/log"
-	"github.com/lbarman/prifi/prifi-lib/scheduler"
 )
 
 /*
@@ -191,8 +191,7 @@ func (p *PriFiLibRelayInstance) Received_CLI_REL_OPENCLOSED_DATA(msg net.CLI_REL
 
 		//compute the map
 		bmr := new(scheduler.BitMaskSlotScheduler_Relay)
-		finalSched := bmr.Relay_ComputeFinalSchedule(openClosedData, msg.RoundID + 1, p.relayState.nClients)
-
+		finalSched := bmr.Relay_ComputeFinalSchedule(openClosedData, msg.RoundID+1, p.relayState.nClients)
 
 		log.Fatal("Received an OPENCLOSED data", finalSched)
 

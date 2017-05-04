@@ -1,6 +1,7 @@
 package scheduler
 
 import (
+	"gopkg.in/dedis/onet.v1/log"
 	"math"
 	"strconv"
 )
@@ -33,9 +34,9 @@ type BitMaskSlotScheduler_Client struct {
 	MySlotInNextRound      int
 }
 
-// BitMaskScheduler_Relay holds all contributions sent by clients, before converting it to a map of slots
+// BitMaskScheduler_Relay holds the current slot ID, and the map of Open/Closed future slots
 type BitMaskSlotScheduler_Relay struct {
-
+	latestDownstreamSlotSent uint32
 }
 
 // Client_ReceivedScheduleRequest instantiates the fields of BitMaskScheduler_Client
@@ -86,6 +87,19 @@ func (bmr *BitMaskSlotScheduler_Relay) Relay_CombineContributions(contributions 
 	return out
 }
 
+//NextDownStreamRoundToSent returns the next downstream round to send, and takes cares of closed slots
+func (bmr *BitMaskSlotScheduler_Relay) NextDownStreamRoundToSent() uint32 {
+	return bmr.latestDownstreamSlotSent + 1
+}
+
+//DownStreamRoundSent helps keeping track of the next round to send
+func (bmr *BitMaskSlotScheduler_Relay) DownStreamRoundSent(roundID uint32) {
+	if bmr.latestDownstreamSlotSent != roundID {
+		log.Fatal("Dunno what to do!", bmr.latestDownstreamSlotSent, roundID)
+	}
+	bmr.latestDownstreamSlotSent++
+}
+
 // Relay_ComputeFinalSchedule computes the map[int32]bool of open slots in the next round given the stored contributions
 func (bmr *BitMaskSlotScheduler_Relay) Relay_ComputeFinalSchedule(allContributions []byte, baseRoundID int32, maxSlots int) map[int32]bool {
 
@@ -100,7 +114,7 @@ func (bmr *BitMaskSlotScheduler_Relay) Relay_ComputeFinalSchedule(allContributio
 			} else {
 				res[roundID] = false
 			}
-			if bitPos == uint(maxSlots) - 1{
+			if bitPos == uint(maxSlots)-1 {
 				return res
 			}
 		}
