@@ -83,6 +83,7 @@ func NewRelay(dataOutputEnabled bool, dataForClients chan []byte, dataFromDCNet 
 	relayState.timeStatistics["socks-out"] = prifilog.NewTimeStatistics()
 	relayState.timeStatistics["round-transition"] = prifilog.NewTimeStatistics()
 	relayState.PublicKey, relayState.privateKey = crypto.NewKeyPair()
+	relayState.slotScheduler = new(scheduler.BitMaskSlotScheduler_Relay)
 	relayState.bufferManager = new(BufferManager)
 	neffShuffle := new(scheduler.NeffShuffle)
 	neffShuffle.Init()
@@ -164,12 +165,12 @@ type RelayState struct {
 	UseUDP                            bool
 	numberOfNonAckedDownstreamPackets int
 	WindowSize                        int
-	nextDownStreamRoundToSend         int32
 	ExperimentResultChannel           chan interface{}
 	ExperimentResultData              []string
 	timeoutHandler                    func([]int, []int)
 	bitrateStatistics                 *prifilog.BitrateStatistics
 	timeStatistics                    map[string]*prifilog.TimeStatistics
+	slotScheduler                     *scheduler.BitMaskSlotScheduler_Relay
 }
 
 // ReceivedMessage must be called when a PriFi host receives a message.

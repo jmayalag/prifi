@@ -36,7 +36,7 @@ type BitMaskSlotScheduler_Client struct {
 
 // BitMaskScheduler_Relay holds the current slot ID, and the map of Open/Closed future slots
 type BitMaskSlotScheduler_Relay struct {
-	latestDownstreamSlotSent uint32
+	latestDownstreamSlotSent int32
 }
 
 // Client_ReceivedScheduleRequest instantiates the fields of BitMaskScheduler_Client
@@ -88,16 +88,21 @@ func (bmr *BitMaskSlotScheduler_Relay) Relay_CombineContributions(contributions 
 }
 
 //NextDownStreamRoundToSent returns the next downstream round to send, and takes cares of closed slots
-func (bmr *BitMaskSlotScheduler_Relay) NextDownStreamRoundToSent() uint32 {
+func (bmr *BitMaskSlotScheduler_Relay) NextDownStreamRoundToSent() int32 {
 	return bmr.latestDownstreamSlotSent + 1
 }
 
 //DownStreamRoundSent helps keeping track of the next round to send
-func (bmr *BitMaskSlotScheduler_Relay) DownStreamRoundSent(roundID uint32) {
-	if bmr.latestDownstreamSlotSent != roundID {
+func (bmr *BitMaskSlotScheduler_Relay) DownStreamRoundSent(roundID int32) {
+	if bmr.latestDownstreamSlotSent != roundID-1 {
 		log.Fatal("Dunno what to do!", bmr.latestDownstreamSlotSent, roundID)
 	}
 	bmr.latestDownstreamSlotSent++
+}
+
+//IsNextDownstreamRoundForOpenClosedRequest return true if the next downstream round has flagOpenCloseScheduleRequest == true
+func (bmr *BitMaskSlotScheduler_Relay) IsNextDownstreamRoundForOpenClosedRequest(nClients int) bool {
+	return (bmr.NextDownStreamRoundToSent()%int32(nClients) == 0)
 }
 
 // Relay_ComputeFinalSchedule computes the map[int32]bool of open slots in the next round given the stored contributions
