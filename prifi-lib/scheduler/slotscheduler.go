@@ -19,7 +19,7 @@ type SlotScheduler interface {
 	Client_GetOpenScheduleContribution() []byte
 
 	//Called with each client's contribution
-	Relay_ReceiveScheduleContribution(contribution []byte)
+	Relay_CombineContributions(contributions ...[]byte) []byte
 
 	//returns all contributions in forms of a map of open slots
 	Relay_ComputeFinalSchedule() map[int32]bool
@@ -35,7 +35,7 @@ type BitMaskSlotScheduler_Client struct {
 
 // BitMaskScheduler_Relay holds all contributions sent by clients, before converting it to a map of slots
 type BitMaskSlotScheduler_Relay struct {
-	ReceivedContributions []byte
+
 }
 
 // Client_ReceivedScheduleRequest instantiates the fields of BitMaskScheduler_Client
@@ -74,23 +74,24 @@ func (bmc *BitMaskSlotScheduler_Client) Client_GetOpenScheduleContribution() []b
 	return payload
 }
 
-// Relay_ReceiveScheduleContribution stores the received schedule contribution
-func (bmr *BitMaskSlotScheduler_Relay) Relay_ReceiveScheduleContribution(contribution []byte) {
-	if bmr.ReceivedContributions == nil {
-		bmr.ReceivedContributions = make([]byte, len(contribution))
+// Relay_CombineContributions combines (XOR) the received contributions from each clients. In the real DC-net,
+// this is done automatically by the DC-net
+func (bmr *BitMaskSlotScheduler_Relay) Relay_CombineContributions(contributions ...[]byte) []byte {
+	out := make([]byte, len(contributions[0]))
+	for j := range contributions {
+		for i := range contributions[j] {
+			out[i] ^= contributions[j][i]
+		}
 	}
-	for i := range contribution {
-		bmr.ReceivedContributions[i] ^= contribution[i]
-	}
+	return out
 }
 
 // Relay_ComputeFinalSchedule computes the map[int32]bool of open slots in the next round given the stored contributions
-func (bmr *BitMaskSlotScheduler_Relay) Relay_ComputeFinalSchedule(baseRoundID int32, maxSlots int) map[int32]bool {
+func (bmr *BitMaskSlotScheduler_Relay) Relay_ComputeFinalSchedule(allContributions []byte, baseRoundID int32, maxSlots int) map[int32]bool {
 
-	allContribs := bmr.ReceivedContributions
 	res := make(map[int32]bool)
 
-	for byteIndex, b := range allContribs {
+	for byteIndex, b := range allContributions {
 		for bitPos := uint(0); bitPos < 8; bitPos++ {
 			roundID := baseRoundID + int32(byteIndex*8+int(bitPos))
 			val := b & (1 << bitPos)

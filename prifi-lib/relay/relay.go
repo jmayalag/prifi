@@ -42,6 +42,7 @@ import (
 	"github.com/lbarman/prifi/utils/timing"
 	"gopkg.in/dedis/crypto.v0/abstract"
 	"gopkg.in/dedis/onet.v1/log"
+	"github.com/lbarman/prifi/prifi-lib/scheduler"
 )
 
 /*
@@ -169,8 +170,33 @@ func (p *PriFiLibRelayInstance) BroadcastParameters() error {
 // pseudonymous clients want to transmit in a given round
 func (p *PriFiLibRelayInstance) Received_CLI_REL_OPENCLOSED_DATA(msg net.CLI_REL_OPENCLOSED_DATA) error {
 
-	log.Fatal("Received an OPENCLOSED data")
 	p.relayState.bufferManager.AddClientCipher(msg.RoundID, msg.ClientID, msg.OpenClosedData)
+
+	if p.relayState.bufferManager.HasAllCiphersForCurrentRound() {
+
+		//classical DC-net decoding
+		clientSlices, trusteesSlices, err := p.relayState.bufferManager.FinalizeRound()
+		if err != nil {
+			return err
+		}
+		for _, s := range clientSlices {
+			p.relayState.CellCoder.DecodeClient(s)
+		}
+		for _, s := range trusteesSlices {
+			p.relayState.CellCoder.DecodeTrustee(s)
+		}
+
+		//here we have the plaintext map
+		openClosedData := p.relayState.CellCoder.DecodeCell()
+
+		//compute the map
+		bmr := new(scheduler.BitMaskSlotScheduler_Relay)
+		finalSched := bmr.Relay_ComputeFinalSchedule(openClosedData, msg.RoundID + 1, p.relayState.nClients)
+
+
+		log.Fatal("Received an OPENCLOSED data", finalSched)
+
+	}
 
 	return nil
 }

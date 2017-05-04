@@ -222,7 +222,10 @@ func (p *PriFiLibClientInstance) ProcessDownStreamData(msg net.REL_CLI_DOWNSTREA
 		}
 		mySlotInNextRound := int32(i)
 		log.Lvl1("Client "+strconv.Itoa(p.clientState.ID)+" : Gonna reserve round", mySlotInNextRound)
-		bmc.Client_ReserveSlot(mySlotInNextRound)
+		wantToTransmit := false
+		if wantToTransmit {
+			bmc.Client_ReserveSlot(mySlotInNextRound)
+		}
 		contribution := bmc.Client_GetOpenScheduleContribution()
 
 		//produce the next upstream cell
