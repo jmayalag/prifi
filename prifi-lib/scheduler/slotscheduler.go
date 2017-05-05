@@ -1,7 +1,6 @@
 package scheduler
 
 import (
-	"gopkg.in/dedis/onet.v1/log"
 	"math"
 	"strconv"
 )
@@ -37,6 +36,7 @@ type BitMaskSlotScheduler_Client struct {
 // BitMaskScheduler_Relay holds the current slot ID, and the map of Open/Closed future slots
 type BitMaskSlotScheduler_Relay struct {
 	latestDownstreamSlotSent int32
+	storedSchedule           map[int32]bool
 }
 
 // Client_ReceivedScheduleRequest instantiates the fields of BitMaskScheduler_Client
@@ -89,15 +89,25 @@ func (bmr *BitMaskSlotScheduler_Relay) Relay_CombineContributions(contributions 
 
 //NextDownStreamRoundToSent returns the next downstream round to send, and takes cares of closed slots
 func (bmr *BitMaskSlotScheduler_Relay) NextDownStreamRoundToSent() int32 {
-	return bmr.latestDownstreamSlotSent + 1
+	nextDownstreamRound := bmr.latestDownstreamSlotSent + 1
+
+	if bmr.storedSchedule == nil {
+		return nextDownstreamRound
+	}
+
+	doSend, found := bmr.storedSchedule[nextDownstreamRound]
+	for found && !doSend {
+		//log.Error("Going to skip round", nextDownstreamRound, doSend, bmr.storedSchedule)
+		nextDownstreamRound++
+		doSend, found = bmr.storedSchedule[nextDownstreamRound]
+	}
+
+	return nextDownstreamRound
 }
 
 //DownStreamRoundSent helps keeping track of the next round to send
 func (bmr *BitMaskSlotScheduler_Relay) DownStreamRoundSent(roundID int32) {
-	if bmr.latestDownstreamSlotSent != roundID-1 {
-		log.Fatal("Dunno what to do!", bmr.latestDownstreamSlotSent, roundID)
-	}
-	bmr.latestDownstreamSlotSent++
+	bmr.latestDownstreamSlotSent = roundID
 }
 
 //IsNextDownstreamRoundForOpenClosedRequest return true if the next downstream round has flagOpenCloseScheduleRequest == true
@@ -120,10 +130,12 @@ func (bmr *BitMaskSlotScheduler_Relay) Relay_ComputeFinalSchedule(allContributio
 				res[roundID] = false
 			}
 			if bitPos == uint(maxSlots)-1 {
+				bmr.storedSchedule = res
 				return res
 			}
 		}
 	}
 
+	bmr.storedSchedule = res
 	return res
 }

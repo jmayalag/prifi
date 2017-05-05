@@ -125,8 +125,12 @@ func (p *PriFiLibClientInstance) Received_REL_CLI_DOWNSTREAM_DATA(msg net.REL_CL
 	} else if msg.RoundID < p.clientState.RoundNo {
 		log.Lvl3("Client " + strconv.Itoa(p.clientState.ID) + " : Received a REL_CLI_DOWNSTREAM_DATA for round " + strconv.Itoa(int(msg.RoundID)) + " but we are in round " + strconv.Itoa(int(p.clientState.RoundNo)) + ", discarding.")
 	} else if msg.RoundID > p.clientState.RoundNo {
-		log.Lvl3("Client " + strconv.Itoa(p.clientState.ID) + " : Received a REL_CLI_DOWNSTREAM_DATA for round " + strconv.Itoa(int(msg.RoundID)) + " but we are in round " + strconv.Itoa(int(p.clientState.RoundNo)) + ", buffering.")
-		p.clientState.BufferedRoundData[msg.RoundID] = msg
+		log.Lvl3("Client "+strconv.Itoa(p.clientState.ID)+" : Skipping from round", p.clientState.RoundNo, "to round", msg.RoundID)
+		p.clientState.RoundNo = msg.RoundID
+		return p.ProcessDownStreamData(msg)
+		//this is not used anymore, with the Open/Closed slot schedule
+		//log.Lvl3("Client " + strconv.Itoa(p.clientState.ID) + " : Received a REL_CLI_DOWNSTREAM_DATA for round " + strconv.Itoa(int(msg.RoundID)) + " but we are in round " + strconv.Itoa(int(p.clientState.RoundNo)) + ", buffering.")
+		//p.clientState.BufferedRoundData[msg.RoundID] = msg
 	}
 
 	return nil
@@ -206,7 +210,7 @@ func (p *PriFiLibClientInstance) ProcessDownStreamData(msg net.REL_CLI_DOWNSTREA
 		//if the flag FlagOpenClosedRequest
 	} else if msg.FlagOpenClosedRequest == true {
 
-		log.Lvl1("Client " + strconv.Itoa(p.clientState.ID) + " : Relay wants to open/closed schedule slots ")
+		log.Lvl2("Client " + strconv.Itoa(p.clientState.ID) + " : Relay wants to open/closed schedule slots ")
 
 		//do the schedule
 		bmc := new(scheduler.BitMaskSlotScheduler_Client)
@@ -221,8 +225,8 @@ func (p *PriFiLibClientInstance) ProcessDownStreamData(msg net.REL_CLI_DOWNSTREA
 			i++
 		}
 		mySlotInNextRound := int32(i)
-		log.Lvl1("Client "+strconv.Itoa(p.clientState.ID)+" : Gonna reserve round", mySlotInNextRound)
-		wantToTransmit := false
+		log.Lvl3("Client "+strconv.Itoa(p.clientState.ID)+" : Gonna reserve round", mySlotInNextRound)
+		wantToTransmit := true // TODO : play with this
 		if wantToTransmit {
 			bmc.Client_ReserveSlot(mySlotInNextRound)
 		}
