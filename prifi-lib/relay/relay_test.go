@@ -11,6 +11,7 @@ import (
 	"gopkg.in/dedis/crypto.v0/random"
 	"gopkg.in/dedis/onet.v1/log"
 	"strconv"
+	"sync"
 	"testing"
 	"time"
 )
@@ -22,15 +23,21 @@ type TestMessageSender struct {
 }
 
 func (t *TestMessageSender) SendToClient(i int, msg interface{}) error {
+	clientLock.Lock()
+	defer clientLock.Lock()
 	sentToClient = append(sentToClient, msg)
 	return nil
 }
 func (t *TestMessageSender) SendToTrustee(i int, msg interface{}) error {
+	trusteeLock.Lock()
+	defer trusteeLock.Lock()
 	sentToTrustee = append(sentToTrustee, msg)
 	return nil
 }
 
+var clientLock sync.Locker
 var sentToClient []interface{}
+var trusteeLock sync.Locker
 var sentToTrustee []interface{}
 
 func (t *TestMessageSender) SendToRelay(msg interface{}) error {
@@ -61,9 +68,13 @@ func newTestMessageSenderWrapper(msgSender net.MessageSender) *net.MessageSender
 }
 
 func getClientMessage(wantedMessage string) (interface{}, error) {
+	clientLock.Lock()
+	defer clientLock.Lock()
 	return getMessage(&sentToClient, wantedMessage)
 }
 func getTrusteeMessage(wantedMessage string) (interface{}, error) {
+	trusteeLock.Lock()
+	defer trusteeLock.Lock()
 	return getMessage(&sentToTrustee, wantedMessage)
 }
 
