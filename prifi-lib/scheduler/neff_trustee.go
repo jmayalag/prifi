@@ -60,7 +60,7 @@ func (t *NeffShuffleTrustee) Init(trusteeID int, private abstract.Scalar, public
  * Received s[i-1], and the public keys. Do the shuffle, store locally, and send back the new s[i], shuffle array
  * If shuffleKeyPositions is false, do not shuffle the key's position (useful for testing - 0 anonymity)
  */
-func (t *NeffShuffleTrustee) ReceivedShuffleFromRelay(lastBase abstract.Point, clientPublicKeys []abstract.Point, shuffleKeyPositions bool) (interface{}, error) {
+func (t *NeffShuffleTrustee) ReceivedShuffleFromRelay(lastBase abstract.Point, clientPublicKeys []abstract.Point, shuffleKeyPositions bool, vkey []byte) (interface{}, error) {
 
 	if lastBase == nil {
 		return nil, errors.New("Cannot perform a shuffle is lastBase is nil")
@@ -86,9 +86,10 @@ func (t *NeffShuffleTrustee) ReceivedShuffleFromRelay(lastBase abstract.Point, c
 
 	//send the answer
 	msg := &net.TRU_REL_TELL_NEW_BASE_AND_EPH_PKS{
-		NewBase:   newBase,
-		NewEphPks: shuffledKeys,
-		Proof:     proof}
+		NewBase:            newBase,
+		NewEphPks:          shuffledKeys,
+		Proof:              proof,
+		VerifiableDCNetKey: vkey}
 
 	return msg, nil
 }

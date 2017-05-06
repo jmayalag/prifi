@@ -12,3 +12,4 @@ SocksServerPort = 8080
 SocksClientPort = 8090
 OverrideLogLevel = -1
 ForceConsoleColor = false
+DCNetType = "Simple"

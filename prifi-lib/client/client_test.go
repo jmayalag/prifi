@@ -72,9 +72,6 @@ func TestClient(t *testing.T) {
 	if cs.DataOutputEnabled != true {
 		t.Error("DataOutputEnabled was not set correctly")
 	}
-	if cs.CellCoder == nil {
-		t.Error("CellCoder should have been created")
-	}
 	if client.stateMachine.State() != "BEFORE_INIT" {
 		t.Error("State was not set correctly")
 	}
@@ -94,11 +91,13 @@ func TestClient(t *testing.T) {
 	clientID := 3
 	nTrustees := 2
 	upCellSize := 1500
+	dcNetType := "Simple"
 	msg.Add("NClients", 3)
 	msg.Add("NTrustees", nTrustees)
 	msg.Add("UpstreamCellSize", upCellSize)
 	msg.Add("NextFreeClientID", clientID)
 	msg.Add("UseUDP", true)
+	msg.Add("DCNetType", dcNetType)
 
 	if err := client.ReceivedMessage(*msg); err != nil {
 		t.Error("Client should be able to receive this message:", err)
@@ -124,6 +123,9 @@ func TestClient(t *testing.T) {
 	}
 	if cs.UseUDP != true {
 		t.Error("UseUDP should now have been set to true")
+	}
+	if cs.CellCoder == nil {
+		t.Error("CellCoder should have been created")
 	}
 	if len(cs.TrusteePublicKey) != nTrustees {
 		t.Error("Len(TrusteePKs) should be equal to NTrustees")
@@ -198,7 +200,7 @@ func TestClient(t *testing.T) {
 	for !isDone {
 		toSend, _, _ := n.RelayView.SendToNextTrustee()
 		parsed := toSend.(*net.REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE)
-		toSend2, _ := trustees[i].TrusteeView.ReceivedShuffleFromRelay(parsed.Base, parsed.EphPks, false)
+		toSend2, _ := trustees[i].TrusteeView.ReceivedShuffleFromRelay(parsed.Base, parsed.EphPks, false, make([]byte, 1))
 		parsed2 := toSend2.(*net.TRU_REL_TELL_NEW_BASE_AND_EPH_PKS)
 		isDone, _ = n.RelayView.ReceivedShuffleFromTrustee(parsed2.NewBase, parsed2.NewEphPks, parsed2.Proof)
 		i++
@@ -421,6 +423,11 @@ func TestClient(t *testing.T) {
 	}
 	if client.stateMachine.State() != "INITIALIZING" {
 		t.Error("Should be in state CLIENT_STATE_INITIALIZING", client.stateMachine.State())
+	}
+
+	randomMsg := net.CLI_REL_TELL_PK_AND_EPH_PK{}
+	if err := client.ReceivedMessage(randomMsg); err == nil {
+		t.Error("Should not accept this CLI_REL_TELL_PK_AND_EPH_PK message")
 	}
 
 	//if we send a shutdown

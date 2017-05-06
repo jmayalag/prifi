@@ -231,10 +231,10 @@ func TestOthers(t *testing.T) {
 	cellCoder.suite = nist.NewAES128SHA256P256()
 	cellCoder.random = cellCoder.suite.Cipher([]byte{0, 1, 2})
 
-	if size := cellCoder.ClientCellSize(1500); size != 1565 {
+	if size := cellCoder.ClientCellSize(1500); size != 1532 {
 		t.Error("Size should be", size)
 	}
-	if size := cellCoder.ClientCellSize(0); size != 65 {
+	if size := cellCoder.ClientCellSize(0); size != 32 {
 		t.Error("Size should be", size)
 	}
 	if size := cellCoder.TrusteeCellSize(1500); size != 1500 {
@@ -244,8 +244,58 @@ func TestOthers(t *testing.T) {
 		t.Error("Size should be", 0)
 	}
 
-	data := make([]byte, 1500)
+	data := make([]byte, 10)
 	p := cellCoder.suite.Point().Base()
 	cellCoder.inlineEncode(data, p)
 
+	p.Sub(p, cellCoder.suite.Point().Base())
+	hdr, err := p.Data()
+	if err != nil {
+		t.Error("Can't decode inline point")
+	}
+	cellCoder.inlineDecode(hdr)
+
+	// Testing inline encoding and no transmission cases
+	nclients := 1
+	ntrustees := 3
+
+	tg := SetupTest(t, nist.NewAES128SHA256P256(), OwnedCoderFactory, nclients, ntrustees)
+	relay := tg.Relay
+	clients := tg.Clients
+	trustees := tg.Trustees
+
+	// Get some data to transmit
+	t.Log("Simulating DC-nets")
+	payloadlen := 10
+	cslice := make([][]byte, nclients)
+	tslice := make([][]byte, ntrustees)
+
+	// Client processing
+	// first client (owner) gets the payload data
+	dat := []byte("Testing")
+
+	for i := range clients {
+		cslice[i] = clients[i].Coder.ClientEncode(dat, payloadlen,
+			clients[i].History)
+		dat = nil // for remaining clients
+	}
+
+	// Trustee processing
+	for i := range trustees {
+		tslice[i] = trustees[i].Coder.TrusteeEncode(payloadlen)
+	}
+
+	// Relay processing
+	relay.Coder.DecodeStart(payloadlen, relay.History)
+	for i := range clients {
+		relay.Coder.DecodeClient(cslice[i])
+	}
+	for i := range trustees {
+		relay.Coder.DecodeTrustee(tslice[i])
+	}
+	outb := relay.Coder.DecodeCell()
+
+	if !bytes.Equal(outb, []byte("Testing")) {
+		t.Error("Inline encoding-decoding failed")
+	}
 }

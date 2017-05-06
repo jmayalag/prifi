@@ -67,9 +67,6 @@ func TestTrustee(t *testing.T) {
 	if ts.sendingRate == nil {
 		t.Error("sendingRate should not be nil")
 	}
-	if ts.CellCoder == nil {
-		t.Error("CellCoder should have been created")
-	}
 	if trustee.stateMachine.State() != "BEFORE_INIT" {
 		t.Error("State was not set correctly")
 	}
@@ -109,11 +106,13 @@ func TestTrustee(t *testing.T) {
 	nClients := 3
 	nTrustees := 2
 	upCellSize := 1500
+	dcNetType := "Simple"
 	msg.Add("StartNow", true)
 	msg.Add("NClients", nClients)
 	msg.Add("NTrustees", nTrustees)
 	msg.Add("UpstreamCellSize", upCellSize)
 	msg.Add("NextFreeTrusteeID", trusteeID)
+	msg.Add("DCNetType", dcNetType)
 
 	if err := trustee.ReceivedMessage(*msg); err != nil {
 		t.Error("Trustee should be able to receive this message:", err)
@@ -130,6 +129,9 @@ func TestTrustee(t *testing.T) {
 	}
 	if ts.ID != trusteeID {
 		t.Error("ID should be 3")
+	}
+	if ts.CellCoder == nil {
+		t.Error("CellCoder should have been created")
 	}
 	if len(ts.ClientPublicKeys) != nClients {
 		t.Error("Len(TrusteePKs) should be equal to NTrustees")
