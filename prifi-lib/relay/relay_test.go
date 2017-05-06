@@ -11,6 +11,7 @@ import (
 	"gopkg.in/dedis/crypto.v0/random"
 	"gopkg.in/dedis/onet.v1/log"
 	"strconv"
+	"sync"
 	"testing"
 	"time"
 )
@@ -21,11 +22,18 @@ import (
 type TestMessageSender struct {
 }
 
+var clientLock sync.Mutex
+var trusteeLock sync.Mutex
+
 func (t *TestMessageSender) SendToClient(i int, msg interface{}) error {
+	clientLock.Lock()
+	defer clientLock.Unlock()
 	sentToClient = append(sentToClient, msg)
 	return nil
 }
 func (t *TestMessageSender) SendToTrustee(i int, msg interface{}) error {
+	trusteeLock.Lock()
+	defer trusteeLock.Unlock()
 	sentToTrustee = append(sentToTrustee, msg)
 	return nil
 }
@@ -39,7 +47,7 @@ func (t *TestMessageSender) SendToRelay(msg interface{}) error {
 func (t *TestMessageSender) BroadcastToAllClients(msg interface{}) error {
 	return t.SendToClient(0, msg)
 }
-func (t *TestMessageSender) ClientSubscribeToBroadcast(clientName string, messageReceived func(interface{}) error, startStopChan chan bool) error {
+func (t *TestMessageSender) ClientSubscribeToBroadcast(clientID int, messageReceived func(interface{}) error, startStopChan chan bool) error {
 	return errors.New("Not for relay")
 }
 
@@ -61,9 +69,13 @@ func newTestMessageSenderWrapper(msgSender net.MessageSender) *net.MessageSender
 }
 
 func getClientMessage(wantedMessage string) (interface{}, error) {
+	clientLock.Lock()
+	defer clientLock.Unlock()
 	return getMessage(&sentToClient, wantedMessage)
 }
 func getTrusteeMessage(wantedMessage string) (interface{}, error) {
+	trusteeLock.Lock()
+	defer trusteeLock.Unlock()
 	return getMessage(&sentToTrustee, wantedMessage)
 }
 
@@ -173,7 +185,7 @@ func TestRelayRun1(t *testing.T) {
 	if rs.UseUDP != true {
 		t.Error("UseUDP was not set correctly")
 	}
-	if rs.nextDownStreamRoundToSend != 1 {
+	if rs.slotScheduler.NextDownStreamRoundToSent() != 1 {
 		t.Error("nextDownStreamRoundToSend was not set correctly; it should be equal to 1 since round 0 is a half-round, and does not contain downstream data from relay")
 	}
 	if rs.WindowSize != 1 {

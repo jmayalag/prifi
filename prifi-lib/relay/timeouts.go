@@ -43,7 +43,7 @@ func (p *PriFiLibRelayInstance) checkIfRoundHasEndedAfterTimeOut_Phase1(roundID 
 		log.Error("Relay : Clients", missingClientCiphers, "didn't sent us is cipher for round "+strconv.Itoa(int(roundID))+". Phase 1 timeout. Re-sending...")
 		dataAlreadySent := p.relayState.dcnetRoundManager.GetDataAlreadySent(roundID)
 		toSend := &net.REL_CLI_DOWNSTREAM_DATA_UDP{REL_CLI_DOWNSTREAM_DATA: *dataAlreadySent}
-		p.messageSender.BroadcastToAllClientsWithLog(toSend, "(UDP retransmission, round "+strconv.Itoa(int(p.relayState.nextDownStreamRoundToSend))+")")
+		p.messageSender.BroadcastToAllClientsWithLog(toSend, "(UDP retransmission, round "+strconv.Itoa(int(roundID))+")")
 
 		p.relayState.bitrateStatistics.AddDownstreamRetransmitCell(int64(len(dataAlreadySent.Data)))
 	}

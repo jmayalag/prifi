@@ -36,7 +36,7 @@ func (t *TestMessageSender) SendToRelay(msg interface{}) error {
 func (t *TestMessageSender) BroadcastToAllClients(msg interface{}) error {
 	return errors.New("Clients should never sent to other clients")
 }
-func (t *TestMessageSender) ClientSubscribeToBroadcast(clientName string, messageReceived func(interface{}) error, startStopChan chan bool) error {
+func (t *TestMessageSender) ClientSubscribeToBroadcast(clientID int, messageReceived func(interface{}) error, startStopChan chan bool) error {
 	return nil
 }
 
@@ -315,17 +315,19 @@ func TestClient(t *testing.T) {
 	if err != nil {
 		t.Error("Client should be able to receive this data")
 	}
-	if cs.RoundNo != int32(2) {
-		t.Error("should still be in round 2")
+	if cs.RoundNo != int32(4) {
+		t.Error("should now be in round 4", cs.RoundNo)
 	}
-	if len(sentToRelay) > 0 {
-		t.Error("should not have sent anything")
+	if len(sentToRelay) != 1 {
+		t.Error("should have sent one message")
 	}
+	sentToRelay = make([]interface{}, 0)
+	_ = <-out
 
 	//Receive some data down
 	dataDown = []byte{10, 11, 12}
 	msg9 := net.REL_CLI_DOWNSTREAM_DATA{
-		RoundID:    2,
+		RoundID:    4,
 		Data:       dataDown,
 		FlagResync: false,
 	}
@@ -350,33 +352,14 @@ func TestClient(t *testing.T) {
 	if msg10.ClientID != clientID {
 		t.Error("Client sent a wrong ID")
 	}
-	if msg10.RoundID != int32(2) {
+	if msg10.RoundID != int32(4) {
 		t.Error("Client sent a wrong RoundID")
 	}
 	if len(msg10.Data) != upCellSize {
 		t.Error("Client sent a payload with a wrong size")
 	}
-	if cs.RoundNo != int32(4) { //we did round 3 already
-		t.Error("should be in round 4, not ", cs.RoundNo)
-	}
-
-	//Should send a CLI_REL_UPSTREAM_DATA since we buffered round 3
-	if len(sentToRelay) == 0 {
-		t.Error("Client should have sent a CLI_REL_UPSTREAM_DATA to the relay")
-	}
-	msg11 := sentToRelay[0].(*net.CLI_REL_UPSTREAM_DATA)
-	sentToRelay = make([]interface{}, 0)
-	if msg11.ClientID != clientID {
-		t.Error("Client sent a wrong ID")
-	}
-	if msg11.RoundID != int32(3) {
-		t.Error("Client sent a wrong RoundID")
-	}
-	if len(msg11.Data) != upCellSize {
-		t.Error("Client sent a payload with a wrong size")
-	}
-	if cs.RoundNo != int32(4) {
-		t.Error("should be in round 4, not ", cs.RoundNo)
+	if cs.RoundNo != int32(5) { //we did round 3 already
+		t.Error("should be in round 5, not ", cs.RoundNo)
 	}
 
 	//Receive some data down, with nothing to say, and latencytest=true
@@ -391,7 +374,7 @@ func TestClient(t *testing.T) {
 	latencyMessage := []byte{170, 170, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0}
 	binary.BigEndian.PutUint64(latencyMessage[4:12], uint64(currentTime))
 	msg12 := net.REL_CLI_DOWNSTREAM_DATA{
-		RoundID:    4,
+		RoundID:    5,
 		Data:       latencyMessage,
 		FlagResync: false,
 	}
@@ -399,8 +382,8 @@ func TestClient(t *testing.T) {
 	if err != nil {
 		t.Error("Client should be able to receive this data")
 	}
-	if cs.RoundNo != int32(5) {
-		t.Error("should still be in round 5, not", cs.RoundNo)
+	if cs.RoundNo != int32(6) {
+		t.Error("should still be in round 6, not", cs.RoundNo)
 	}
 
 	//Should send a CLI_REL_UPSTREAM_DATA with latency test
@@ -412,7 +395,7 @@ func TestClient(t *testing.T) {
 	if latencyMsg.ClientID != clientID {
 		t.Error("Client sent a wrong ID")
 	}
-	if latencyMsg.RoundID != int32(4) {
+	if latencyMsg.RoundID != int32(5) {
 		t.Error("Client sent a wrong RoundID")
 	}
 	if len(latencyMsg.Data) != upCellSize {
@@ -422,7 +405,7 @@ func TestClient(t *testing.T) {
 	//Receive some data down with FlagResync = true
 	dataDown = []byte{100, 101, 102}
 	msg13 := net.REL_CLI_DOWNSTREAM_DATA{
-		RoundID:    5,
+		RoundID:    6,
 		Data:       dataDown,
 		FlagResync: true, //should stop the client
 	}
@@ -430,14 +413,14 @@ func TestClient(t *testing.T) {
 	if err != nil {
 		t.Error("Client should be able to receive this data")
 	}
-	if cs.RoundNo != int32(5) {
-		t.Error("should still be in round 4")
+	if cs.RoundNo != int32(6) {
+		t.Error("should still be in round 6", cs.RoundNo)
 	}
 	if len(sentToRelay) > 0 {
 		t.Error("should not have sent anything")
 	}
 	if client.stateMachine.State() != "INITIALIZING" {
-		t.Error("Should be in state CLIENT_STATE_INITIALIZING")
+		t.Error("Should be in state CLIENT_STATE_INITIALIZING", client.stateMachine.State())
 	}
 
 	//if we send a shutdown

@@ -69,6 +69,7 @@ func (p *PriFiSDAProtocol) Start() error {
 	msg.Add("UpstreamCellSize", p.config.Toml.CellSizeUp)
 	msg.Add("DownstreamCellSize", p.config.Toml.CellSizeDown)
 	msg.Add("WindowSize", p.config.Toml.RelayWindowSize)
+	msg.Add("UseOpenClosedSlots", p.config.Toml.RelayUseOpenClosedSlots)
 	msg.Add("UseDummyDataDown", p.config.Toml.RelayUseDummyDataDown)
 	msg.Add("ExperimentRoundLimit", p.config.Toml.RelayReportingLimit)
 	msg.Add("UseUDP", p.config.Toml.UseUDP)
@@ -110,6 +111,7 @@ func init() {
 	network.RegisterMessage(net.CLI_REL_TELL_PK_AND_EPH_PK{})
 	network.RegisterMessage(net.CLI_REL_UPSTREAM_DATA{})
 	network.RegisterMessage(net.REL_CLI_DOWNSTREAM_DATA{})
+	network.RegisterMessage(net.CLI_REL_OPENCLOSED_DATA{})
 	network.RegisterMessage(net.REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG{})
 	network.RegisterMessage(net.REL_CLI_TELL_TRUSTEES_PK{})
 	network.RegisterMessage(net.REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE{})
@@ -201,6 +203,10 @@ func (p *PriFiSDAProtocol) registerHandlers() error {
 		return errors.New("couldn't register handler: " + err.Error())
 	}
 	err = p.RegisterHandler(p.Received_TRU_REL_TELL_PK)
+	if err != nil {
+		return errors.New("couldn't register handler: " + err.Error())
+	}
+	err = p.RegisterHandler(p.Received_CLI_REL_CLI_REL_OPENCLOSED_DATA)
 	if err != nil {
 		return errors.New("couldn't register handler: " + err.Error())
 	}

@@ -40,6 +40,7 @@ type PrifiTomlConfig struct {
 	CellSizeUp              int
 	CellSizeDown            int
 	RelayWindowSize         int
+	RelayUseOpenClosedSlots bool
 	RelayUseDummyDataDown   bool
 	RelayReportingLimit     int
 	UseUDP                  bool

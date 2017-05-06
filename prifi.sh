@@ -566,7 +566,7 @@ case $1 in
 		fi
 
 		#let it boot
-		sleep 10
+		sleep 20
 
 		echo "Doing SOCKS HTTP request..."
 		curl google.com --socks5 127.0.0.1:8081 --max-time 10 1>/dev/null 2>&1
