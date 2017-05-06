@@ -338,7 +338,7 @@ func (p *PriFiLibRelayInstance) finalizeUpstreamData() error {
 
 	if upstreamPlaintext == nil {
 		// empty upstream cell, need to finish round otherwise will enter next if clause
-		p.roundFinished(p.relayState.dcnetRoundManager.CurrentRound())
+		p.doneCollectingUpstreamData(p.relayState.dcnetRoundManager.CurrentRound())
 		return nil
 	}
 
