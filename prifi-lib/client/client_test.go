@@ -413,8 +413,8 @@ func TestClient(t *testing.T) {
 	if err != nil {
 		t.Error("Client should be able to receive this data")
 	}
-	if cs.RoundNo != int32(7) {
-		t.Error("should still be in round 7", cs.RoundNo)
+	if cs.RoundNo != int32(6) {
+		t.Error("should still be in round 6", cs.RoundNo)
 	}
 	if len(sentToRelay) > 0 {
 		t.Error("should not have sent anything")
