@@ -322,7 +322,7 @@ func TestClient(t *testing.T) {
 		t.Error("should have sent one message")
 	}
 	sentToRelay = make([]interface{}, 0)
-	_  = <-out
+	_ = <-out
 
 	//Receive some data down
 	dataDown = []byte{10, 11, 12}

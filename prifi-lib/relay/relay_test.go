@@ -173,7 +173,7 @@ func TestRelayRun1(t *testing.T) {
 	if rs.UseUDP != true {
 		t.Error("UseUDP was not set correctly")
 	}
-	if rs.nextDownStreamRoundToSend != 1 {
+	if rs.slotScheduler.NextDownStreamRoundToSent() != 1 {
 		t.Error("nextDownStreamRoundToSend was not set correctly; it should be equal to 1 since round 0 is a half-round, and does not contain downstream data from relay")
 	}
 	if rs.WindowSize != 1 {
