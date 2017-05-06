@@ -27,13 +27,13 @@ var trusteeLock sync.Mutex
 
 func (t *TestMessageSender) SendToClient(i int, msg interface{}) error {
 	clientLock.Lock()
-	defer clientLock.Lock()
+	defer clientLock.Unlock()
 	sentToClient = append(sentToClient, msg)
 	return nil
 }
 func (t *TestMessageSender) SendToTrustee(i int, msg interface{}) error {
 	trusteeLock.Lock()
-	defer trusteeLock.Lock()
+	defer trusteeLock.Unlock()
 	sentToTrustee = append(sentToTrustee, msg)
 	return nil
 }
@@ -70,12 +70,12 @@ func newTestMessageSenderWrapper(msgSender net.MessageSender) *net.MessageSender
 
 func getClientMessage(wantedMessage string) (interface{}, error) {
 	clientLock.Lock()
-	defer clientLock.Lock()
+	defer clientLock.Unlock()
 	return getMessage(&sentToClient, wantedMessage)
 }
 func getTrusteeMessage(wantedMessage string) (interface{}, error) {
 	trusteeLock.Lock()
-	defer trusteeLock.Lock()
+	defer trusteeLock.Unlock()
 	return getMessage(&sentToTrustee, wantedMessage)
 }
 
