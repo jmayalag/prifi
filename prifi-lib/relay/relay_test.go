@@ -22,6 +22,9 @@ import (
 type TestMessageSender struct {
 }
 
+var clientLock sync.Mutex
+var trusteeLock sync.Mutex
+
 func (t *TestMessageSender) SendToClient(i int, msg interface{}) error {
 	clientLock.Lock()
 	defer clientLock.Lock()
@@ -35,9 +38,7 @@ func (t *TestMessageSender) SendToTrustee(i int, msg interface{}) error {
 	return nil
 }
 
-var clientLock sync.Locker
 var sentToClient []interface{}
-var trusteeLock sync.Locker
 var sentToTrustee []interface{}
 
 func (t *TestMessageSender) SendToRelay(msg interface{}) error {
