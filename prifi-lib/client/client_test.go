@@ -425,7 +425,7 @@ func TestClient(t *testing.T) {
 		t.Error("Should be in state CLIENT_STATE_INITIALIZING", client.stateMachine.State())
 	}
 
-	randomMsg := net.CLI_REL_TELL_PK_AND_EPH_PK{}
+	randomMsg := &net.CLI_REL_TELL_PK_AND_EPH_PK{}
 	if err := client.ReceivedMessage(randomMsg); err == nil {
 		t.Error("Should not accept this CLI_REL_TELL_PK_AND_EPH_PK message")
 	}

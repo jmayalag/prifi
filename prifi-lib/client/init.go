@@ -164,7 +164,6 @@ func (p *PriFiLibClientInstance) ReceivedMessage(msg interface{}) error {
 			err = p.Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(typedMsg)
 		}
 	default:
-		log.Fatal("Unrecognized message, type" + reflect.TypeOf(msg).String())
 		err = errors.New("Unrecognized message, type" + reflect.TypeOf(msg).String())
 	}
 
