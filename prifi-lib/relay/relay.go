@@ -208,7 +208,9 @@ func (p *PriFiLibRelayInstance) Received_CLI_REL_OPENCLOSED_DATA(msg net.CLI_REL
 		openClosedData := p.relayState.CellCoder.DecodeCell()
 
 		//compute the map
-		p.relayState.slotScheduler.Relay_ComputeFinalSchedule(openClosedData, msg.RoundID+1, p.relayState.nClients)
+		sched := p.relayState.slotScheduler.Relay_ComputeFinalSchedule(openClosedData, msg.RoundID+1, p.relayState.nClients)
+		p.relayState.dcnetRoundManager.SetStoredRoundSchedule(sched)
+
 
 		//we finish the round
 		p.doneCollectingUpstreamData(msg.RoundID)
@@ -223,8 +225,8 @@ func (p *PriFiLibRelayInstance) Received_CLI_REL_OPENCLOSED_DATA(msg net.CLI_REL
 			p.sendDownstreamData()
 		}
 	} else {
-		a, b := p.relayState.bufferManager.MissingCiphersForCurrentRound()
-		log.Error("Missing cipher clients", a, "trustee", b)
+		//a, b := p.relayState.bufferManager.MissingCiphersForCurrentRound()
+		//log.Error("Still missing client contribution", a, "trustee", b)
 	}
 
 	return nil
@@ -410,14 +412,14 @@ func (p *PriFiLibRelayInstance) sendDownstreamData() error {
 		downstreamCellContent = data
 	}
 
-	nextDownstreamRoundID := p.relayState.slotScheduler.NextDownStreamRoundToSent()
+	nextDownstreamRoundID := p.relayState.dcnetRoundManager.NextDownStreamRoundToSent()
 
 	// TODO : if something went wrong before, this flag should be used to warn the clients that the config has changed
 	flagResync := false
 
 	// periodically set to True so client can advertise their bitmap
 	flagOpenClosedRequest := p.relayState.UseOpenClosedSlots &&
-		p.relayState.slotScheduler.IsNextDownstreamRoundForOpenClosedRequest(p.relayState.nClients)
+		p.relayState.dcnetRoundManager.IsNextDownstreamRoundForOpenClosedRequest(p.relayState.nClients)
 
 	//sending data part
 	timing.StartMeasure("sending-data")
@@ -458,7 +460,6 @@ func (p *PriFiLibRelayInstance) sendDownstreamData() error {
 	//now relay enters a waiting state (collecting all ciphers from clients/trustees)
 	timing.StartMeasure("waiting-on-someone")
 
-	p.relayState.slotScheduler.DownStreamRoundSent(nextDownstreamRoundID)
 	p.relayState.numberOfNonAckedDownstreamPackets++
 
 	return nil

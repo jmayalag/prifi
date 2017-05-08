@@ -13,7 +13,7 @@ type SlotScheduler interface {
 	Client_ReceivedScheduleRequest()
 
 	//the client alters the schedule being computed, and ask to transmit
-	Client_ReserverRound(roundID int32)
+	Client_ReserveRound(roundID int32)
 
 	//return the schedule to send as payload
 	Client_GetOpenScheduleContribution() []byte
@@ -27,10 +27,10 @@ type SlotScheduler interface {
 
 // BitMaskScheduler_Client holds the info necessary for a client to compute his "contribution", or part of the bitmask
 type BitMaskSlotScheduler_Client struct {
-	NClients               int
-	beginningOfRoundSlotID int32
-	ClientWantsToSend      bool
-	MySlotInNextRound      int
+	NClients            int
+	beginningOfRound    int32
+	ClientWantsToSend   bool
+	MyRoundInNextRounds int
 }
 
 // BitMaskScheduler_Relay
@@ -38,21 +38,21 @@ type BitMaskSlotScheduler_Relay struct {
 }
 
 // Client_ReceivedScheduleRequest instantiates the fields of BitMaskScheduler_Client
-func (bmc *BitMaskSlotScheduler_Client) Client_ReceivedScheduleRequest(beginningOfRoundSlotID int32, nClients int) {
+func (bmc *BitMaskSlotScheduler_Client) Client_ReceivedScheduleRequest(beginningOfRound int32, nClients int) {
 	bmc.NClients = nClients
-	bmc.beginningOfRoundSlotID = beginningOfRoundSlotID
+	bmc.beginningOfRound = beginningOfRound
 	bmc.ClientWantsToSend = false
-	bmc.MySlotInNextRound = -1
+	bmc.MyRoundInNextRounds = -1
 }
 
 // Client_ReserveRound indicates to reserve a slot in the next round
-func (bmc *BitMaskSlotScheduler_Client) Client_ReserveSlot(slotID int32) {
-	if slotID < bmc.beginningOfRoundSlotID {
-		panic("Cannot reserve slot " + strconv.Itoa(int(slotID)) + " since next scheduled round starts at slot " + strconv.Itoa(int(bmc.beginningOfRoundSlotID)))
+func (bmc *BitMaskSlotScheduler_Client) Client_ReserveRound(slotID int32) {
+	if slotID < bmc.beginningOfRound {
+		panic("Cannot reserve slot " + strconv.Itoa(int(slotID)) + " since next scheduled round starts at slot " + strconv.Itoa(int(bmc.beginningOfRound)))
 	}
 
-	slotIDInNextRound := slotID - bmc.beginningOfRoundSlotID
-	bmc.MySlotInNextRound = int(slotIDInNextRound)
+	slotIDInNextRound := slotID - bmc.beginningOfRound
+	bmc.MyRoundInNextRounds = int(slotIDInNextRound)
 	bmc.ClientWantsToSend = true
 }
 
@@ -67,8 +67,8 @@ func (bmc *BitMaskSlotScheduler_Client) Client_GetOpenScheduleContribution() []b
 	}
 
 	//set a bit to 1 at the correct position
-	whichByte := int(math.Floor(float64(bmc.MySlotInNextRound) / 8))
-	whichBit := uint(bmc.MySlotInNextRound % 8)
+	whichByte := int(math.Floor(float64(bmc.MyRoundInNextRounds) / 8))
+	whichBit := uint(bmc.MyRoundInNextRounds % 8)
 	payload[whichByte] = 1 << whichBit
 	return payload
 }

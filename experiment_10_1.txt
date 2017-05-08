@@ -1,0 +1,123 @@
+Building simulation... [32m[ok][0m
+Simulation ID is [33mTJCFZdzTwfiOLHKKgZl4qoWKg1wGuVVK[0m, storing it in [33m~/remote/.simID[0m on remote... [32m[ok][0m
+Starting simulation [33mprifi_simul.toml[0m on [33mdeterlab[0m.
+[0;33m1 : (                        simul.startBuild:  54) - Deploying to deterlab
+[0m[0;33m1 : (              platform.(*Deterlab).Build: 135) - Building for lbarman users.deterlab.net SAFER  simulDir= /d/git/prifi/sda/simulation
+[0m[0;33m1 : (              platform.(*Deterlab).Build: 181) - Build is finished after 13.950174415s
+[0m[0;33m1 : (             platform.(*Deterlab).Deploy: 279) - Copying over to lbarman @ users.deterlab.net
+[0m1 : (                               main.main:  48) - Cleaning up 14 hosts.
+1 : (                               main.main: 117) - starting 9 cothorities for a total of 14 processes.
+1 : (          main.(*SimulationService).Node: 102) - Node #6 running on server tcp://10.0.1.3:2000 and will be a client
+[0;33m1 : (          main.(*SimulationService).Node: 149) - Initiating this node (index  6 ) as client
+[0m1 : (          main.(*SimulationService).Node: 102) - Node #7 running on server tcp://10.0.1.4:2000 and will be a client
+[0;33m1 : (          main.(*SimulationService).Node: 149) - Initiating this node (index  7 ) as client
+[0m1 : (          main.(*SimulationService).Node: 102) - Node #2 running on server tcp://10.1.0.2:2000 and will be a trustee
+[0;33m1 : (          main.(*SimulationService).Node: 145) - Initiating this node (index  2 ) as trustee
+[0m1 : (          main.(*SimulationService).Node: 102) - Node #3 running on server tcp://10.1.0.3:2000 and will be a trustee
+[0;33m1 : (          main.(*SimulationService).Node: 145) - Initiating this node (index  3 ) as trustee
+[0m1 : (          main.(*SimulationService).Node: 102) - Node #1 running on server tcp://10.1.0.1:2000 and will be a trustee
+[0;33m1 : (          main.(*SimulationService).Node: 145) - Initiating this node (index  1 ) as trustee
+[0m1 : (          main.(*SimulationService).Node: 102) - Node #8 running on server tcp://10.0.1.5:2000 and will be a client
+[0;33m1 : (          main.(*SimulationService).Node: 149) - Initiating this node (index  8 ) as client
+[0m1 : (          main.(*SimulationService).Node: 102) - Node #4 running on server tcp://10.0.1.1:2000 and will be a client
+[0;33m1 : (          main.(*SimulationService).Node: 149) - Initiating this node (index  4 ) as client
+[0m1 : (          main.(*SimulationService).Node: 102) - Node #5 running on server tcp://10.0.1.2:2000 and will be a client
+[0;33m1 : (          main.(*SimulationService).Node: 149) - Initiating this node (index  5 ) as client
+[0m1 : (          main.(*SimulationService).Node: 102) - Node #0 running on server tcp://10.0.1.254:2000 and will be a relay
+[0;33m1 : (          main.(*SimulationService).Node: 142) - Initiating this node (index  0 ) as relay
+[0m[0;37;1mI : (     services.(*ServiceState).StartRelay: 132) - Service tcp://10.0.1.254:2000 running in relay mode
+[0m[0;33m1 : (                       platform.Simulate:  88) - Started counting children with timeout of 1000
+[0m[0;31m[0m[0;31m[0m[0;31m[0m[0;33m1 : (                       platform.Simulate:  95) - Found only 8 children, counting again
+[0m[0;33m1 : (                       platform.Simulate:  88) - Started counting children with timeout of 2000
+[0m[0;33m1 : (                       platform.Simulate:  95) - Found only 8 children, counting again
+[0m[0;33m1 : (                       platform.Simulate:  88) - Started counting children with timeout of 4000
+[0m[0;37;1mI : (    services.(*ServiceState).StartClient: 174) - Service tcp://10.0.1.3:2000 running in client mode
+[0m[0;33m1 : (    services.(*ServiceState).StartClient: 189) - Starting SOCKS server on port :8086
+[0m[0;33m1 : (          main.(*SimulationService).Node: 102) - Node #11 running on server tcp://10.0.1.3:2002 and will be a client
+[0m[0;33m1 : (          main.(*SimulationService).Node: 149) - Initiating this node (index  11 ) as client
+[0m[0;37;1mI : (    services.(*ServiceState).StartClient: 174) - Service tcp://10.0.1.4:2000 running in client mode
+[0m[0;33m1 : (    services.(*ServiceState).StartClient: 189) - Starting SOCKS server on port :8087
+[0m[0;33m1 : (services.(*churnHandler).tryStartProtocol: 310) - Too few participants ( 1 clients and 0 trustees), waiting...
+[0m[0;33m1 : (          main.(*SimulationService).Node: 102) - Node #12 running on server tcp://10.0.1.4:2002 and will be a client
+[0m[0;31m[0m[0;31m[0m[0;33m1 : (          main.(*SimulationService).Node: 149) - Initiating this node (index  12 ) as client
+[0m[0;33m1 : (services.(*churnHandler).tryStartProtocol: 310) - Too few participants ( 2 clients and 0 trustees), waiting...
+[0m[0;31m[0m[0;31m[0m[0;31m[0m[0;31m[0m[0;31m[0m[0;31m[0m[0;37;1mI : (   services.(*ServiceState).StartTrustee: 234) - Service tcp://10.1.0.2:2000 running in trustee mode
+[0m[0;33m1 : (services.(*churnHandler).tryStartProtocol: 305) - Enough participants ( 2 clients and 1 trustees), but no handler to start.
+[0m[0;37;1mI : (   services.(*ServiceState).StartTrustee: 234) - Service tcp://10.1.0.3:2000 running in trustee mode
+[0m[0;37;1mI : (   services.(*ServiceState).StartTrustee: 234) - Service tcp://10.1.0.1:2000 running in trustee mode
+[0m[0;33m1 : (services.(*churnHandler).tryStartProtocol: 305) - Enough participants ( 2 clients and 2 trustees), but no handler to start.
+[0m[0;33m1 : (services.(*churnHandler).tryStartProtocol: 305) - Enough participants ( 2 clients and 3 trustees), but no handler to start.
+[0m[0;37;1mI : (    services.(*ServiceState).StartClient: 174) - Service tcp://10.0.1.5:2000 running in client mode
+[0m[0;33m1 : (    services.(*ServiceState).StartClient: 189) - Starting SOCKS server on port :8088
+[0m[0;33m1 : (          main.(*SimulationService).Node: 102) - Node #13 running on server tcp://10.0.1.5:2002 and will be a client
+[0m[0;33m1 : (          main.(*SimulationService).Node: 149) - Initiating this node (index  13 ) as client
+[0m[0;33m1 : (services.(*churnHandler).tryStartProtocol: 305) - Enough participants ( 3 clients and 3 trustees), but no handler to start.
+[0m[0;31m[0m[0;31m[0m[0;37;1mI : (    services.(*ServiceState).StartClient: 174) - Service tcp://10.0.1.1:2000 running in client mode
+[0m[0;33m1 : (    services.(*ServiceState).StartClient: 189) - Starting SOCKS server on port :8084
+[0m[0;33m1 : (          main.(*SimulationService).Node: 102) - Node #9 running on server tcp://10.0.1.1:2002 and will be a client
+[0m[0;37;1mI : (    services.(*ServiceState).StartClient: 174) - Service tcp://10.0.1.2:2000 running in client mode
+[0m[0;33m1 : (    services.(*ServiceState).StartClient: 189) - Starting SOCKS server on port :8085
+[0m[0;33m1 : (          main.(*SimulationService).Node: 102) - Node #10 running on server tcp://10.0.1.2:2002 and will be a client
+[0m[0;33m1 : (          main.(*SimulationService).Node: 149) - Initiating this node (index  9 ) as client
+[0m[0;33m1 : (services.(*churnHandler).tryStartProtocol: 305) - Enough participants ( 4 clients and 3 trustees), but no handler to start.
+[0m[0;31m[0m[0;31m[0m[0;33m1 : (          main.(*SimulationService).Node: 149) - Initiating this node (index  10 ) as client
+[0m[0;31m[0m[0;31m[0m[0;33m1 : (services.(*churnHandler).tryStartProtocol: 305) - Enough participants ( 5 clients and 3 trustees), but no handler to start.
+[0m[0;31m[0m[0;31m[0m[0;31m[0m[0;31m[0m[0;31m[0m[0;31m[0m[0;33m1 : (                        platform.Simulate:  92) - Found all 14 children
+[0m[0;33m1 : (                        platform.Simulate: 102) - Starting new node PriFi
+[0m[0;37;1mI : (            main.(*SimulationService).Run: 176) - Sleeping 15 seconds before starting the experiment...
+[0m[0;37;1mI : (    services.(*ServiceState).StartClient: 174) - Service tcp://10.0.1.3:2002 running in client mode
+[0m[0;33m1 : (    services.(*ServiceState).StartClient: 189) - Starting SOCKS server on port :8091
+[0m[0;33m1 : (services.(*churnHandler).tryStartProtocol: 305) - Enough participants ( 6 clients and 3 trustees), but no handler to start.
+[0m[0;37;1mI : (    services.(*ServiceState).StartClient: 174) - Service tcp://10.0.1.4:2002 running in client mode
+[0m[0;33m1 : (    services.(*ServiceState).StartClient: 189) - Starting SOCKS server on port :8092
+[0m[0;33m1 : (services.(*churnHandler).tryStartProtocol: 305) - Enough participants ( 7 clients and 3 trustees), but no handler to start.
+[0m[0;37;1mI : (    services.(*ServiceState).StartClient: 174) - Service tcp://10.0.1.5:2002 running in client mode
+[0m[0;33m1 : (    services.(*ServiceState).StartClient: 189) - Starting SOCKS server on port :8093
+[0m[0;33m1 : (services.(*churnHandler).tryStartProtocol: 305) - Enough participants ( 8 clients and 3 trustees), but no handler to start.
+[0m[0;37;1mI : (    services.(*ServiceState).StartClient: 174) - Service tcp://10.0.1.1:2002 running in client mode
+[0m[0;33m1 : (    services.(*ServiceState).StartClient: 189) - Starting SOCKS server on port :8089
+[0m[0;37;1mI : (    services.(*ServiceState).StartClient: 174) - Service tcp://10.0.1.2:2002 running in client mode
+[0m[0;33m1 : (    services.(*ServiceState).StartClient: 189) - Starting SOCKS server on port :8090
+[0m[0;33m1 : (services.(*churnHandler).tryStartProtocol: 305) - Enough participants ( 9 clients and 3 trustees), but no handler to start.
+[0m[0;33m1 : (services.(*churnHandler).tryStartProtocol: 305) - Enough participants ( 10 clients and 3 trustees), but no handler to start.
+[0m[0;37;1mI : (            main.(*SimulationService).Run: 179) - Starting experiment TJCFZdzTwfiOLHKKgZl4qoWKg1wGuVVK
+
+[0m[0;33m1 : (services.(*ServiceState).StartPriFiCommunicateProtocol: 137) - Starting PriFi protocol
+[0m[0;37;1mI : (                         main.(*SimulationService).Run: 203) - Giving the experiment 360  seconds to finish before aborting...
+[0m[0;33m1 : (relay.(*PriFiLibRelayInstance).Received_ALL_ALL_PARAMETERS: 142) - Relay has been initialized by message; StartNow is true
+[0m[0;33m1 : (relay.(*PriFiLibRelayInstance).Received_ALL_ALL_PARAMETERS: 149) - Relay setup done, and setup sent to the trustees.
+[0m[0;33m1 : (                   log.(*BitrateStatistics).ReportWithInfo: 114) - [0] 0.2 round/sec, 1.0 kB/s up, 0.0 kB/s down, 0.0 kB/s down(udp), 0.0 kB/s down(re-udp)
+[0m[0;33m1 : (                      log.(*TimeStatistics).ReportWithInfo:  78) - [0] -1 ms +- -1 (over -1, happened 0). Info: sending-data
+[0m[0;33m1 : (                      log.(*TimeStatistics).ReportWithInfo:  78) - [0] 0 ms +- 0 (over 13, happened 13). Info: dcnet-add
+[0m[0;33m1 : (                      log.(*TimeStatistics).ReportWithInfo:  78) - [0] 0 ms +- 0 (over 1, happened 1). Info: dcnet-decode
+[0m[0;33m1 : (                      log.(*TimeStatistics).ReportWithInfo:  78) - [0] 0 ms +- 0 (over 1, happened 1). Info: socks-out
+[0m[0;33m1 : (                      log.(*TimeStatistics).ReportWithInfo:  78) - [0] -1 ms +- -1 (over -1, happened 0). Info: round-transition
+[0m[0;33m1 : (                      log.(*TimeStatistics).ReportWithInfo:  78) - [0] 243 ms +- 0 (over 1, happened 1). Info: round-duration
+[0m[0;33m1 : (                      log.(*TimeStatistics).ReportWithInfo:  78) - [0] 0 ms +- 0 (over 1, happened 1). Info: waiting-on-clients
+[0m[0;33m1 : (                      log.(*TimeStatistics).ReportWithInfo:  78) - [0] -1 ms +- -1 (over -1, happened 0). Info: waiting-on-trustees
+[0m[0;33m1 : (    log.(*TimeStatistics).ReportWithInfo:  78) - [0] 0 ms +- 0 (over 1, happened 1). Info: round-processing
+[0m[0;33m[0;33m1 : (    log.(*TimeStatistics).ReportWithInfo:  78) - [0] 1 ms +- 0 (over 1, happened 1). Info: latency-msg-stayed-in-buffer
+[0m[0;33m1 : (    log.(*TimeStatistics).ReportWithInfo:  78) - [0] 0 ms +- 0 (over 1, happened 1). Info: round-processing
+[0m[0;33m1 : (    log.(*TimeStatistics).ReportWithInfo:  78) - [0] 0 ms +- 0 (over 1, happened 1). Info: latency-msg-stayed-in-buffer
+[0m[0;33m1 : (    log.(*TimeStatistics).ReportWithInfo:  78) - [0] 0 ms +- 0 (over 1, happened 1). Info: round-processing
+[0m1 : (    log.(*TimeStatistics).ReportWithInfo:  78) - [0] 0 ms +- 0 (over 1, happened 1). Info: round-processing
+[0m[0;33m1 : (    log.(*TimeStatistics).ReportWithInfo:  78) - [0] 0 ms +- 0 (over 1, happened 1). Info: round-processing
+[0m[0;33m1 : (    log.(*TimeStatistics).ReportWithInfo:  78) - [0] 0 ms +- 0 (over 1, happened 1). Info: round-processing
+[0;33m1 : (    log.(*TimeStatistics).ReportWithInfo:  78) - [0] 0 ms +- 0 (over 1, happened 1). Info: round-processing
+[0m[0;33m1 : (    log.(*TimeStatistics).ReportWithInfo:  78) - [0] 0 ms +- 0 (over 1, happened 1). Info: round-processing
+[0m[0m[0;33m1 : (    log.(*TimeStatistics).ReportWithInfo:  78) - [0] 0 ms +- 0 (over 1, happened 1). Info: round-processing
+[0m[0;33m1 : (    log.(*TimeStatistics).ReportWithInfo:  78) - [0] 0 ms +- 0 (over 1, happened 1). Info: round-processing
+[0m[0;33m1 : (    log.(*TimeStatistics).ReportWithInfo:  78) - [0] 2 ms +- 0 (over 1, happened 1). Info: latency-msg-stayed-in-buffer
+[0m[0;33m1 : (    log.(*TimeStatistics).ReportWithInfo:  78) - [0] 3 ms +- 0 (over 1, happened 1). Info: latency-msg-stayed-in-buffer
+[0m[0;33m1 : (    log.(*TimeStatistics).ReportWithInfo:  78) - [0] 4 ms +- 0 (over 1, happened 1). Info: latency-msg-stayed-in-buffer
+[0m[0;33m1 : (    log.(*TimeStatistics).ReportWithInfo:  78) - [0] 5 ms +- 0 (over 1, happened 1). Info: latency-msg-stayed-in-buffer
+[0m[0;33m1 : (    log.(*TimeStatistics).ReportWithInfo:  78) - [0] 6 ms +- 0 (over 1, happened 1). Info: latency-msg-stayed-in-buffer
+[0m[0;33m1 : (    log.(*TimeStatistics).ReportWithInfo:  78) - [0] 1.494244832626e+12 ms +- 0 (over 1, happened 1). Info: measured-latency
+[0m[0;33m1 : (    log.(*TimeStatistics).ReportWithInfo:  78) - [0] 368 ms +- 0 (over 1, happened 1). Info: latency-msg-stayed-in-buffer
+[0m[0;33m1 : (    log.(*TimeStatistics).ReportWithInfo:  78) - [0] 369 ms +- 0 (over 1, happened 1). Info: measured-latency
+[0m[0;33m1 : (    log.(*TimeStatistics).ReportWithInfo:  78) - [0] 381 ms +- 0 (over 1, happened 1). Info: measured-latency
+[0m[0;33m1 : (    log.(*TimeStatistics).ReportWithInfo:  78) - [0] 382 ms +- 0 (over 1, happened 1). Info: latency-msg-stayed-in-buffer
+[0m[0;33m1 : (    log.(*TimeStatistics).ReportWithInfo:  78) - [0] 394 ms +- 0 (over 1, happened 1). Info: measured-latency
+[0m[0;31m[0m[0;31m[0m[0;31m[0m[0;31m[0m[0;31m[0m[0;31m[0m[0;31m[0m[0;31m[0m[0;31m[0m[0;31;1m[0m1 : (                         main.main.func3: 136) - Error starting simul - will kill all others: exit status 1 10.0.1.254
+Simulation done, cleaning up... [32m[ok][0m
+Status is [33m[0m.

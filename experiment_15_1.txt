@@ -1,0 +1,6 @@
+Building simulation... [32m[ok][0m
+Simulation ID is [33mT8UMJOd0e7Vs9ZKXWcnRXKPmnfr2TRKB[0m, storing it in [33m~/remote/.simID[0m on remote... [32m[ok][0m
+Starting simulation [33mprifi_simul.toml[0m on [33mdeterlab[0m.
+[0;33m1 : (                        simul.startBuild:  54) - Deploying to deterlab
+[0m[0;33m1 : (              platform.(*Deterlab).Build: 135) - Building for lbarman users.deterlab.net SAFER  simulDir= /d/git/prifi/sda/simulation
+[0m

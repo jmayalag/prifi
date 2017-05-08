@@ -196,9 +196,9 @@ func (p *PriFiLibClientInstance) ProcessDownStreamData(msg net.REL_CLI_DOWNSTREA
 						timestamp := int64(binary.BigEndian.Uint64(msg.Data[posInBuffer+2 : posInBuffer+10]))
 						diff := MsTimeStampNow() - timestamp
 
-						//originalRoundID := int32(binary.BigEndian.Uint32(msg.Data[posInBuffer+10:posInBuffer+14]))
-						//roundDiff := msg.RoundID - originalRoundID
-						//log.Info("Measured latency is", diff, ", for client", clientID, ", roundDiff", roundDiff, ", received on round", msg.RoundID)
+						originalRoundID := int32(binary.BigEndian.Uint32(msg.Data[posInBuffer+10:posInBuffer+14]))
+						roundDiff := msg.RoundID - originalRoundID
+						log.Info("Measured latency is", diff, ", for client", clientID, ", roundDiff", roundDiff, ", received on round", msg.RoundID)
 
 						p.clientState.timeStatistics["measured-latency"].AddTime(diff)
 						p.clientState.timeStatistics["measured-latency"].ReportWithInfo("measured-latency")
@@ -238,12 +238,14 @@ func (p *PriFiLibClientInstance) ProcessDownStreamData(msg net.REL_CLI_DOWNSTREA
 		}
 		mySlotInNextRound := int32(i)
 		log.Lvl3("Client "+strconv.Itoa(p.clientState.ID)+" : Gonna reserve round", mySlotInNextRound)
-		wantToTransmit := false
+
+		//check if we want to transmit
+		wantToTransmit := true
 		if len(p.clientState.LatencyTest.LatencyTestsToSend) > 0 {
 			wantToTransmit = true
 		}
 		if wantToTransmit {
-			bmc.Client_ReserveSlot(mySlotInNextRound)
+			bmc.Client_ReserveRound(mySlotInNextRound)
 		}
 		contribution := bmc.Client_GetOpenScheduleContribution()
 
@@ -260,6 +262,18 @@ func (p *PriFiLibClientInstance) ProcessDownStreamData(msg net.REL_CLI_DOWNSTREA
 	} else {
 		//send upstream data for next round
 		p.SendUpstreamData()
+	}
+
+
+	//test if we have latency test to send
+	now := time.Now()
+	if p.clientState.LatencyTest.DoLatencyTests && now.After(p.clientState.LatencyTest.NextLatencyTest) {
+		newLatTest := &LatencyTestToSend{
+			createdAt: now,
+		}
+		p.clientState.LatencyTest.LatencyTestsToSend = append(p.clientState.LatencyTest.LatencyTestsToSend, newLatTest)
+		p.clientState.LatencyTest.NextLatencyTest = now.Add(p.clientState.LatencyTest.LatencyTestsInterval)
+		p.clientState.LatencyTest.NextLatencyTest = p.clientState.LatencyTest.NextLatencyTest.Add(time.Duration(rand.Intn(1000)) * time.Millisecond)
 	}
 
 	//clean old buffered messages
@@ -293,17 +307,6 @@ func (p *PriFiLibClientInstance) SendUpstreamData() error {
 		isMySlot = true
 	}
 
-	//test if we have latency test to send
-	now := time.Now()
-	if p.clientState.LatencyTest.DoLatencyTests && now.After(p.clientState.LatencyTest.NextLatencyTest) {
-
-		newLatTest := &LatencyTestToSend{
-			createdAt: now,
-		}
-		p.clientState.LatencyTest.LatencyTestsToSend = append(p.clientState.LatencyTest.LatencyTestsToSend, newLatTest)
-		p.clientState.LatencyTest.NextLatencyTest = now.Add(p.clientState.LatencyTest.LatencyTestsInterval)
-		p.clientState.LatencyTest.NextLatencyTest = p.clientState.LatencyTest.NextLatencyTest.Add(time.Duration(rand.Intn(1000)) * time.Millisecond)
-	}
 	var upstreamCellContent []byte
 
 	//if we can...
