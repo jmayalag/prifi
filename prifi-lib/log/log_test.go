@@ -54,7 +54,7 @@ func TestUtils(t *testing.T) {
 		t.Error("Confidence95Percentiles is wrong")
 	}
 
-	err := performGETRequest("https://lbarman.ch")
+	err := performGETRequest("https://prifi.net")
 	if err != nil {
 		t.Error("Couldn't perform a GET request, err is", err.Error())
 	}
