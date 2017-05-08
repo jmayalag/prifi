@@ -25,7 +25,7 @@ func (t *TestMessageSender) SendToRelay(msg interface{}) error {
 func (t *TestMessageSender) BroadcastToAllClients(msg interface{}) error {
 	return nil
 }
-func (t *TestMessageSender) ClientSubscribeToBroadcast(clientName string, messageReceived func(interface{}) error, startStopChan chan bool) error {
+func (t *TestMessageSender) ClientSubscribeToBroadcast(clientID int, messageReceived func(interface{}) error, startStopChan chan bool) error {
 	return nil
 }
 
@@ -157,14 +157,5 @@ func TestUDPMessage(t *testing.T) {
 
 	if err2 == nil {
 		t.Error("REL_CLI_DOWNSTREAM_DATA_UDP should not allow to decode message < 4 bytes")
-	}
-
-	//this should fail, the size is wrong
-	void = new(REL_CLI_DOWNSTREAM_DATA_UDP)
-	msgBytes[0] = byte(10)
-	_, err2 = void.FromBytes(msgBytes)
-
-	if err2 == nil {
-		t.Error("REL_CLI_DOWNSTREAM_DATA_UDP should not allow to decode wrong-size messages")
 	}
 }

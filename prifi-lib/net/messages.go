@@ -3,7 +3,6 @@ package net
 import (
 	"encoding/binary"
 	"errors"
-	"strconv"
 
 	"gopkg.in/dedis/crypto.v0/abstract"
 	"gopkg.in/dedis/onet.v1/log"
@@ -56,12 +55,20 @@ type CLI_REL_UPSTREAM_DATA struct {
 	Data     []byte
 }
 
+// CLI_REL_OPENCLOSED_DATA message contains whether slots are gonna be Open or Closed in the next round
+type CLI_REL_OPENCLOSED_DATA struct {
+	ClientID       int
+	RoundID        int32
+	OpenClosedData []byte
+}
+
 // REL_CLI_DOWNSTREAM_DATA message contains the downstream data for a client for a given round
 // and is sent by the relay to the clients.
 type REL_CLI_DOWNSTREAM_DATA struct {
-	RoundID    int32
-	Data       []byte
-	FlagResync bool
+	RoundID               int32
+	Data                  []byte
+	FlagResync            bool
+	FlagOpenClosedRequest bool
 }
 
 //Converts []ByteArray -> [][]byte and returns it
@@ -190,16 +197,21 @@ func (m *REL_CLI_DOWNSTREAM_DATA_UDP) SetContent(data REL_CLI_DOWNSTREAM_DATA) {
 func (m *REL_CLI_DOWNSTREAM_DATA_UDP) ToBytes() ([]byte, error) {
 
 	//convert the message to bytes
-	buf := make([]byte, 4+4+len(m.REL_CLI_DOWNSTREAM_DATA.Data)+4)
+	buf := make([]byte, 4+len(m.REL_CLI_DOWNSTREAM_DATA.Data)+4+4)
 	resyncInt := 0
 	if m.REL_CLI_DOWNSTREAM_DATA.FlagResync {
 		resyncInt = 1
 	}
+	openclosedInt := 0
+	if m.REL_CLI_DOWNSTREAM_DATA.FlagOpenClosedRequest {
+		openclosedInt = 1
+	}
 
-	binary.BigEndian.PutUint32(buf[0:4], uint32(len(buf)))
-	binary.BigEndian.PutUint32(buf[4:8], uint32(m.REL_CLI_DOWNSTREAM_DATA.RoundID))
-	binary.BigEndian.PutUint32(buf[len(buf)-4:], uint32(resyncInt)) //todo : to be coded on one byte
-	copy(buf[8:len(buf)-4], m.REL_CLI_DOWNSTREAM_DATA.Data)
+	// [0:4 roundID] [4:end-8 data] [end-8:end-4 resyncFlag] [end-4:end openClosedFlag]
+	binary.BigEndian.PutUint32(buf[0:4], uint32(m.REL_CLI_DOWNSTREAM_DATA.RoundID))
+	binary.BigEndian.PutUint32(buf[len(buf)-8:len(buf)-4], uint32(resyncInt)) //todo : to be coded on one byte
+	binary.BigEndian.PutUint32(buf[len(buf)-4:], uint32(openclosedInt))       //todo : to be coded on one byte
+	copy(buf[4:len(buf)-8], m.REL_CLI_DOWNSTREAM_DATA.Data)
 
 	return buf, nil
 
@@ -209,28 +221,27 @@ func (m *REL_CLI_DOWNSTREAM_DATA_UDP) ToBytes() ([]byte, error) {
 func (m *REL_CLI_DOWNSTREAM_DATA_UDP) FromBytes(buffer []byte) (interface{}, error) {
 
 	//the smallest message is 4 bytes, indicating a length of 0
-	if len(buffer) < 4 {
-		e := "Messages.go : FromBytes() : cannot decode, smaller than 4 bytes"
+	if len(buffer) < 8 { //4 (roundID) + 4 (flagResync)
+		e := "Messages.go : FromBytes() : cannot decode, smaller than 8 bytes"
 		return REL_CLI_DOWNSTREAM_DATA_UDP{}, errors.New(e)
 	}
 
-	messageSize := int(binary.BigEndian.Uint32(buffer[0:4]))
-
-	if len(buffer) != messageSize {
-		e := "Messages.go : FromBytes() : cannot decode, advertised length is " + strconv.Itoa(messageSize) + ", actual length is " + strconv.Itoa(len(buffer))
-		return REL_CLI_DOWNSTREAM_DATA_UDP{}, errors.New(e)
-	}
-
-	roundID := int32(binary.BigEndian.Uint32(buffer[4:8]))
-	flagResyncInt := int(binary.BigEndian.Uint32(buffer[len(buffer)-4:]))
-	data := buffer[8 : len(buffer)-4]
+	// [0:4 roundID] [4:end-8 data] [end-8:end-4 resyncFlag] [end-4:end openClosedFlag]
+	roundID := int32(binary.BigEndian.Uint32(buffer[0:4]))
+	flagResyncInt := int(binary.BigEndian.Uint32(buffer[len(buffer)-8 : len(buffer)-4]))
+	flagOpenClosedInt := int(binary.BigEndian.Uint32(buffer[len(buffer)-4:]))
+	data := buffer[4 : len(buffer)-8]
 
 	flagResync := false
 	if flagResyncInt == 1 {
 		flagResync = true
 	}
+	flagOpenClosed := false
+	if flagOpenClosedInt == 1 {
+		flagOpenClosed = true
+	}
 
-	innerMessage := REL_CLI_DOWNSTREAM_DATA{roundID, data, flagResync} //This wrapping feels weird
+	innerMessage := REL_CLI_DOWNSTREAM_DATA{roundID, data, flagResync, flagOpenClosed}
 	resultMessage := REL_CLI_DOWNSTREAM_DATA_UDP{innerMessage}
 
 	return resultMessage, nil

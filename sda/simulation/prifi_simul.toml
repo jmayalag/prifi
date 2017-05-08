@@ -4,23 +4,24 @@ Depth = 1
 CloseWait = 10000000
 RunWait = 10000000
 NTrustees = 3
-CellSizeUp = 100
-CellSizeDown = 1400
-RelayWindowSize = 20
+CellSizeUp = 5000
+CellSizeDown = 17500
+RelayWindowSize = 7
 OverrideLogLevel = 1
 ForceConsoleColor = true
+RelayUseOpenClosedSlots = true
 RelayUseDummyDataDown = true
 RelayReportingLimit = 10000
 RelayDataOutputEnabled = true
 ClientDataOutputEnabled = true
-UseUDP = false
+UseUDP = true
 DoLatencyTests = true
 SocksServerPort = 8080
 SocksClientPort = 8090
 TrusteeIPRegexPattern = "10\\.1\\.0\\.([0-9]+)"
 ClientIPRegexPattern = "10\\.0\\.1\\.([0-9]+)"
 RelayIPRegexPattern = "10\\.([0-9]+)\\.([0-9]+)\\.254"
-Hosts = 99
+Hosts = 84
 
 Rounds
 1

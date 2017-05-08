@@ -29,6 +29,12 @@ type Struct_CLI_REL_UPSTREAM_DATA struct {
 	net.CLI_REL_UPSTREAM_DATA
 }
 
+//Struct_CLI_REL_UPSTREAM_DATA is a wrapper for CLI_REL_OPENCLOSED_DATA (but also contains a *onet.TreeNode)
+type Struct_CLI_REL_OPENCLOSED_DATA struct {
+	*onet.TreeNode
+	net.CLI_REL_OPENCLOSED_DATA
+}
+
 //Struct_REL_CLI_DOWNSTREAM_DATA is a wrapper for REL_CLI_DOWNSTREAM_DATA (but also contains a *onet.TreeNode)
 type Struct_REL_CLI_DOWNSTREAM_DATA struct {
 	*onet.TreeNode

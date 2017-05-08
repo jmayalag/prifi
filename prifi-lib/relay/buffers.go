@@ -217,6 +217,37 @@ func (b *BufferManager) MissingCiphersForCurrentRound() ([]int, []int) {
 	return clientMissing, trusteeMissing
 }
 
+//SkipToRoundIfNeeded fast forwards to roundID, and cleans the previous ciphers
+func (b *BufferManager) SkipToRoundIfNeeded(roundID int32) {
+	b.Lock()
+	defer b.Unlock()
+
+	for b.currentRoundID < roundID {
+		for i := 0; i < b.nClients; i++ {
+			delete(b.bufferedClientCiphers[i], b.currentRoundID)
+		}
+		for i := 0; i < b.nTrustees; i++ {
+			delete(b.bufferedTrusteeCiphers[i], b.currentRoundID)
+		}
+		b.currentRoundID++
+	}
+
+	//reset the map
+	b.resetACKmaps()
+
+	//use the cipher we already stored
+	for i := 0; i < b.nClients; i++ {
+		if _, exists := b.bufferedClientCiphers[i][b.currentRoundID]; exists {
+			b.clientAckMap[i] = true
+		}
+	}
+	for i := 0; i < b.nTrustees; i++ {
+		if _, exists := b.bufferedTrusteeCiphers[i][b.currentRoundID]; exists {
+			b.trusteeAckMap[i] = true
+		}
+	}
+}
+
 /**
  * Finalizes this round, returning all ciphers stored, then increasing the round number.
  * Should only be called when HasAllCiphersForCurrentRound() == true

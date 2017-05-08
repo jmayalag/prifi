@@ -23,11 +23,9 @@ type BitrateStatistics struct {
 	instantUpstreamBytes   int64
 	instantDownstreamBytes int64
 
-	totalDownstreamUDPCells               int64
-	totalDownstreamUDPBytes               int64
-	instantDownstreamUDPBytes             int64
-	totalDownstreamUDPBytesTimesClients   int64
-	instantDownstreamUDPBytesTimesClients int64
+	totalDownstreamUDPCells   int64
+	totalDownstreamUDPBytes   int64
+	instantDownstreamUDPBytes int64
 
 	totalDownstreamRetransmitCells   int64
 	totalDownstreamRetransmitBytes   int64
@@ -64,17 +62,14 @@ func (stats *BitrateStatistics) AddDownstreamCell(nBytes int64) {
 func (stats *BitrateStatistics) AddDownstreamUDPCell(nBytes int64, nclients int) {
 	stats.totalDownstreamUDPCells++
 	stats.totalDownstreamUDPBytes += nBytes
-	stats.instantDownstreamRetransmitBytes += nBytes
-
-	stats.totalDownstreamUDPBytesTimesClients += (nBytes * int64(nclients))
-	stats.instantDownstreamUDPBytesTimesClients += (nBytes * int64(nclients))
+	stats.instantDownstreamUDPBytes += nBytes
 }
 
 //AddDownstreamRetransmitCell adds N bytes to the count of retransmitted bits
 func (stats *BitrateStatistics) AddDownstreamRetransmitCell(nBytes int64) {
 	stats.totalDownstreamRetransmitCells++
 	stats.totalDownstreamRetransmitBytes += nBytes
-	stats.instantDownstreamUDPBytes += nBytes
+	stats.instantDownstreamRetransmitBytes += nBytes
 }
 
 //AddUpstreamCell adds N bytes to the count of upstream bits
@@ -108,22 +103,24 @@ func (stats *BitrateStatistics) ReportWithInfo(info string) string {
 		*/
 
 		//human-readable output
-		str := fmt.Sprintf("[%v] %0.1f round/sec, %0.1f kB/s up, %0.1f kB/s down, %0.1f kB/s down(udp)",
+		str := fmt.Sprintf("[%v] %0.1f round/sec, %0.1f kB/s up, %0.1f kB/s down, %0.1f kB/s down(udp), %0.1f kB/s down(re-udp)",
 			stats.reportNo,
 			float64(stats.instantUpstreamCells)/stats.period.Seconds(),
 			float64(stats.instantUpstreamBytes)/1024/stats.period.Seconds(),
 			float64(stats.instantDownstreamBytes)/1024/stats.period.Seconds(),
-			float64(stats.instantDownstreamUDPBytes)/1024/stats.period.Seconds())
+			float64(stats.instantDownstreamUDPBytes)/1024/stats.period.Seconds(),
+			float64(stats.instantDownstreamRetransmitBytes)/1024/stats.period.Seconds())
 
 		log.Lvlf1(str)
 
 		//json output
-		strJSON := fmt.Sprintf("{ \"type\"=\"relay_bw\", \"report_id\"=\"%v\", \"round_per_sec\"=\"%0.1f\", \"up_kbps\"=\"%0.1f\", \"down_kbps\"=\"%0.1f\", \"down_udp_kbps\"=\"%0.1f\" }\n",
+		strJSON := fmt.Sprintf("{ \"type\"=\"relay_bw\", \"report_id\"=\"%v\", \"round_per_sec\"=\"%0.1f\", \"up_kbps\"=\"%0.1f\", \"down_kbps\"=\"%0.1f\", \"down_udp_kbps\"=\"%0.1f\", \"down_re_udp_kbps\"=\"%0.1f\" }\n",
 			stats.reportNo,
 			float64(stats.instantUpstreamCells)/stats.period.Seconds(),
 			float64(stats.instantUpstreamBytes)/1024/stats.period.Seconds(),
 			float64(stats.instantDownstreamBytes)/1024/stats.period.Seconds(),
-			float64(stats.instantDownstreamUDPBytes)/1024/stats.period.Seconds())
+			float64(stats.instantDownstreamUDPBytes)/1024/stats.period.Seconds(),
+			float64(stats.instantDownstreamRetransmitBytes)/1024/stats.period.Seconds())
 
 		//report to website
 		data := fmt.Sprintf("no=%v&round=%0.1f&up=%0.1f&down=%0.1f&udp_down%0.1f&info=%s",
@@ -134,7 +131,8 @@ func (stats *BitrateStatistics) ReportWithInfo(info string) string {
 			float64(stats.instantDownstreamUDPBytes)/1024/stats.period.Seconds(),
 			info)
 
-		go performGETRequest("http://prifi.net/reporting/?" + data)
+		_ = data
+		//go performGETRequest("http://prifi.net/reporting/?" + data)
 
 		// Next report time
 		stats.instantUpstreamCells = 0
@@ -142,7 +140,6 @@ func (stats *BitrateStatistics) ReportWithInfo(info string) string {
 		stats.instantDownstreamBytes = 0
 		stats.instantDownstreamUDPBytes = 0
 		stats.instantDownstreamRetransmitBytes = 0
-		stats.instantDownstreamUDPBytesTimesClients = 0
 
 		stats.nextReport = now.Add(stats.period)
 		stats.reportNo++

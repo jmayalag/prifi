@@ -566,7 +566,7 @@ case $1 in
 		fi
 
 		#let it boot
-		sleep 10
+		sleep 20
 
 		echo "Doing SOCKS HTTP request..."
 		curl google.com --socks5 127.0.0.1:8081 --max-time 10 1>/dev/null 2>&1
@@ -780,18 +780,48 @@ case $1 in
 
 		"$thisScript" simul-cl
 
-		for i in {5..95..5}
+		for repeat in {1..3}
 		do
-			hosts=$(($NTRUSTEES + $NRELAY + $i))
-			echo "Simulating for HOSTS=$hosts..."
+			for i in {5..95..5}
+			do
+				hosts=$(($NTRUSTEES + $NRELAY + $i))
+				echo "Simulating for HOSTS=$hosts..."
 
-			#fix the config
-			rm -f "$CONFIG_FILE"
-			sed "s/Hosts = x/Hosts = $hosts/g" "$TEMPLATE_FILE" > "$CONFIG_FILE"
+				#fix the config
+				rm -f "$CONFIG_FILE"
+				sed "s/Hosts = x/Hosts = $hosts/g" "$TEMPLATE_FILE" > "$CONFIG_FILE"
 
-			timeout "$TIMEOUT" "$thisScript" simul | tee experiment_$i.txt
+				timeout "$TIMEOUT" "$thisScript" simul | tee experiment_${i}_${repeat}.txt
+			done
 		done
 
+		;;
+
+	simul-mcast-rules|simul-mr)
+
+		#create a file ~/mcast2.sh with this content
+		# #!/bin/sh
+		# iface=$(ip addr | sed -r ':a;N;$!ba;s/\n\s/ /g' | sed -r -n -e 's/^([0-9]+):\s(\w+).*(link\/(\w+))\s[a-f0-9:.]{,17}\sbrd\s[a-f0-9:.]{,17}\s*(inet\s([0-9]{1,3}(\.[0-9]{1,3}){3})).*/\2 \6 \4/p' -e 's/^([0-9]+):\s(\w+).*(link\/(\w+))\s[a-f0-9:.]{,17}\sbrd\s[a-f0-9:.]{,17}.*/\2 0.0.0.0 \4/p' | grep 10.0.1 | cut -d ' ' -f 1)
+		# echo "Redirecting mcast traffic to $iface"
+		# sudo route del -net 224.0.0.0/8
+		# sudo route add -net 224.0.0.0/8 "$iface"
+		# [EOF]
+
+		#create a file ~/mcast.sh with this content
+		# #!/bin/sh
+		# echo "Connecting to relay"
+		# ssh relay.LB-LLD.SAFER.isi.deterlab.net './mcast2.sh'
+		# for i in 0 1 2 3 4; do
+		#     echo "Connecting to client-$i"
+		#     ssh client-$i.LB-LLD.SAFER.isi.deterlab.net './mcast2.sh'
+		# done
+		# [EOF]
+		
+		deterlabUser="lbarman"
+
+		echo -n "Setting multicast to go through 10.0.1.0/8 network... "
+		ssh $deterlabUser@users.deterlab.net './mcast.sh'
+		echo -e "$okMsg"
 		;;
 
 	simul-vary-window)
@@ -804,17 +834,69 @@ case $1 in
 
 		"$thisScript" simul-cl
 
-		for window in {1..20}
+		for repeat in {1..3}
 		do
-			echo "Simulating for WINDOW=$window..."
+			for window in 4 6 8 10 12
+			do
+				echo "Simulating for WINDOW=$window..."
 
-			#fix the config
-			rm -f "$CONFIG_FILE"
-			sed "s/RelayWindowSize = x/RelayWindowSize = $window/g" "$TEMPLATE_FILE" > "$CONFIG_FILE"
+				#fix the config
+				rm -f "$CONFIG_FILE"
+				sed "s/RelayWindowSize = x/RelayWindowSize = $window/g" "$TEMPLATE_FILE" > "$CONFIG_FILE"
 
-			timeout "$TIMEOUT" "$thisScript" simul | tee experiment_$window.txt
+				timeout "$TIMEOUT" "$thisScript" simul | tee experiment_${window}_${repeat}.txt
+			done
 		done
+		;;
 
+	simul-vary-upstream)
+
+		thisScript="$0"
+
+		TEMPLATE_FILE="sda/simulation/prifi_simul_template.toml"
+		CONFIG_FILE="sda/simulation/prifi_simul.toml"
+		TIMEOUT="400"
+
+		"$thisScript" simul-cl
+
+		for repeat in {1..10}
+		do
+			for upsize in 1000 1500 2000 2500 3000 3500 4000 4500 5000 5500 6000 6500 7000 7500 8000 8500 9000 9500 10000
+			do
+				echo "Simulating for upsize=$upsize  (repeat $repeat)..."
+
+				#fix the config
+				rm -f "$CONFIG_FILE"
+				sed "s/CellSizeUp = x/CellSizeUp = $upsize/g" "$TEMPLATE_FILE" > "$CONFIG_FILE"
+
+				timeout "$TIMEOUT" "$thisScript" simul | tee experiment_${upsize}_${repeat}.txt
+			done
+		done
+		;;
+
+	simul-vary-downstream)
+
+		thisScript="$0"
+
+		TEMPLATE_FILE="sda/simulation/prifi_simul_template.toml"
+		CONFIG_FILE="sda/simulation/prifi_simul.toml"
+		TIMEOUT="400"
+
+		"$thisScript" simul-cl
+
+		for repeat in {1..10}
+		do
+			for downsize in 17400 17500 17600 17800 17900 18000
+			do
+				echo "Simulating for downsize=$downsize  (repeat $repeat)..."
+
+				#fix the config
+				rm -f "$CONFIG_FILE"
+				sed "s/CellSizeDown = x/CellSizeDown = $downsize/g" "$TEMPLATE_FILE" > "$CONFIG_FILE"
+
+				timeout "$TIMEOUT" "$thisScript" simul | tee experiment_${downsize}_${repeat}.txt
+			done
+		done
 		;;
 
 	simul-e|simul-edit)
