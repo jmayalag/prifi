@@ -13,7 +13,7 @@ type SlotScheduler interface {
 	Client_ReceivedScheduleRequest()
 
 	//the client alters the schedule being computed, and ask to transmit
-	Client_ReserveSlot(slotID int32)
+	Client_ReserverRound(roundID int32)
 
 	//return the schedule to send as payload
 	Client_GetOpenScheduleContribution() []byte
@@ -33,10 +33,8 @@ type BitMaskSlotScheduler_Client struct {
 	MySlotInNextRound      int
 }
 
-// BitMaskScheduler_Relay holds the current slot ID, and the map of Open/Closed future slots
+// BitMaskScheduler_Relay
 type BitMaskSlotScheduler_Relay struct {
-	latestDownstreamSlotSent int32
-	storedSchedule           map[int32]bool
 }
 
 // Client_ReceivedScheduleRequest instantiates the fields of BitMaskScheduler_Client
@@ -87,34 +85,6 @@ func (bmr *BitMaskSlotScheduler_Relay) Relay_CombineContributions(contributions 
 	return out
 }
 
-//NextDownStreamRoundToSent returns the next downstream round to send, and takes cares of closed slots
-func (bmr *BitMaskSlotScheduler_Relay) NextDownStreamRoundToSent() int32 {
-	nextDownstreamRound := bmr.latestDownstreamSlotSent + 1
-
-	if bmr.storedSchedule == nil {
-		return nextDownstreamRound
-	}
-
-	doSend, found := bmr.storedSchedule[nextDownstreamRound]
-	for found && !doSend {
-		//log.Error("Going to skip round", nextDownstreamRound, doSend, bmr.storedSchedule)
-		nextDownstreamRound++
-		doSend, found = bmr.storedSchedule[nextDownstreamRound]
-	}
-
-	return nextDownstreamRound
-}
-
-//DownStreamRoundSent helps keeping track of the next round to send
-func (bmr *BitMaskSlotScheduler_Relay) DownStreamRoundSent(roundID int32) {
-	bmr.latestDownstreamSlotSent = roundID
-}
-
-//IsNextDownstreamRoundForOpenClosedRequest return true if the next downstream round has flagOpenCloseScheduleRequest == true
-func (bmr *BitMaskSlotScheduler_Relay) IsNextDownstreamRoundForOpenClosedRequest(nClients int) bool {
-	return (bmr.NextDownStreamRoundToSent()%int32(nClients) == 0)
-}
-
 // Relay_ComputeFinalSchedule computes the map[int32]bool of open slots in the next round given the stored contributions
 func (bmr *BitMaskSlotScheduler_Relay) Relay_ComputeFinalSchedule(allContributions []byte, baseRoundID int32, maxSlots int) map[int32]bool {
 
@@ -130,12 +100,10 @@ func (bmr *BitMaskSlotScheduler_Relay) Relay_ComputeFinalSchedule(allContributio
 				res[roundID] = false
 			}
 			if bitPos == uint(maxSlots)-1 {
-				bmr.storedSchedule = res
 				return res
 			}
 		}
 	}
 
-	bmr.storedSchedule = res
 	return res
 }

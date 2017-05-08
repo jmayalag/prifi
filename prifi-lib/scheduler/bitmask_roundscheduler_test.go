@@ -54,7 +54,6 @@ func Test1Client(t *testing.T) {
 	}
 
 	fmt.Println(finalSched)
-	fmt.Println("Done")
 }
 
 func Test2Client(t *testing.T) {
@@ -122,5 +121,4 @@ func Test2Client(t *testing.T) {
 	}
 
 	fmt.Println(finalSched)
-	fmt.Println("Done")
 }
