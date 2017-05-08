@@ -373,7 +373,7 @@ func TestClient(t *testing.T) {
 	dataDown = []byte{100, 101, 102}
 
 	currentTime := MsTimeStampNow()
-	latencyMessage := []byte{170, 170, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0}
+	latencyMessage := []byte{170, 170, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 	binary.BigEndian.PutUint64(latencyMessage[4:12], uint64(currentTime))
 	msg12 := net.REL_CLI_DOWNSTREAM_DATA{
 		RoundID:    5,
@@ -435,6 +435,141 @@ func TestClient(t *testing.T) {
 	client.ReceivedMessage(shutdownMsg)
 	if client.stateMachine.State() != "SHUTDOWN" {
 		t.Error("Should be in SHUTDOWN state after receiving this message")
+	}
+
+	t.SkipNow() //we started a goroutine, let's kill everything, we're good
+}
+
+func TestClient2(t *testing.T) {
+
+	msgSender := new(TestMessageSender)
+	msw := newTestMessageSenderWrapper(msgSender)
+	sentToRelay = make([]interface{}, 0)
+	in := make(chan []byte, 6)
+	out := make(chan []byte, 3)
+
+	client := NewClient(true, true, in, out, msw)
+	cs := client.clientState
+
+	//we start by receiving a ALL_ALL_PARAMETERS from relay
+	msg := new(net.ALL_ALL_PARAMETERS_NEW)
+	msg.ForceParams = true
+	clientID := 3
+	nTrustees := 2
+	upCellSize := 1500
+	dcNetType := "Simple"
+	msg.Add("NClients", 1)
+	msg.Add("NTrustees", nTrustees)
+	msg.Add("UpstreamCellSize", upCellSize)
+	msg.Add("NextFreeClientID", clientID)
+	msg.Add("UseUDP", true)
+	msg.Add("DCNetType", dcNetType)
+
+	if err := client.ReceivedMessage(*msg); err != nil {
+		t.Error("Client should be able to receive this message:", err)
+	}
+
+	//Should receive a Received_REL_CLI_TELL_TRUSTEES_PK
+	trusteesPubKeys := make([]abstract.Point, nTrustees)
+	trusteesPrivKeys := make([]abstract.Scalar, nTrustees)
+	for i := 0; i < nTrustees; i++ {
+		trusteesPubKeys[i], trusteesPrivKeys[i] = crypto.NewKeyPair()
+	}
+	msg2 := net.REL_CLI_TELL_TRUSTEES_PK{Pks: trusteesPubKeys}
+	if err := client.ReceivedMessage(msg2); err != nil {
+		t.Error("Should be able to receive this message,", err.Error())
+	}
+
+	//Should send a CLI_REL_TELL_PK_AND_EPH_PK
+	if len(sentToRelay) == 0 {
+		t.Error("Client should have sent a CLI_REL_TELL_PK_AND_EPH_PK to the relay")
+	}
+	_ = sentToRelay[0].(*net.CLI_REL_TELL_PK_AND_EPH_PK)
+	sentToRelay = make([]interface{}, 0)
+
+	//neff shuffle
+	n := new(scheduler.NeffShuffle)
+	n.Init()
+	n.RelayView.Init(nTrustees)
+	trustees := make([]*scheduler.NeffShuffle, nTrustees)
+	for i := 0; i < nTrustees; i++ {
+		trustees[i] = new(scheduler.NeffShuffle)
+		trustees[i].Init()
+		trustees[i].TrusteeView.Init(i, trusteesPrivKeys[i], trusteesPubKeys[i])
+	}
+	n.RelayView.AddClient(cs.EphemeralPublicKey)
+	isDone := false
+	i := 0
+	for !isDone {
+		toSend, _, _ := n.RelayView.SendToNextTrustee()
+		parsed := toSend.(*net.REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE)
+		toSend2, _ := trustees[i].TrusteeView.ReceivedShuffleFromRelay(parsed.Base, parsed.EphPks, false, make([]byte, 1))
+		parsed2 := toSend2.(*net.TRU_REL_TELL_NEW_BASE_AND_EPH_PKS)
+		isDone, _ = n.RelayView.ReceivedShuffleFromTrustee(parsed2.NewBase, parsed2.NewEphPks, parsed2.Proof)
+		i++
+	}
+	toSend3, _ := n.RelayView.SendTranscript()
+	parsed3 := toSend3.(*net.REL_TRU_TELL_TRANSCRIPT)
+	for j := 0; j < nTrustees; j++ {
+		toSend4, _ := trustees[j].TrusteeView.ReceivedTranscriptFromRelay(parsed3.Bases, parsed3.GetKeys(), parsed3.GetProofs())
+		parsed4 := toSend4.(*net.TRU_REL_SHUFFLE_SIG)
+		n.RelayView.ReceivedSignatureFromTrustee(parsed4.TrusteeID, parsed4.Sig)
+	}
+	toSend5, _ := n.RelayView.VerifySigsAndSendToClients(trusteesPubKeys)
+	parsed5 := toSend5.(*net.REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG)
+
+	//should receive a Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG
+	err4 := client.ReceivedMessage(*parsed5)
+	if err4 != nil {
+		t.Error("Should be able to receive this message,", err4)
+	}
+
+	//Should send a CLI_REL_UPSTREAM_DATA
+	if len(sentToRelay) == 0 {
+		t.Error("Client should have sent a CLI_REL_UPSTREAM_DATA to the relay")
+	}
+	msg6 := sentToRelay[0].(*net.CLI_REL_UPSTREAM_DATA)
+	sentToRelay = make([]interface{}, 0)
+	if msg6.ClientID != clientID {
+		t.Error("Client sent a wrong ID")
+	}
+	if msg6.RoundID != int32(0) {
+		t.Error("Client sent a wrong RoundID")
+	}
+	if len(msg6.Data) != upCellSize {
+		t.Error("Client sent a payload with a wrong size")
+	}
+	if cs.RoundNo != int32(1) {
+		t.Error("should be in round 1, we sent a CLI_REL_UPSTREAM_DATA (there is no REL_CLI_DOWNSTREAM_DATA on round 0)")
+	}
+
+	//Receive some data down (with nothing to send, should trigger a latency message)
+	dataDown := []byte{1, 2, 3}
+	msg7 := net.REL_CLI_DOWNSTREAM_DATA{
+		RoundID:               1,
+		Data:                  dataDown,
+		FlagResync:            false,
+		FlagOpenClosedRequest: false,
+	}
+	err := client.ReceivedMessage(msg7)
+	if err != nil {
+		t.Error("Client should be able to receive this data")
+	}
+	data2 := <-out
+	if !bytes.Equal(dataDown, data2) {
+		t.Error("Client should push the received data to the out channel")
+	}
+
+	//Receive some data down with OpenClosedRequest=true
+	msg8 := net.REL_CLI_DOWNSTREAM_DATA{
+		RoundID:               2,
+		Data:                  dataDown,
+		FlagResync:            false,
+		FlagOpenClosedRequest: true,
+	}
+	err = client.ReceivedMessage(msg8)
+	if err != nil {
+		t.Error("Client should be able to receive this data")
 	}
 
 	t.SkipNow() //we started a goroutine, let's kill everything, we're good
