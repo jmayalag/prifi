@@ -238,7 +238,10 @@ func (p *PriFiLibClientInstance) ProcessDownStreamData(msg net.REL_CLI_DOWNSTREA
 		}
 		mySlotInNextRound := int32(i)
 		log.Lvl3("Client "+strconv.Itoa(p.clientState.ID)+" : Gonna reserve round", mySlotInNextRound)
-		wantToTransmit := true // TODO : play with this
+		wantToTransmit := false
+		if len(p.clientState.LatencyTest.LatencyTestsToSend) > 0 {
+			wantToTransmit = true
+		}
 		if wantToTransmit {
 			bmc.Client_ReserveSlot(mySlotInNextRound)
 		}
