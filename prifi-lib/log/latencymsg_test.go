@@ -13,11 +13,11 @@ func TestLatencyMessages(t *testing.T) {
 
 	now := time.Now()
 	newLatTest := &LatencyTestToSend{
-		createdAt: now.Add(-10 * time.Second),
+		CreatedAt: now.Add(-10 * time.Second),
 	}
 	latencyTests.LatencyTestsToSend = append(latencyTests.LatencyTestsToSend, newLatTest)
 	newLatTest = &LatencyTestToSend{
-		createdAt: now.Add(-1 * time.Second),
+		CreatedAt: now.Add(-1 * time.Second),
 	}
 	latencyTests.LatencyTestsToSend = append(latencyTests.LatencyTestsToSend, newLatTest)
 

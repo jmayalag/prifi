@@ -18,10 +18,10 @@ type LatencyTests struct {
 
 // One buffered latency test message. We only need to store the "createdAt" time.
 type LatencyTestToSend struct {
-	createdAt time.Time
+	CreatedAt time.Time
 }
 
-func genLatencyMessagePayload(creationTime time.Time, roundID int) []byte {
+func genLatencyMessagePayload(creationTime time.Time, roundID int32) []byte {
 	latencyMsgBytes := make([]byte, 12)
 	currTime := MsTimeStamp(creationTime) //timestamp in Ms
 	binary.BigEndian.PutUint32(latencyMsgBytes[0:4], uint32(roundID))
@@ -30,7 +30,7 @@ func genLatencyMessagePayload(creationTime time.Time, roundID int) []byte {
 }
 
 // LatencyMessagesToBytes encoded the Latency messages in "msgs", returns the encoded bytes and the new "msgs" without the successfully-encoded messages
-func LatencyMessagesToBytes(msgs []*LatencyTestToSend, clientID int, roundID int, payLoadLength int, reportFunction func(int64)) ([]byte, []*LatencyTestToSend) {
+func LatencyMessagesToBytes(msgs []*LatencyTestToSend, clientID int, roundID int32, payLoadLength int, reportFunction func(int64)) ([]byte, []*LatencyTestToSend) {
 	if len(msgs) == 0 {
 		return make([]byte, 0), msgs
 	}
@@ -56,13 +56,13 @@ func LatencyMessagesToBytes(msgs []*LatencyTestToSend, clientID int, roundID int
 	for len(msgs) > 0 && posInBuffer+latencyMsgLength <= payLoadLength {
 
 		//encode the first message
-		b := genLatencyMessagePayload(msgs[0].createdAt, roundID)
+		b := genLatencyMessagePayload(msgs[0].CreatedAt, roundID)
 
 		//save bytes in global buffer
 		copy(buffer[posInBuffer:], b)
 
 		//this is used to compute the "time stayed in buffer"
-		reportFunction(MsTimeStampNow() - MsTimeStamp(msgs[0].createdAt))
+		reportFunction(MsTimeStampNow() - MsTimeStamp(msgs[0].CreatedAt))
 
 		//pop the stack
 		if len(msgs) == 1 {

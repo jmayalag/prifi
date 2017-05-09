@@ -45,7 +45,7 @@ type ClientState struct {
 	ephemeralPrivateKey       abstract.Scalar
 	EphemeralPublicKey        abstract.Point
 	ID                        int
-	LatencyTest               *LatencyTests
+	LatencyTest               *prifilog.LatencyTests
 	MySlot                    int
 	Name                      string
 	nClients                  int
@@ -74,19 +74,6 @@ type PriFiLibClientInstance struct {
 	stateMachine  *utils.StateMachine
 }
 
-// Regroups the information about doing latency tests
-type LatencyTests struct {
-	DoLatencyTests       bool
-	LatencyTestsInterval time.Duration
-	NextLatencyTest      time.Time
-	LatencyTestsToSend   []*LatencyTestToSend
-}
-
-// One buffered latency test message. We only need to store the "createdAt" time.
-type LatencyTestToSend struct {
-	createdAt time.Time
-}
-
 // NewClient creates a new PriFi client entity state.
 func NewClient(doLatencyTest bool, dataOutputEnabled bool, dataForDCNet chan []byte, dataFromDCNet chan []byte, msgSender *net.MessageSenderWrapper) *PriFiLibClientInstance {
 
@@ -95,11 +82,11 @@ func NewClient(doLatencyTest bool, dataOutputEnabled bool, dataForDCNet chan []b
 	//instantiates the static stuff
 	clientState.PublicKey, clientState.privateKey = crypto.NewKeyPair()
 	//clientState.StartStopReceiveBroadcast = make(chan bool) //this should stay nil, !=nil -> we have a listener goroutine active
-	clientState.LatencyTest = &LatencyTests{
+	clientState.LatencyTest = &prifilog.LatencyTests{
 		DoLatencyTests:       doLatencyTest,
 		LatencyTestsInterval: 5 * time.Second,
 		NextLatencyTest:      time.Now(),
-		LatencyTestsToSend:   make([]*LatencyTestToSend, 0),
+		LatencyTestsToSend:   make([]*prifilog.LatencyTestToSend, 0),
 	}
 	clientState.timeStatistics = make(map[string]*prifilog.TimeStatistics)
 	clientState.timeStatistics["latency-msg-stayed-in-buffer"] = prifilog.NewTimeStatistics()
