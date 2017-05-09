@@ -2,6 +2,7 @@ package log
 
 import (
 	"encoding/binary"
+	"strconv"
 	"time"
 )
 
@@ -92,8 +93,8 @@ func DecodeLatencyMessages(buffer []byte, clientID int, receptionRoundID int32, 
 
 	//get the number of timestamps, and check the size
 	nMessages := int(binary.BigEndian.Uint16(buffer[2:4]))
-	if 4+(nMessages+1)*latencyMsgLength > len(buffer) {
-		panic("Invalid message")
+	if 4+(nMessages)*latencyMsgLength > len(buffer) {
+		panic("Invalid message, " + strconv.Itoa(nMessages) + " msg, but size is " + strconv.Itoa(len(buffer)))
 	}
 
 	//check that it is our messages

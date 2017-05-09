@@ -20,7 +20,7 @@ type DCNetRoundManager struct {
 // Creates a DCNetRound that hold a roundID, some data (sent at the beginning of the round, in case some client missed it), and the time the round started
 func NewDCNetRoundManager(maxNumberOfConcurrentRounds int) *DCNetRoundManager {
 	dcRM := new(DCNetRoundManager)
-	dcRM.currentRound = 0
+	dcRM.currentRound = 1
 	dcRM.maxNumberOfConcurrentRounds = maxNumberOfConcurrentRounds
 	dcRM.startTimes = make(map[int32]time.Time)
 	dcRM.dataAlreadySent = make(map[int32]*net.REL_CLI_DOWNSTREAM_DATA)

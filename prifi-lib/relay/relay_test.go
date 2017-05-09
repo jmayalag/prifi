@@ -391,8 +391,8 @@ func TestRelayRun1(t *testing.T) {
 	}
 
 	//not enough to change round !
-	if rs.dcnetRoundManager.currentRound != 0 {
-		t.Error("Should still be in round 0, no data from relay")
+	if rs.dcnetRoundManager.currentRound != 1 {
+		t.Error("Should still be in round 1, no data from relay")
 	}
 
 	msg18 := net.TRU_REL_DC_CIPHER{
@@ -568,8 +568,8 @@ func TestRelayRun2(t *testing.T) {
 	}
 
 	//not enough to change round !
-	if rs.dcnetRoundManager.currentRound != 0 {
-		t.Error("Should still be in round 0, no data from relay")
+	if rs.dcnetRoundManager.currentRound != 1 {
+		t.Error("Should still be in round 1, no data from relay")
 	}
 
 	msg18 := net.CLI_REL_UPSTREAM_DATA{

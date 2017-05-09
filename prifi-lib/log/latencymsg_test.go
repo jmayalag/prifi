@@ -22,7 +22,7 @@ func TestLatencyMessages(t *testing.T) {
 	latencyTests.LatencyTestsToSend = append(latencyTests.LatencyTestsToSend, newLatTest)
 
 	clientID := 2
-	roundID := 4
+	roundID := int32(4)
 	payloadLength := 100
 	logFn := func(timeDiff int64) {
 		fmt.Println(timeDiff)

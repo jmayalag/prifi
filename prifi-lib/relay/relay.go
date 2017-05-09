@@ -482,12 +482,16 @@ func (p *PriFiLibRelayInstance) doneCollectingUpstreamData(roundID int32) error 
 	timing.StartMeasure("round-transition")
 	p.relayState.numberOfNonAckedDownstreamPackets--
 
-	log.Lvl2("Relay finished round "+strconv.Itoa(int(roundID))+" (after", p.relayState.dcnetRoundManager.TimeSpentInRound(roundID), ").")
-	p.collectExperimentResult(p.relayState.bitrateStatistics.Report())
-	timeSpent := p.relayState.dcnetRoundManager.TimeSpentInRound(roundID)
-	p.relayState.timeStatistics["round-duration"].AddTime(timeSpent.Nanoseconds() / 1e6) //ms
-	for k, v := range p.relayState.timeStatistics {
-		p.collectExperimentResult(v.ReportWithInfo(k))
+	if roundID == 1 {
+		log.Lvl2("Relay finished round " + strconv.Itoa(int(roundID)) + " .")
+	} else {
+		log.Lvl2("Relay finished round "+strconv.Itoa(int(roundID))+" (after", p.relayState.dcnetRoundManager.TimeSpentInRound(roundID), ").")
+		p.collectExperimentResult(p.relayState.bitrateStatistics.Report())
+		timeSpent := p.relayState.dcnetRoundManager.TimeSpentInRound(roundID)
+		p.relayState.timeStatistics["round-duration"].AddTime(timeSpent.Nanoseconds() / 1e6) //ms
+		for k, v := range p.relayState.timeStatistics {
+			p.collectExperimentResult(v.ReportWithInfo(k))
+		}
 	}
 
 	// Test if we are doing an experiment, and if we need to stop at some point.
@@ -647,7 +651,6 @@ func (p *PriFiLibRelayInstance) Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS(msg n
 		p.relayState.CellCoder.RelaySetup(config.CryptoSuite, p.relayState.VerifiableDCNetKeys)
 
 		// prepare to collect the ciphers
-		p.relayState.dcnetRoundManager.OpenRound(0)
 		p.relayState.CellCoder.DecodeStart(p.relayState.UpstreamCellSize, p.relayState.MessageHistory)
 
 		p.stateMachine.ChangeState("COLLECTING_SHUFFLE_SIGNATURES")
