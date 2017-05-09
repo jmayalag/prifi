@@ -43,6 +43,7 @@ import (
 	socks "github.com/lbarman/prifi/prifi-socks"
 	"github.com/lbarman/prifi/utils/timing"
 	"gopkg.in/dedis/crypto.v0/abstract"
+	"crypto/sha256"
 	"gopkg.in/dedis/onet.v1/log"
 )
 
@@ -287,7 +288,7 @@ func (p *PriFiLibRelayInstance) finalizeUpstreamData() error {
 	}
 
 	if upstreamPlaintext == nil {
-		// empty upstream cell, need to finish round otherwise will enter next if clause
+		// empty upstream cell, need to finish round otherwise will enter next if clause and block protocol
 		p.roundFinished(p.relayState.dcnetRoundManager.CurrentRound())
 		return nil
 	}
@@ -313,6 +314,8 @@ func (p *PriFiLibRelayInstance) finalizeUpstreamData() error {
 	}
 	timeMs = timing.StopMeasure("socks-out").Nanoseconds() / 1e6
 	p.relayState.timeStatistics["socks-out"].AddTime(timeMs)
+	p.relayState.HashFromDCNetData = sha256.Sum256(upstreamPlaintext)
+	p.relayState.HashRoundID = p.relayState.dcnetRoundManager.currentRound
 
 	p.roundFinished(p.relayState.dcnetRoundManager.CurrentRound())
 
@@ -366,9 +369,16 @@ func (p *PriFiLibRelayInstance) sendDownstreamData() error {
 	log.Lvl3("Relay is gonna broadcast messages for round " + strconv.Itoa(int(p.relayState.nextDownStreamRoundToSend)) + ".")
 
 	toSend := &net.REL_CLI_DOWNSTREAM_DATA{
-		RoundID:    p.relayState.nextDownStreamRoundToSend,
-		Data:       downstreamCellContent,
+		RoundID:        p.relayState.nextDownStreamRoundToSend,
+		Data:        downstreamCellContent,
 		FlagResync: flagResync}
+
+	if p.relayState.HashFromDCNetData != nil { //we have sent an upstream message so we broadcast the hash
+		toSend.HashRoundID = p.relayState.HashRoundID
+		toSend.Hash = p.relayState.HashFromDCNetData
+		p.relayState.HashFromDCNetData = nil
+	}
+
 	p.relayState.dcnetRoundManager.OpenRound(p.relayState.nextDownStreamRoundToSend)
 	p.relayState.dcnetRoundManager.SetDataAlreadySent(p.relayState.nextDownStreamRoundToSend, toSend)
 

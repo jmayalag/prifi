@@ -144,6 +144,8 @@ type RelayState struct {
 	DataForClients                    chan []byte // VPN / SOCKS should put data there !
 	PriorityDataForClients            chan []byte
 	DataFromDCNet                     chan []byte // VPN / SOCKS should read data from there !
+	HashFromDCNetData		  []byte
+	HashRoundID			  int32
 	DataOutputEnabled                 bool        // If FALSE, nothing will be written to DataFromDCNet
 	DownstreamCellSize                int
 	MessageHistory                    abstract.Cipher

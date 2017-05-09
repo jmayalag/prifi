@@ -7,6 +7,7 @@ import (
 
 	"gopkg.in/dedis/crypto.v0/abstract"
 	"gopkg.in/dedis/onet.v1/log"
+	"hash"
 )
 
 /*
@@ -59,9 +60,11 @@ type CLI_REL_UPSTREAM_DATA struct {
 // REL_CLI_DOWNSTREAM_DATA message contains the downstream data for a client for a given round
 // and is sent by the relay to the clients.
 type REL_CLI_DOWNSTREAM_DATA struct {
-	RoundID    int32
-	Data       []byte
-	FlagResync bool
+	RoundID    	int32
+	Data       	[]byte
+	HashRoundID	int32
+	Hash		[]byte
+	FlagResync 	bool
 }
 
 //Converts []ByteArray -> [][]byte and returns it
