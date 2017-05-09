@@ -106,7 +106,7 @@ func newService(c *onet.Context) onet.Service {
 // give some extra-configuration to your protocol in here.
 func (s *ServiceState) NewProtocol(tn *onet.TreeNodeInstance, conf *onet.GenericConfig) (onet.ProtocolInstance, error) {
 
-	log.LLvlf2("Protocol: %s", tn.ProtocolName())
+	log.LLvlf2("Starting new %s", tn.ProtocolName())
 	return s.NewExchangeProtocol(tn, conf)
 }
 
@@ -181,14 +181,22 @@ func (s *ServiceState) StartRelay(group *app.Group) error {
 	s.churnHandler.init(relayID, trusteesIDs)
 	s.churnHandler.isPrifiProtocolRunning = s.IsPriFiProtocolRunning
 	s.churnHandler.isExchangeProtocolRunning = s.IsPriFiExchangeProtocolRunning
+	s.churnHandler.isScheduleProtocolRunning = s.IsPriFiScheduleProtocolRunning
+	s.churnHandler.isCommunicateProtocolRunning = s.IsPriFiCommunicateProtocolRunning
 
 	if s.AutoStart {
 		s.churnHandler.startExchangeProtocol = s.StartPriFiExchangeProtocol
+		s.churnHandler.startScheduleProtocol = s.StartPriFiScheduleProtocol
+		s.churnHandler.startCommunicateProtocol = s.StartPriFiCommunicateProtocol
 	} else {
 		s.churnHandler.startExchangeProtocol = nil
+		s.churnHandler.startScheduleProtocol = nil
+		s.churnHandler.startCommunicateProtocol = nil
 	}
 	s.churnHandler.stopPrifiProtocol = s.StopAllPriFiProtocols
 	s.churnHandler.stopExchangeProtocol = s.StopPriFiExchangeProtocol
+	s.churnHandler.stopScheduleProtocol = s.StopPriFiScheduleProtocol
+	s.churnHandler.stopCommunicateProtocol = s.StopPriFiCommunicateProtocol
 
 	socksServerConfig = &prifi_protocol.SOCKSConfig{
 		Port:              "127.0.0.1:" + strconv.Itoa(s.prifiTomlConfig.SocksClientPort),

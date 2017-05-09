@@ -308,9 +308,6 @@ func (c *churnHandler) tryStartProtocol() {
 	nClients, nTrustees := c.waitQueue.count()
 
 	if nClients >= 1 && nTrustees >= 1 {
-		if c.isPrifiProtocolRunning() {
-			c.stopPrifiProtocol()
-		}
 		if c.startExchangeProtocol == nil {
 			log.Lvl1("Enough participants (", nClients, "clients and", nTrustees, "trustees), but no handler to start.")
 			return

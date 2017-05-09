@@ -6,6 +6,7 @@ import (
 	"github.com/lbarman/prifi/prifi-lib/relay"
 	"github.com/lbarman/prifi/prifi-lib/trustee"
 	"gopkg.in/dedis/onet.v1/log"
+	"reflect"
 )
 
 /*
@@ -87,6 +88,8 @@ func NewPriFiTrustee(msgSender net.MessageSender) *PriFiLibInstance {
 // ReceivedMessage must be called when a PriFi host receives a message.
 // It takes care to call the correct message handler function.
 func (p *PriFiLibInstance) ReceivedMessage(msg interface{}) error {
+	typemsg := reflect.TypeOf(msg)
+	log.LLvl3("Received message ", typemsg)
 	err := p.specializedLibInstance.ReceivedMessage(msg)
 	if err != nil {
 		log.Error(err)

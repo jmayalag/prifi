@@ -44,6 +44,7 @@ func (p *PriFiExchangeProtocol) Received_TRU_REL_DC_CIPHER(msg Struct_TRU_REL_DC
 
 //Received_TRU_REL_SHUFFLE_SIG forwards an TRU_REL_SHUFFLE_SIG message to PriFi's lib
 func (p *PriFiExchangeProtocol) Received_TRU_REL_SHUFFLE_SIG(msg Struct_TRU_REL_SHUFFLE_SIG) error {
+	p.WhenFinished()
 	return p.prifiLibInstance.ReceivedMessage(msg.TRU_REL_SHUFFLE_SIG)
 }
 

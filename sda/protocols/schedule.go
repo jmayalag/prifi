@@ -41,6 +41,7 @@ type PriFiScheduleProtocol struct {
 	ms            MessageSender
 	toHandler     func([]string, []string)
 	ResultChannel chan interface{}
+	WhenFinished  func()
 
 	//this is the actual "PriFi" (DC-net) protocol/library, defined in prifi-lib/prifi.go
 	prifiLibInstance prifi_lib.SpecializedLibInstance
@@ -57,21 +58,6 @@ func (p *PriFiScheduleProtocol) Start() error {
 	//At the protocol is ready,
 
 	log.Lvl3("Starting PriFi-Schedule-Wrapper Protocol")
-
-	//emulate the reception of a ALL_ALL_PARAMETERS with StartNow=true
-	msg := new(net.ALL_ALL_PARAMETERS_NEW)
-	msg.Add("StartNow", true)
-	msg.Add("NTrustees", len(p.ms.trustees))
-	msg.Add("NClients", len(p.ms.clients))
-	msg.Add("UpstreamCellSize", p.config.Toml.CellSizeUp)
-	msg.Add("DownstreamCellSize", p.config.Toml.CellSizeDown)
-	msg.Add("WindowSize", p.config.Toml.RelayWindowSize)
-	msg.Add("UseDummyDataDown", p.config.Toml.RelayUseDummyDataDown)
-	msg.Add("ExperimentRoundLimit", p.config.Toml.RelayReportingLimit)
-	msg.Add("UseUDP", p.config.Toml.UseUDP)
-	msg.ForceParams = true
-
-	p.SendTo(p.TreeNode(), msg)
 
 	return nil
 }

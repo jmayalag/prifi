@@ -34,6 +34,8 @@ const DELAY_BEFORE_CONNECT_TO_RELAY = 5 * time.Second
 //Delay before the relay re-tried to connect to the trustees
 const DELAY_BEFORE_CONNECT_TO_TRUSTEES = 30 * time.Second
 
+var alreadyCommunicating = false
+
 // returns true if the PriFi exchange protocol is running
 func (s *ServiceState) IsPriFiExchangeProtocolRunning() bool {
 	if s.PriFiExchangeProtocol != nil {
@@ -192,6 +194,7 @@ func (s *ServiceState) StartPriFiExchangeProtocol() {
 
 	//assign and start the protocol
 	s.PriFiExchangeProtocol = wrapper
+	s.PriFiExchangeProtocol.WhenFinished = s.PrifiExchangeProtocolFinished
 
 	s.setConfigToPriFiExchangeProtocol(wrapper)
 
@@ -212,6 +215,12 @@ func (s *ServiceState) StopPriFiExchangeProtocol() {
 	s.PriFiExchangeProtocol = nil
 }
 
+// Called when the PriFiExchangeProtocol has finished
+func (s *ServiceState) PrifiExchangeProtocolFinished() {
+	log.Lvl1("PriFi exchange protocol has finished")
+	s.StartPriFiScheduleProtocol()
+}
+
 // startPriFiScheduleProtocol starts a PriFi schedule protocol. It is called
 // by the relay as soon as enough participants are
 // ready (one trustee and two clients).
@@ -223,30 +232,29 @@ func (s *ServiceState) StartPriFiScheduleProtocol() {
 		return
 	}
 
-	timing.StartMeasure("Resync")
-
-	var wrapper *prifi_protocol.PriFiScheduleProtocol
-	s.churnHandler.createRoster()
-	roster := s.churnHandler.roster
-
-	// Start the PriFi schedule protocol on a flat tree with the relay as root
-	tree := roster.GenerateNaryTreeWithRoot(100, s.churnHandler.relayIdentity)
 	//	pi, err := s.CreateProtocol(prifi_protocol.ProtocolName, tree)
-	pi, err := s.CreateProtocol("PrifiScheduleProtocol", tree)
+	/*pi, err := s.CreateProtocol("PrifiScheduleProtocol", s.PriFiExchangeProtocol.Tree())
 
 	if err != nil {
-		log.Fatal("Unable to start Prifi schedule protocol:", err)
+		log.Fatal("Unable to start Prifi exchange protocol:", err)
 	}
 
 	// Assert that pi has type PriFiScheduleProtocol
-	wrapper = pi.(*prifi_protocol.PriFiScheduleProtocol)
+	wrapper := pi.(*prifi_protocol.PriFiScheduleProtocol)
 
 	//assign and start the protocol
 	s.PriFiScheduleProtocol = wrapper
+	s.PriFiExchangeProtocol.WhenFinished = s.PrifiScheduleProtocolFinished
 
 	s.setConfigToPriFiScheduleProtocol(wrapper)
 
 	wrapper.Start()
+	*/
+
+	timing.StartMeasure("Resync")
+
+	s.PriFiExchangeProtocol.WhenFinished = s.PrifiScheduleProtocolFinished
+
 }
 
 // stopPriFiScheduleProtocol stops the PriFi schedule protocol currently running.
@@ -263,6 +271,16 @@ func (s *ServiceState) StopPriFiScheduleProtocol() {
 	s.PriFiScheduleProtocol = nil
 }
 
+// Called when the PriFiScheduleProtocol has finished
+func (s *ServiceState) PrifiScheduleProtocolFinished() {
+	log.Lvl1("PriFi schedule protocol has finished")
+	if alreadyCommunicating {
+		alreadyCommunicating = true
+		log.Lvl1("Shit")
+	}
+	s.StartPriFiCommunicateProtocol()
+}
+
 // startPriFiCommunicateProtocol starts a PriFi communication protocol. It is called
 // by the relay as soon as enough participants are
 // ready (one trustee and two clients).
@@ -276,28 +294,7 @@ func (s *ServiceState) StartPriFiCommunicateProtocol() {
 
 	timing.StartMeasure("Resync")
 
-	var wrapper *prifi_protocol.PriFiCommunicateProtocol
-	s.churnHandler.createRoster()
-	roster := s.churnHandler.roster
-
-	// Start the PriFi communication protocol on a flat tree with the relay as root
-	tree := roster.GenerateNaryTreeWithRoot(100, s.churnHandler.relayIdentity)
-	//	pi, err := s.CreateProtocol(prifi_protocol.ProtocolName, tree)
-	pi, err := s.CreateProtocol("PrifiCommunicateProtocol", tree)
-
-	if err != nil {
-		log.Fatal("Unable to start Prifi communication protocol:", err)
-	}
-
-	// Assert that pi has type PriFiCommunicateProtocol
-	wrapper = pi.(*prifi_protocol.PriFiCommunicateProtocol)
-
-	//assign and start the protocol
-	s.PriFiCommunicateProtocol = wrapper
-
-	s.setConfigToPriFiCommunicateProtocol(wrapper)
-
-	wrapper.Start()
+	s.PriFiExchangeProtocol.WhenFinished = nil
 }
 
 // stopPriFiCommunicateProtocol stops the PriFi communication protocol currently running.

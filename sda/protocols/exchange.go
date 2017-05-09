@@ -41,6 +41,7 @@ type PriFiExchangeProtocol struct {
 	ms            MessageSender
 	toHandler     func([]string, []string)
 	ResultChannel chan interface{}
+	WhenFinished  func()
 
 	//this is the actual "PriFi" (DC-net) protocol/library, defined in prifi-lib/prifi.go
 	prifiLibInstance prifi_lib.SpecializedLibInstance
@@ -72,6 +73,7 @@ func (p *PriFiExchangeProtocol) Start() error {
 	msg.ForceParams = true
 
 	p.SendTo(p.TreeNode(), msg)
+	p.WhenFinished()
 
 	return nil
 }
