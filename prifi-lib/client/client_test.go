@@ -8,6 +8,7 @@ import (
 	"github.com/lbarman/prifi/prifi-lib/crypto"
 	"github.com/lbarman/prifi/prifi-lib/net"
 	"github.com/lbarman/prifi/prifi-lib/scheduler"
+	prifilog "github.com/lbarman/prifi/prifi-lib/log"
 	"gopkg.in/dedis/crypto.v0/abstract"
 	"gopkg.in/dedis/onet.v1/log"
 	"testing"
@@ -365,7 +366,7 @@ func TestClient(t *testing.T) {
 	}
 
 	//Receive some data down, with nothing to say, and latencytest=true
-	cs.LatencyTest = &LatencyTests{
+	cs.LatencyTest = &prifilog.LatencyTests{
 		DoLatencyTests:       true,
 		LatencyTestsInterval: time.Second * 0,
 		NextLatencyTest:      time.Now(),
@@ -373,7 +374,7 @@ func TestClient(t *testing.T) {
 	dataDown = []byte{100, 101, 102}
 
 	currentTime := MsTimeStampNow()
-	latencyMessage := []byte{170, 170, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+	latencyMessage := []byte{170, 170, 0, 1, 0, 1, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 	binary.BigEndian.PutUint64(latencyMessage[4:12], uint64(currentTime))
 	msg12 := net.REL_CLI_DOWNSTREAM_DATA{
 		RoundID:    5,
