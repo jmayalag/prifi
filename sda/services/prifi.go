@@ -35,6 +35,7 @@ const DELAY_BEFORE_CONNECT_TO_RELAY = 5 * time.Second
 const DELAY_BEFORE_CONNECT_TO_TRUSTEES = 30 * time.Second
 
 var alreadyCommunicating = false
+var oldCommunicateProtocol *prifi_protocol.PriFiExchangeProtocol
 
 // returns true if the PriFi exchange protocol is running
 func (s *ServiceState) IsPriFiExchangeProtocolRunning() bool {
@@ -275,8 +276,8 @@ func (s *ServiceState) StopPriFiScheduleProtocol() {
 func (s *ServiceState) PrifiScheduleProtocolFinished() {
 	log.Lvl1("PriFi schedule protocol has finished")
 	if alreadyCommunicating {
-		alreadyCommunicating = true
-		log.Lvl1("Shit")
+		oldCommunicateProtocol.Stop()
+		alreadyCommunicating = false
 	}
 	s.StartPriFiCommunicateProtocol()
 }
@@ -295,6 +296,8 @@ func (s *ServiceState) StartPriFiCommunicateProtocol() {
 	timing.StartMeasure("Resync")
 
 	s.PriFiExchangeProtocol.WhenFinished = nil
+	oldCommunicateProtocol = s.PriFiExchangeProtocol
+	alreadyCommunicating = true
 }
 
 // stopPriFiCommunicateProtocol stops the PriFi communication protocol currently running.
