@@ -33,6 +33,8 @@ import (
 	"gopkg.in/dedis/crypto.v0/abstract"
 	"gopkg.in/dedis/onet.v1/log"
 
+	"encoding/hex"
+	"fmt"
 	"github.com/lbarman/prifi/prifi-lib/dcnet"
 	"github.com/lbarman/prifi/prifi-lib/scheduler"
 	socks "github.com/lbarman/prifi/prifi-socks"
@@ -185,6 +187,8 @@ func (p *PriFiLibClientInstance) ProcessDownStreamData(msg net.REL_CLI_DOWNSTREA
 		//test if it is the answer from our ping (for latency test)
 		if p.clientState.LatencyTest.DoLatencyTests && len(msg.Data) > 2 {
 
+			fmt.Println(hex.Dump(msg.Data))
+
 			pattern := int(binary.BigEndian.Uint16(msg.Data[0:2]))
 			if pattern == 43690 { //1010101010101010
 				posInBuffer := 2
@@ -196,7 +200,7 @@ func (p *PriFiLibClientInstance) ProcessDownStreamData(msg net.REL_CLI_DOWNSTREA
 						timestamp := int64(binary.BigEndian.Uint64(msg.Data[posInBuffer+2 : posInBuffer+10]))
 						diff := MsTimeStampNow() - timestamp
 
-						originalRoundID := int32(binary.BigEndian.Uint32(msg.Data[posInBuffer+10:posInBuffer+14]))
+						originalRoundID := int32(binary.BigEndian.Uint32(msg.Data[posInBuffer+10 : posInBuffer+14]))
 						roundDiff := msg.RoundID - originalRoundID
 						log.Info("Measured latency is", diff, ", for client", clientID, ", roundDiff", roundDiff, ", received on round", msg.RoundID)
 
@@ -263,7 +267,6 @@ func (p *PriFiLibClientInstance) ProcessDownStreamData(msg net.REL_CLI_DOWNSTREA
 		//send upstream data for next round
 		p.SendUpstreamData()
 	}
-
 
 	//test if we have latency test to send
 	now := time.Now()

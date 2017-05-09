@@ -62,7 +62,6 @@ func TestDCNetRound(test *testing.T) {
 		test.Error("Should be in round 3", dcmr.CurrentRound())
 	}
 
-
 	_ = data
 
 }

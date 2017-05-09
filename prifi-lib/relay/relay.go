@@ -211,7 +211,6 @@ func (p *PriFiLibRelayInstance) Received_CLI_REL_OPENCLOSED_DATA(msg net.CLI_REL
 		sched := p.relayState.slotScheduler.Relay_ComputeFinalSchedule(openClosedData, msg.RoundID+1, p.relayState.nClients)
 		p.relayState.dcnetRoundManager.SetStoredRoundSchedule(sched)
 
-
 		//we finish the round
 		p.doneCollectingUpstreamData(msg.RoundID)
 

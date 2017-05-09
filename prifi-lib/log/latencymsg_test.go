@@ -1,23 +1,23 @@
 package log
 
 import (
+	"encoding/hex"
+	"fmt"
 	"testing"
 	"time"
-	"fmt"
-	"encoding/hex"
 )
 
 func TestLatencyMessages(t *testing.T) {
 
-	latencyTests := &LatencyTests{	}
+	latencyTests := &LatencyTests{}
 
 	now := time.Now()
 	newLatTest := &LatencyTestToSend{
-		createdAt: now,
+		createdAt: now.Add(-10 * time.Second),
 	}
 	latencyTests.LatencyTestsToSend = append(latencyTests.LatencyTestsToSend, newLatTest)
 	newLatTest = &LatencyTestToSend{
-		createdAt: now.Add(10*time.Second),
+		createdAt: now.Add(-1 * time.Second),
 	}
 	latencyTests.LatencyTestsToSend = append(latencyTests.LatencyTestsToSend, newLatTest)
 
@@ -31,4 +31,10 @@ func TestLatencyMessages(t *testing.T) {
 	latencyTests.LatencyTestsToSend = outMsgs
 
 	fmt.Println(hex.Dump(bytes))
+
+	actionFunction := func(roundRec int32, roundDiff int32, timeDiff int64) {
+		fmt.Println("Latency is", timeDiff, "received on round", roundRec, "=> round diff is", roundDiff)
+	}
+	receptionRoundID := int32(20)
+	DecodeLatencyMessages(bytes, clientID, receptionRoundID, actionFunction)
 }
