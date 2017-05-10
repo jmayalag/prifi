@@ -225,11 +225,7 @@ func (p *PriFiLibClientInstance) ProcessDownStreamData(msg net.REL_CLI_DOWNSTREA
 		log.Lvl3("Client "+strconv.Itoa(p.clientState.ID)+" : Gonna reserve round", mySlotInNextRound)
 
 		//check if we want to transmit
-		wantToTransmit := true
-		if len(p.clientState.LatencyTest.LatencyTestsToSend) > 0 {
-			wantToTransmit = true
-		}
-		if wantToTransmit {
+		if p.WantsToTransmit() {
 			bmc.Client_ReserveRound(mySlotInNextRound)
 		}
 		contribution := bmc.Client_GetOpenScheduleContribution()
@@ -278,6 +274,30 @@ func (p *PriFiLibClientInstance) ProcessDownStreamData(msg net.REL_CLI_DOWNSTREA
 	return nil
 }
 
+// WantsToTransmit returns true if [we have a latency message to send] OR [we have data to send]
+func (p *PriFiLibClientInstance) WantsToTransmit() bool {
+
+	//if we have a latency test message
+	if len(p.clientState.LatencyTest.LatencyTestsToSend) > 0 {
+		return true
+	}
+
+	//if we have already ready-to-send data
+	if p.clientState.NextDataForDCNet != nil {
+		return true
+	}
+
+	//otherwise, poll the channel
+	select {
+	case myData := <-p.clientState.DataForDCNet:
+		p.clientState.NextDataForDCNet = &myData
+		return true
+
+	default:
+		return false
+	}
+}
+
 /*
 SendUpstreamData determines if it's our round, embeds data (maybe latency-test message) in the payload if we can,
 creates the DC-net cipher and sends it to the relay.
@@ -295,29 +315,36 @@ func (p *PriFiLibClientInstance) SendUpstreamData() error {
 
 	//if we can...
 	if isMySlot {
-		select {
+		//this data has already been polled out of the DataForDCNet chan, so send it first
+		//this is non-nil when OpenClosedSlot is true, and that it had to poll data out
+		if p.clientState.NextDataForDCNet != nil {
+			upstreamCellContent = *p.clientState.NextDataForDCNet
+			p.clientState.NextDataForDCNet = nil
+		} else {
+			select {
 
-		//either select data from the data we have to send, if any
-		case myData := <-p.clientState.DataForDCNet:
-			upstreamCellContent = myData
+			//either select data from the data we have to send, if any
+			case myData := <-p.clientState.DataForDCNet:
+				upstreamCellContent = myData
 
-		//or, if we have nothing to send, and we are doing Latency tests, embed a pre-crafted message that we will recognize later on
-		default:
-			emptyData := socks.NewSocksPacket(socks.DummyData, 0, 0, uint16(p.clientState.PayloadLength), make([]byte, 0))
-			upstreamCellContent = emptyData.ToBytes()
+			//or, if we have nothing to send, and we are doing Latency tests, embed a pre-crafted message that we will recognize later on
+			default:
+				emptyData := socks.NewSocksPacket(socks.DummyData, 0, 0, uint16(p.clientState.PayloadLength), make([]byte, 0))
+				upstreamCellContent = emptyData.ToBytes()
 
-			if len(p.clientState.LatencyTest.LatencyTestsToSend) > 0 {
+				if len(p.clientState.LatencyTest.LatencyTestsToSend) > 0 {
 
-				logFn := func(timeDiff int64) {
-					p.clientState.timeStatistics["latency-msg-stayed-in-buffer"].AddTime(timeDiff)
-					p.clientState.timeStatistics["latency-msg-stayed-in-buffer"].ReportWithInfo("latency-msg-stayed-in-buffer")
+					logFn := func(timeDiff int64) {
+						p.clientState.timeStatistics["latency-msg-stayed-in-buffer"].AddTime(timeDiff)
+						p.clientState.timeStatistics["latency-msg-stayed-in-buffer"].ReportWithInfo("latency-msg-stayed-in-buffer")
+					}
+
+					bytes, outMsgs := prifilog.LatencyMessagesToBytes(p.clientState.LatencyTest.LatencyTestsToSend,
+						p.clientState.ID, p.clientState.RoundNo, p.clientState.PayloadLength, logFn)
+
+					p.clientState.LatencyTest.LatencyTestsToSend = outMsgs
+					upstreamCellContent = bytes
 				}
-
-				bytes, outMsgs := prifilog.LatencyMessagesToBytes(p.clientState.LatencyTest.LatencyTestsToSend,
-					p.clientState.ID, p.clientState.RoundNo, p.clientState.PayloadLength, logFn)
-
-				p.clientState.LatencyTest.LatencyTestsToSend = outMsgs
-				upstreamCellContent = bytes
 			}
 		}
 	}

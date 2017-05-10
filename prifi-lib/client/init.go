@@ -40,6 +40,7 @@ type ClientState struct {
 	CellCoder                 dcnet.CellCoder
 	currentState              int16
 	DataForDCNet              chan []byte //Data to the relay : VPN / SOCKS should put data there !
+	NextDataForDCNet          *[]byte     //if not nil, send this before polling DataForDCNet
 	DataFromDCNet             chan []byte //Data from the relay : VPN / SOCKS should read data from there !
 	DataOutputEnabled         bool        //if FALSE, nothing will be written to DataFromDCNet
 	ephemeralPrivateKey       abstract.Scalar
@@ -92,8 +93,8 @@ func NewClient(doLatencyTest bool, dataOutputEnabled bool, dataForDCNet chan []b
 	clientState.timeStatistics["latency-msg-stayed-in-buffer"] = prifilog.NewTimeStatistics()
 	clientState.timeStatistics["measured-latency"] = prifilog.NewTimeStatistics()
 	clientState.timeStatistics["round-processing"] = prifilog.NewTimeStatistics()
-	//clientState.CellCoder = config.Factory()
 	clientState.DataForDCNet = dataForDCNet
+	clientState.NextDataForDCNet = nil
 	clientState.DataFromDCNet = dataFromDCNet
 	clientState.DataOutputEnabled = dataOutputEnabled
 
