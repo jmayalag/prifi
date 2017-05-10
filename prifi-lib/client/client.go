@@ -39,6 +39,7 @@ import (
 	"github.com/lbarman/prifi/utils/timing"
 	"math/rand"
 	"time"
+	"crypto/sha256"
 )
 
 // Received_ALL_CLI_SHUTDOWN handles ALL_CLI_SHUTDOWN messages.
@@ -168,6 +169,18 @@ func (p *PriFiLibClientInstance) ProcessDownStreamData(msg net.REL_CLI_DOWNSTREA
 
 	timing.StartMeasure("round-processing")
 
+	//processing hash
+	if msg.Hash != nil {
+		for roundID, hash := range p.clientState.HashHistory {
+			if msg.HashRoundID == roundID {
+				if msg.Hash == hash {
+					delete(p.clientState.HashHistory, roundID)
+				} else {
+					//start of blame procedure
+				}
+			}
+		}
+	}
 	/*
 	 * HANDLE THE DOWNSTREAM DATA
 	 */
@@ -254,6 +267,7 @@ func (p *PriFiLibClientInstance) SendUpstreamData() error {
 		//either select data from the data we have to send, if any
 		case myData := <-p.clientState.DataForDCNet:
 			upstreamCellContent = myData
+			p.clientState.HashHistory[currentRound] = sha256.Sum256(upstreamCellContent)
 
 		//or, if we have nothing to send, and we are doing Latency tests, embed a pre-crafted message that we will recognize later on
 		default:
