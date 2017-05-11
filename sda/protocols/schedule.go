@@ -1,11 +1,12 @@
 package protocols
 
 /*
- * PRIFI Schedule WRAPPER
+ * PRIFI SCHEDULE WRAPPER
  *
- * Caution : this is not the "PriFi protocol", which is really a "PriFi Library" which you need to import, and feed with some network methods.
- * This is the "PriFi-Schedule-Wrapper" protocol, which imports the PriFi lib, gives it "SendToXXX()" methods and calls the "prifi_library.MessageReceived()"
- * methods (it build a map that converts the SDA tree into identities), and starts the PriFi Library.
+ * Caution : this is not the "PriFi protocol", which is really a "PriFi Library" which you need to import,
+ * and feed with some network methods. This is the "PriFi-SCHEDULE-Wrapper" protocol, which imports the PriFi lib,
+ * gives it "SendToXXX()" methods and calls the "prifi_library.MessageReceived()" methods
+ * (it build a map that converts the SDA tree into identities), and starts the PriFi Library.
  *
  * The call order is :
  * 1) the sda/app is called by the user/scripts
@@ -25,14 +26,15 @@ package protocols
 import (
 	"errors"
 
-	prifi_lib "github.com/lbarman/prifi/prifi-lib"
+	"github.com/lbarman/prifi/prifi-lib"
 	"github.com/lbarman/prifi/prifi-lib/net"
 	"gopkg.in/dedis/onet.v1"
 	"gopkg.in/dedis/onet.v1/log"
 	"gopkg.in/dedis/onet.v1/network"
 )
 
-//PriFiScheduleProtocol is the SDA-protocol struct. It contains the SDA-tree, and a chanel that stops the simulation when it receives a "true"
+// PriFiScheduleProtocol is the SDA-protocol struct. It contains the SDA-tree,
+// and a chanel that stops the simulation when it receives a "true"
 type PriFiScheduleProtocol struct {
 	*onet.TreeNodeInstance
 	configSet     bool
@@ -41,7 +43,6 @@ type PriFiScheduleProtocol struct {
 	ms            MessageSender
 	toHandler     func([]string, []string)
 	ResultChannel chan interface{}
-	WhenFinished  func()
 
 	//this is the actual "PriFi" (DC-net) protocol/library, defined in prifi-lib/prifi.go
 	prifiLibInstance prifi_lib.SpecializedLibInstance
@@ -58,6 +59,23 @@ func (p *PriFiScheduleProtocol) Start() error {
 	//At the protocol is ready,
 
 	log.Lvl3("Starting PriFi-Schedule-Wrapper Protocol")
+
+	//emulate the reception of a ALL_ALL_PARAMETERS with StartNow=true
+	msg := new(net.ALL_ALL_PARAMETERS_NEW)
+	msg.Add("StartNow", true)
+	msg.Add("NTrustees", len(p.ms.trustees))
+	msg.Add("NClients", len(p.ms.clients))
+	msg.Add("UpstreamCellSize", p.config.Toml.CellSizeUp)
+	msg.Add("DownstreamCellSize", p.config.Toml.CellSizeDown)
+	msg.Add("WindowSize", p.config.Toml.RelayWindowSize)
+	msg.Add("UseOpenClosedSlots", p.config.Toml.RelayUseOpenClosedSlots)
+	msg.Add("UseDummyDataDown", p.config.Toml.RelayUseDummyDataDown)
+	msg.Add("ExperimentRoundLimit", p.config.Toml.RelayReportingLimit)
+	msg.Add("UseUDP", p.config.Toml.UseUDP)
+	msg.Add("DCNetType", p.config.Toml.DCNetType)
+	msg.ForceParams = true
+
+	p.SendTo(p.TreeNode(), msg)
 
 	return nil
 }
@@ -83,8 +101,8 @@ func (p *PriFiScheduleProtocol) Stop() {
 }
 
 /**
- * On initialization of the PriFi-Schedule-Wrapper protocol, it need to register the PriFi-Lib messages to be able to marshall them.
- * If we forget some messages there, it will crash when PriFi-Lib will call SendToXXX() with this message !
+ * On initialization of the PriFi-Schedule-Wrapper protocol, it need to register the PriFi-Lib messages to be able
+ * to marshall them. If we forget some messages there, it will crash when PriFi-Lib will call SendToXXX() with this message !
  */
 func init() {
 
@@ -93,6 +111,7 @@ func init() {
 	network.RegisterMessage(net.CLI_REL_TELL_PK_AND_EPH_PK{})
 	network.RegisterMessage(net.CLI_REL_UPSTREAM_DATA{})
 	network.RegisterMessage(net.REL_CLI_DOWNSTREAM_DATA{})
+	network.RegisterMessage(net.CLI_REL_OPENCLOSED_DATA{})
 	network.RegisterMessage(net.REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG{})
 	network.RegisterMessage(net.REL_CLI_TELL_TRUSTEES_PK{})
 	network.RegisterMessage(net.REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE{})
@@ -184,6 +203,10 @@ func (p *PriFiScheduleProtocol) registerHandlers() error {
 		return errors.New("couldn't register handler: " + err.Error())
 	}
 	err = p.RegisterHandler(p.Received_TRU_REL_TELL_PK)
+	if err != nil {
+		return errors.New("couldn't register handler: " + err.Error())
+	}
+	err = p.RegisterHandler(p.Received_CLI_REL_CLI_REL_OPENCLOSED_DATA)
 	if err != nil {
 		return errors.New("couldn't register handler: " + err.Error())
 	}

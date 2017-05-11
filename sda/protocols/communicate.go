@@ -1,11 +1,12 @@
 package protocols
 
 /*
- * PRIFI Communicate WRAPPER
+ * PRIFI COMMUNICATION WRAPPER
  *
- * Caution : this is not the "PriFi protocol", which is really a "PriFi Library" which you need to import, and feed with some network methods.
- * This is the "PriFi-Communicate-Wrapper" protocol, which imports the PriFi lib, gives it "SendToXXX()" methods and calls the "prifi_library.MessageReceived()"
- * methods (it build a map that converts the SDA tree into identities), and starts the PriFi Library.
+ * Caution : this is not the "PriFi protocol", which is really a "PriFi Library" which you need to import,
+ * and feed with some network methods. This is the "PriFi-COMMUNICATION-Wrapper" protocol, which imports the PriFi lib,
+ * gives it "SendToXXX()" methods and calls the "prifi_library.MessageReceived()" methods
+ * (it build a map that converts the SDA tree into identities), and starts the PriFi Library.
  *
  * The call order is :
  * 1) the sda/app is called by the user/scripts
@@ -25,14 +26,15 @@ package protocols
 import (
 	"errors"
 
-	prifi_lib "github.com/lbarman/prifi/prifi-lib"
+	"github.com/lbarman/prifi/prifi-lib"
 	"github.com/lbarman/prifi/prifi-lib/net"
 	"gopkg.in/dedis/onet.v1"
 	"gopkg.in/dedis/onet.v1/log"
 	"gopkg.in/dedis/onet.v1/network"
 )
 
-//PriFiCommunicateProtocol is the SDA-protocol struct. It contains the SDA-tree, and a chanel that stops the simulation when it receives a "true"
+// PriFiCommunicateProtocol is the SDA-protocol struct. It contains the SDA-tree,
+// and a chanel that stops the simulation when it receives a "true"
 type PriFiCommunicateProtocol struct {
 	*onet.TreeNodeInstance
 	configSet     bool
@@ -99,8 +101,8 @@ func (p *PriFiCommunicateProtocol) Stop() {
 }
 
 /**
- * On initialization of the PriFi-Communicate-Wrapper protocol, it need to register the PriFi-Lib messages to be able to marshall them.
- * If we forget some messages there, it will crash when PriFi-Lib will call SendToXXX() with this message !
+ * On initialization of the PriFi-Communicate-Wrapper protocol, it need to register the PriFi-Lib messages to be able
+ * to marshall them. If we forget some messages there, it will crash when PriFi-Lib will call SendToXXX() with this message !
  */
 func init() {
 

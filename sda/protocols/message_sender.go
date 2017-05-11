@@ -57,7 +57,7 @@ func (p *PriFiExchangeProtocol) buildMessageSender(identities map[string]PriFiId
 		}
 	}
 
-	return MessageSender{p.TreeNodeInstance, relay, clients, trustees}
+	return MessageSender{p.TreeNodeInstance, relay, clients, trustees, newRealUDPChannel()}
 }
 
 // buildMessageSender creates a MessageSender struct
@@ -98,7 +98,7 @@ func (p *PriFiScheduleProtocol) buildMessageSender(identities map[string]PriFiId
 		}
 	}
 
-	return MessageSender{p.TreeNodeInstance, relay, clients, trustees}
+	return MessageSender{p.TreeNodeInstance, relay, clients, trustees, newRealUDPChannel()}
 }
 
 // buildMessageSender creates a MessageSender struct
