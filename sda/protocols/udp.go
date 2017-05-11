@@ -14,21 +14,25 @@ import (
 	"sync"
 	"time"
 
+	"encoding/binary"
 	"gopkg.in/dedis/onet.v1/log"
 )
 
-//UPD_PORT is the port used for UDP broadcast
+// MULTICAST_ADDR is the address used for multicasting
+const MULTICAST_ADDR string = "224.0.0.1"
+
+// UPD_PORT is the port used for UDP broadcast
 const UDP_PORT int = 10101
 
-//MAX_UDP_SIZE is the max size of one broadcasted packet
+// MAX_UDP_SIZE is the max size of one broadcasted packet
 const MAX_UDP_SIZE int = 65507
 
-//FAKE_LOCAL_UDP_SIMULATED_LOSS_PERCENTAGE is the simulated loss percentage when we use a non-lossy local chanel
+// FAKE_LOCAL_UDP_SIMULATED_LOSS_PERCENTAGE is the simulated loss percentage when we use a non-lossy local chanel
 const FAKE_LOCAL_UDP_SIMULATED_LOSS_PERCENTAGE = 0
 
-//MarshallableMessage . Since we can only send []byte over UDP, each interface{} we want to send needs to implement MarshallableMessage.
-//It has methods Print(), used for debug, ToBytes(), that converts it to a raw byte array, SetByte(), which simply store a byte array in the
-//structure (but does not decode it), and FromBytes(), which decodes the interface{} from the inner buffer set by SetBytes()
+// MarshallableMessage . Since we can only send []byte over UDP, each interface{} we want to send needs to implement MarshallableMessage.
+// It has methods Print(), used for debug, ToBytes(), that converts it to a raw byte array, SetByte(), which simply store a byte array in the
+// structure (but does not decode it), and FromBytes(), which decodes the interface{} from the inner buffer set by SetBytes()
 type MarshallableMessage interface {
 	Print()
 
@@ -42,7 +46,7 @@ type UDPChannel interface {
 	Broadcast(msg MarshallableMessage) error
 
 	//we take an empty MarshallableMessage as input, because the method does know how to parse the message
-	ListenAndBlock(msg MarshallableMessage, lastSeenMessage int) (MarshallableMessage, error)
+	ListenAndBlock(msg MarshallableMessage, lastSeenMessage int, identityListening string) (interface{}, error)
 }
 
 /**
@@ -100,7 +104,7 @@ func (lc *LocalhostChannel) Broadcast(msg MarshallableMessage) error {
 }
 
 //ListenAndBlock of LocalhostChannel is the implementation of message reception for the fake localhost channel
-func (lc *LocalhostChannel) ListenAndBlock(emptyMessage MarshallableMessage, lastSeenMessage int) (MarshallableMessage, error) {
+func (lc *LocalhostChannel) ListenAndBlock(emptyMessage MarshallableMessage, lastSeenMessage int, identityListening string) (interface{}, error) {
 
 	//we wait until there is a new message
 	lc.RLock()
@@ -143,17 +147,12 @@ func (c *RealUDPChannel) Broadcast(msg MarshallableMessage) error {
 
 	//if we're not ready with the connnection yet
 	if c.relayConn == nil {
-		ServerAddr, err := net.ResolveUDPAddr("udp", "255.255.255.255:"+strconv.Itoa(UDP_PORT))
+		ServerAddr, err := net.ResolveUDPAddr("udp", MULTICAST_ADDR+":"+strconv.Itoa(UDP_PORT))
 		if err != nil {
-			log.Error("Broadcast: could not resolve BCast address, error is", err.Error())
+			log.Error("Broadcast: could not resolve multicast address, error is", err.Error())
 		}
 
-		LocalAddr, err := net.ResolveUDPAddr("udp", ":0")
-		if err != nil {
-			log.Error("Broadcast: could not resolve Local address, error is", err.Error())
-		}
-
-		c.relayConn, err = net.DialUDP("udp", LocalAddr, ServerAddr)
+		c.relayConn, err = net.DialUDP("udp", nil, ServerAddr)
 		if err != nil {
 			log.Error("Broadcast: could not UDP Dial, error is", err.Error())
 		}
@@ -166,48 +165,60 @@ func (c *RealUDPChannel) Broadcast(msg MarshallableMessage) error {
 		log.Error("Broadcast: could not marshal message, error is", err.Error())
 	}
 
-	_, err = c.relayConn.Write(data)
+	message := make([]byte, 4+len(data))
+	binary.BigEndian.PutUint32(message[0:4], uint32(len(data)))
+	copy(message[4:], data)
+
+	_, err = c.relayConn.Write(message)
 	if err != nil {
 		log.Error("Broadcast: could not write message, error is", err.Error())
 	} else {
-		log.Lvl3("Broadcast: broadcasted one message")
+		log.Lvl3("Broadcast: broadcasted one message of length", len(message))
 	}
 
 	return nil
 }
 
-//ListenAndBlock of RealUDPChannel is the implementation of message reception for the real UDP channel
-func (c *RealUDPChannel) ListenAndBlock(emptyMessage MarshallableMessage, lastSeenMessage int) (MarshallableMessage, error) {
+// ListenAndBlock of RealUDPChannel is the implementation of message reception for the real UDP channel
+func (c *RealUDPChannel) ListenAndBlock(emptyMessage MarshallableMessage, lastSeenMessage int, identityListening string) (interface{}, error) {
 
-	//if we're not ready with the connnection yet
-
+	//if we're not ready with the connection yet
 	if c.localConn == nil {
 
-		/* Lets prepare a address at any address at port 10001*/
-		ServerAddr, err := net.ResolveUDPAddr("udp", ":"+strconv.Itoa(UDP_PORT))
+		mcastAddr, err := net.ResolveUDPAddr("udp", MULTICAST_ADDR+":"+strconv.Itoa(UDP_PORT))
 		if err != nil {
-			log.Error("ListenAndBlock: could not resolve BCast address, error is", err.Error())
+			log.Error("ListenAndBlock(", identityListening, "): could not resolve BCast address, error is", err.Error())
 		}
 
-		/* Now listen at selected port */
-		c.localConn, err = net.ListenUDP("udp", ServerAddr)
+		c.localConn, err = net.ListenMulticastUDP("udp", nil, mcastAddr)
 		if err != nil {
-			log.Error("ListenAndBlock: could not UDP Dial, error is", err.Error())
+			log.Error("ListenAndBlock(", identityListening, "): could not UDP Dial, error is", err.Error())
 		}
+
+		log.Lvl3("ListenAndBlock(", identityListening, "): listening on", mcastAddr)
+		c.localConn.SetReadBuffer(MAX_UDP_SIZE)
 	}
 
 	buf := make([]byte, MAX_UDP_SIZE)
-
 	n, addr, err := c.localConn.ReadFromUDP(buf)
-	log.Fatal("Received UDP Broadcast ", string(buf[0:n]), " from ", addr)
+
+	log.Lvl4("ListenAndBlock(", identityListening, "): Received a UDP message of length", n, "from", addr)
+	sizeAdvertised := int(binary.BigEndian.Uint32(buf[0:4]))
+
+	if sizeAdvertised+4 != n {
+		log.Error("ListenAndBlock(", identityListening, "): could not receive read the ", string(sizeAdvertised+4), ", only", n, ", error is", err.Error())
+	}
+	message := make([]byte, sizeAdvertised)
+	copy(message[:], buf[4:sizeAdvertised+4])
 
 	if err != nil {
-		log.Error("ListenAndBlock: could not receive message, error is", err.Error())
-	} else {
-		log.Error("ListenAndBlock: Received a message of", n, "bytes, from addr", addr)
+		log.Error("ListenAndBlock(", identityListening, "): could not receive message, error is", err.Error())
 	}
 
-	emptyMessage.FromBytes(buf)
+	newMessage, err3 := emptyMessage.FromBytes(message)
+	if err3 != nil {
+		log.Error("ListenAndBlock(", identityListening, "): could not unmarshall message, error3 is", err3.Error())
+	}
 
-	return emptyMessage, nil
+	return newMessage, nil
 }

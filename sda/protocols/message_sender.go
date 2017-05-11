@@ -3,7 +3,6 @@ package protocols
 import (
 	"errors"
 	"strconv"
-	"time"
 
 	"github.com/lbarman/prifi/prifi-lib/net"
 	"gopkg.in/dedis/onet.v1"
@@ -13,10 +12,11 @@ import (
 //MessageSender is the struct we need to give PriFi-Lib so it can send messages.
 //It needs to implement the "MessageSender interface" defined in prifi_lib/prifi.go
 type MessageSender struct {
-	tree     *onet.TreeNodeInstance
-	relay    *onet.TreeNode
-	clients  map[int]*onet.TreeNode
-	trustees map[int]*onet.TreeNode
+	tree       *onet.TreeNodeInstance
+	relay      *onet.TreeNode
+	clients    map[int]*onet.TreeNode
+	trustees   map[int]*onet.TreeNode
+	udpChannel UDPChannel
 }
 
 // buildMessageSender creates a MessageSender struct
@@ -139,7 +139,7 @@ func (p *PriFiCommunicateProtocol) buildMessageSender(identities map[string]PriF
 		}
 	}
 
-	return MessageSender{p.TreeNodeInstance, relay, clients, trustees}
+	return MessageSender{p.TreeNodeInstance, relay, clients, trustees, newRealUDPChannel()}
 }
 
 //SendToClient sends a message to client i, or fails if it is unknown
@@ -200,15 +200,16 @@ func (ms MessageSender) BroadcastToAllClients(msg interface{}) error {
 	if !canCast {
 		log.Error("Message sender : could not cast msg to REL_CLI_DOWNSTREAM_DATA_UDP, and I don't know how to send other messages.")
 	}
-	udpChan.Broadcast(castedMsg)
+	ms.udpChannel.Broadcast(castedMsg)
 
 	return nil
 }
 
 //ClientSubscribeToBroadcast allows a client to subscribe to UDP broadcast
-func (ms MessageSender) ClientSubscribeToBroadcast(clientName string, messageReceived func(interface{}) error, startStopChan chan bool) error {
+func (ms MessageSender) ClientSubscribeToBroadcast(clientID int, messageReceived func(interface{}) error, startStopChan chan bool) error {
 
-	log.Fatal(clientName, " started UDP-listener helper.")
+	clientName := "client-" + strconv.Itoa(clientID)
+	log.Lvl3(clientName, " started UDP-listener helper.")
 	listening := false
 	lastSeenMessage := 0 //the first real message has ID 1; this means that we saw the empty struct.
 
@@ -217,9 +218,9 @@ func (ms MessageSender) ClientSubscribeToBroadcast(clientName string, messageRec
 		case val := <-startStopChan:
 			if val {
 				listening = true //either we listen or we stop
-				log.Lvl3(clientName, " switched on broadcast-listening.")
+				log.Lvl3("client", clientName, " switched on broadcast-listening")
 			} else {
-				log.Lvl3(clientName, " killed broadcast-listening.")
+				log.Lvl3("client", clientName, " killed broadcast-listening.")
 				return nil
 			}
 		default:
@@ -228,7 +229,8 @@ func (ms MessageSender) ClientSubscribeToBroadcast(clientName string, messageRec
 		if listening {
 			emptyMessage := net.REL_CLI_DOWNSTREAM_DATA_UDP{}
 			//listen and decode
-			filledMessage, err := udpChan.ListenAndBlock(&emptyMessage, lastSeenMessage)
+			log.Lvl3("client", clientName, " calling listen and block...")
+			filledMessage, err := ms.udpChannel.ListenAndBlock(&emptyMessage, lastSeenMessage, clientName)
 			lastSeenMessage++
 
 			if err != nil {
@@ -241,12 +243,8 @@ func (ms MessageSender) ClientSubscribeToBroadcast(clientName string, messageRec
 				log.Error(clientName, " an error occurred : ", err)
 			}
 
-			//forward to PriFi
-			//prifiLibInstance.ReceivedMessage(filledMessage)
 			messageReceived(filledMessage)
 
 		}
-
-		time.Sleep(time.Second)
 	}
 }

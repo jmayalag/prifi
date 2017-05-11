@@ -37,6 +37,11 @@ func (p *PriFiExchangeProtocol) Received_CLI_REL_UPSTREAM_DATA(msg Struct_CLI_RE
 	return p.prifiLibInstance.ReceivedMessage(msg.CLI_REL_UPSTREAM_DATA)
 }
 
+//Received_CLI_REL_UPSTREAM_DATA forwards an CLI_REL_UPSTREAM_DATA message to PriFi's lib
+func (p *PriFiSDAProtocol) Received_CLI_REL_CLI_REL_OPENCLOSED_DATA(msg Struct_CLI_REL_OPENCLOSED_DATA) error {
+	return p.prifiLibInstance.ReceivedMessage(msg.CLI_REL_OPENCLOSED_DATA)
+}
+
 //Received_TRU_REL_DC_CIPHER forwards an TRU_REL_DC_CIPHER message to PriFi's lib
 func (p *PriFiExchangeProtocol) Received_TRU_REL_DC_CIPHER(msg Struct_TRU_REL_DC_CIPHER) error {
 	return p.prifiLibInstance.ReceivedMessage(msg.TRU_REL_DC_CIPHER)

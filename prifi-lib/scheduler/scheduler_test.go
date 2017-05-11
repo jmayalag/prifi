@@ -94,7 +94,7 @@ func NeffShuffleTestHelper(t *testing.T, nClients int, nTrustees int, shuffleKey
 		parsed := toSend.(*net.REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE)
 
 		//who receives it
-		toSend2, err := trustees[i].TrusteeView.ReceivedShuffleFromRelay(parsed.Base, parsed.EphPks, shuffleKeyPos)
+		toSend2, err := trustees[i].TrusteeView.ReceivedShuffleFromRelay(parsed.Base, parsed.EphPks, shuffleKeyPos, make([]byte, 1))
 		if err != nil {
 			t.Error(err)
 		}
@@ -441,15 +441,15 @@ func TestWholeNeffShuffleTrusteeErrors(t *testing.T) {
 		pub, _ := crypto.NewKeyPair()
 		ephPks[i] = pub
 	}
-	_, err = n.TrusteeView.ReceivedShuffleFromRelay(nil, ephPks, true)
+	_, err = n.TrusteeView.ReceivedShuffleFromRelay(nil, ephPks, true, make([]byte, 1))
 	if err == nil {
 		t.Error("Shouldn't accept a shuffle from the relay when base is nil")
 	}
-	_, err = n.TrusteeView.ReceivedShuffleFromRelay(base, nil, true)
+	_, err = n.TrusteeView.ReceivedShuffleFromRelay(base, nil, true, make([]byte, 1))
 	if err == nil {
 		t.Error("Shouldn't accept a shuffle from the relay when ephPks is nil")
 	}
-	_, err = n.TrusteeView.ReceivedShuffleFromRelay(base, make([]abstract.Point, 0), true)
+	_, err = n.TrusteeView.ReceivedShuffleFromRelay(base, make([]abstract.Point, 0), true, make([]byte, 1))
 	if err == nil {
 		t.Error("Shouldn't accept a shuffle from the relay with no keys to shuffle")
 	}

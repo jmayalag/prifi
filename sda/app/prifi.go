@@ -406,6 +406,7 @@ func readPriFiConfigFile(c *cli.Context) (*prifi_protocol.PrifiTomlConfig, error
 	}
 
 	tomlConfig := &prifi_protocol.PrifiTomlConfig{}
+
 	_, err = toml.Decode(string(tomlRawData), tomlConfig)
 	if err != nil {
 		log.Error("Could not parse toml file", cfile)

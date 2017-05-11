@@ -35,7 +35,6 @@ import (
 	"errors"
 	"time"
 
-	"github.com/lbarman/prifi/prifi-lib/config"
 	"github.com/lbarman/prifi/prifi-lib/dcnet"
 	prifilog "github.com/lbarman/prifi/prifi-lib/log"
 	"github.com/lbarman/prifi/prifi-lib/net"
@@ -64,7 +63,6 @@ func NewRelay(dataOutputEnabled bool, dataForClients chan []byte, dataFromDCNet 
 	relayState := new(RelayState)
 
 	//init the static stuff
-	relayState.CellCoder = config.Factory()
 	relayState.DataForClients = dataForClients
 	relayState.DataFromDCNet = dataFromDCNet
 	relayState.DataOutputEnabled = dataOutputEnabled
@@ -83,6 +81,7 @@ func NewRelay(dataOutputEnabled bool, dataForClients chan []byte, dataFromDCNet 
 	relayState.timeStatistics["socks-out"] = prifilog.NewTimeStatistics()
 	relayState.timeStatistics["round-transition"] = prifilog.NewTimeStatistics()
 	relayState.PublicKey, relayState.privateKey = crypto.NewKeyPair()
+	relayState.slotScheduler = new(scheduler.BitMaskSlotScheduler_Relay)
 	relayState.bufferManager = new(BufferManager)
 	neffShuffle := new(scheduler.NeffShuffle)
 	neffShuffle.Init()
@@ -97,7 +96,7 @@ func NewRelay(dataOutputEnabled bool, dataForClients chan []byte, dataFromDCNet 
 	}
 	errFn := func(s interface{}) {
 		if strings.Contains(s.(string), ", but in state SHUTDOWN") { //it's an "acceptable error"
-			log.Lvl3(s)
+			log.Lvl4(s)
 		} else {
 			log.Error(s)
 		}
@@ -116,10 +115,10 @@ func NewRelay(dataOutputEnabled bool, dataForClients chan []byte, dataFromDCNet 
 const PROCESSING_LOOP_SLEEP_TIME = 0 * time.Millisecond
 
 //The timeout before retransmission. Here of 0, since we have only TCP. to be increase with UDP
-const TIMEOUT_PHASE_1 = 2 * time.Second
+const TIMEOUT_PHASE_1 = 1 * time.Second
 
 //The timeout before kicking a client/trustee
-const TIMEOUT_PHASE_2 = 3 * time.Second
+const TIMEOUT_PHASE_2 = 2 * time.Second
 
 // Number of ciphertexts buffered by trustees. When <= TRUSTEE_CACHE_LOWBOUND, resume sending
 const TRUSTEE_CACHE_LOWBOUND = 1
@@ -160,15 +159,21 @@ type RelayState struct {
 	trustees                          []NodeRepresentation
 	UpstreamCellSize                  int
 	UseDummyDataDown                  bool
+	UseOpenClosedSlots                bool
 	UseUDP                            bool
 	numberOfNonAckedDownstreamPackets int
 	WindowSize                        int
-	nextDownStreamRoundToSend         int32
 	ExperimentResultChannel           chan interface{}
 	ExperimentResultData              []string
 	timeoutHandler                    func([]int, []int)
 	bitrateStatistics                 *prifilog.BitrateStatistics
 	timeStatistics                    map[string]*prifilog.TimeStatistics
+	slotScheduler                     *scheduler.BitMaskSlotScheduler_Relay
+	dcNetType                         string
+
+	//Used for verifiable DC-net, part of the dcnet/owned.go
+	VerifiableDCNetKeys [][]byte
+	nVkeysCollected     int
 }
 
 // ReceivedMessage must be called when a PriFi host receives a message.
@@ -187,6 +192,10 @@ func (p *PriFiLibRelayInstance) ReceivedMessage(msg interface{}) error {
 	case net.CLI_REL_UPSTREAM_DATA:
 		if p.stateMachine.AssertState("COMMUNICATING") {
 			err = p.Received_CLI_REL_UPSTREAM_DATA(typedMsg)
+		}
+	case net.CLI_REL_OPENCLOSED_DATA:
+		if p.stateMachine.AssertState("COMMUNICATING") {
+			err = p.Received_CLI_REL_OPENCLOSED_DATA(typedMsg)
 		}
 	case net.TRU_REL_DC_CIPHER:
 		if p.stateMachine.AssertStateOrState("COMMUNICATING", "COLLECTING_SHUFFLE_SIGNATURES") {

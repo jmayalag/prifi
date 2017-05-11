@@ -6,9 +6,6 @@ import (
 	"gopkg.in/dedis/onet.v1/network"
 )
 
-//the UDP channel we provide to PriFi. check udp.go for more details.
-var udpChan = newRealUDPChannel() // Cannot use localhost channel anymore for real deployment
-
 //PriFiRole is the type of the enum to qualify the role of a SDA node (Relay, Client, Trustee)
 type PriFiRole int
 
@@ -43,6 +40,7 @@ type PrifiTomlConfig struct {
 	CellSizeUp              int
 	CellSizeDown            int
 	RelayWindowSize         int
+	RelayUseOpenClosedSlots bool
 	RelayUseDummyDataDown   bool
 	RelayReportingLimit     int
 	UseUDP                  bool
@@ -50,6 +48,7 @@ type PrifiTomlConfig struct {
 	SocksServerPort         int
 	SocksClientPort         int
 	ProtocolVersion         string
+	DCNetType               string
 }
 
 //PriFiExchangeWrapperConfig is all the information the SDA-Protocols needs. It contains the network map of identities, our role, and the socks parameters if we are the corresponding role
@@ -59,6 +58,7 @@ type PriFiExchangeWrapperConfig struct {
 	Role                  PriFiRole
 	ClientSideSocksConfig *SOCKSConfig
 	RelaySideSocksConfig  *SOCKSConfig
+	udpChan               UDPChannel
 }
 
 //PriFiScheduleWrapperConfig is all the information the SDA-Protocols needs. It contains the network map of identities, our role, and the socks parameters if we are the corresponding role
