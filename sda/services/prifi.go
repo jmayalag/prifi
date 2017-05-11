@@ -219,7 +219,7 @@ func (s *ServiceState) StopPriFiExchangeProtocol() {
 // Called when the PriFiExchangeProtocol has finished
 func (s *ServiceState) PrifiExchangeProtocolFinished() {
 	log.Lvl1("PriFi exchange protocol has finished")
-	s.StartPriFiScheduleProtocol()
+	//s.StartPriFiScheduleProtocol()
 }
 
 // startPriFiScheduleProtocol starts a PriFi schedule protocol. It is called
