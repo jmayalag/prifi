@@ -32,11 +32,13 @@ func (p *PriFiExchangeProtocol) Received_REL_CLI_TELL_TRUSTEES_PK(msg Struct_REL
 }
 
 //Received_CLI_REL_TELL_PK_AND_EPH_PK forwards an CLI_REL_TELL_PK_AND_EPH_PK message to PriFi's lib
-func (p *PriFiExchangeProtocol) Received_CLI_REL_TELL_PK_AND_EPH_PK(msg Struct_CLI_REL_TELL_PK_AND_EPH_PK) error {
-	endStep, state, err := p.prifiLibInstance.ReceivedMessage(msg.CLI_REL_TELL_PK_AND_EPH_PK)
+func (p *PriFiExchangeProtocol) Received_CLI_REL_TELL_PK_AND_EPH_PK_1(msg Struct_CLI_REL_TELL_PK_AND_EPH_PK_1) error {
+	endStep, state, err := p.prifiLibInstance.ReceivedMessage(msg.CLI_REL_TELL_PK_AND_EPH_PK_1)
 	log.LLvl4("Err: ", err, " endStep: ", endStep, " state: ", state)
 	if endStep == true {
-		p.Stop()
+		p.WhenFinished()
+		p.Done()
+		log.LLvl4("Done")
 	}
 	return err
 
@@ -79,8 +81,8 @@ func (p *PriFiScheduleProtocol) Received_REL_CLI_TELL_TRUSTEES_PK(msg Struct_REL
 }
 
 //Received_CLI_REL_TELL_PK_AND_EPH_PK forwards an CLI_REL_TELL_PK_AND_EPH_PK message to PriFi's lib
-func (p *PriFiScheduleProtocol) Received_CLI_REL_TELL_PK_AND_EPH_PK(msg Struct_CLI_REL_TELL_PK_AND_EPH_PK) error {
-	endStep, state, err := p.prifiLibInstance.ReceivedMessage(msg.CLI_REL_TELL_PK_AND_EPH_PK)
+func (p *PriFiScheduleProtocol) Received_CLI_REL_TELL_PK_AND_EPH_PK_2(msg Struct_CLI_REL_TELL_PK_AND_EPH_PK_2) error {
+	endStep, state, err := p.prifiLibInstance.ReceivedMessage(msg.CLI_REL_TELL_PK_AND_EPH_PK_2)
 	log.LLvl4("Err: ", err, " endStep: ", endStep, " state: ", state)
 	return err
 }
@@ -185,8 +187,15 @@ func (p *PriFiCommunicateProtocol) Received_REL_CLI_TELL_TRUSTEES_PK(msg Struct_
 }
 
 //Received_CLI_REL_TELL_PK_AND_EPH_PK forwards an CLI_REL_TELL_PK_AND_EPH_PK message to PriFi's lib
-func (p *PriFiCommunicateProtocol) Received_CLI_REL_TELL_PK_AND_EPH_PK(msg Struct_CLI_REL_TELL_PK_AND_EPH_PK) error {
-	endStep, state, err := p.prifiLibInstance.ReceivedMessage(msg.CLI_REL_TELL_PK_AND_EPH_PK)
+func (p *PriFiCommunicateProtocol) Received_CLI_REL_TELL_PK_AND_EPH_PK_1(msg Struct_CLI_REL_TELL_PK_AND_EPH_PK_1) error {
+	endStep, state, err := p.prifiLibInstance.ReceivedMessage(msg.CLI_REL_TELL_PK_AND_EPH_PK_1)
+	log.LLvl4("Err: ", err, " endStep: ", endStep, " state: ", state)
+	return err
+}
+
+//Received_CLI_REL_TELL_PK_AND_EPH_PK forwards an CLI_REL_TELL_PK_AND_EPH_PK message to PriFi's lib
+func (p *PriFiCommunicateProtocol) Received_CLI_REL_TELL_PK_AND_EPH_PK_2(msg Struct_CLI_REL_TELL_PK_AND_EPH_PK_2) error {
+	endStep, state, err := p.prifiLibInstance.ReceivedMessage(msg.CLI_REL_TELL_PK_AND_EPH_PK_2)
 	log.LLvl4("Err: ", err, " endStep: ", endStep, " state: ", state)
 	return err
 }

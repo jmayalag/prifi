@@ -41,7 +41,15 @@ type ALL_ALL_SHUTDOWN struct {
 
 // CLI_REL_TELL_PK_AND_EPH_PK message contains the public key and ephemeral key of a client
 // and is sent to the relay.
-type CLI_REL_TELL_PK_AND_EPH_PK struct {
+type CLI_REL_TELL_PK_AND_EPH_PK_1 struct {
+	ClientID int
+	Pk       abstract.Point
+	EphPk    abstract.Point
+}
+
+// CLI_REL_TELL_PK_AND_EPH_PK message contains the public key and ephemeral key of a client
+// and is sent to the relay.
+type CLI_REL_TELL_PK_AND_EPH_PK_2 struct {
 	ClientID int
 	Pk       abstract.Point
 	EphPk    abstract.Point

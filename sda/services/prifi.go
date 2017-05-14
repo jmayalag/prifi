@@ -195,10 +195,9 @@ func (s *ServiceState) StartPriFiExchangeProtocol() {
 
 	//assign and start the protocol
 	s.PriFiExchangeProtocol = wrapper
-	//s.PriFiExchangeProtocol.WhenFinished = s.PrifiExchangeProtocolFinished
+	s.PriFiExchangeProtocol.WhenFinished = s.PrifiExchangeProtocolFinished
 
 	s.setConfigToPriFiExchangeProtocol(wrapper)
-	//waitOrFatal(s.link, t)
 
 	wrapper.Start()
 }
@@ -220,7 +219,7 @@ func (s *ServiceState) StopPriFiExchangeProtocol() {
 // Called when the PriFiExchangeProtocol has finished
 func (s *ServiceState) PrifiExchangeProtocolFinished() {
 	log.Lvl1("PriFi exchange protocol has finished")
-	//s.StartPriFiScheduleProtocol()
+	s.StartPriFiScheduleProtocol()
 }
 
 // startPriFiScheduleProtocol starts a PriFi schedule protocol. It is called
@@ -234,8 +233,7 @@ func (s *ServiceState) StartPriFiScheduleProtocol() {
 		return
 	}
 
-	//	pi, err := s.CreateProtocol(prifi_protocol.ProtocolName, tree)
-	/*pi, err := s.CreateProtocol("PrifiScheduleProtocol", s.PriFiExchangeProtocol.Tree())
+	pi, err := s.CreateProtocol("PrifiScheduleProtocol", s.PriFiExchangeProtocol.Tree())
 
 	if err != nil {
 		log.Fatal("Unable to start Prifi exchange protocol:", err)
@@ -246,12 +244,10 @@ func (s *ServiceState) StartPriFiScheduleProtocol() {
 
 	//assign and start the protocol
 	s.PriFiScheduleProtocol = wrapper
-	s.PriFiExchangeProtocol.WhenFinished = s.PrifiScheduleProtocolFinished
 
 	s.setConfigToPriFiScheduleProtocol(wrapper)
 
 	wrapper.Start()
-	*/
 
 	timing.StartMeasure("Resync")
 

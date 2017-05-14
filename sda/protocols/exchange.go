@@ -43,6 +43,7 @@ type PriFiExchangeProtocol struct {
 	ms            MessageSender
 	toHandler     func([]string, []string)
 	ResultChannel chan interface{}
+	WhenFinished  func()
 
 	//this is the actual "PriFi" (DC-net) protocol/library, defined in prifi-lib/prifi.go
 	prifiLibInstance prifi_lib.SpecializedLibInstance
@@ -110,7 +111,7 @@ func init() {
 	network.RegisterMessage(net.ALL_ALL_PARAMETERS_NEW{})
 	network.RegisterMessage(net.TRU_REL_TELL_PK{})
 	network.RegisterMessage(net.REL_CLI_TELL_TRUSTEES_PK{})
-	network.RegisterMessage(net.CLI_REL_TELL_PK_AND_EPH_PK{})
+	network.RegisterMessage(net.CLI_REL_TELL_PK_AND_EPH_PK_1{})
 
 	onet.GlobalProtocolRegister("PrifiExchangeProtocol", NewPriFiExchangeWrapperProtocol)
 }
@@ -168,7 +169,7 @@ func (p *PriFiExchangeProtocol) registerHandlers() error {
 	if err != nil {
 		return errors.New("couldn't register handler: " + err.Error())
 	}
-	err = p.RegisterHandler(p.Received_CLI_REL_TELL_PK_AND_EPH_PK)
+	err = p.RegisterHandler(p.Received_CLI_REL_TELL_PK_AND_EPH_PK_1)
 	if err != nil {
 		return errors.New("couldn't register handler: " + err.Error())
 	}

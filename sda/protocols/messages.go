@@ -18,9 +18,15 @@ type Struct_ALL_ALL_PARAMETERS_NEW struct {
 }
 
 //Struct_CLI_REL_TELL_PK_AND_EPH_PK is a wrapper for CLI_REL_TELL_PK_AND_EPH_PK (but also contains a *onet.TreeNode)
-type Struct_CLI_REL_TELL_PK_AND_EPH_PK struct {
+type Struct_CLI_REL_TELL_PK_AND_EPH_PK_1 struct {
 	*onet.TreeNode
-	net.CLI_REL_TELL_PK_AND_EPH_PK
+	net.CLI_REL_TELL_PK_AND_EPH_PK_1
+}
+
+//Struct_CLI_REL_TELL_PK_AND_EPH_PK is a wrapper for CLI_REL_TELL_PK_AND_EPH_PK (but also contains a *onet.TreeNode)
+type Struct_CLI_REL_TELL_PK_AND_EPH_PK_2 struct {
+	*onet.TreeNode
+	net.CLI_REL_TELL_PK_AND_EPH_PK_2
 }
 
 //Struct_CLI_REL_UPSTREAM_DATA is a wrapper for CLI_REL_UPSTREAM_DATA (but also contains a *onet.TreeNode)

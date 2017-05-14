@@ -108,7 +108,8 @@ func init() {
 
 	//register the prifi_lib's message with the network lib here
 	network.RegisterMessage(net.ALL_ALL_PARAMETERS_NEW{})
-	network.RegisterMessage(net.CLI_REL_TELL_PK_AND_EPH_PK{})
+	network.RegisterMessage(net.CLI_REL_TELL_PK_AND_EPH_PK_1{})
+	network.RegisterMessage(net.CLI_REL_TELL_PK_AND_EPH_PK_2{})
 	network.RegisterMessage(net.CLI_REL_UPSTREAM_DATA{})
 	network.RegisterMessage(net.REL_CLI_DOWNSTREAM_DATA{})
 	network.RegisterMessage(net.CLI_REL_OPENCLOSED_DATA{})
@@ -182,7 +183,11 @@ func (p *PriFiCommunicateProtocol) registerHandlers() error {
 	}
 
 	//register relay handlers
-	err = p.RegisterHandler(p.Received_CLI_REL_TELL_PK_AND_EPH_PK)
+	err = p.RegisterHandler(p.Received_CLI_REL_TELL_PK_AND_EPH_PK_1)
+	if err != nil {
+		return errors.New("couldn't register handler: " + err.Error())
+	}
+	err = p.RegisterHandler(p.Received_CLI_REL_TELL_PK_AND_EPH_PK_2)
 	if err != nil {
 		return errors.New("couldn't register handler: " + err.Error())
 	}

@@ -207,9 +207,13 @@ func (p *PriFiLibRelayInstance) ReceivedMessage(msg interface{}) (bool, interfac
 		if p.stateMachine.AssertState("COLLECTING_TRUSTEES_PKS") {
 			endStep, state, err = p.Received_TRU_REL_TELL_PK(typedMsg)
 		}
-	case net.CLI_REL_TELL_PK_AND_EPH_PK:
+	case net.CLI_REL_TELL_PK_AND_EPH_PK_1:
 		if p.stateMachine.AssertState("COLLECTING_CLIENT_PKS") {
-			endStep, state, err = p.Received_CLI_REL_TELL_PK_AND_EPH_PK(typedMsg)
+			endStep, state, err = p.Received_CLI_REL_TELL_PK_AND_EPH_PK_1(typedMsg)
+		}
+	case net.CLI_REL_TELL_PK_AND_EPH_PK_2:
+		if p.stateMachine.AssertState("COLLECTING_CLIENT_PKS") {
+			endStep, state, err = p.Received_CLI_REL_TELL_PK_AND_EPH_PK_2(typedMsg)
 		}
 	case net.TRU_REL_TELL_NEW_BASE_AND_EPH_PKS:
 		if p.stateMachine.AssertState("COLLECTING_SHUFFLES") {
