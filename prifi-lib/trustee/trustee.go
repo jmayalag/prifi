@@ -28,7 +28,7 @@ import (
 Received_ALL_ALL_SHUTDOWN handles ALL_ALL_SHUTDOWN messages.
 When we receive this message we should  clean up resources.
 */
-func (p *PriFiLibTrusteeInstance) Received_ALL_ALL_SHUTDOWN(msg net.ALL_ALL_SHUTDOWN) error {
+func (p *PriFiLibTrusteeInstance) Received_ALL_ALL_SHUTDOWN(msg net.ALL_ALL_SHUTDOWN) (bool, interface{}, error) {
 	log.Lvl1("Trustee " + strconv.Itoa(p.trusteeState.ID) + " : Received a SHUTDOWN message. ")
 
 	//stop the sending process
@@ -36,14 +36,14 @@ func (p *PriFiLibTrusteeInstance) Received_ALL_ALL_SHUTDOWN(msg net.ALL_ALL_SHUT
 
 	p.stateMachine.ChangeState("SHUTDOWN")
 
-	return nil
+	return false, nil, nil
 }
 
 /*
 Received_ALL_ALL_PARAMETERS handles ALL_ALL_PARAMETERS.
 It initializes the trustee with the parameters contained in the message.
 */
-func (p *PriFiLibTrusteeInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARAMETERS_NEW) error {
+func (p *PriFiLibTrusteeInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARAMETERS_NEW) (bool, interface{}, error) {
 
 	startNow := msg.BoolValueOrElse("StartNow", false)
 	trusteeID := msg.IntValueOrElse("NextFreeTrusteeID", -1)
@@ -54,16 +54,16 @@ func (p *PriFiLibTrusteeInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PA
 
 	//sanity checks
 	if trusteeID < -1 {
-		return errors.New("trusteeID cannot be negative")
+		return false, nil, errors.New("trusteeID cannot be negative")
 	}
 	if nTrustees < 1 {
-		return errors.New("nTrustees cannot be smaller than 1")
+		return false, nil, errors.New("nTrustees cannot be smaller than 1")
 	}
 	if nClients < 1 {
-		return errors.New("nClients cannot be smaller than 1")
+		return false, nil, errors.New("nClients cannot be smaller than 1")
 	}
 	if cellSize < 1 {
-		return errors.New("UpCellSize cannot be 0")
+		return false, nil, errors.New("UpCellSize cannot be 0")
 	}
 
 	switch dcNetType {
@@ -96,7 +96,7 @@ func (p *PriFiLibTrusteeInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PA
 
 	log.Lvlf5("%+v\n", p.trusteeState)
 	log.Lvl2("Trustee " + strconv.Itoa(p.trusteeState.ID) + " has been initialized by message. ")
-	return nil
+	return false, nil, nil
 }
 
 /*
@@ -104,10 +104,10 @@ Send_TRU_REL_PK tells the relay's public key to the relay
 (this, of course, provides no security, but this is an early version of the protocol).
 This is the first action of the trustee.
 */
-func (p *PriFiLibTrusteeInstance) Send_TRU_REL_PK() error {
+func (p *PriFiLibTrusteeInstance) Send_TRU_REL_PK() (bool, interface{}, error) {
 	toSend := &net.TRU_REL_TELL_PK{TrusteeID: p.trusteeState.ID, Pk: p.trusteeState.PublicKey}
 	p.messageSender.SendToRelayWithLog(toSend, "")
-	return nil
+	return false, nil, nil
 }
 
 /*
@@ -155,7 +155,7 @@ by changing the cipher sending rate.
 Either the trustee must stop sending because the relay is at full capacity
 or the trustee sends normally because the relay has emptied up enough capacity.
 */
-func (p *PriFiLibTrusteeInstance) Received_REL_TRU_TELL_RATE_CHANGE(msg net.REL_TRU_TELL_RATE_CHANGE) error {
+func (p *PriFiLibTrusteeInstance) Received_REL_TRU_TELL_RATE_CHANGE(msg net.REL_TRU_TELL_RATE_CHANGE) (bool, interface{}, error) {
 
 	if msg.WindowCapacity == 0 {
 		p.trusteeState.sendingRate <- TRUSTEE_RATE_STOPPED
@@ -163,7 +163,7 @@ func (p *PriFiLibTrusteeInstance) Received_REL_TRU_TELL_RATE_CHANGE(msg net.REL_
 		p.trusteeState.sendingRate <- TRUSTEE_RATE_ACTIVE
 	}
 
-	return nil
+	return false, nil, nil
 }
 
 /*
@@ -191,7 +191,7 @@ and a base given by the relay. In addition to deriving the secrets,
 the trustee uses the ephemeral keys to perform a Neff shuffle. It remembers
 this shuffle in order to check the correctness of the chain of shuffle afterwards.
 */
-func (p *PriFiLibTrusteeInstance) Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE(msg net.REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE) error {
+func (p *PriFiLibTrusteeInstance) Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE(msg net.REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE) (bool, interface{}, error) {
 
 	//begin parsing the message
 	clientsPks := msg.Pks
@@ -201,17 +201,17 @@ func (p *PriFiLibTrusteeInstance) Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_
 	if len(clientsPks) < 1 {
 		e := "Trustee " + strconv.Itoa(p.trusteeState.ID) + " : len(clientsPks) must be >= 1"
 		log.Error(e)
-		return errors.New(e)
+		return false, nil, errors.New(e)
 	}
 	if len(clientsEphemeralPks) < 1 {
 		e := "Trustee " + strconv.Itoa(p.trusteeState.ID) + " : len(clientsEphemeralPks) must be >= 1"
 		log.Error(e)
-		return errors.New(e)
+		return false, nil, errors.New(e)
 	}
 	if len(clientsPks) != len(clientsEphemeralPks) {
 		e := "Trustee " + strconv.Itoa(p.trusteeState.ID) + " : len(clientsPks) must be == len(clientsEphemeralPks)"
 		log.Error(e)
-		return errors.New(e)
+		return false, nil, errors.New(e)
 	}
 
 	//fill in the clients keys
@@ -225,7 +225,7 @@ func (p *PriFiLibTrusteeInstance) Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_
 	for i := 0; i < p.trusteeState.nClients; i++ {
 		bytes, err := p.trusteeState.sharedSecrets[i].MarshalBinary()
 		if err != nil {
-			return errors.New("Could not marshal point !")
+			return false, nil, errors.New("Could not marshal point !")
 		}
 		sharedPRNGs[i] = config.CryptoSuite.Cipher(bytes)
 	}
@@ -238,7 +238,7 @@ func (p *PriFiLibTrusteeInstance) Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_
 
 	toSend, err := p.trusteeState.neffShuffle.ReceivedShuffleFromRelay(msg.Base, msg.EphPks, true, vkey)
 	if err != nil {
-		return errors.New("Could not do ReceivedShuffleFromRelay, error is " + err.Error())
+		return false, nil, errors.New("Could not do ReceivedShuffleFromRelay, error is " + err.Error())
 	}
 
 	//send the answer
@@ -246,7 +246,7 @@ func (p *PriFiLibTrusteeInstance) Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_
 
 	p.stateMachine.ChangeState("SHUFFLE_DONE")
 
-	return nil
+	return false, nil, nil
 }
 
 /*
@@ -256,11 +256,11 @@ their own shuffle has been included in the chain of shuffles. If that's the case
 shuffle (which will be used by the clients), and sends it back to the relay.
 If everything succeed, starts the goroutine for sending DC-net ciphers to the relay.
 */
-func (p *PriFiLibTrusteeInstance) Received_REL_TRU_TELL_TRANSCRIPT(msg net.REL_TRU_TELL_TRANSCRIPT) error {
+func (p *PriFiLibTrusteeInstance) Received_REL_TRU_TELL_TRANSCRIPT(msg net.REL_TRU_TELL_TRANSCRIPT) (bool, interface{}, error) {
 
 	toSend, err := p.trusteeState.neffShuffle.ReceivedTranscriptFromRelay(msg.Bases, msg.GetKeys(), msg.GetProofs())
 	if err != nil {
-		return errors.New("Could not do ReceivedTranscriptFromRelay, error is " + err.Error())
+		return false, nil, errors.New("Could not do ReceivedTranscriptFromRelay, error is " + err.Error())
 	}
 
 	//send the answer
@@ -274,5 +274,5 @@ func (p *PriFiLibTrusteeInstance) Received_REL_TRU_TELL_TRANSCRIPT(msg net.REL_T
 	//everything is ready, we start sending
 	go p.Send_TRU_REL_DC_CIPHER(p.trusteeState.sendingRate)
 
-	return nil
+	return false, nil, nil
 }

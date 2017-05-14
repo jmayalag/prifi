@@ -178,48 +178,52 @@ type RelayState struct {
 
 // ReceivedMessage must be called when a PriFi host receives a message.
 // It takes care to call the correct message handler function.
-func (p *PriFiLibRelayInstance) ReceivedMessage(msg interface{}) error {
+func (p *PriFiLibRelayInstance) ReceivedMessage(msg interface{}) (bool, interface{}, error) {
 
 	var err error
+	var endStep bool
+	var state interface{}
 
 	switch typedMsg := msg.(type) {
 	case net.ALL_ALL_PARAMETERS_NEW:
 		if typedMsg.ForceParams || p.stateMachine.AssertState("BEFORE_INIT") {
-			err = p.Received_ALL_ALL_PARAMETERS(typedMsg)
+			endStep, state, err = p.Received_ALL_ALL_PARAMETERS(typedMsg)
 		}
 	case net.ALL_ALL_SHUTDOWN:
-		err = p.Received_ALL_ALL_SHUTDOWN(typedMsg)
+		endStep, state, err = p.Received_ALL_ALL_SHUTDOWN(typedMsg)
 	case net.CLI_REL_UPSTREAM_DATA:
 		if p.stateMachine.AssertState("COMMUNICATING") {
-			err = p.Received_CLI_REL_UPSTREAM_DATA(typedMsg)
+			endStep, state, err = p.Received_CLI_REL_UPSTREAM_DATA(typedMsg)
 		}
 	case net.CLI_REL_OPENCLOSED_DATA:
 		if p.stateMachine.AssertState("COMMUNICATING") {
-			err = p.Received_CLI_REL_OPENCLOSED_DATA(typedMsg)
+			endStep, state, err = p.Received_CLI_REL_OPENCLOSED_DATA(typedMsg)
 		}
 	case net.TRU_REL_DC_CIPHER:
 		if p.stateMachine.AssertStateOrState("COMMUNICATING", "COLLECTING_SHUFFLE_SIGNATURES") {
-			err = p.Received_TRU_REL_DC_CIPHER(typedMsg)
+			endStep, state, err = p.Received_TRU_REL_DC_CIPHER(typedMsg)
 		}
 	case net.TRU_REL_TELL_PK:
 		if p.stateMachine.AssertState("COLLECTING_TRUSTEES_PKS") {
-			err = p.Received_TRU_REL_TELL_PK(typedMsg)
+			endStep, state, err = p.Received_TRU_REL_TELL_PK(typedMsg)
 		}
 	case net.CLI_REL_TELL_PK_AND_EPH_PK:
 		if p.stateMachine.AssertState("COLLECTING_CLIENT_PKS") {
-			err = p.Received_CLI_REL_TELL_PK_AND_EPH_PK(typedMsg)
+			endStep, state, err = p.Received_CLI_REL_TELL_PK_AND_EPH_PK(typedMsg)
 		}
 	case net.TRU_REL_TELL_NEW_BASE_AND_EPH_PKS:
 		if p.stateMachine.AssertState("COLLECTING_SHUFFLES") {
-			err = p.Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS(typedMsg)
+			endStep, state, err = p.Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS(typedMsg)
 		}
 	case net.TRU_REL_SHUFFLE_SIG:
 		if p.stateMachine.AssertState("COLLECTING_SHUFFLE_SIGNATURES") {
-			err = p.Received_TRU_REL_SHUFFLE_SIG(typedMsg)
+			endStep, state, err = p.Received_TRU_REL_SHUFFLE_SIG(typedMsg)
 		}
 	default:
 		err = errors.New("Unrecognized message, type" + reflect.TypeOf(msg).String())
+		endStep = false
+		state = nil
 	}
 
-	return err
+	return endStep, state, err
 }

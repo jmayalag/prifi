@@ -195,9 +195,10 @@ func (s *ServiceState) StartPriFiExchangeProtocol() {
 
 	//assign and start the protocol
 	s.PriFiExchangeProtocol = wrapper
-	s.PriFiExchangeProtocol.WhenFinished = s.PrifiExchangeProtocolFinished
+	//s.PriFiExchangeProtocol.WhenFinished = s.PrifiExchangeProtocolFinished
 
 	s.setConfigToPriFiExchangeProtocol(wrapper)
+	//waitOrFatal(s.link, t)
 
 	wrapper.Start()
 }
@@ -254,7 +255,7 @@ func (s *ServiceState) StartPriFiScheduleProtocol() {
 
 	timing.StartMeasure("Resync")
 
-	s.PriFiExchangeProtocol.WhenFinished = s.PrifiScheduleProtocolFinished
+	//s.PriFiExchangeProtocol.WhenFinished = s.PrifiScheduleProtocolFinished
 
 }
 
@@ -295,7 +296,7 @@ func (s *ServiceState) StartPriFiCommunicateProtocol() {
 
 	timing.StartMeasure("Resync")
 
-	s.PriFiExchangeProtocol.WhenFinished = nil
+	//s.PriFiExchangeProtocol.WhenFinished = nil
 	oldCommunicateProtocol = s.PriFiExchangeProtocol
 	alreadyCommunicating = true
 }

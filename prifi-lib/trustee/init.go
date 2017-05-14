@@ -95,32 +95,36 @@ type NeffShuffleResult struct {
 
 // ReceivedMessage must be called when a PriFi host receives a message.
 // It takes care to call the correct message handler function.
-func (p *PriFiLibTrusteeInstance) ReceivedMessage(msg interface{}) error {
+func (p *PriFiLibTrusteeInstance) ReceivedMessage(msg interface{}) (bool, interface{}, error) {
 
 	var err error
+	var endStep bool
+	var state interface{}
 
 	switch typedMsg := msg.(type) {
 	case net.ALL_ALL_PARAMETERS_NEW:
 		if typedMsg.ForceParams || p.stateMachine.AssertState("BEFORE_INIT") {
-			err = p.Received_ALL_ALL_PARAMETERS(typedMsg) //todo change this name
+			endStep, state, err = p.Received_ALL_ALL_PARAMETERS(typedMsg) //todo change this name
 		}
 	case net.ALL_ALL_SHUTDOWN:
-		err = p.Received_ALL_ALL_SHUTDOWN(typedMsg)
+		endStep, state, err = p.Received_ALL_ALL_SHUTDOWN(typedMsg)
 	case net.REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE:
 		if p.stateMachine.AssertState("INITIALIZING") {
-			err = p.Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE(typedMsg)
+			endStep, state, err = p.Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE(typedMsg)
 		}
 	case net.REL_TRU_TELL_TRANSCRIPT:
 		if p.stateMachine.AssertState("SHUFFLE_DONE") {
-			err = p.Received_REL_TRU_TELL_TRANSCRIPT(typedMsg)
+			endStep, state, err = p.Received_REL_TRU_TELL_TRANSCRIPT(typedMsg)
 		}
 	case net.REL_TRU_TELL_RATE_CHANGE:
 		if p.stateMachine.AssertState("READY") {
-			err = p.Received_REL_TRU_TELL_RATE_CHANGE(typedMsg)
+			endStep, state, err = p.Received_REL_TRU_TELL_RATE_CHANGE(typedMsg)
 		}
 	default:
 		err = errors.New("Unrecognized message, type" + reflect.TypeOf(msg).String())
+		endStep = false
+		state = nil
 	}
 
-	return err
+	return endStep, state, err
 }

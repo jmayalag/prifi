@@ -136,36 +136,40 @@ func NewClient(doLatencyTest bool, dataOutputEnabled bool, dataForDCNet chan []b
 
 // ReceivedMessage must be called when a PriFi host receives a message.
 // It takes care to call the correct message handler function.
-func (p *PriFiLibClientInstance) ReceivedMessage(msg interface{}) error {
+func (p *PriFiLibClientInstance) ReceivedMessage(msg interface{}) (bool, interface{}, error) {
 
 	var err error
+	var endStep bool
+	var state interface{}
 
 	switch typedMsg := msg.(type) {
 	case net.ALL_ALL_PARAMETERS_NEW:
 		if typedMsg.ForceParams || p.stateMachine.AssertState("BEFORE_INIT") {
-			err = p.Received_ALL_ALL_PARAMETERS(typedMsg)
+			endStep, state, err = p.Received_ALL_ALL_PARAMETERS(typedMsg)
 		}
 	case net.ALL_ALL_SHUTDOWN:
-		err = p.Received_ALL_ALL_SHUTDOWN(typedMsg)
+		endStep, state, err = p.Received_ALL_ALL_SHUTDOWN(typedMsg)
 	case net.REL_CLI_DOWNSTREAM_DATA:
 		if p.stateMachine.AssertState("READY") {
-			err = p.Received_REL_CLI_DOWNSTREAM_DATA(typedMsg)
+			endStep, state, err = p.Received_REL_CLI_DOWNSTREAM_DATA(typedMsg)
 		}
 	case net.REL_CLI_DOWNSTREAM_DATA_UDP:
 		if p.stateMachine.AssertState("READY") {
-			err = p.Received_REL_CLI_UDP_DOWNSTREAM_DATA(typedMsg)
+			endStep, state, err = p.Received_REL_CLI_UDP_DOWNSTREAM_DATA(typedMsg)
 		}
 	case net.REL_CLI_TELL_TRUSTEES_PK:
 		if p.stateMachine.AssertState("INITIALIZING") {
-			err = p.Received_REL_CLI_TELL_TRUSTEES_PK(typedMsg)
+			endStep, state, err = p.Received_REL_CLI_TELL_TRUSTEES_PK(typedMsg)
 		}
 	case net.REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG:
 		if p.stateMachine.AssertState("EPH_KEYS_SENT") {
-			err = p.Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(typedMsg)
+			endStep, state, err = p.Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(typedMsg)
 		}
 	default:
 		err = errors.New("Unrecognized message, type" + reflect.TypeOf(msg).String())
+		endStep = false
+		state = nil
 	}
 
-	return err
+	return endStep, state, err
 }

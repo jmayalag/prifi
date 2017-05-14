@@ -206,7 +206,8 @@ func (ms MessageSender) BroadcastToAllClients(msg interface{}) error {
 }
 
 //ClientSubscribeToBroadcast allows a client to subscribe to UDP broadcast
-func (ms MessageSender) ClientSubscribeToBroadcast(clientID int, messageReceived func(interface{}) error, startStopChan chan bool) error {
+func (ms MessageSender) ClientSubscribeToBroadcast(clientID int, messageReceived func(interface{}) (bool, interface{}, error),
+	startStopChan chan bool) error {
 
 	clientName := "client-" + strconv.Itoa(clientID)
 	log.Lvl3(clientName, " started UDP-listener helper.")

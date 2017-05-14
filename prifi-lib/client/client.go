@@ -43,17 +43,17 @@ import (
 
 // Received_ALL_CLI_SHUTDOWN handles ALL_CLI_SHUTDOWN messages.
 // When we receive this message, we should clean up resources.
-func (p *PriFiLibClientInstance) Received_ALL_ALL_SHUTDOWN(msg net.ALL_ALL_SHUTDOWN) error {
+func (p *PriFiLibClientInstance) Received_ALL_ALL_SHUTDOWN(msg net.ALL_ALL_SHUTDOWN) (bool, interface{}, error) {
 	log.Lvl2("Client " + strconv.Itoa(p.clientState.ID) + " : Received a SHUTDOWN message. ")
 
 	p.stateMachine.ChangeState("SHUTDOWN")
 
-	return nil
+	return false, nil, nil
 }
 
 // Received_ALL_CLI_PARAMETERS handles ALL_CLI_PARAMETERS messages.
 // It uses the message's parameters to initialize the client.
-func (p *PriFiLibClientInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARAMETERS_NEW) error {
+func (p *PriFiLibClientInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARAMETERS_NEW) (bool, interface{}, error) {
 
 	clientID := msg.IntValueOrElse("NextFreeClientID", -1)
 	nTrustees := msg.IntValueOrElse("NTrustees", p.clientState.nTrustees)
@@ -64,16 +64,16 @@ func (p *PriFiLibClientInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PAR
 
 	//sanity checks
 	if clientID < -1 {
-		return errors.New("ClientID cannot be negative")
+		return false, nil, errors.New("ClientID cannot be negative")
 	}
 	if nTrustees < 1 {
-		return errors.New("nTrustees cannot be smaller than 1")
+		return false, nil, errors.New("nTrustees cannot be smaller than 1")
 	}
 	if nClients < 1 {
-		return errors.New("nClients cannot be smaller than 1")
+		return false, nil, errors.New("nClients cannot be smaller than 1")
 	}
 	if upCellSize < 1 {
-		return errors.New("UpCellSize cannot be 0")
+		return false, nil, errors.New("UpCellSize cannot be 0")
 	}
 
 	switch dcNetType {
@@ -116,7 +116,7 @@ func (p *PriFiLibClientInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PAR
 
 	log.Lvl2("Client " + strconv.Itoa(p.clientState.ID) + " has been initialized by message. ")
 
-	return nil
+	return false, nil, nil
 }
 
 /*
@@ -128,24 +128,24 @@ Once we received some data from the relay, we need to reply with a DC-net cell (
 If we're lucky (if this is our slot), we are allowed to embed some message (which will be the output produced by the relay). Either we send something from the
 SOCKS/VPN data, or if we're running latency tests, we send a "ping" message to compute the latency. If we have nothing to say, we send 0's.
 */
-func (p *PriFiLibClientInstance) Received_REL_CLI_DOWNSTREAM_DATA(msg net.REL_CLI_DOWNSTREAM_DATA) error {
+func (p *PriFiLibClientInstance) Received_REL_CLI_DOWNSTREAM_DATA(msg net.REL_CLI_DOWNSTREAM_DATA) (bool, interface{}, error) {
 
 	//check if it is in-order
 	if msg.RoundID == p.clientState.RoundNo {
 		//process downstream data
-		return p.ProcessDownStreamData(msg)
+		return false, nil, p.ProcessDownStreamData(msg)
 	} else if msg.RoundID < p.clientState.RoundNo {
 		log.Lvl3("Client " + strconv.Itoa(p.clientState.ID) + " : Received a REL_CLI_DOWNSTREAM_DATA for round " + strconv.Itoa(int(msg.RoundID)) + " but we are in round " + strconv.Itoa(int(p.clientState.RoundNo)) + ", discarding.")
 	} else if msg.RoundID > p.clientState.RoundNo {
 		log.Lvl3("Client "+strconv.Itoa(p.clientState.ID)+" : Skipping from round", p.clientState.RoundNo, "to round", msg.RoundID)
 		p.clientState.RoundNo = msg.RoundID
-		return p.ProcessDownStreamData(msg)
+		return false, nil, p.ProcessDownStreamData(msg)
 		//this is not used anymore, with the Open/Closed slot schedule
 		//log.Lvl3("Client " + strconv.Itoa(p.clientState.ID) + " : Received a REL_CLI_DOWNSTREAM_DATA for round " + strconv.Itoa(int(msg.RoundID)) + " but we are in round " + strconv.Itoa(int(p.clientState.RoundNo)) + ", buffering.")
 		//p.clientState.BufferedRoundData[msg.RoundID] = msg
 	}
 
-	return nil
+	return false, nil, nil
 }
 
 /*
@@ -157,7 +157,7 @@ Once we received some data from the relay, we need to reply with a DC-net cell (
 If we're lucky (if this is our slot), we are allowed to embed some message (which will be the output produced by the relay). Either we send something from the
 SOCKS/VPN data, or if we're running latency tests, we send a "ping" message to compute the latency. If we have nothing to say, we send 0's.
 */
-func (p *PriFiLibClientInstance) Received_REL_CLI_UDP_DOWNSTREAM_DATA(msg net.REL_CLI_DOWNSTREAM_DATA_UDP) error {
+func (p *PriFiLibClientInstance) Received_REL_CLI_UDP_DOWNSTREAM_DATA(msg net.REL_CLI_DOWNSTREAM_DATA_UDP) (bool, interface{}, error) {
 
 	return p.Received_REL_CLI_DOWNSTREAM_DATA(msg.REL_CLI_DOWNSTREAM_DATA)
 }
@@ -314,7 +314,7 @@ func (p *PriFiLibClientInstance) SendUpstreamData() error {
 		case myData := <-p.clientState.DataForDCNet:
 			upstreamCellContent = myData
 
-		//or, if we have nothing to send, and we are doing Latency tests, embed a pre-crafted message that we will recognize later on
+			//or, if we have nothing to send, and we are doing Latency tests, embed a pre-crafted message that we will recognize later on
 		default:
 			emptyData := socks.NewSocksPacket(socks.DummyData, 0, 0, uint16(p.clientState.PayloadLength), make([]byte, 0))
 			upstreamCellContent = emptyData.ToBytes()
@@ -379,13 +379,13 @@ Of course, there should be check on those public keys (each client need to trust
 and that clients have agreed on the set of trustees.
 Once we receive this message, we need to reply with our Public Key (Used to derive DC-net secrets), and our Ephemeral Public Key (used for the Shuffle protocol)
 */
-func (p *PriFiLibClientInstance) Received_REL_CLI_TELL_TRUSTEES_PK(msg net.REL_CLI_TELL_TRUSTEES_PK) error {
+func (p *PriFiLibClientInstance) Received_REL_CLI_TELL_TRUSTEES_PK(msg net.REL_CLI_TELL_TRUSTEES_PK) (bool, interface{}, error) {
 
 	//sanity check
 	if len(msg.Pks) < 1 {
 		e := "Client " + strconv.Itoa(p.clientState.ID) + " : len(msg.Pks) must be >= 1"
 		log.Error(e)
-		return errors.New(e)
+		return false, nil, errors.New(e)
 	}
 
 	p.clientState.TrusteePublicKey = make([]abstract.Point, p.clientState.nTrustees)
@@ -401,7 +401,7 @@ func (p *PriFiLibClientInstance) Received_REL_CLI_TELL_TRUSTEES_PK(msg net.REL_C
 	for i := 0; i < p.clientState.nTrustees; i++ {
 		bytes, err := p.clientState.sharedSecrets[i].MarshalBinary()
 		if err != nil {
-			return errors.New("Could not marshal point !")
+			return false, nil, errors.New("Could not marshal point !")
 		}
 		sharedPRNGs[i] = config.CryptoSuite.Cipher(bytes)
 	}
@@ -420,7 +420,7 @@ func (p *PriFiLibClientInstance) Received_REL_CLI_TELL_TRUSTEES_PK(msg net.REL_C
 
 	p.stateMachine.ChangeState("EPH_KEYS_SENT")
 
-	return nil
+	return false, nil, nil
 }
 
 /*
@@ -434,7 +434,7 @@ As the client should send the first data, we do so; to keep this function simple
 (the message has no content / this is a wasted message). The actual embedding of data happens only in the
 "round function", that is Received_REL_CLI_DOWNSTREAM_DATA().
 */
-func (p *PriFiLibClientInstance) Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(msg net.REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG) error {
+func (p *PriFiLibClientInstance) Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(msg net.REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG) (bool, interface{}, error) {
 
 	//verify the signature
 	neff := new(scheduler.NeffShuffle)
@@ -455,7 +455,7 @@ func (p *PriFiLibClientInstance) Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(
 		if p.clientState.StartStopReceiveBroadcast == nil {
 			e := "Client " + strconv.Itoa(p.clientState.ID) + " wish to start listening with UDP, but doesn't have the appropriate helper."
 			log.Error(e)
-			return errors.New(e)
+			return false, nil, errors.New(e)
 		}
 		p.clientState.StartStopReceiveBroadcast <- true
 		log.Lvl3("Client " + strconv.Itoa(p.clientState.ID) + " indicated the udp-helper to start listening.")
@@ -478,5 +478,5 @@ func (p *PriFiLibClientInstance) Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(
 
 	p.clientState.RoundNo++
 
-	return nil
+	return false, nil, nil
 }
