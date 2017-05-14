@@ -18,7 +18,8 @@ Then, it runs the PriFi anonymous communication network among those entities.
 */
 
 // PriFiLibInstance contains the mutable state of a PriFi entity.
-type PriFiLibInstance struct { //todo remove this, like it was done for client
+type PriFiLibInstance struct {
+	//todo remove this, like it was done for client
 	role                   int16
 	messageSender          net.MessageSender
 	specializedLibInstance SpecializedLibInstance
@@ -26,7 +27,7 @@ type PriFiLibInstance struct { //todo remove this, like it was done for client
 
 //Prifi's "Relay", "Client" and "Trustee" instance all can receive a message
 type SpecializedLibInstance interface {
-	ReceivedMessage(msg interface{}) error
+	ReceivedMessage(msg interface{}) (bool, interface{}, error)
 }
 
 // Possible role of PriFi entities.
@@ -87,15 +88,14 @@ func NewPriFiTrustee(msgSender net.MessageSender) *PriFiLibInstance {
 
 // ReceivedMessage must be called when a PriFi host receives a message.
 // It takes care to call the correct message handler function.
-func (p *PriFiLibInstance) ReceivedMessage(msg interface{}) error {
+func (p *PriFiLibInstance) ReceivedMessage(msg interface{}) (bool, interface{}, error) {
 	typemsg := reflect.TypeOf(msg)
 	log.LLvl3("Received message ", typemsg)
-	err := p.specializedLibInstance.ReceivedMessage(msg)
+	endStep, state, err := p.specializedLibInstance.ReceivedMessage(msg)
 	if err != nil {
 		log.Error(err)
-		return err
 	}
-	return nil
+	return endStep, state, nil
 }
 
 func newMessageSenderWrapper(msgSender net.MessageSender) *net.MessageSenderWrapper {
