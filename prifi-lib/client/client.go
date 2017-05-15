@@ -464,3 +464,13 @@ func (p *PriFiLibClientInstance) Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(
 
 	return nil
 }
+
+/*
+Received_REL_CLI_QUERY handles REL_CLI_QUERY messages.
+We compare the plaintexts to find the flipped bits.
+ */
+func (p *PriFiLibClientInstance) Received_REL_CLI_QUERY(msg net.REL_CLI_QUERY) error {
+	//decrypt and compare plaintext with data @ RoundID
+
+	return nil
+}

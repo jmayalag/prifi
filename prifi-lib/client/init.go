@@ -110,7 +110,6 @@ func NewClient(doLatencyTest bool, dataOutputEnabled bool, dataForDCNet chan []b
 	clientState.timeStatistics["latency-msg-stayed-in-buffer"] = prifilog.NewTimeStatistics()
 	clientState.timeStatistics["measured-latency"] = prifilog.NewTimeStatistics()
 	clientState.timeStatistics["round-processing"] = prifilog.NewTimeStatistics()
-	//clientState.CellCoder = config.Factory()
 	clientState.DataForDCNet = dataForDCNet
 	clientState.DataFromDCNet = dataFromDCNet
 	clientState.DataOutputEnabled = dataOutputEnabled
@@ -168,6 +167,10 @@ func (p *PriFiLibClientInstance) ReceivedMessage(msg interface{}) error {
 	case net.REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG:
 		if p.stateMachine.AssertState("EPH_KEYS_SENT") {
 			err = p.Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(typedMsg)
+		}
+	case net.REL_CLI_QUERY:
+		if p.stateMachine.AssertState("READY") {
+			err = p.Received_REL_CLI_QUERY(typedMsg)
 		}
 	default:
 		err = errors.New("Unrecognized message, type" + reflect.TypeOf(msg).String())

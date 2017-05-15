@@ -173,6 +173,11 @@ type CLI_REL_QUERY struct {
 	Pk 	abstract.Point
 }
 
+type REL_CLI_QUERY struct {
+	RoundID 	int32
+	EncryptedData   []byte
+}
+
 type CLI_REL_BLAME struct {
 	RoundID int32
 	NIZK	[]byte

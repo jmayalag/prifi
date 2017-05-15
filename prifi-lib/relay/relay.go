@@ -45,6 +45,7 @@ import (
 	"gopkg.in/dedis/crypto.v0/abstract"
 	"crypto/sha256"
 	"gopkg.in/dedis/onet.v1/log"
+	"crypto"
 )
 
 /*
@@ -314,7 +315,7 @@ func (p *PriFiLibRelayInstance) finalizeUpstreamData() error {
 	}
 	timeMs = timing.StopMeasure("socks-out").Nanoseconds() / 1e6
 	p.relayState.timeStatistics["socks-out"].AddTime(timeMs)
-	p.relayState.HashFromDCNetData = sha256.Sum256(upstreamPlaintext)
+	p.relayState.DCNetData = upstreamPlaintext
 	p.relayState.HashRoundID = p.relayState.dcnetRoundManager.currentRound
 
 	p.roundFinished(p.relayState.dcnetRoundManager.CurrentRound())
@@ -371,12 +372,13 @@ func (p *PriFiLibRelayInstance) sendDownstreamData() error {
 	toSend := &net.REL_CLI_DOWNSTREAM_DATA{
 		RoundID:        p.relayState.nextDownStreamRoundToSend,
 		Data:        downstreamCellContent,
+		HashRoundID: -1,
+		Hash: nil,
 		FlagResync: flagResync}
 
-	if p.relayState.HashFromDCNetData != nil { //we have sent an upstream message so we broadcast the hash
+	if p.relayState.DCNetData != nil { //we have sent an upstream message so we broadcast the hash
 		toSend.HashRoundID = p.relayState.HashRoundID
-		toSend.Hash = p.relayState.HashFromDCNetData
-		p.relayState.HashFromDCNetData = nil
+		toSend.Hash = sha256.Sum256(p.relayState.DCNetData)
 	}
 
 	p.relayState.dcnetRoundManager.OpenRound(p.relayState.nextDownStreamRoundToSend)
@@ -652,6 +654,43 @@ func (p *PriFiLibRelayInstance) Received_TRU_REL_SHUFFLE_SIG(msg net.TRU_REL_SHU
 		//client will answer will CLI_REL_UPSTREAM_DATA. There is no data down on round 0. We set the following variable to 1 since the reception of CLI_REL_UPSTREAM_DATA decrements it.
 		p.relayState.numberOfNonAckedDownstreamPackets = 1
 	}
+
+	return nil
+}
+
+/*
+Received_CLI_REL_QUERY handles CLI_REL_QUERY messages.
+When we receive it we check the NIZK (not yet).
+If correct we send back the corrupted plaintext message encrypted with the received public key.
+ */
+func (p* PriFiLibRelayInstance) Received_CLI_REL_QUERY(msg net.CLI_REL_QUERY) error {
+
+	//Check NIZK
+
+	toSend := &net.REL_CLI_QUERY{
+		RoundID: msg.RoundID,
+		EncryptedData: p.relayState.DataFromDCNet}
+
+	p.messageSender.BroadcastToAllClientsWithLog(toSend, "Query response broadcasted")
+
+	return nil
+}
+
+/*
+Received_CLI_REL_BLAME handles CLI_REL_BLAME messages.
+When we receive it we check the NIZK (not yet).
+If correct we stop communication (after ending current round) and ask all users to reveal bits.
+ */
+func (p* PriFiLibRelayInstance) Received_CLI_REL_BLAME(msg net.CLI_REL_BLAME) error {
+
+	//Check NIZK
+
+	toSend := &net.REL_ALL_REVEAL{
+		RoundID: msg.RoundID,
+		BitPos: msg.BitPos}
+
+	p.messageSender.BroadcastToAllClientsWithLog(toSend, "Reveal message broadcasted")
+	//Bool var to let the round finish then stop and reveal ?
 
 	return nil
 }

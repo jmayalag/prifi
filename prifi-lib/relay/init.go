@@ -144,7 +144,7 @@ type RelayState struct {
 	DataForClients                    chan []byte // VPN / SOCKS should put data there !
 	PriorityDataForClients            chan []byte
 	DataFromDCNet                     chan []byte // VPN / SOCKS should read data from there !
-	HashFromDCNetData		  []byte
+	DCNetData		  	  []byte
 	HashRoundID			  int32
 	DataOutputEnabled                 bool        // If FALSE, nothing will be written to DataFromDCNet
 	DownstreamCellSize                int
@@ -212,6 +212,14 @@ func (p *PriFiLibRelayInstance) ReceivedMessage(msg interface{}) error {
 	case net.TRU_REL_SHUFFLE_SIG:
 		if p.stateMachine.AssertState("COLLECTING_SHUFFLE_SIGNATURES") {
 			err = p.Received_TRU_REL_SHUFFLE_SIG(typedMsg)
+		}
+	case net.CLI_REL_QUERY:
+		if p.stateMachine.AssertState("COMMUNICATING") {
+			err = p.Received_CLI_REL_QUERY(typedMsg)
+		}
+	case net.CLI_REL_BLAME:
+		if p.stateMachine.AssertState("COMMUNICATING") {
+			err = p.Received_CLI_REL_BLAME(typedMsg)
 		}
 	default:
 		err = errors.New("Unrecognized message, type" + reflect.TypeOf(msg).String())
