@@ -7,7 +7,6 @@ import (
 
 	"gopkg.in/dedis/crypto.v0/abstract"
 	"gopkg.in/dedis/onet.v1/log"
-	"hash"
 )
 
 /*
@@ -168,6 +167,23 @@ type TRU_REL_TELL_PK struct {
 	Pk        abstract.Point
 }
 
+type CLI_REL_QUERY struct {
+	RoundID int32
+	NIZK	[]byte
+	Pk 	abstract.Point
+}
+
+type CLI_REL_BLAME struct {
+	RoundID int32
+	NIZK	[]byte
+	BitPos	int
+}
+
+type REL_ALL_REVEAL struct {
+	RoundID int32
+	BitPos  int
+}
+
 /*
 REL_CLI_DOWNSTREAM_DATA_UDP message is a bit special. It's a REL_CLI_DOWNSTREAM_DATA, simply named with _UDP postfix to be able to distinguish them from type,
 and theoretically that should be it. But since it doesn't go through SDA (which does not support UDP yet), we have to manually convert it to bytes.
@@ -193,7 +209,7 @@ func (m *REL_CLI_DOWNSTREAM_DATA_UDP) SetContent(data REL_CLI_DOWNSTREAM_DATA) {
 func (m *REL_CLI_DOWNSTREAM_DATA_UDP) ToBytes() ([]byte, error) {
 
 	//convert the message to bytes
-	buf := make([]byte, 4+4+len(m.REL_CLI_DOWNSTREAM_DATA.Data)+4)
+	buf := make([]byte, 4+4+len(m.REL_CLI_DOWNSTREAM_DATA.Data)+4+32+4)
 	resyncInt := 0
 	if m.REL_CLI_DOWNSTREAM_DATA.FlagResync {
 		resyncInt = 1
@@ -201,8 +217,10 @@ func (m *REL_CLI_DOWNSTREAM_DATA_UDP) ToBytes() ([]byte, error) {
 
 	binary.BigEndian.PutUint32(buf[0:4], uint32(len(buf)))
 	binary.BigEndian.PutUint32(buf[4:8], uint32(m.REL_CLI_DOWNSTREAM_DATA.RoundID))
+	binary.BigEndian.PutUint32(buf[len(buf)-40:len(buf)-36], uint32(m.REL_CLI_DOWNSTREAM_DATA.HashRoundID))
 	binary.BigEndian.PutUint32(buf[len(buf)-4:], uint32(resyncInt)) //todo : to be coded on one byte
-	copy(buf[8:len(buf)-4], m.REL_CLI_DOWNSTREAM_DATA.Data)
+	copy(buf[8:len(buf)-40], m.REL_CLI_DOWNSTREAM_DATA.Data)
+	copy(buf[len(buf)-36:len(buf)-4], m.REL_CLI_DOWNSTREAM_DATA.Hash)
 
 	return buf, nil
 
@@ -225,15 +243,17 @@ func (m *REL_CLI_DOWNSTREAM_DATA_UDP) FromBytes(buffer []byte) (interface{}, err
 	}
 
 	roundID := int32(binary.BigEndian.Uint32(buffer[4:8]))
+	hashRoundID := int32(binary.BigEndian.Uint32(buffer[len(buffer)-40:len(buffer)-36]))
 	flagResyncInt := int(binary.BigEndian.Uint32(buffer[len(buffer)-4:]))
-	data := buffer[8 : len(buffer)-4]
+	data := buffer[8 : len(buffer)-40]
+	hash := buffer[len(buffer)-36:len(buffer)-4]
 
 	flagResync := false
 	if flagResyncInt == 1 {
 		flagResync = true
 	}
 
-	innerMessage := REL_CLI_DOWNSTREAM_DATA{roundID, data, flagResync} //This wrapping feels weird
+	innerMessage := REL_CLI_DOWNSTREAM_DATA{roundID, data, hashRoundID, hash, flagResync} //This wrapping feels weird
 	resultMessage := REL_CLI_DOWNSTREAM_DATA_UDP{innerMessage}
 
 	return resultMessage, nil

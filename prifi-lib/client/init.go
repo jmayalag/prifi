@@ -61,7 +61,11 @@ type ClientState struct {
 	MessageHistory            abstract.Cipher
 	StartStopReceiveBroadcast chan bool
 	timeStatistics            map[string]*prifilog.TimeStatistics
-	HashHistory		  map[int32][]byte
+	DataHistory		  map[int32][]byte
+	BlameStarted		  bool
+	CorruptedID               int32
+	BlamePrivateKey		  abstract.Scalar
+
 
 	//concurrent stuff
 	RoundNo           int32
@@ -110,7 +114,7 @@ func NewClient(doLatencyTest bool, dataOutputEnabled bool, dataForDCNet chan []b
 	clientState.DataForDCNet = dataForDCNet
 	clientState.DataFromDCNet = dataFromDCNet
 	clientState.DataOutputEnabled = dataOutputEnabled
-	clientState.HashHistory = make(map[int32][]byte)
+	clientState.DataHistory = make(map[int32][]byte)
 
 	//init the state machine
 	states := []string{"BEFORE_INIT", "INITIALIZING", "EPH_KEYS_SENT", "READY", "SHUTDOWN"}

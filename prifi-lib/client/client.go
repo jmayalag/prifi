@@ -171,12 +171,15 @@ func (p *PriFiLibClientInstance) ProcessDownStreamData(msg net.REL_CLI_DOWNSTREA
 
 	//processing hash
 	if msg.Hash != nil {
-		for roundID, hash := range p.clientState.HashHistory {
+		for roundID, data := range p.clientState.DataHistory {
 			if msg.HashRoundID == roundID {
-				if msg.Hash == hash {
-					delete(p.clientState.HashHistory, roundID)
+				if msg.Hash == sha256.Sum256(data) {
+					delete(p.clientState.DataHistory, roundID)
 				} else {
 					//start of blame procedure
+					log.Lvl3("Hash different from message")
+					p.clientState.BlameStarted = true
+					p.clientState.CorruptedID = roundID
 				}
 			}
 		}
@@ -267,7 +270,7 @@ func (p *PriFiLibClientInstance) SendUpstreamData() error {
 		//either select data from the data we have to send, if any
 		case myData := <-p.clientState.DataForDCNet:
 			upstreamCellContent = myData
-			p.clientState.HashHistory[currentRound] = sha256.Sum256(upstreamCellContent)
+			p.clientState.DataHistory[p.clientState.RoundNo] = upstreamCellContent
 
 		//or, if we have nothing to send, and we are doing Latency tests, embed a pre-crafted message that we will recognize later on
 		default:
@@ -315,6 +318,17 @@ func (p *PriFiLibClientInstance) SendUpstreamData() error {
 		}
 	}
 
+	//query the corrupted plaintext if it was corrupted
+	if p.clientState.BlameStarted {
+		var EphPublicKey abstract.Point
+		EphPublicKey, p.clientState.BlamePrivateKey = crypto.NewKeyPair()
+
+		toSend := &net.CLI_REL_QUERY{
+			RoundID: p.clientState.RoundNo,
+			NIZK: nil,
+			Pk: EphPublicKey}
+		p.messageSender.SendToRelayWithLog(toSend, "Query for the blame procedure sent.")
+	}
 	//produce the next upstream cell
 	upstreamCell := p.clientState.CellCoder.ClientEncode(upstreamCellContent, p.clientState.PayloadLength, p.clientState.MessageHistory)
 	//send the data to the relay
