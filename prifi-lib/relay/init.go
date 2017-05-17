@@ -112,13 +112,13 @@ func NewRelay(dataOutputEnabled bool, dataForClients chan []byte, dataFromDCNet 
 }
 
 //The time slept between each round
-const PROCESSING_LOOP_SLEEP_TIME = 100 * time.Millisecond
+const PROCESSING_LOOP_SLEEP_TIME = 0 * time.Millisecond
 
-//The timeout before retransmission. Here of 0, since we have only TCP. to be increase with UDP
-const TIMEOUT_PHASE_1 = 10 * time.Second
+//The timeout before retransmission (UDP)
+const TIMEOUT_PHASE_1 = 1 * time.Second
 
 //The timeout before kicking a client/trustee
-const TIMEOUT_PHASE_2 = 20 * time.Second
+const TIMEOUT_PHASE_2 = 2 * time.Second
 
 // Number of ciphertexts buffered by trustees. When <= TRUSTEE_CACHE_LOWBOUND, resume sending
 const TRUSTEE_CACHE_LOWBOUND = 1

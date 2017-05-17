@@ -44,8 +44,6 @@ import (
 	"github.com/lbarman/prifi/utils/timing"
 	"gopkg.in/dedis/crypto.v0/abstract"
 	"gopkg.in/dedis/onet.v1/log"
-	"encoding/hex"
-	"fmt"
 )
 
 /*
@@ -323,11 +321,6 @@ func (p *PriFiLibRelayInstance) finalizeUpstreamData() error {
 	}
 	upstreamPlaintext := p.relayState.CellCoder.DecodeCell()
 
-	fmt.Println("UPSTREAM CELL")
-	fmt.Println(hex.Dump(upstreamPlaintext))
-
-	log.Error("Finalized Upstream data for round", p.relayState.dcnetRoundManager.CurrentRound())
-	log.Error(hex.Dump(upstreamPlaintext))
 	timeMs := timing.StopMeasure("dcnet-decode").Nanoseconds() / 1e6
 	p.relayState.timeStatistics["dcnet-decode"].AddTime(timeMs)
 
