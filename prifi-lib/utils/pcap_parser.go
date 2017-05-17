@@ -1,8 +1,7 @@
-package main
+package utils
 
 import (
 	"github.com/Lukasa/gopcap"
-	"fmt"
 	"os"
 	"math/rand"
 	"gopkg.in/dedis/onet.v1/log"
@@ -14,17 +13,8 @@ type Packet struct {
 	Data []byte
 }
 
-func main() {
-	fmt.Println("Running...")
-
-	ps := parsePCAP("demo.pcap")
-	for _, pkt := range ps {
-4
-		fmt.Println(pkt)
-	}
-}
-
-func parsePCAP(path string) []Packet {
+// Parses a .pcap file, and returns all valid packets. A packet is (ID, TimeSent [micros], Data)
+func ParsePCAP(path string) []Packet {
 	pcapfile, err := os.Open("demo.pcap")
 	if err != nil {
 		log.Fatal("Cannot open", path, "error is", err)
