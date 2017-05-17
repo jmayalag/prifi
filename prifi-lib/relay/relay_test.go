@@ -187,6 +187,7 @@ func TestRelayRun1(t *testing.T) {
 	if rs.UseUDP != true {
 		t.Error("UseUDP was not set correctly")
 	}
+	rs.dcnetRoundManager.OpenRound(0)
 	if rs.dcnetRoundManager.NextDownStreamRoundToSent() != 1 {
 		t.Error("nextDownStreamRoundToSend was not set correctly; it should be equal to 1 since round 0 is a half-round, and does not contain downstream data from relay")
 	}
@@ -391,8 +392,8 @@ func TestRelayRun1(t *testing.T) {
 	}
 
 	//not enough to change round !
-	if rs.dcnetRoundManager.currentRound != 1 {
-		t.Error("Should still be in round 1, no data from relay")
+	if rs.dcnetRoundManager.currentRound != 0 {
+		t.Error("Should still be in round 0, no data from relay")
 	}
 
 	msg18 := net.TRU_REL_DC_CIPHER{
@@ -568,8 +569,8 @@ func TestRelayRun2(t *testing.T) {
 	}
 
 	//not enough to change round !
-	if rs.dcnetRoundManager.currentRound != 1 {
-		t.Error("Should still be in round 1, no data from relay")
+	if rs.dcnetRoundManager.currentRound != 0 {
+		t.Error("Should still be in round 0, no data from relay")
 	}
 
 	msg18 := net.CLI_REL_UPSTREAM_DATA{

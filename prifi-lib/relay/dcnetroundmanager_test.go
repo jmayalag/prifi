@@ -9,12 +9,13 @@ func TestDCNetRound(test *testing.T) {
 	data := make([]byte, 101)
 	window := 10
 	dcmr := NewDCNetRoundManager(window)
+	dcmr.OpenRound(0)
 
-	if dcmr.CurrentRound() != 1 {
-		test.Error("Should be in round 1")
+	if dcmr.CurrentRound() != 0 {
+		test.Error("Should be in round 0")
 	}
-	if !dcmr.CurrentRoundIsStill(1) {
-		test.Error("Should still be in round 1")
+	if !dcmr.CurrentRoundIsStill(0) {
+		test.Error("Should still be in round 0")
 	}
 
 	//requesting the next downstream round to send should not return an open round
@@ -28,6 +29,10 @@ func TestDCNetRound(test *testing.T) {
 
 	//opening another round should not change current round
 	dcmr.OpenRound(1)
+	if dcmr.CurrentRound() != 0 {
+		test.Error("Should be in round 0")
+	}
+	dcmr.CloseRound(0)
 	if dcmr.CurrentRound() != 1 {
 		test.Error("Should be in round 1")
 	}
