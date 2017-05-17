@@ -39,8 +39,6 @@ import (
 	"github.com/lbarman/prifi/utils/timing"
 	"math/rand"
 	"time"
-	"fmt"
-	"encoding/hex"
 )
 
 // Received_ALL_CLI_SHUTDOWN handles ALL_CLI_SHUTDOWN messages.
@@ -182,8 +180,6 @@ func (p *PriFiLibClientInstance) ProcessDownStreamData(msg net.REL_CLI_DOWNSTREA
 
 		//pass the data to the VPN/SOCKS5 proxy, if enabled
 		if p.clientState.DataOutputEnabled {
-			fmt.Println("Downstream")
-			fmt.Println(hex.Dump(msg.Data))
 			p.clientState.DataFromDCNet <- msg.Data
 		}
 		//test if it is the answer from our ping (for latency test)
@@ -283,27 +279,21 @@ func (p *PriFiLibClientInstance) WantsToTransmit() bool {
 
 	//if we have a latency test message
 	if len(p.clientState.LatencyTest.LatencyTestsToSend) > 0 {
-		log.Error("WantToTransmit: true, lat")
 		return true
 	}
 
 	//if we have already ready-to-send data
 	if p.clientState.NextDataForDCNet != nil {
-		log.Error("WantToTransmit: true, old data")
 		return true
 	}
 
 	//otherwise, poll the channel
 	select {
 	case myData := <-p.clientState.DataForDCNet:
-		fmt.Println("POLLING")
-		fmt.Println(hex.Dump(myData))
 		p.clientState.NextDataForDCNet = &myData
-		log.Error("WantToTransmit: true, new data")
 		return true
 
 	default:
-		log.Error("WantToTransmit: FALSE")
 		return false
 	}
 }
@@ -323,34 +313,24 @@ func (p *PriFiLibClientInstance) SendUpstreamData() error {
 
 	var upstreamCellContent []byte
 
-	log.Error("Maybe my slot")
 	//if we can...
 	if isMySlot {
-		log.Error("My slot !")
 		//this data has already been polled out of the DataForDCNet chan, so send it first
 		//this is non-nil when OpenClosedSlot is true, and that it had to poll data out
 		if p.clientState.NextDataForDCNet != nil {
 			upstreamCellContent = *p.clientState.NextDataForDCNet
 			p.clientState.NextDataForDCNet = nil
-
-			fmt.Println("PUSHING")
-			fmt.Println(hex.Dump(upstreamCellContent))
-			log.Error("Case 1")
 		} else {
-			log.Error("Case 2")
 			select {
 
 			//either select data from the data we have to send, if any
 			case myData := <-p.clientState.DataForDCNet:
-				fmt.Println("PUSHING 2")
-				fmt.Println(hex.Dump(myData))
 				upstreamCellContent = myData
 
 			//or, if we have nothing to send, and we are doing Latency tests, embed a pre-crafted message that we will recognize later on
 			default:
 				emptyData := socks.NewSocksPacket(socks.DummyData, 0, 0, uint16(p.clientState.PayloadLength), make([]byte, 0))
 				upstreamCellContent = emptyData.ToBytes()
-				log.Error("Case 2.1")
 
 				if len(p.clientState.LatencyTest.LatencyTestsToSend) > 0 {
 
@@ -363,7 +343,6 @@ func (p *PriFiLibClientInstance) SendUpstreamData() error {
 						p.clientState.ID, p.clientState.RoundNo, p.clientState.PayloadLength, logFn)
 
 					p.clientState.LatencyTest.LatencyTestsToSend = outMsgs
-					log.Error("Case 2.2")
 					upstreamCellContent = bytes
 				}
 			}

@@ -15,12 +15,12 @@ func (dc *DCNet_FastForwarder) ClientEncodeForRound(roundID int32, payload []byt
 
 	for dc.currentRound < roundID {
 		//discard crypto material
-		log.Error("Discarding round", dc.currentRound)
+		log.Lvl4("Discarding round", dc.currentRound)
 		_ = dc.CellCoder.ClientEncode(nil, payloadSize, history)
 		dc.currentRound++
 	}
 
-	log.Error("Producing round", dc.currentRound)
+	log.Lvl4("Producing round", dc.currentRound)
 	//produce the real round
 	data := dc.CellCoder.ClientEncode(payload, payloadSize, history)
 	dc.currentRound++
