@@ -14,6 +14,7 @@ type DCNetRoundManager struct {
 	maxNumberOfConcurrentRounds int
 	dataAlreadySent             map[int32]*net.REL_CLI_DOWNSTREAM_DATA
 	startTimes                  map[int32]time.Time
+	storedRoundsSchedule        map[int32]bool
 }
 
 // Creates a DCNetRound that hold a roundID, some data (sent at the beginning of the round, in case some client missed it), and the time the round started
@@ -56,7 +57,10 @@ func (dc *DCNetRoundManager) CloseRound(roundID int32) {
 		}
 	}
 
-	dc.currentRound++
+	dc.currentRound = roundID + 1
+	for dc.roundShouldBeSkipped(dc.currentRound) {
+		dc.currentRound++
+	}
 
 	delete(dc.dataAlreadySent, roundID)
 	delete(dc.startTimes, roundID)
@@ -104,4 +108,63 @@ func (dc *DCNetRoundManager) GetDataAlreadySent(roundID int32) *net.REL_CLI_DOWN
 	}
 	log.Fatal("Requested data already sent for round", roundID, ", but round has been closed already (or was not found).")
 	return nil
+}
+
+func (dc *DCNetRoundManager) roundAlreadyOpened(roundID int32) bool {
+	for k := range dc.startTimes {
+		if roundID == k {
+			return true
+		}
+	}
+	return false
+}
+
+func (dc *DCNetRoundManager) roundShouldBeSkipped(roundID int32) bool {
+	if dc.storedRoundsSchedule == nil {
+		return false
+	}
+
+	if isOpen, ok := dc.storedRoundsSchedule[roundID]; ok {
+		return !isOpen
+	}
+	return false
+}
+
+//NextDownStreamRoundToSent returns the next downstream round to send, and takes cares of closed slots
+func (dc *DCNetRoundManager) NextDownStreamRoundToSent() int32 {
+	dc.Lock()
+	defer dc.Unlock()
+
+	nextDownstreamRound := dc.currentRound
+
+	//do not return an open round
+	for dc.roundAlreadyOpened(nextDownstreamRound) {
+		nextDownstreamRound++
+	}
+
+	//if we don't have a closed schedule, return this
+	if dc.storedRoundsSchedule == nil {
+		return nextDownstreamRound
+	}
+
+	//else, increment it
+	doSend, found := dc.storedRoundsSchedule[nextDownstreamRound]
+	for found && !doSend {
+		//log.Error("Going to skip round", nextDownstreamRound, doSend, bmr.storedSchedule)
+		nextDownstreamRound++
+		doSend, found = dc.storedRoundsSchedule[nextDownstreamRound]
+	}
+
+	return nextDownstreamRound
+}
+
+//IsNextDownstreamRoundForOpenClosedRequest return true if the next downstream round has flagOpenCloseScheduleRequest == true
+func (dc *DCNetRoundManager) IsNextDownstreamRoundForOpenClosedRequest(nClients int) bool {
+	return (dc.NextDownStreamRoundToSent()%int32(nClients+1) == 0)
+}
+
+//SetStoredRoundSchedule simply stores s
+func (dc *DCNetRoundManager) SetStoredRoundSchedule(s map[int32]bool) {
+	//only accessed by a single thread
+	dc.storedRoundsSchedule = s
 }

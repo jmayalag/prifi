@@ -792,6 +792,8 @@ case $1 in
 				sed "s/Hosts = x/Hosts = $hosts/g" "$TEMPLATE_FILE" > "$CONFIG_FILE"
 
 				timeout "$TIMEOUT" "$thisScript" simul | tee experiment_${i}_${repeat}.txt
+
+				exit 1
 			done
 		done
 

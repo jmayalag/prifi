@@ -114,7 +114,7 @@ func NewRelay(dataOutputEnabled bool, dataForClients chan []byte, dataFromDCNet 
 //The time slept between each round
 const PROCESSING_LOOP_SLEEP_TIME = 0 * time.Millisecond
 
-//The timeout before retransmission. Here of 0, since we have only TCP. to be increase with UDP
+//The timeout before retransmission (UDP)
 const TIMEOUT_PHASE_1 = 1 * time.Second
 
 //The timeout before kicking a client/trustee

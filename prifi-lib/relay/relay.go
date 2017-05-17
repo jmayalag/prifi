@@ -186,7 +186,6 @@ func (p *PriFiLibRelayInstance) BroadcastParameters() error {
 // Received_CLI_REL_OPENCLOSED_DATA handles the reception of the OpenClosed map, which details which
 // pseudonymous clients want to transmit in a given round
 func (p *PriFiLibRelayInstance) Received_CLI_REL_OPENCLOSED_DATA(msg net.CLI_REL_OPENCLOSED_DATA) error {
-
 	p.relayState.bufferManager.SkipToRoundIfNeeded(msg.RoundID)
 	p.relayState.bufferManager.AddClientCipher(msg.RoundID, msg.ClientID, msg.OpenClosedData)
 
@@ -208,7 +207,8 @@ func (p *PriFiLibRelayInstance) Received_CLI_REL_OPENCLOSED_DATA(msg net.CLI_REL
 		openClosedData := p.relayState.CellCoder.DecodeCell()
 
 		//compute the map
-		p.relayState.slotScheduler.Relay_ComputeFinalSchedule(openClosedData, msg.RoundID+1, p.relayState.nClients)
+		sched := p.relayState.slotScheduler.Relay_ComputeFinalSchedule(openClosedData, msg.RoundID+1, p.relayState.nClients)
+		p.relayState.dcnetRoundManager.SetStoredRoundSchedule(sched)
 
 		//we finish the round
 		p.doneCollectingUpstreamData(msg.RoundID)
@@ -223,8 +223,8 @@ func (p *PriFiLibRelayInstance) Received_CLI_REL_OPENCLOSED_DATA(msg net.CLI_REL
 			p.sendDownstreamData()
 		}
 	} else {
-		a, b := p.relayState.bufferManager.MissingCiphersForCurrentRound()
-		log.Error("Missing cipher clients", a, "trustee", b)
+		//a, b := p.relayState.bufferManager.MissingCiphersForCurrentRound()
+		//log.Error("Still missing client contribution", a, "trustee", b)
 	}
 
 	return nil
@@ -239,7 +239,6 @@ If we finished a round (we had collected all data, and called DecodeCell()), we 
 Either we send something from the SOCKS/VPN buffer, or we answer the latency-test message if we received any, or we send 1 bit.
 */
 func (p *PriFiLibRelayInstance) Received_CLI_REL_UPSTREAM_DATA(msg net.CLI_REL_UPSTREAM_DATA) error {
-
 	timing.StartMeasure("dcnet-add")
 	p.relayState.bufferManager.SkipToRoundIfNeeded(msg.RoundID)
 	p.relayState.bufferManager.AddClientCipher(msg.RoundID, msg.ClientID, msg.Data)
@@ -321,6 +320,7 @@ func (p *PriFiLibRelayInstance) finalizeUpstreamData() error {
 		p.relayState.CellCoder.DecodeTrustee(s)
 	}
 	upstreamPlaintext := p.relayState.CellCoder.DecodeCell()
+
 	timeMs := timing.StopMeasure("dcnet-decode").Nanoseconds() / 1e6
 	p.relayState.timeStatistics["dcnet-decode"].AddTime(timeMs)
 
@@ -350,6 +350,7 @@ func (p *PriFiLibRelayInstance) finalizeUpstreamData() error {
 
 	timing.StartMeasure("socks-out")
 	if p.relayState.DataOutputEnabled {
+
 		packetType, _, _, _ := socks.ParseSocksHeaderFromBytes(upstreamPlaintext)
 
 		switch packetType {
@@ -410,14 +411,14 @@ func (p *PriFiLibRelayInstance) sendDownstreamData() error {
 		downstreamCellContent = data
 	}
 
-	nextDownstreamRoundID := p.relayState.slotScheduler.NextDownStreamRoundToSent()
+	nextDownstreamRoundID := p.relayState.dcnetRoundManager.NextDownStreamRoundToSent()
 
 	// TODO : if something went wrong before, this flag should be used to warn the clients that the config has changed
 	flagResync := false
 
 	// periodically set to True so client can advertise their bitmap
 	flagOpenClosedRequest := p.relayState.UseOpenClosedSlots &&
-		p.relayState.slotScheduler.IsNextDownstreamRoundForOpenClosedRequest(p.relayState.nClients)
+		p.relayState.dcnetRoundManager.IsNextDownstreamRoundForOpenClosedRequest(p.relayState.nClients)
 
 	//sending data part
 	timing.StartMeasure("sending-data")
@@ -458,7 +459,6 @@ func (p *PriFiLibRelayInstance) sendDownstreamData() error {
 	//now relay enters a waiting state (collecting all ciphers from clients/trustees)
 	timing.StartMeasure("waiting-on-someone")
 
-	p.relayState.slotScheduler.DownStreamRoundSent(nextDownstreamRoundID)
 	p.relayState.numberOfNonAckedDownstreamPackets++
 
 	return nil
@@ -482,12 +482,16 @@ func (p *PriFiLibRelayInstance) doneCollectingUpstreamData(roundID int32) error 
 	timing.StartMeasure("round-transition")
 	p.relayState.numberOfNonAckedDownstreamPackets--
 
-	log.Lvl2("Relay finished round "+strconv.Itoa(int(roundID))+" (after", p.relayState.dcnetRoundManager.TimeSpentInRound(roundID), ").")
-	p.collectExperimentResult(p.relayState.bitrateStatistics.Report())
-	timeSpent := p.relayState.dcnetRoundManager.TimeSpentInRound(roundID)
-	p.relayState.timeStatistics["round-duration"].AddTime(timeSpent.Nanoseconds() / 1e6) //ms
-	for k, v := range p.relayState.timeStatistics {
-		p.collectExperimentResult(v.ReportWithInfo(k))
+	if roundID == 0 {
+		log.Lvl2("Relay finished round " + strconv.Itoa(int(roundID)) + " .")
+	} else {
+		log.Lvl2("Relay finished round "+strconv.Itoa(int(roundID))+" (after", p.relayState.dcnetRoundManager.TimeSpentInRound(roundID), ").")
+		p.collectExperimentResult(p.relayState.bitrateStatistics.Report())
+		timeSpent := p.relayState.dcnetRoundManager.TimeSpentInRound(roundID)
+		p.relayState.timeStatistics["round-duration"].AddTime(timeSpent.Nanoseconds() / 1e6) //ms
+		for k, v := range p.relayState.timeStatistics {
+			p.collectExperimentResult(v.ReportWithInfo(k))
+		}
 	}
 
 	// Test if we are doing an experiment, and if we need to stop at some point.
@@ -647,7 +651,6 @@ func (p *PriFiLibRelayInstance) Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS(msg n
 		p.relayState.CellCoder.RelaySetup(config.CryptoSuite, p.relayState.VerifiableDCNetKeys)
 
 		// prepare to collect the ciphers
-		p.relayState.dcnetRoundManager.OpenRound(0)
 		p.relayState.CellCoder.DecodeStart(p.relayState.UpstreamCellSize, p.relayState.MessageHistory)
 
 		p.stateMachine.ChangeState("COLLECTING_SHUFFLE_SIGNATURES")
