@@ -6,12 +6,14 @@ import (
 	"gopkg.in/dedis/onet.v1/log"
 )
 
+// DCNet_FastForwarder allows to request DC-net pads for a specific round
 type DCNet_FastForwarder struct {
-	CellCoder                 dcnet.CellCoder
+	CellCoder    dcnet.CellCoder
 	currentRound int32
 }
 
-func (dc *DCNet_FastForwarder) ClientEncodeForRound(roundID int32, payload []byte, payloadSize int,  history abstract.Cipher) []byte {
+// ClientEncodeForRound allows to request DC-net pads for a specific round
+func (dc *DCNet_FastForwarder) ClientEncodeForRound(roundID int32, payload []byte, payloadSize int, history abstract.Cipher) []byte {
 
 	for dc.currentRound < roundID {
 		//discard crypto material
