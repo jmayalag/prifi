@@ -10,6 +10,7 @@ import (
 	"strconv"
 
 	"gopkg.in/dedis/onet.v1/log"
+	"encoding/hex"
 )
 
 // Authentication methods
@@ -374,6 +375,9 @@ func handleSocksClientConnection(tcpConnection net.Conn, connectionID uint32, so
 				if messageType == SocksConnect {
 					messageType = SocksData
 				}
+
+				fmt.Println("SOCKS")
+				fmt.Println(hex.Dump(newData.ToBytes()))
 
 				// Send the data to the PriFi entity
 				upstreamChan <- newData.ToBytes()

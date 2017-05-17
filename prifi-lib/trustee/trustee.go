@@ -171,6 +171,7 @@ sendData is an auxiliary function used by Send_TRU_REL_DC_CIPHER. It computes th
 It returns the new round number (previous + 1).
 */
 func sendData(p *PriFiLibTrusteeInstance, roundID int32) (int32, error) {
+	log.Error("Round", roundID)
 	data := p.trusteeState.CellCoder.TrusteeEncode(p.trusteeState.PayloadLength)
 
 	//send the data

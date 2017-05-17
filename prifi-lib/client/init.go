@@ -24,7 +24,6 @@ package client
 import (
 	"errors"
 	"github.com/lbarman/prifi/prifi-lib/crypto"
-	"github.com/lbarman/prifi/prifi-lib/dcnet"
 	prifilog "github.com/lbarman/prifi/prifi-lib/log"
 	"github.com/lbarman/prifi/prifi-lib/net"
 	"github.com/lbarman/prifi/prifi-lib/utils"
@@ -37,7 +36,7 @@ import (
 
 // ClientState contains the mutable state of the client.
 type ClientState struct {
-	CellCoder                 dcnet.CellCoder
+	DCNet_FF                  *DCNet_FastForwarder
 	currentState              int16
 	DataForDCNet              chan []byte //Data to the relay : VPN / SOCKS should put data there !
 	NextDataForDCNet          *[]byte     //if not nil, send this before polling DataForDCNet
@@ -97,6 +96,7 @@ func NewClient(doLatencyTest bool, dataOutputEnabled bool, dataForDCNet chan []b
 	clientState.NextDataForDCNet = nil
 	clientState.DataFromDCNet = dataFromDCNet
 	clientState.DataOutputEnabled = dataOutputEnabled
+	clientState.DCNet_FF = new(DCNet_FastForwarder)
 
 	//init the state machine
 	states := []string{"BEFORE_INIT", "INITIALIZING", "EPH_KEYS_SENT", "READY", "SHUTDOWN"}

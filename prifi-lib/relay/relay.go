@@ -44,6 +44,8 @@ import (
 	"github.com/lbarman/prifi/utils/timing"
 	"gopkg.in/dedis/crypto.v0/abstract"
 	"gopkg.in/dedis/onet.v1/log"
+	"encoding/hex"
+	"fmt"
 )
 
 /*
@@ -186,7 +188,6 @@ func (p *PriFiLibRelayInstance) BroadcastParameters() error {
 // Received_CLI_REL_OPENCLOSED_DATA handles the reception of the OpenClosed map, which details which
 // pseudonymous clients want to transmit in a given round
 func (p *PriFiLibRelayInstance) Received_CLI_REL_OPENCLOSED_DATA(msg net.CLI_REL_OPENCLOSED_DATA) error {
-
 	p.relayState.bufferManager.SkipToRoundIfNeeded(msg.RoundID)
 	p.relayState.bufferManager.AddClientCipher(msg.RoundID, msg.ClientID, msg.OpenClosedData)
 
@@ -240,7 +241,6 @@ If we finished a round (we had collected all data, and called DecodeCell()), we 
 Either we send something from the SOCKS/VPN buffer, or we answer the latency-test message if we received any, or we send 1 bit.
 */
 func (p *PriFiLibRelayInstance) Received_CLI_REL_UPSTREAM_DATA(msg net.CLI_REL_UPSTREAM_DATA) error {
-
 	timing.StartMeasure("dcnet-add")
 	p.relayState.bufferManager.SkipToRoundIfNeeded(msg.RoundID)
 	p.relayState.bufferManager.AddClientCipher(msg.RoundID, msg.ClientID, msg.Data)
@@ -322,6 +322,12 @@ func (p *PriFiLibRelayInstance) finalizeUpstreamData() error {
 		p.relayState.CellCoder.DecodeTrustee(s)
 	}
 	upstreamPlaintext := p.relayState.CellCoder.DecodeCell()
+
+	fmt.Println("UPSTREAM CELL")
+	fmt.Println(hex.Dump(upstreamPlaintext))
+
+	log.Error("Finalized Upstream data for round", p.relayState.dcnetRoundManager.CurrentRound())
+	log.Error(hex.Dump(upstreamPlaintext))
 	timeMs := timing.StopMeasure("dcnet-decode").Nanoseconds() / 1e6
 	p.relayState.timeStatistics["dcnet-decode"].AddTime(timeMs)
 
@@ -351,6 +357,7 @@ func (p *PriFiLibRelayInstance) finalizeUpstreamData() error {
 
 	timing.StartMeasure("socks-out")
 	if p.relayState.DataOutputEnabled {
+
 		packetType, _, _, _ := socks.ParseSocksHeaderFromBytes(upstreamPlaintext)
 
 		switch packetType {
@@ -482,7 +489,7 @@ func (p *PriFiLibRelayInstance) doneCollectingUpstreamData(roundID int32) error 
 	timing.StartMeasure("round-transition")
 	p.relayState.numberOfNonAckedDownstreamPackets--
 
-	if roundID == 1 {
+	if roundID == 0 {
 		log.Lvl2("Relay finished round " + strconv.Itoa(int(roundID)) + " .")
 	} else {
 		log.Lvl2("Relay finished round "+strconv.Itoa(int(roundID))+" (after", p.relayState.dcnetRoundManager.TimeSpentInRound(roundID), ").")
