@@ -3,6 +3,7 @@ package log
 import (
 	"math"
 	"net/http"
+	"time"
 )
 
 //Round rounds up a float64, without digits after the comma
@@ -63,4 +64,15 @@ func Confidence95Percentiles(data []int64) float64 {
 func performGETRequest(url string) error {
 	_, err := http.Get(url)
 	return err
+}
+
+// MsTimeStampNow returns the current timestamp, in milliseconds.
+func MsTimeStampNow() int64 {
+	return MsTimeStamp(time.Now())
+}
+
+// MsTimeStamp converts time.Time into int64
+func MsTimeStamp(t time.Time) int64 {
+	//http://stackoverflow.com/questions/24122821/go-golang-time-now-unixnano-convert-to-milliseconds
+	return t.UnixNano() / int64(time.Millisecond)
 }

@@ -24,7 +24,6 @@ package client
 import (
 	"errors"
 	"github.com/lbarman/prifi/prifi-lib/crypto"
-	"github.com/lbarman/prifi/prifi-lib/dcnet"
 	prifilog "github.com/lbarman/prifi/prifi-lib/log"
 	"github.com/lbarman/prifi/prifi-lib/net"
 	"github.com/lbarman/prifi/prifi-lib/utils"
@@ -37,15 +36,16 @@ import (
 
 // ClientState contains the mutable state of the client.
 type ClientState struct {
-	CellCoder                 dcnet.CellCoder
+	DCNet_FF                  *DCNet_FastForwarder
 	currentState              int16
 	DataForDCNet              chan []byte //Data to the relay : VPN / SOCKS should put data there !
+	NextDataForDCNet          *[]byte     //if not nil, send this before polling DataForDCNet
 	DataFromDCNet             chan []byte //Data from the relay : VPN / SOCKS should read data from there !
 	DataOutputEnabled         bool        //if FALSE, nothing will be written to DataFromDCNet
 	ephemeralPrivateKey       abstract.Scalar
 	EphemeralPublicKey        abstract.Point
 	ID                        int
-	LatencyTest               *LatencyTests
+	LatencyTest               *prifilog.LatencyTests
 	MySlot                    int
 	Name                      string
 	nClients                  int
@@ -79,19 +79,6 @@ type PriFiLibClientInstance struct {
 	stateMachine  *utils.StateMachine
 }
 
-// Regroups the information about doing latency tests
-type LatencyTests struct {
-	DoLatencyTests       bool
-	LatencyTestsInterval time.Duration
-	NextLatencyTest      time.Time
-	LatencyTestsToSend   []*LatencyTestToSend
-}
-
-// One buffered latency test message. We only need to store the "createdAt" time.
-type LatencyTestToSend struct {
-	createdAt time.Time
-}
-
 // NewClient creates a new PriFi client entity state.
 func NewClient(doLatencyTest bool, dataOutputEnabled bool, dataForDCNet chan []byte, dataFromDCNet chan []byte, msgSender *net.MessageSenderWrapper) *PriFiLibClientInstance {
 
@@ -100,20 +87,22 @@ func NewClient(doLatencyTest bool, dataOutputEnabled bool, dataForDCNet chan []b
 	//instantiates the static stuff
 	clientState.PublicKey, clientState.privateKey = crypto.NewKeyPair()
 	//clientState.StartStopReceiveBroadcast = make(chan bool) //this should stay nil, !=nil -> we have a listener goroutine active
-	clientState.LatencyTest = &LatencyTests{
+	clientState.LatencyTest = &prifilog.LatencyTests{
 		DoLatencyTests:       doLatencyTest,
 		LatencyTestsInterval: 5 * time.Second,
 		NextLatencyTest:      time.Now(),
-		LatencyTestsToSend:   make([]*LatencyTestToSend, 0),
+		LatencyTestsToSend:   make([]*prifilog.LatencyTestToSend, 0),
 	}
 	clientState.timeStatistics = make(map[string]*prifilog.TimeStatistics)
 	clientState.timeStatistics["latency-msg-stayed-in-buffer"] = prifilog.NewTimeStatistics()
 	clientState.timeStatistics["measured-latency"] = prifilog.NewTimeStatistics()
 	clientState.timeStatistics["round-processing"] = prifilog.NewTimeStatistics()
 	clientState.DataForDCNet = dataForDCNet
+	clientState.NextDataForDCNet = nil
 	clientState.DataFromDCNet = dataFromDCNet
 	clientState.DataOutputEnabled = dataOutputEnabled
 	clientState.DataHistory = make(map[int32][]byte)
+	clientState.DCNet_FF = new(DCNet_FastForwarder)
 
 	//init the state machine
 	states := []string{"BEFORE_INIT", "INITIALIZING", "EPH_KEYS_SENT", "READY", "SHUTDOWN"}
