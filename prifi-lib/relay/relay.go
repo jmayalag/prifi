@@ -217,6 +217,18 @@ func (p *PriFiLibRelayInstance) Received_CLI_REL_OPENCLOSED_DATA(msg net.CLI_REL
 		// sleep so it does not go too fast for debug
 		time.Sleep(PROCESSING_LOOP_SLEEP_TIME)
 
+		//if all slots are closed, do not immediately send the next downstream data (which will be a OCSlots schedule)
+		hasOpenSlot := false
+		for _, v := range sched {
+			if v {
+				hasOpenSlot = true
+			}
+		}
+		if !hasOpenSlot {
+			log.Lvl3("All slots closed, sleeping for", OPENCLOSEDSLOTS_MIN_DELAY_BETWEEN_REQUESTS)
+			time.Sleep(OPENCLOSEDSLOTS_MIN_DELAY_BETWEEN_REQUESTS)
+		}
+
 		// send the data down
 		for i := p.relayState.numberOfNonAckedDownstreamPackets; i < p.relayState.WindowSize; i++ {
 			log.Lvl3("Relay : Gonna send, non-acked packets is", p.relayState.numberOfNonAckedDownstreamPackets, "(window is", p.relayState.WindowSize, ")")
