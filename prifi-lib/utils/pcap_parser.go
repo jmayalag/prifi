@@ -2,15 +2,16 @@ package utils
 
 import (
 	"github.com/Lukasa/gopcap"
-	"os"
-	"math/rand"
 	"gopkg.in/dedis/onet.v1/log"
+	"math/rand"
+	"os"
 )
 
+// Packet is an ID(Packet number), TimeSent in microsecond, and some Data
 type Packet struct {
-	ID uint32
+	ID       uint32
 	TimeSent int64 //microseconds
-	Data []byte
+	Data     []byte
 }
 
 // Parses a .pcap file, and returns all valid packets. A packet is (ID, TimeSent [micros], Data)
@@ -34,9 +35,9 @@ func ParsePCAP(path string) []Packet {
 	for id, pkt := range parsed.Packets {
 
 		p := Packet{
-			ID: uint32(id),
-			Data: getPayloadOrRandom(pkt),
-			TimeSent: (pkt.Timestamp.Nanoseconds()-timeDelta)/1000,
+			ID:       uint32(id),
+			Data:     getPayloadOrRandom(pkt),
+			TimeSent: (pkt.Timestamp.Nanoseconds() - timeDelta) / 1000,
 		}
 
 		//basic sanity check
