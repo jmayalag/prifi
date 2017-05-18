@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"errors"
 	"github.com/Lukasa/gopcap"
 	"gopkg.in/dedis/onet.v1/log"
 	"math/rand"
@@ -15,20 +16,20 @@ type Packet struct {
 }
 
 // Parses a .pcap file, and returns all valid packets. A packet is (ID, TimeSent [micros], Data)
-func ParsePCAP(path string) []Packet {
-	pcapfile, err := os.Open("demo.pcap")
+func ParsePCAP(path string) ([]Packet, error) {
+	pcapfile, err := os.Open(path)
 	if err != nil {
-		log.Fatal("Cannot open", path, "error is", err)
+		return nil, errors.New("Cannot open" + path + "error is" + err.Error())
 	}
 	parsed, err := gopcap.Parse(pcapfile)
 	if err != nil {
-		log.Fatal("Cannot parse", path, "error is", err)
+		return nil, errors.New("Cannot prase" + path + "error is" + err.Error())
 	}
 
 	out := make([]Packet, 0)
 
 	if len(parsed.Packets) == 0 {
-		return out
+		return out, nil
 	}
 
 	timeDelta := parsed.Packets[0].Timestamp.Nanoseconds()
@@ -47,7 +48,7 @@ func ParsePCAP(path string) []Packet {
 
 	}
 
-	return out
+	return out, nil
 }
 
 func getPayloadOrRandom(pkt gopcap.Packet) []byte {

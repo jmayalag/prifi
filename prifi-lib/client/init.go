@@ -110,7 +110,6 @@ func NewClient(doLatencyTest bool, dataOutputEnabled bool, dataForDCNet chan []b
 		Enabled:    doReplayPcap,
 		PCAPFolder: pcapFolder,
 	}
-	log.Fatal(clientState.pcapReplay)
 
 	//init the state machine
 	states := []string{"BEFORE_INIT", "INITIALIZING", "EPH_KEYS_SENT", "READY", "SHUTDOWN"}
