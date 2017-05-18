@@ -276,3 +276,9 @@ func (p *PriFiLibTrusteeInstance) Received_REL_TRU_TELL_TRANSCRIPT(msg net.REL_T
 
 	return nil
 }
+
+func (p *PriFiLibTrusteeInstance) Received_REL_ALL_REVEAL(msg net.REL_ALL_REVEAL) error {
+	p.stateMachine.ChangeState("BLAMING")
+	// function in dcnet to retrieve bits with round number and bitPos
+	return nil
+}

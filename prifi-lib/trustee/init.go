@@ -45,7 +45,7 @@ func NewTrustee(msgSender *net.MessageSenderWrapper) *PriFiLibTrusteeInstance {
 	trusteeState.neffShuffle = neffShuffle.TrusteeView
 
 	//init the state machine
-	states := []string{"BEFORE_INIT", "INITIALIZING", "SHUFFLE_DONE", "READY", "SHUTDOWN"}
+	states := []string{"BEFORE_INIT", "INITIALIZING", "SHUFFLE_DONE", "READY", "BLAMING", "SHUTDOWN"}
 	sm := new(utils.StateMachine)
 	logFn := func(s interface{}) {
 		log.Lvl3(s)
@@ -117,6 +117,10 @@ func (p *PriFiLibTrusteeInstance) ReceivedMessage(msg interface{}) error {
 	case net.REL_TRU_TELL_RATE_CHANGE:
 		if p.stateMachine.AssertState("READY") {
 			err = p.Received_REL_TRU_TELL_RATE_CHANGE(typedMsg)
+		}
+	case net.REL_ALL_REVEAL:
+		if p.stateMachine.AssertState("READY") {
+			err = p.Received_REL_ALL_REVEAL(typedMsg)
 		}
 	default:
 		err = errors.New("Unrecognized message, type" + reflect.TypeOf(msg).String())

@@ -763,6 +763,7 @@ func (p* PriFiLibRelayInstance) Received_CLI_REL_BLAME(msg net.CLI_REL_BLAME) er
 		RoundID: msg.RoundID,
 		BitPos: msg.BitPos}
 
+	//broadcast to all trustees ?
 	p.messageSender.BroadcastToAllClientsWithLog(toSend, "Reveal message broadcasted")
 	//Bool var to let the round finish then stop and reveal ?
 
