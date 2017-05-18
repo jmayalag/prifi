@@ -105,7 +105,7 @@ func NewClient(doLatencyTest bool, dataOutputEnabled bool, dataForDCNet chan []b
 	clientState.DCNet_FF = new(DCNet_FastForwarder)
 
 	//init the state machine
-	states := []string{"BEFORE_INIT", "INITIALIZING", "EPH_KEYS_SENT", "READY", "SHUTDOWN"}
+	states := []string{"BEFORE_INIT", "INITIALIZING", "EPH_KEYS_SENT", "READY", "BLAMING", "SHUTDOWN"}
 	sm := new(utils.StateMachine)
 	logFn := func(s interface{}) {
 		log.Lvl2(s)
@@ -160,6 +160,10 @@ func (p *PriFiLibClientInstance) ReceivedMessage(msg interface{}) error {
 	case net.REL_CLI_QUERY:
 		if p.stateMachine.AssertState("READY") {
 			err = p.Received_REL_CLI_QUERY(typedMsg)
+		}
+	case net.REL_ALL_REVEAL:
+		if p.stateMachine.AssertState("READY") {
+			err = p.Received_REL_ALL_REVEAL(typedMsg)
 		}
 	default:
 		err = errors.New("Unrecognized message, type" + reflect.TypeOf(msg).String())

@@ -505,5 +505,47 @@ We compare the plaintexts to find the flipped bits.
 func (p *PriFiLibClientInstance) Received_REL_CLI_QUERY(msg net.REL_CLI_QUERY) error {
 	//decrypt and compare plaintext with data @ RoundID
 
+	for roundID, data := range p.clientState.DataHistory {
+		if msg.RoundID == roundID {
+			bitPos := comparePlaintexts(data, msg.EncryptedData) //todo change when data encrypted
+			toSend := &net.CLI_REL_BLAME{
+				RoundID: roundID,
+				NIZK:    nil,
+				BitPos:  bitPos,
+			}
+
+			if bitPos != -1 { //if bitPos is -1, we can't continue blame procedure
+				p.messageSender.SendToRelayWithLog(toSend, "Bit found, beginning of blame procedure.")
+			}
+		}
+	}
+
+
+	return nil
+}
+
+/*
+comparePlaintexts returns the first position where a 0 in the first array was flipped to a 1 in the second,
+or -1 if there is no such position
+ */
+func comparePlaintexts(data1, data2 []byte) int {
+
+	for i := 0; i < len(data1); i++ {
+		b1 := data1[i]
+		b2 := data2[i]
+
+		for j := 0; j< 8; j++ {
+			mask := byte(1 << uint8(j))
+			if (b1 & mask) != (b2 & mask) && (b1 & mask) == 0 { //difference between b1 and b2 and it's a 0 in b1
+				return (i*8 + 7-j)
+			}
+		}
+	}
+	return -1
+}
+
+func (p *PriFiLibClientInstance) Received_REL_ALL_REVEAL(msg net.REL_ALL_REVEAL) error {
+	p.stateMachine.ChangeState("BLAMING")
+	// function in dcnet to retrieve bits with round number and bitPos
 	return nil
 }

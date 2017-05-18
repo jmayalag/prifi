@@ -743,7 +743,7 @@ func (p* PriFiLibRelayInstance) Received_CLI_REL_QUERY(msg net.CLI_REL_QUERY) er
 
 	toSend := &net.REL_CLI_QUERY{
 		RoundID: msg.RoundID,
-		EncryptedData: p.relayState.DataFromDCNet}
+		EncryptedData: p.relayState.DataFromDCNet} // todo encrypt data
 
 	p.messageSender.BroadcastToAllClientsWithLog(toSend, "Query response broadcasted")
 
