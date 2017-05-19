@@ -38,7 +38,7 @@ import (
 type PriFiExchangeProtocol struct {
 	*onet.TreeNodeInstance
 	configSet     bool
-	config        PriFiExchangeWrapperConfig
+	config        PriFiWrapperConfig
 	role          PriFiRole
 	ms            MessageSender
 	toHandler     func([]string, []string)

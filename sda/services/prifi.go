@@ -183,7 +183,7 @@ func (s *ServiceState) StartPriFiExchangeProtocol() {
 
 	// Start the PriFi exchange protocol on a flat tree with the relay as root
 	tree := roster.GenerateNaryTreeWithRoot(100, s.churnHandler.relayIdentity)
-	//	pi, err := s.CreateProtocol(prifi_protocol.ProtocolName, tree)
+
 	pi, err := s.CreateProtocol("PrifiExchangeProtocol", tree)
 
 	if err != nil {
@@ -233,14 +233,21 @@ func (s *ServiceState) StartPriFiScheduleProtocol() {
 		return
 	}
 
-	pi, err := s.CreateProtocol("PrifiScheduleProtocol", s.PriFiExchangeProtocol.Tree())
+	var wrapper *prifi_protocol.PriFiScheduleProtocol
+	s.churnHandler.createRoster()
+	roster := s.churnHandler.roster
+
+	// Start the PriFi exchange protocol on a flat tree with the relay as root
+	tree := roster.GenerateNaryTreeWithRoot(100, s.churnHandler.relayIdentity)
+
+	pi, err := s.CreateProtocol("PrifiScheduleProtocol", tree)
 
 	if err != nil {
 		log.Fatal("Unable to start Prifi exchange protocol:", err)
 	}
 
 	// Assert that pi has type PriFiScheduleProtocol
-	wrapper := pi.(*prifi_protocol.PriFiScheduleProtocol)
+	wrapper = pi.(*prifi_protocol.PriFiScheduleProtocol)
 
 	//assign and start the protocol
 	s.PriFiScheduleProtocol = wrapper

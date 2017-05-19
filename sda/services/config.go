@@ -77,7 +77,7 @@ func (s *ServiceState) setConfigToPriFiExchangeProtocol(wrapper *prifi_protocol.
 		identitiesMap = s.churnHandler.createIdentitiesMap()
 	}
 
-	configMsg := &prifi_protocol.PriFiExchangeWrapperConfig{
+	configMsg := &prifi_protocol.PriFiWrapperConfig{
 		Toml:       s.prifiTomlConfig,
 		Identities: identitiesMap,
 		Role:       s.role,
@@ -85,7 +85,7 @@ func (s *ServiceState) setConfigToPriFiExchangeProtocol(wrapper *prifi_protocol.
 		RelaySideSocksConfig:  socksServerConfig,
 	}
 
-	wrapper.SetConfigFromPriFiService(configMsg)
+	s.prifiLibInstance = wrapper.SetConfigFromPriFiService(configMsg)
 
 	//when PriFi-protocol (via PriFi-lib) detects a slow client, call "handleTimeout"
 	wrapper.SetTimeoutHandler(s.handleTimeout)
@@ -105,7 +105,7 @@ func (s *ServiceState) setConfigToPriFiScheduleProtocol(wrapper *prifi_protocol.
 		identitiesMap = s.churnHandler.createIdentitiesMap()
 	}
 
-	configMsg := &prifi_protocol.PriFiScheduleWrapperConfig{
+	configMsg := &prifi_protocol.PriFiWrapperConfig{
 		Toml:       s.prifiTomlConfig,
 		Identities: identitiesMap,
 		Role:       s.role,
@@ -113,7 +113,7 @@ func (s *ServiceState) setConfigToPriFiScheduleProtocol(wrapper *prifi_protocol.
 		RelaySideSocksConfig:  socksServerConfig,
 	}
 
-	wrapper.SetConfigFromPriFiService(configMsg)
+	wrapper.SetConfigFromPriFiService(configMsg, s.prifiLibInstance)
 
 	//when PriFi-protocol (via PriFi-lib) detects a slow client, call "handleTimeout"
 	wrapper.SetTimeoutHandler(s.handleTimeout)
@@ -133,7 +133,7 @@ func (s *ServiceState) setConfigToPriFiCommunicateProtocol(wrapper *prifi_protoc
 		identitiesMap = s.churnHandler.createIdentitiesMap()
 	}
 
-	configMsg := &prifi_protocol.PriFiCommunicateWrapperConfig{
+	configMsg := &prifi_protocol.PriFiWrapperConfig{
 		Toml:       s.prifiTomlConfig,
 		Identities: identitiesMap,
 		Role:       s.role,

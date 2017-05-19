@@ -52,7 +52,7 @@ type PrifiTomlConfig struct {
 }
 
 //PriFiExchangeWrapperConfig is all the information the SDA-Protocols needs. It contains the network map of identities, our role, and the socks parameters if we are the corresponding role
-type PriFiExchangeWrapperConfig struct {
+type PriFiWrapperConfig struct {
 	Toml                  *PrifiTomlConfig
 	Identities            map[string]PriFiIdentity
 	Role                  PriFiRole
@@ -61,27 +61,9 @@ type PriFiExchangeWrapperConfig struct {
 	udpChan               UDPChannel
 }
 
-//PriFiScheduleWrapperConfig is all the information the SDA-Protocols needs. It contains the network map of identities, our role, and the socks parameters if we are the corresponding role
-type PriFiScheduleWrapperConfig struct {
-	Toml                  *PrifiTomlConfig
-	Identities            map[string]PriFiIdentity
-	Role                  PriFiRole
-	ClientSideSocksConfig *SOCKSConfig
-	RelaySideSocksConfig  *SOCKSConfig
-}
-
-//PriFiCommunicateWrapperConfig is all the information the SDA-Protocols needs. It contains the network map of identities, our role, and the socks parameters if we are the corresponding role
-type PriFiCommunicateWrapperConfig struct {
-	Toml                  *PrifiTomlConfig
-	Identities            map[string]PriFiIdentity
-	Role                  PriFiRole
-	ClientSideSocksConfig *SOCKSConfig
-	RelaySideSocksConfig  *SOCKSConfig
-}
-
 // SetConfig configures the PriFi node.
 // It **MUST** be called in service.newProtocol or before Start().
-func (p *PriFiExchangeProtocol) SetConfigFromPriFiService(config *PriFiExchangeWrapperConfig) {
+func (p *PriFiExchangeProtocol) SetConfigFromPriFiService(config *PriFiWrapperConfig) prifi_lib.SpecializedLibInstance {
 	p.config = *config
 	p.role = config.Role
 
@@ -128,6 +110,8 @@ func (p *PriFiExchangeProtocol) SetConfigFromPriFiService(config *PriFiExchangeW
 	p.registerHandlers()
 
 	p.configSet = true
+
+	return p.prifiLibInstance
 }
 
 // SetTimeoutHandler sets the function that will be called on round timeout
@@ -138,7 +122,7 @@ func (p *PriFiExchangeProtocol) SetTimeoutHandler(handler func([]string, []strin
 
 // SetConfig configures the PriFi node.
 // It **MUST** be called in service.newProtocol or before Start().
-func (p *PriFiScheduleProtocol) SetConfigFromPriFiService(config *PriFiScheduleWrapperConfig) {
+func (p *PriFiScheduleProtocol) SetConfigFromPriFiService(config *PriFiWrapperConfig, oldPrifiLib prifi_lib.SpecializedLibInstance) {
 	p.config = *config
 	p.role = config.Role
 
@@ -164,23 +148,7 @@ func (p *PriFiScheduleProtocol) SetConfigFromPriFiService(config *PriFiScheduleW
 		}
 	}
 
-	experimentResultChan := p.ResultChannel
-
-	switch config.Role {
-	case Relay:
-		relayOutputEnabled := config.Toml.RelayDataOutputEnabled
-		p.prifiLibInstance = prifi_lib.NewPriFiRelay(relayOutputEnabled,
-			config.RelaySideSocksConfig.DownstreamChannel, config.RelaySideSocksConfig.UpstreamChannel,
-			experimentResultChan, p.handleTimeout, ms)
-	case Trustee:
-		p.prifiLibInstance = prifi_lib.NewPriFiTrustee(ms)
-
-	case Client:
-		doLatencyTests := config.Toml.DoLatencyTests
-		clientDataOutputEnabled := config.Toml.ClientDataOutputEnabled
-		p.prifiLibInstance = prifi_lib.NewPriFiClient(doLatencyTests, clientDataOutputEnabled,
-			config.ClientSideSocksConfig.UpstreamChannel, config.ClientSideSocksConfig.DownstreamChannel, ms)
-	}
+	p.prifiLibInstance = oldPrifiLib
 
 	p.registerHandlers()
 
@@ -195,7 +163,7 @@ func (p *PriFiScheduleProtocol) SetTimeoutHandler(handler func([]string, []strin
 
 // SetConfig configures the PriFi node.
 // It **MUST** be called in service.newProtocol or before Start().
-func (p *PriFiCommunicateProtocol) SetConfigFromPriFiService(config *PriFiCommunicateWrapperConfig) {
+func (p *PriFiCommunicateProtocol) SetConfigFromPriFiService(config *PriFiWrapperConfig) {
 	p.config = *config
 	p.role = config.Role
 

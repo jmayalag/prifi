@@ -556,35 +556,7 @@ func (p *PriFiLibRelayInstance) Received_CLI_REL_TELL_PK_AND_EPH_PK_1(msg net.CL
 
 	// if we have collected all clients, continue
 	if p.relayState.nClientsPkCollected == p.relayState.nClients {
-
 		return true, p, nil
-
-		/*p.relayState.neffShuffle.Init(p.relayState.nTrustees)
-
-		for i := 0; i < p.relayState.nClients; i++ {
-			p.relayState.neffShuffle.AddClient(p.relayState.clients[i].EphemeralPublicKey)
-		}
-
-		msg, trusteeID, err := p.relayState.neffShuffle.SendToNextTrustee()
-		if err != nil {
-			e := "Could not do p.relayState.neffShuffle.SendToNextTrustee, error is " + err.Error()
-			log.Error(e)
-			return false, nil, errors.New(e)
-		}
-		toSend := msg.(*net.REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE)
-
-		//todo: fix this. The neff shuffle now stores twices the ephemeral public keys
-		toSend.Pks = make([]abstract.Point, p.relayState.nClients)
-		for i := 0; i < p.relayState.nClients; i++ {
-			toSend.Pks[i] = p.relayState.clients[i].PublicKey
-		}
-
-		// send to the 1st trustee
-		p.messageSender.SendToTrusteeWithLog(trusteeID, toSend, "(0-th iteration)")
-
-		p.stateMachine.ChangeState("COLLECTING_SHUFFLES")
-
-		timing.StopMeasure("Resync")*/
 	}
 
 	return false, nil, nil
@@ -598,19 +570,19 @@ and send them to the first trustee for it to Neff-Shuffle them.
 */
 func (p *PriFiLibRelayInstance) Received_CLI_REL_TELL_PK_AND_EPH_PK_2(msg net.CLI_REL_TELL_PK_AND_EPH_PK_2) (bool, interface{},
 	error) {
-	/*p.relayState.neffShuffle.Init(p.relayState.nTrustees)
+	p.relayState.neffShuffle.Init(p.relayState.nTrustees)
 
 	for i := 0; i < p.relayState.nClients; i++ {
 		p.relayState.neffShuffle.AddClient(p.relayState.clients[i].EphemeralPublicKey)
 	}
 
-	msg, trusteeID, err := p.relayState.neffShuffle.SendToNextTrustee()
+	n_msg, trusteeID, err := p.relayState.neffShuffle.SendToNextTrustee()
 	if err != nil {
 		e := "Could not do p.relayState.neffShuffle.SendToNextTrustee, error is " + err.Error()
 		log.Error(e)
 		return false, nil, errors.New(e)
 	}
-	toSend := msg.(*net.REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE)
+	toSend := n_msg.(*net.REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE)
 
 	//todo: fix this. The neff shuffle now stores twices the ephemeral public keys
 	toSend.Pks = make([]abstract.Point, p.relayState.nClients)
@@ -623,8 +595,8 @@ func (p *PriFiLibRelayInstance) Received_CLI_REL_TELL_PK_AND_EPH_PK_2(msg net.CL
 
 	p.stateMachine.ChangeState("COLLECTING_SHUFFLES")
 
-	timing.StopMeasure("Resync")*/
-	return true, p, nil
+	timing.StopMeasure("Resync")
+	return false, nil, nil
 }
 
 /*

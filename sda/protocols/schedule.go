@@ -38,7 +38,7 @@ import (
 type PriFiScheduleProtocol struct {
 	*onet.TreeNodeInstance
 	configSet     bool
-	config        PriFiScheduleWrapperConfig
+	config        PriFiWrapperConfig
 	role          PriFiRole
 	ms            MessageSender
 	toHandler     func([]string, []string)
@@ -96,20 +96,8 @@ func (p *PriFiScheduleProtocol) Stop() {
 func init() {
 
 	//register the prifi_lib's message with the network lib here
-	network.RegisterMessage(net.ALL_ALL_PARAMETERS_NEW{})
 	network.RegisterMessage(net.CLI_REL_TELL_PK_AND_EPH_PK_2{})
-	network.RegisterMessage(net.CLI_REL_UPSTREAM_DATA{})
-	network.RegisterMessage(net.REL_CLI_DOWNSTREAM_DATA{})
-	network.RegisterMessage(net.CLI_REL_OPENCLOSED_DATA{})
-	network.RegisterMessage(net.REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG{})
-	network.RegisterMessage(net.REL_CLI_TELL_TRUSTEES_PK{})
 	network.RegisterMessage(net.REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE{})
-	network.RegisterMessage(net.REL_TRU_TELL_TRANSCRIPT{})
-	network.RegisterMessage(net.TRU_REL_DC_CIPHER{})
-	network.RegisterMessage(net.REL_TRU_TELL_RATE_CHANGE{})
-	network.RegisterMessage(net.TRU_REL_SHUFFLE_SIG{})
-	network.RegisterMessage(net.TRU_REL_TELL_NEW_BASE_AND_EPH_PKS{})
-	network.RegisterMessage(net.TRU_REL_TELL_PK{})
 
 	onet.GlobalProtocolRegister("PrifiScheduleProtocol", NewPriFiScheduleWrapperProtocol)
 }
@@ -147,25 +135,7 @@ func NewPriFiScheduleWrapperProtocol(n *onet.TreeNodeInstance) (onet.ProtocolIns
 // that registers handlers for all prifi messages.
 func (p *PriFiScheduleProtocol) registerHandlers() error {
 	//register handlers
-	err := p.RegisterHandler(p.Received_ALL_ALL_PARAMETERS_NEW)
-	if err != nil {
-		return errors.New("couldn't register handler: " + err.Error())
-	}
-	err = p.RegisterHandler(p.Received_ALL_ALL_SHUTDOWN)
-	if err != nil {
-		return errors.New("couldn't register handler: " + err.Error())
-	}
-
-	//register client handlers
-	err = p.RegisterHandler(p.Received_REL_CLI_DOWNSTREAM_DATA)
-	if err != nil {
-		return errors.New("couldn't register handler: " + err.Error())
-	}
-	err = p.RegisterHandler(p.Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG)
-	if err != nil {
-		return errors.New("couldn't register handler: " + err.Error())
-	}
-	err = p.RegisterHandler(p.Received_REL_CLI_TELL_TRUSTEES_PK)
+	err := p.RegisterHandler(p.Received_ALL_ALL_SHUTDOWN)
 	if err != nil {
 		return errors.New("couldn't register handler: " + err.Error())
 	}
@@ -175,41 +145,9 @@ func (p *PriFiScheduleProtocol) registerHandlers() error {
 	if err != nil {
 		return errors.New("couldn't register handler: " + err.Error())
 	}
-	err = p.RegisterHandler(p.Received_CLI_REL_UPSTREAM_DATA)
-	if err != nil {
-		return errors.New("couldn't register handler: " + err.Error())
-	}
-	err = p.RegisterHandler(p.Received_TRU_REL_DC_CIPHER)
-	if err != nil {
-		return errors.New("couldn't register handler: " + err.Error())
-	}
-	err = p.RegisterHandler(p.Received_TRU_REL_SHUFFLE_SIG)
-	if err != nil {
-		return errors.New("couldn't register handler: " + err.Error())
-	}
-	err = p.RegisterHandler(p.Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS)
-	if err != nil {
-		return errors.New("couldn't register handler: " + err.Error())
-	}
-	err = p.RegisterHandler(p.Received_TRU_REL_TELL_PK)
-	if err != nil {
-		return errors.New("couldn't register handler: " + err.Error())
-	}
-	err = p.RegisterHandler(p.Received_CLI_REL_CLI_REL_OPENCLOSED_DATA)
-	if err != nil {
-		return errors.New("couldn't register handler: " + err.Error())
-	}
 
 	//register trustees handlers
 	err = p.RegisterHandler(p.Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE)
-	if err != nil {
-		return errors.New("couldn't register handler: " + err.Error())
-	}
-	err = p.RegisterHandler(p.Received_REL_TRU_TELL_TRANSCRIPT)
-	if err != nil {
-		return errors.New("couldn't register handler: " + err.Error())
-	}
-	err = p.RegisterHandler(p.Received_REL_TRU_TELL_RATE_CHANGE)
 	if err != nil {
 		return errors.New("couldn't register handler: " + err.Error())
 	}

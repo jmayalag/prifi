@@ -12,6 +12,8 @@ import (
 	"io/ioutil"
 	"strconv"
 
+	"errors"
+	"github.com/lbarman/prifi/prifi-lib"
 	prifi_socks "github.com/lbarman/prifi/prifi-socks"
 	prifi_protocol "github.com/lbarman/prifi/sda/protocols"
 	"gopkg.in/dedis/onet.v1"
@@ -57,6 +59,9 @@ type ServiceState struct {
 	PriFiExchangeProtocol    *prifi_protocol.PriFiExchangeProtocol
 	PriFiScheduleProtocol    *prifi_protocol.PriFiScheduleProtocol
 	PriFiCommunicateProtocol *prifi_protocol.PriFiCommunicateProtocol
+
+	//this hold the prifi lib instance when any protocol run
+	prifiLibInstance prifi_lib.SpecializedLibInstance
 
 	//used to hold "stoppers" for go-routines; send "true" to kill
 	socksStopChan []chan bool
@@ -107,7 +112,16 @@ func newService(c *onet.Context) onet.Service {
 func (s *ServiceState) NewProtocol(tn *onet.TreeNodeInstance, conf *onet.GenericConfig) (onet.ProtocolInstance, error) {
 
 	log.LLvlf2("Starting new %s", tn.ProtocolName())
-	return s.NewExchangeProtocol(tn, conf)
+	switch tn.ProtocolName() {
+	case "PrifiExchangeProtocol":
+		return s.NewExchangeProtocol(tn, conf)
+	case "PrifiScheduleProtocol":
+		return s.NewScheduleProtocol(tn, conf)
+	case "PrifiCommunicateProtocol":
+		return s.NewCommunicateProtocol(tn, conf)
+	default:
+		return nil, errors.New("Unknown protocol")
+	}
 }
 
 // NewExchangeProtocol
