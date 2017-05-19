@@ -32,7 +32,7 @@ func Test1Client(t *testing.T) {
 	}
 	mySlotInNextRound := int32(i)
 	fmt.Println("Gonna reserve round", mySlotInNextRound)
-	bmc.Client_ReserveSlot(mySlotInNextRound)
+	bmc.Client_ReserveRound(mySlotInNextRound)
 
 	contribution := bmc.Client_GetOpenScheduleContribution()
 
@@ -54,7 +54,6 @@ func Test1Client(t *testing.T) {
 	}
 
 	fmt.Println(finalSched)
-	fmt.Println("Done")
 }
 
 func Test2Client(t *testing.T) {
@@ -90,8 +89,8 @@ func Test2Client(t *testing.T) {
 	mySlotInNextRound2 := int32(i)
 	fmt.Println("Client 0: Gonna reserve round", mySlotInNextRound1)
 	fmt.Println("Client 1: Gonna reserve round", mySlotInNextRound2)
-	bmc1.Client_ReserveSlot(mySlotInNextRound1)
-	bmc2.Client_ReserveSlot(mySlotInNextRound2)
+	bmc1.Client_ReserveRound(mySlotInNextRound1)
+	bmc2.Client_ReserveRound(mySlotInNextRound2)
 
 	contribution1 := bmc1.Client_GetOpenScheduleContribution()
 	contribution2 := bmc2.Client_GetOpenScheduleContribution()
@@ -122,5 +121,4 @@ func Test2Client(t *testing.T) {
 	}
 
 	fmt.Println(finalSched)
-	fmt.Println("Done")
 }

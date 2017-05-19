@@ -6,6 +6,7 @@ import (
 	"errors"
 	"github.com/lbarman/prifi/prifi-lib/config"
 	"github.com/lbarman/prifi/prifi-lib/crypto"
+	prifilog "github.com/lbarman/prifi/prifi-lib/log"
 	"github.com/lbarman/prifi/prifi-lib/net"
 	"github.com/lbarman/prifi/prifi-lib/scheduler"
 	"gopkg.in/dedis/crypto.v0/abstract"
@@ -124,8 +125,8 @@ func TestClient(t *testing.T) {
 	if cs.UseUDP != true {
 		t.Error("UseUDP should now have been set to true")
 	}
-	if cs.CellCoder == nil {
-		t.Error("CellCoder should have been created")
+	if cs.DCNet_FF == nil {
+		t.Error("DCNet_FF should have been created")
 	}
 	if len(cs.TrusteePublicKey) != nTrustees {
 		t.Error("Len(TrusteePKs) should be equal to NTrustees")
@@ -365,7 +366,7 @@ func TestClient(t *testing.T) {
 	}
 
 	//Receive some data down, with nothing to say, and latencytest=true
-	cs.LatencyTest = &LatencyTests{
+	cs.LatencyTest = &prifilog.LatencyTests{
 		DoLatencyTests:       true,
 		LatencyTestsInterval: time.Second * 0,
 		NextLatencyTest:      time.Now(),
@@ -373,7 +374,7 @@ func TestClient(t *testing.T) {
 	dataDown = []byte{100, 101, 102}
 
 	currentTime := MsTimeStampNow()
-	latencyMessage := []byte{170, 170, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+	latencyMessage := []byte{170, 170, 0, 1, 0, 1, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 	binary.BigEndian.PutUint64(latencyMessage[4:12], uint64(currentTime))
 	msg12 := net.REL_CLI_DOWNSTREAM_DATA{
 		RoundID:    5,

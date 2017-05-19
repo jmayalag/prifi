@@ -3,6 +3,8 @@ package net
 import (
 	"bytes"
 	"errors"
+	"github.com/lbarman/prifi/prifi-lib/crypto"
+	"gopkg.in/dedis/crypto.v0/abstract"
 	"gopkg.in/dedis/crypto.v0/random"
 	"testing"
 )
@@ -109,6 +111,25 @@ func TestMessageSenderWrapperRelay(t *testing.T) {
 	}
 }
 
+func TestTELL_TRANSCRIPT_Message(t *testing.T) {
+
+	msg := new(REL_TRU_TELL_TRANSCRIPT)
+	pks := make([]abstract.Point, 2)
+	pks[0], _ = crypto.NewKeyPair()
+	pks[1], _ = crypto.NewKeyPair()
+	msg.EphPks = make([]PublicKeyArray, 1)
+	msg.EphPks[0] = PublicKeyArray{Keys: pks}
+
+	bytes := make([]byte, 4)
+	msg.Proofs = make([]ByteArray, 1)
+	msg.Proofs[0] = ByteArray{Bytes: bytes}
+
+	msg.GetKeys()
+
+	msg.GetProofs()
+
+}
+
 func TestUDPMessage(t *testing.T) {
 
 	msg := new(REL_CLI_DOWNSTREAM_DATA_UDP)
@@ -118,6 +139,7 @@ func TestUDPMessage(t *testing.T) {
 	content.RoundID = 1
 	content.FlagResync = true
 	content.Data = random.Bits(100, false, random.Stream)
+	content.FlagOpenClosedRequest = true
 
 	msg.SetContent(*content)
 

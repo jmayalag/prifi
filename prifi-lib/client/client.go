@@ -23,12 +23,12 @@ package client
  */
 
 import (
-	"encoding/binary"
 	"errors"
 	"strconv"
 
 	"github.com/lbarman/prifi/prifi-lib/config"
 	"github.com/lbarman/prifi/prifi-lib/crypto"
+	prifilog "github.com/lbarman/prifi/prifi-lib/log"
 	"github.com/lbarman/prifi/prifi-lib/net"
 	"gopkg.in/dedis/crypto.v0/abstract"
 	"gopkg.in/dedis/onet.v1/log"
@@ -78,9 +78,9 @@ func (p *PriFiLibClientInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PAR
 
 	switch dcNetType {
 	case "Simple":
-		p.clientState.CellCoder = dcnet.SimpleCoderFactory()
+		p.clientState.DCNet_FF.CellCoder = dcnet.SimpleCoderFactory()
 	case "Verifiable":
-		p.clientState.CellCoder = dcnet.OwnedCoderFactory()
+		p.clientState.DCNet_FF.CellCoder = dcnet.OwnedCoderFactory()
 	default:
 		log.Fatal("DCNetType must be Simple or Verifiable")
 	}
@@ -92,7 +92,7 @@ func (p *PriFiLibClientInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PAR
 	p.clientState.nClients = nClients
 	p.clientState.nTrustees = nTrustees
 	p.clientState.PayloadLength = upCellSize
-	p.clientState.UsablePayloadLength = p.clientState.CellCoder.ClientCellSize(upCellSize)
+	p.clientState.UsablePayloadLength = p.clientState.DCNet_FF.CellCoder.ClientCellSize(upCellSize)
 	p.clientState.UseUDP = useUDP
 	p.clientState.TrusteePublicKey = make([]abstract.Point, nTrustees)
 	p.clientState.sharedSecrets = make([]abstract.Point, nTrustees)
@@ -185,27 +185,12 @@ func (p *PriFiLibClientInstance) ProcessDownStreamData(msg net.REL_CLI_DOWNSTREA
 		//test if it is the answer from our ping (for latency test)
 		if p.clientState.LatencyTest.DoLatencyTests && len(msg.Data) > 2 {
 
-			pattern := int(binary.BigEndian.Uint16(msg.Data[0:2]))
-			if pattern == 43690 { //1010101010101010
-				posInBuffer := 2
-				latencyMsgLength := 14
-
-				for posInBuffer+latencyMsgLength <= len(msg.Data) {
-					clientID := int(binary.BigEndian.Uint16(msg.Data[posInBuffer : posInBuffer+2]))
-					if clientID == p.clientState.ID {
-						timestamp := int64(binary.BigEndian.Uint64(msg.Data[posInBuffer+2 : posInBuffer+10]))
-						diff := MsTimeStampNow() - timestamp
-
-						//originalRoundID := int32(binary.BigEndian.Uint32(msg.Data[posInBuffer+10:posInBuffer+14]))
-						//roundDiff := msg.RoundID - originalRoundID
-						//log.Info("Measured latency is", diff, ", for client", clientID, ", roundDiff", roundDiff, ", received on round", msg.RoundID)
-
-						p.clientState.timeStatistics["measured-latency"].AddTime(diff)
-						p.clientState.timeStatistics["measured-latency"].ReportWithInfo("measured-latency")
-					}
-					posInBuffer += latencyMsgLength
-				}
+			actionFunction := func(roundRec int32, roundDiff int32, timeDiff int64) {
+				log.Info("Measured latency is", timeDiff, ", for client", p.clientState.ID, ", roundDiff", roundDiff, ", received on round", msg.RoundID)
+				p.clientState.timeStatistics["measured-latency"].AddTime(timeDiff)
+				p.clientState.timeStatistics["measured-latency"].ReportWithInfo("measured-latency")
 			}
+			prifilog.DecodeLatencyMessages(msg.Data, p.clientState.ID, msg.RoundID, actionFunction)
 		}
 	}
 
@@ -237,18 +222,16 @@ func (p *PriFiLibClientInstance) ProcessDownStreamData(msg net.REL_CLI_DOWNSTREA
 			i++
 		}
 		mySlotInNextRound := int32(i)
-		log.Lvl3("Client "+strconv.Itoa(p.clientState.ID)+" : Gonna reserve round", mySlotInNextRound)
-		wantToTransmit := false
-		if len(p.clientState.LatencyTest.LatencyTestsToSend) > 0 {
-			wantToTransmit = true
-		}
-		if wantToTransmit {
-			bmc.Client_ReserveSlot(mySlotInNextRound)
+
+		//check if we want to transmit
+		if p.WantsToTransmit() {
+			log.Lvl3("Client "+strconv.Itoa(p.clientState.ID)+" : Gonna reserve round", mySlotInNextRound)
+			bmc.Client_ReserveRound(mySlotInNextRound)
 		}
 		contribution := bmc.Client_GetOpenScheduleContribution()
 
 		//produce the next upstream cell
-		upstreamCell := p.clientState.CellCoder.ClientEncode(contribution, p.clientState.PayloadLength, p.clientState.MessageHistory)
+		upstreamCell := p.clientState.DCNet_FF.ClientEncodeForRound(p.clientState.RoundNo, contribution, p.clientState.PayloadLength, p.clientState.MessageHistory)
 
 		//send the data to the relay
 		toSend := &net.CLI_REL_OPENCLOSED_DATA{
@@ -260,6 +243,17 @@ func (p *PriFiLibClientInstance) ProcessDownStreamData(msg net.REL_CLI_DOWNSTREA
 	} else {
 		//send upstream data for next round
 		p.SendUpstreamData()
+	}
+
+	//test if we have latency test to send
+	now := time.Now()
+	if p.clientState.LatencyTest.DoLatencyTests && now.After(p.clientState.LatencyTest.NextLatencyTest) {
+		newLatTest := &prifilog.LatencyTestToSend{
+			CreatedAt: now,
+		}
+		p.clientState.LatencyTest.LatencyTestsToSend = append(p.clientState.LatencyTest.LatencyTestsToSend, newLatTest)
+		p.clientState.LatencyTest.NextLatencyTest = now.Add(p.clientState.LatencyTest.LatencyTestsInterval)
+		p.clientState.LatencyTest.NextLatencyTest = p.clientState.LatencyTest.NextLatencyTest.Add(time.Duration(rand.Intn(1000)) * time.Millisecond)
 	}
 
 	//clean old buffered messages
@@ -280,6 +274,30 @@ func (p *PriFiLibClientInstance) ProcessDownStreamData(msg net.REL_CLI_DOWNSTREA
 	return nil
 }
 
+// WantsToTransmit returns true if [we have a latency message to send] OR [we have data to send]
+func (p *PriFiLibClientInstance) WantsToTransmit() bool {
+
+	//if we have a latency test message
+	if len(p.clientState.LatencyTest.LatencyTestsToSend) > 0 {
+		return true
+	}
+
+	//if we have already ready-to-send data
+	if p.clientState.NextDataForDCNet != nil {
+		return true
+	}
+
+	//otherwise, poll the channel
+	select {
+	case myData := <-p.clientState.DataForDCNet:
+		p.clientState.NextDataForDCNet = &myData
+		return true
+
+	default:
+		return false
+	}
+}
+
 /*
 SendUpstreamData determines if it's our round, embeds data (maybe latency-test message) in the payload if we can,
 creates the DC-net cipher and sends it to the relay.
@@ -293,75 +311,46 @@ func (p *PriFiLibClientInstance) SendUpstreamData() error {
 		isMySlot = true
 	}
 
-	//test if we have latency test to send
-	now := time.Now()
-	if p.clientState.LatencyTest.DoLatencyTests && now.After(p.clientState.LatencyTest.NextLatencyTest) {
-
-		newLatTest := &LatencyTestToSend{
-			createdAt: now,
-		}
-		p.clientState.LatencyTest.LatencyTestsToSend = append(p.clientState.LatencyTest.LatencyTestsToSend, newLatTest)
-		p.clientState.LatencyTest.NextLatencyTest = now.Add(p.clientState.LatencyTest.LatencyTestsInterval)
-		p.clientState.LatencyTest.NextLatencyTest = p.clientState.LatencyTest.NextLatencyTest.Add(time.Duration(rand.Intn(1000)) * time.Millisecond)
-	}
 	var upstreamCellContent []byte
 
 	//if we can...
 	if isMySlot {
-		select {
+		//this data has already been polled out of the DataForDCNet chan, so send it first
+		//this is non-nil when OpenClosedSlot is true, and that it had to poll data out
+		if p.clientState.NextDataForDCNet != nil {
+			upstreamCellContent = *p.clientState.NextDataForDCNet
+			p.clientState.NextDataForDCNet = nil
+		} else {
+			select {
 
-		//either select data from the data we have to send, if any
-		case myData := <-p.clientState.DataForDCNet:
-			upstreamCellContent = myData
+			//either select data from the data we have to send, if any
+			case myData := <-p.clientState.DataForDCNet:
+				upstreamCellContent = myData
 
-			//or, if we have nothing to send, and we are doing Latency tests, embed a pre-crafted message that we will recognize later on
-		default:
-			emptyData := socks.NewSocksPacket(socks.DummyData, 0, 0, uint16(p.clientState.PayloadLength), make([]byte, 0))
-			upstreamCellContent = emptyData.ToBytes()
+				//or, if we have nothing to send, and we are doing Latency tests, embed a pre-crafted message that we will recognize later on
+			default:
+				emptyData := socks.NewSocksPacket(socks.DummyData, 0, 0, uint16(p.clientState.PayloadLength), make([]byte, 0))
+				upstreamCellContent = emptyData.ToBytes()
 
-			if len(p.clientState.LatencyTest.LatencyTestsToSend) > 0 {
+				if len(p.clientState.LatencyTest.LatencyTestsToSend) > 0 {
 
-				if p.clientState.PayloadLength < 16 {
-					panic("Trying to do a Latency test, but payload is smaller than 10 bytes.")
-				}
-
-				buffer := make([]byte, p.clientState.PayloadLength)
-				pattern := uint16(43690) //1010101010101010
-				binary.BigEndian.PutUint16(buffer[0:2], pattern)
-				posInBuffer := 2
-				latencyMsgLength := 14
-
-				//pack all the latency messages we can in one
-				for len(p.clientState.LatencyTest.LatencyTestsToSend) > 0 && posInBuffer+latencyMsgLength <= p.clientState.PayloadLength {
-					latencyMsgBytes := make([]byte, 14)
-					currTime := MsTimeStamp(p.clientState.LatencyTest.LatencyTestsToSend[0].createdAt) //timestamp in Ms
-					binary.BigEndian.PutUint16(latencyMsgBytes[0:2], uint16(p.clientState.ID))
-					binary.BigEndian.PutUint64(latencyMsgBytes[2:10], uint64(currTime))
-					binary.BigEndian.PutUint32(latencyMsgBytes[10:14], uint32(p.clientState.RoundNo))
-
-					copy(buffer[posInBuffer:], latencyMsgBytes)
-					posInBuffer += latencyMsgLength
-
-					//log.Info("Client", p.clientState.ID, "sent a latency-test message on round", p.clientState.RoundNo)
-
-					if len(p.clientState.LatencyTest.LatencyTestsToSend) == 1 {
-						p.clientState.LatencyTest.LatencyTestsToSend = make([]*LatencyTestToSend, 0)
-					} else {
-						p.clientState.LatencyTest.LatencyTestsToSend = p.clientState.LatencyTest.LatencyTestsToSend[1:]
+					logFn := func(timeDiff int64) {
+						p.clientState.timeStatistics["latency-msg-stayed-in-buffer"].AddTime(timeDiff)
+						p.clientState.timeStatistics["latency-msg-stayed-in-buffer"].ReportWithInfo("latency-msg-stayed-in-buffer")
 					}
 
-					diff := MsTimeStampNow() - currTime
-					p.clientState.timeStatistics["latency-msg-stayed-in-buffer"].AddTime(diff)
-					p.clientState.timeStatistics["latency-msg-stayed-in-buffer"].ReportWithInfo("latency-msg-stayed-in-buffer")
-				}
+					bytes, outMsgs := prifilog.LatencyMessagesToBytes(p.clientState.LatencyTest.LatencyTestsToSend,
+						p.clientState.ID, p.clientState.RoundNo, p.clientState.PayloadLength, logFn)
 
-				upstreamCellContent = buffer
+					p.clientState.LatencyTest.LatencyTestsToSend = outMsgs
+					upstreamCellContent = bytes
+				}
 			}
 		}
 	}
 
 	//produce the next upstream cell
-	upstreamCell := p.clientState.CellCoder.ClientEncode(upstreamCellContent, p.clientState.PayloadLength, p.clientState.MessageHistory)
+	upstreamCell := p.clientState.DCNet_FF.ClientEncodeForRound(p.clientState.RoundNo, upstreamCellContent, p.clientState.PayloadLength, p.clientState.MessageHistory)
 	//send the data to the relay
 	toSend := &net.CLI_REL_UPSTREAM_DATA{
 		ClientID: p.clientState.ID,
@@ -405,7 +394,7 @@ func (p *PriFiLibClientInstance) Received_REL_CLI_TELL_TRUSTEES_PK(msg net.REL_C
 		}
 		sharedPRNGs[i] = config.CryptoSuite.Cipher(bytes)
 	}
-	p.clientState.CellCoder.ClientSetup(config.CryptoSuite, sharedPRNGs)
+	p.clientState.DCNet_FF.CellCoder.ClientSetup(config.CryptoSuite, sharedPRNGs)
 
 	//then, generate our ephemeral keys (used for shuffling)
 	p.clientState.EphemeralPublicKey, p.clientState.ephemeralPrivateKey = crypto.NewKeyPair()
@@ -466,7 +455,7 @@ func (p *PriFiLibClientInstance) Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(
 	log.Lvl3("Client " + strconv.Itoa(p.clientState.ID) + " is ready to communicate.")
 
 	//produce a blank cell (we could embed data, but let's keep the code simple, one wasted message is not much)
-	upstreamCell := p.clientState.CellCoder.ClientEncode(nil, p.clientState.PayloadLength, p.clientState.MessageHistory)
+	upstreamCell := p.clientState.DCNet_FF.ClientEncodeForRound(0, nil, p.clientState.PayloadLength, p.clientState.MessageHistory)
 
 	//send the data to the relay
 	toSend := &net.CLI_REL_UPSTREAM_DATA{
