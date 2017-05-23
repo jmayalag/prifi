@@ -76,3 +76,28 @@ func (p *PriFiSDAProtocol) Received_REL_TRU_TELL_TRANSCRIPT(msg Struct_REL_TRU_T
 func (p *PriFiSDAProtocol) Received_REL_TRU_TELL_RATE_CHANGE(msg Struct_REL_TRU_TELL_RATE_CHANGE) error {
 	return p.prifiLibInstance.ReceivedMessage(msg.REL_TRU_TELL_RATE_CHANGE)
 }
+
+//Received_TRU_REL_TELL_PK forward an ALL_ALL_PARAMETERS message to PriFi's lib
+func (p *PriFiSDAProtocol) Received_CLI_REL_QUERY(msg Struct_CLI_REL_QUERY) error {
+	return p.prifiLibInstance.ReceivedMessage(msg.CLI_REL_QUERY)
+}
+
+//Received_TRU_REL_TELL_PK forward an ALL_ALL_PARAMETERS message to PriFi's lib
+func (p *PriFiSDAProtocol) Received_REL_CLI_QUERY(msg Struct_REL_CLI_QUERY) error {
+	return p.prifiLibInstance.ReceivedMessage(msg.REL_CLI_QUERY)
+}
+
+//Received_TRU_REL_TELL_PK forward an ALL_ALL_PARAMETERS message to PriFi's lib
+func (p *PriFiSDAProtocol) Received_CLI_REL_BLAME(msg Struct_CLI_REL_BLAME) error {
+	return p.prifiLibInstance.ReceivedMessage(msg.CLI_REL_BLAME)
+}
+
+//Received_TRU_REL_TELL_PK forward an ALL_ALL_PARAMETERS message to PriFi's lib
+func (p *PriFiSDAProtocol) Received_REL_ALL_REVEAL(msg Struct_REL_ALL_REVEAL) error {
+	return p.prifiLibInstance.ReceivedMessage(msg.REL_ALL_REVEAL)
+}
+
+//Received_TRU_REL_TELL_PK forward an ALL_ALL_PARAMETERS message to PriFi's lib
+func (p *PriFiSDAProtocol) Received_ALL_REL_REVEAL(msg Struct_ALL_REL_REVEAL) error {
+	return p.prifiLibInstance.ReceivedMessage(msg.ALL_REL_REVEAL)
+}

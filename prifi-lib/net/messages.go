@@ -196,6 +196,9 @@ type REL_ALL_REVEAL struct {
 	BitPos  int
 }
 
+type ALL_REL_REVEAL struct {
+	Bits []int
+}
 /*
 REL_CLI_DOWNSTREAM_DATA_UDP message is a bit special. It's a REL_CLI_DOWNSTREAM_DATA, simply named with _UDP postfix to be able to distinguish them from type,
 and theoretically that should be it. But since it doesn't go through SDA (which does not support UDP yet), we have to manually convert it to bytes.

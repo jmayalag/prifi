@@ -40,6 +40,7 @@ import (
 	"math/rand"
 	"time"
 	"crypto/sha256"
+	"bytes"
 )
 
 // Received_ALL_CLI_SHUTDOWN handles ALL_CLI_SHUTDOWN messages.
@@ -173,10 +174,17 @@ func (p *PriFiLibClientInstance) ProcessDownStreamData(msg net.REL_CLI_DOWNSTREA
 	timing.StartMeasure("round-processing")
 
 	//processing hash
+
 	if msg.Hash != nil {
+		log.Lvl3("hist length", len(p.clientState.DataHistory))
 		for roundID, data := range p.clientState.DataHistory {
+			log.Lvl3("IDs : ", msg.RoundID, " and ", roundID)
 			if msg.HashRoundID == roundID {
-				if msg.Hash == sha256.Sum256(data) {
+				var hash []byte
+				hash2 := sha256.Sum256(data)
+				hash = hash2[:]
+				if bytes.Equal(msg.Hash, hash) {
+					log.Lvl3("Hash equal")
 					delete(p.clientState.DataHistory, roundID)
 				} else {
 					//start of blame procedure
@@ -336,6 +344,7 @@ func (p *PriFiLibClientInstance) SendUpstreamData() error {
 		if p.clientState.NextDataForDCNet != nil {
 			upstreamCellContent = *p.clientState.NextDataForDCNet
 			p.clientState.NextDataForDCNet = nil
+			p.clientState.DataHistory[p.clientState.RoundNo] = upstreamCellContent
 		} else {
 			select {
 
@@ -362,6 +371,7 @@ func (p *PriFiLibClientInstance) SendUpstreamData() error {
 					p.clientState.LatencyTest.LatencyTestsToSend = outMsgs
 					upstreamCellContent = bytes
 				}
+				p.clientState.DataHistory[p.clientState.RoundNo] = upstreamCellContent
 			}
 		}
 	}

@@ -45,7 +45,6 @@ import (
 	"gopkg.in/dedis/crypto.v0/abstract"
 	"crypto/sha256"
 	"gopkg.in/dedis/onet.v1/log"
-	"crypto"
 )
 
 /*
@@ -319,6 +318,7 @@ If we use SOCKS/VPN, give them the data.
 */
 func (p *PriFiLibRelayInstance) finalizeUpstreamData() error {
 
+	p.relayState.DCNetData = nil
 	// we decode the DC-net cell
 	timing.StartMeasure("dcnet-decode")
 	clientSlices, trusteesSlices, err := p.relayState.bufferManager.FinalizeRound()
@@ -353,6 +353,7 @@ func (p *PriFiLibRelayInstance) finalizeUpstreamData() error {
 	if upstreamPlaintext == nil {
 		// empty upstream cell, need to finish round otherwise will enter next if clause and block protocol
 		p.doneCollectingUpstreamData(p.relayState.dcnetRoundManager.CurrentRound())
+		log.Lvl3("upstream is nil")
 		return nil
 	}
 
@@ -449,8 +450,10 @@ func (p *PriFiLibRelayInstance) sendDownstreamData() error {
 		FlagOpenClosedRequest: flagOpenClosedRequest}
 
 	if p.relayState.DCNetData != nil { //we have sent an upstream message so we broadcast the hash
+		log.Lvl3("Hash added")
 		toSend.HashRoundID = p.relayState.HashRoundID
-		toSend.Hash = sha256.Sum256(p.relayState.DCNetData)
+		hash := sha256.Sum256(p.relayState.DCNetData)
+		toSend.Hash = hash[:]
 	}
 
 	p.relayState.dcnetRoundManager.OpenRound(nextDownstreamRoundID)
@@ -743,7 +746,7 @@ func (p* PriFiLibRelayInstance) Received_CLI_REL_QUERY(msg net.CLI_REL_QUERY) er
 
 	toSend := &net.REL_CLI_QUERY{
 		RoundID: msg.RoundID,
-		EncryptedData: p.relayState.DataFromDCNet} // todo encrypt data
+		EncryptedData: p.relayState.DCNetData} // todo encrypt data
 
 	p.messageSender.BroadcastToAllClientsWithLog(toSend, "Query response broadcasted")
 
@@ -763,9 +766,19 @@ func (p* PriFiLibRelayInstance) Received_CLI_REL_BLAME(msg net.CLI_REL_BLAME) er
 		RoundID: msg.RoundID,
 		BitPos: msg.BitPos}
 
-	//broadcast to all trustees ?
-	p.messageSender.BroadcastToAllClientsWithLog(toSend, "Reveal message broadcasted")
-	//Bool var to let the round finish then stop and reveal ?
+	// broadcast to all trustees
+	for j := 0; j < p.relayState.nTrustees; j++ {
+		// send to the j-th trustee
+		p.messageSender.SendToTrusteeWithLog(j, toSend, "Reveal message sent to trustee "+strconv.Itoa(j+1))
+	}
 
+	p.messageSender.BroadcastToAllClientsWithLog(toSend, "Reveal message broadcasted to clients")
+	//Bool var to let the round finish then stop, switch to state blaming, and reveal ?
+
+	return nil
+}
+
+func (p* PriFiLibRelayInstance) Received_ALL_REL_REVEAL(msg net.ALL_REL_REVEAL) error {
+	//Put bits in a matrix, compare between those and the disrupted round, find disruptor
 	return nil
 }
