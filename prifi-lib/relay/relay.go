@@ -334,6 +334,9 @@ func (p *PriFiLibRelayInstance) finalizeUpstreamData() error {
 		p.relayState.CellCoder.DecodeTrustee(s)
 	}
 	upstreamPlaintext := p.relayState.CellCoder.DecodeCell()
+	log.Lvl3("Data : ", upstreamPlaintext)
+	p.relayState.DCNetData = upstreamPlaintext
+	p.relayState.HashRoundID = p.relayState.dcnetRoundManager.currentRound
 
 	timeMs := timing.StopMeasure("dcnet-decode").Nanoseconds() / 1e6
 	p.relayState.timeStatistics["dcnet-decode"].AddTime(timeMs)
@@ -379,8 +382,6 @@ func (p *PriFiLibRelayInstance) finalizeUpstreamData() error {
 	}
 	timeMs = timing.StopMeasure("socks-out").Nanoseconds() / 1e6
 	p.relayState.timeStatistics["socks-out"].AddTime(timeMs)
-	p.relayState.DCNetData = upstreamPlaintext
-	p.relayState.HashRoundID = p.relayState.dcnetRoundManager.currentRound
 
 	p.doneCollectingUpstreamData(p.relayState.dcnetRoundManager.CurrentRound())
 
@@ -450,7 +451,7 @@ func (p *PriFiLibRelayInstance) sendDownstreamData() error {
 		FlagOpenClosedRequest: flagOpenClosedRequest}
 
 	if p.relayState.DCNetData != nil { //we have sent an upstream message so we broadcast the hash
-		log.Lvl3("Hash added")
+		log.Lvl3("Hash added, data : ",p.relayState.DCNetData)
 		toSend.HashRoundID = p.relayState.HashRoundID
 		hash := sha256.Sum256(p.relayState.DCNetData)
 		toSend.Hash = hash[:]
@@ -748,7 +749,11 @@ func (p* PriFiLibRelayInstance) Received_CLI_REL_QUERY(msg net.CLI_REL_QUERY) er
 		RoundID: msg.RoundID,
 		EncryptedData: p.relayState.DCNetData} // todo encrypt data
 
-	p.messageSender.BroadcastToAllClientsWithLog(toSend, "Query response broadcasted")
+	// broadcast to all clients
+	for i := 0; i < p.relayState.nClients; i++ {
+		// send to the i-th client
+		p.messageSender.SendToClientWithLog(i, toSend, "(client "+strconv.Itoa(i+1)+")")
+	}
 
 	return nil
 }
@@ -772,7 +777,12 @@ func (p* PriFiLibRelayInstance) Received_CLI_REL_BLAME(msg net.CLI_REL_BLAME) er
 		p.messageSender.SendToTrusteeWithLog(j, toSend, "Reveal message sent to trustee "+strconv.Itoa(j+1))
 	}
 
-	p.messageSender.BroadcastToAllClientsWithLog(toSend, "Reveal message broadcasted to clients")
+	// broadcast to all clients
+	for i := 0; i < p.relayState.nClients; i++ {
+		// send to the i-th client
+		p.messageSender.SendToClientWithLog(i, toSend, "Reveal message sent to client "+strconv.Itoa(i+1))
+	}
+
 	//Bool var to let the round finish then stop, switch to state blaming, and reveal ?
 
 	return nil

@@ -178,7 +178,7 @@ func (p *PriFiLibClientInstance) ProcessDownStreamData(msg net.REL_CLI_DOWNSTREA
 	if msg.Hash != nil {
 		log.Lvl3("hist length", len(p.clientState.DataHistory))
 		for roundID, data := range p.clientState.DataHistory {
-			log.Lvl3("IDs : ", msg.RoundID, " and ", roundID)
+			log.Lvl3("IDs : ", msg.HashRoundID, " and ", roundID, "are equal : ", msg.HashRoundID == roundID)
 			if msg.HashRoundID == roundID {
 				var hash []byte
 				hash2 := sha256.Sum256(data)
@@ -188,7 +188,7 @@ func (p *PriFiLibClientInstance) ProcessDownStreamData(msg net.REL_CLI_DOWNSTREA
 					delete(p.clientState.DataHistory, roundID)
 				} else {
 					//start of blame procedure
-					log.Lvl3("Hash different from message")
+					log.Lvl3("Hash different from message, hash 1 : ", msg.Hash, " hash2 : ", hash2, " data : ", data)
 					p.clientState.BlameStarted = true
 					p.clientState.CorruptedID = roundID
 				}
@@ -344,14 +344,13 @@ func (p *PriFiLibClientInstance) SendUpstreamData() error {
 		if p.clientState.NextDataForDCNet != nil {
 			upstreamCellContent = *p.clientState.NextDataForDCNet
 			p.clientState.NextDataForDCNet = nil
-			p.clientState.DataHistory[p.clientState.RoundNo] = upstreamCellContent
+
 		} else {
 			select {
 
 			//either select data from the data we have to send, if any
 			case myData := <-p.clientState.DataForDCNet:
 				upstreamCellContent = myData
-				p.clientState.DataHistory[p.clientState.RoundNo] = upstreamCellContent
 
 			//or, if we have nothing to send, and we are doing Latency tests, embed a pre-crafted message that we will recognize later on
 			default:
@@ -371,9 +370,13 @@ func (p *PriFiLibClientInstance) SendUpstreamData() error {
 					p.clientState.LatencyTest.LatencyTestsToSend = outMsgs
 					upstreamCellContent = bytes
 				}
-				p.clientState.DataHistory[p.clientState.RoundNo] = upstreamCellContent
 			}
 		}
+		content := make([]byte, len(upstreamCellContent))
+		log.Lvl3("data : ", upstreamCellContent)
+		copy(content[:], upstreamCellContent[:])
+		p.clientState.DataHistory[p.clientState.RoundNo] = content
+		log.Lvl3("data : ", content)
 	}
 
 	//query the corrupted plaintext if it was corrupted
@@ -383,7 +386,7 @@ func (p *PriFiLibClientInstance) SendUpstreamData() error {
 
 		toSend := &net.CLI_REL_QUERY{
 			RoundID: p.clientState.RoundNo,
-			NIZK: nil,
+			NIZK: make([]byte,1),
 			Pk: EphPublicKey}
 		p.messageSender.SendToRelayWithLog(toSend, "Query for the blame procedure sent.")
 	}
@@ -520,7 +523,7 @@ func (p *PriFiLibClientInstance) Received_REL_CLI_QUERY(msg net.REL_CLI_QUERY) e
 			bitPos := comparePlaintexts(data, msg.EncryptedData) //todo change when data encrypted
 			toSend := &net.CLI_REL_BLAME{
 				RoundID: roundID,
-				NIZK:    nil,
+				NIZK:    make([]byte,1),
 				BitPos:  bitPos,
 			}
 
