@@ -36,7 +36,7 @@ import (
 
 // ClientState contains the mutable state of the client.
 type ClientState struct {
-	DCNet_FF                  *DCNet_FastForwarder
+	DCNet_RoundManager        *DCNet_RoundManager
 	currentState              int16
 	DataForDCNet              chan []byte //Data to the relay : VPN / SOCKS should put data there !
 	NextDataForDCNet          *[]byte     //if not nil, send this before polling DataForDCNet
@@ -102,7 +102,7 @@ func NewClient(doLatencyTest bool, dataOutputEnabled bool, dataForDCNet chan []b
 	clientState.DataFromDCNet = dataFromDCNet
 	clientState.DataOutputEnabled = dataOutputEnabled
 	clientState.DataHistory = make(map[int32][]byte)
-	clientState.DCNet_FF = new(DCNet_FastForwarder)
+	clientState.DCNet_RoundManager = new(DCNet_RoundManager)
 
 	//init the state machine
 	states := []string{"BEFORE_INIT", "INITIALIZING", "EPH_KEYS_SENT", "READY", "BLAMING", "SHUTDOWN"}

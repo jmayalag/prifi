@@ -38,7 +38,7 @@ func NewTrustee(msgSender *net.MessageSenderWrapper) *PriFiLibTrusteeInstance {
 
 	//init the static stuff
 	trusteeState.sendingRate = make(chan int16, 10)
-	//trusteeState.CellCoder = config.Factory()
+	trusteeState.DCNet_RoundManager = new(DCNet_RoundManager)
 	trusteeState.PublicKey, trusteeState.privateKey = crypto.NewKeyPair()
 	neffShuffle := new(scheduler.NeffShuffle)
 	neffShuffle.Init()
@@ -69,20 +69,20 @@ func NewTrustee(msgSender *net.MessageSenderWrapper) *PriFiLibTrusteeInstance {
 
 // TrusteeState contains the mutable state of the trustee.
 type TrusteeState struct {
-	CellCoder        dcnet.CellCoder
-	ClientPublicKeys []abstract.Point
-	ID               int
-	MessageHistory   abstract.Cipher
-	Name             string
-	nClients         int
-	neffShuffle      *scheduler.NeffShuffleTrustee
-	nTrustees        int
-	PayloadLength    int
-	privateKey       abstract.Scalar
-	PublicKey        abstract.Point
-	sendingRate      chan int16
-	sharedSecrets    []abstract.Point
-	TrusteeID        int
+	ClientPublicKeys   []abstract.Point
+	DCNet_RoundManager *DCNet_RoundManager
+	ID                 int
+	MessageHistory     abstract.Cipher
+	Name               string
+	nClients           int
+	neffShuffle        *scheduler.NeffShuffleTrustee
+	nTrustees          int
+	PayloadLength      int
+	privateKey         abstract.Scalar
+	PublicKey          abstract.Point
+	sendingRate        chan int16
+	sharedSecrets      []abstract.Point
+	TrusteeID          int
 }
 
 // NeffShuffleResult holds the result of the NeffShuffle,

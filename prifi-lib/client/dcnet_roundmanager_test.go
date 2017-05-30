@@ -9,10 +9,10 @@ import (
 )
 
 func TestDCNetFF(test *testing.T) {
-	dc := new(DCNet_FastForwarder)
+	dc := new(DCNet_RoundManager)
 	dc.CellCoder = dcnet.SimpleCoderFactory()
 
-	dc2 := new(DCNet_FastForwarder)
+	dc2 := new(DCNet_RoundManager)
 	dc2.CellCoder = dcnet.SimpleCoderFactory()
 
 	//set up the DC-nets

@@ -197,7 +197,7 @@ type REL_ALL_REVEAL struct {
 }
 
 type ALL_REL_REVEAL struct {
-	Bits []int
+	Bits map[int]int
 }
 /*
 REL_CLI_DOWNSTREAM_DATA_UDP message is a bit special. It's a REL_CLI_DOWNSTREAM_DATA, simply named with _UDP postfix to be able to distinguish them from type,

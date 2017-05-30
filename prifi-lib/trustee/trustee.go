@@ -68,9 +68,9 @@ func (p *PriFiLibTrusteeInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PA
 
 	switch dcNetType {
 	case "Simple":
-		p.trusteeState.CellCoder = dcnet.SimpleCoderFactory()
+		p.trusteeState.DCNet_RoundManager.CellCoder = dcnet.SimpleCoderFactory()
 	case "Verifiable":
-		p.trusteeState.CellCoder = dcnet.OwnedCoderFactory()
+		p.trusteeState.DCNet_RoundManager.CellCoder = dcnet.OwnedCoderFactory()
 	default:
 		log.Fatal("DCNetType must be Simple or Verifiable")
 	}
@@ -171,7 +171,7 @@ sendData is an auxiliary function used by Send_TRU_REL_DC_CIPHER. It computes th
 It returns the new round number (previous + 1).
 */
 func sendData(p *PriFiLibTrusteeInstance, roundID int32) (int32, error) {
-	data := p.trusteeState.CellCoder.TrusteeEncode(p.trusteeState.PayloadLength)
+	data := p.trusteeState.DCNet_RoundManager.CellCoder.TrusteeEncode(p.trusteeState.PayloadLength)
 
 	//send the data
 	toSend := &net.TRU_REL_DC_CIPHER{
@@ -230,7 +230,8 @@ func (p *PriFiLibTrusteeInstance) Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_
 		sharedPRNGs[i] = config.CryptoSuite.Cipher(bytes)
 	}
 
-	vkey := p.trusteeState.CellCoder.TrusteeSetup(config.CryptoSuite, sharedPRNGs)
+	p.trusteeState.DCNet_RoundManager.TrusteeSetup(p.trusteeState.sharedSecrets)
+	vkey := p.trusteeState.DCNet_RoundManager.CellCoder.TrusteeSetup(config.CryptoSuite, sharedPRNGs)
 	//In case we use the simple dcnet, vkey isn't needed
 	if vkey == nil {
 		vkey = make([]byte, 1)
@@ -278,7 +279,11 @@ func (p *PriFiLibTrusteeInstance) Received_REL_TRU_TELL_TRANSCRIPT(msg net.REL_T
 }
 
 func (p *PriFiLibTrusteeInstance) Received_REL_ALL_REVEAL(msg net.REL_ALL_REVEAL) error {
-	p.stateMachine.ChangeState("BLAMING")
+	//p.stateMachine.ChangeState("BLAMING")
 	// function in dcnet to retrieve bits with round number and bitPos
+	bits := p.trusteeState.DCNet_RoundManager.RevealBits(msg.RoundID, msg.BitPos)
+	toSend := &net.ALL_REL_REVEAL{
+		Bits:bits}
+	p.messageSender.SendToRelayWithLog(toSend, "Revealed bits")
 	return nil
 }
