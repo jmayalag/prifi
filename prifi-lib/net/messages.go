@@ -51,8 +51,6 @@ type CLI_REL_TELL_PK_AND_EPH_PK_1 struct {
 // and is sent to the relay.
 type CLI_REL_TELL_PK_AND_EPH_PK_2 struct {
 	ClientID int
-	Pk       abstract.Point
-	EphPk    abstract.Point
 }
 
 // CLI_REL_UPSTREAM_DATA message contains the upstream data of a client for a given round
@@ -146,6 +144,11 @@ type REL_TRU_TELL_TRANSCRIPT struct {
 	Proofs []ByteArray
 }
 
+// REL_TRU_TELL_READY message used to notify the trustee they are ready to transmit DC_CIPHER
+type REL_TRU_TELL_READY struct {
+	TrusteeID int
+}
+
 // TRU_REL_DC_CIPHER message contains the DC-net cipher of a trustee for a given round and is sent to the relay.
 type TRU_REL_DC_CIPHER struct {
 	RoundID   int32
@@ -154,9 +157,14 @@ type TRU_REL_DC_CIPHER struct {
 }
 
 // TRU_REL_SHUFFLE_SIG contains the signatures shuffled by a trustee and is sent to the relay.
-type TRU_REL_SHUFFLE_SIG struct {
+type TRU_REL_SHUFFLE_SIG_1 struct {
 	TrusteeID int
 	Sig       []byte
+}
+
+// TRU_REL_SHUFFLE_SIG contains the signatures shuffled by a trustee and is sent to the relay.
+type TRU_REL_SHUFFLE_SIG_2 struct {
+	TrusteeID int
 }
 
 // REL_TRU_TELL_RATE_CHANGE message asks the trustees to update their window capacity to adapt their

@@ -61,19 +61,7 @@ func (p *PriFiCommunicateProtocol) Start() error {
 	log.Lvl3("Starting PriFi-Communicate-Wrapper Protocol")
 
 	//emulate the reception of a ALL_ALL_PARAMETERS with StartNow=true
-	msg := new(net.ALL_ALL_PARAMETERS_NEW)
-	msg.Add("StartNow", true)
-	msg.Add("NTrustees", len(p.ms.trustees))
-	msg.Add("NClients", len(p.ms.clients))
-	msg.Add("UpstreamCellSize", p.config.Toml.CellSizeUp)
-	msg.Add("DownstreamCellSize", p.config.Toml.CellSizeDown)
-	msg.Add("WindowSize", p.config.Toml.RelayWindowSize)
-	msg.Add("UseOpenClosedSlots", p.config.Toml.RelayUseOpenClosedSlots)
-	msg.Add("UseDummyDataDown", p.config.Toml.RelayUseDummyDataDown)
-	msg.Add("ExperimentRoundLimit", p.config.Toml.RelayReportingLimit)
-	msg.Add("UseUDP", p.config.Toml.UseUDP)
-	msg.Add("DCNetType", p.config.Toml.DCNetType)
-	msg.ForceParams = true
+	msg := new(net.TRU_REL_SHUFFLE_SIG_2)
 
 	p.SendTo(p.TreeNode(), msg)
 
@@ -107,21 +95,14 @@ func (p *PriFiCommunicateProtocol) Stop() {
 func init() {
 
 	//register the prifi_lib's message with the network lib here
-	network.RegisterMessage(net.ALL_ALL_PARAMETERS_NEW{})
-	network.RegisterMessage(net.CLI_REL_TELL_PK_AND_EPH_PK_1{})
-	network.RegisterMessage(net.CLI_REL_TELL_PK_AND_EPH_PK_2{})
+	network.RegisterMessage(net.TRU_REL_SHUFFLE_SIG_2{})
+	network.RegisterMessage(net.REL_TRU_TELL_READY{})
+	network.RegisterMessage(net.REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG{})
 	network.RegisterMessage(net.CLI_REL_UPSTREAM_DATA{})
 	network.RegisterMessage(net.REL_CLI_DOWNSTREAM_DATA{})
 	network.RegisterMessage(net.CLI_REL_OPENCLOSED_DATA{})
-	network.RegisterMessage(net.REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG{})
-	network.RegisterMessage(net.REL_CLI_TELL_TRUSTEES_PK{})
-	network.RegisterMessage(net.REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE{})
-	network.RegisterMessage(net.REL_TRU_TELL_TRANSCRIPT{})
 	network.RegisterMessage(net.TRU_REL_DC_CIPHER{})
 	network.RegisterMessage(net.REL_TRU_TELL_RATE_CHANGE{})
-	network.RegisterMessage(net.TRU_REL_SHUFFLE_SIG{})
-	network.RegisterMessage(net.TRU_REL_TELL_NEW_BASE_AND_EPH_PKS{})
-	network.RegisterMessage(net.TRU_REL_TELL_PK{})
 
 	onet.GlobalProtocolRegister("PrifiCommunicateProtocol", NewPriFiCommunicateWrapperProtocol)
 }
@@ -159,35 +140,23 @@ func NewPriFiCommunicateWrapperProtocol(n *onet.TreeNodeInstance) (onet.Protocol
 // that registers handlers for all prifi messages.
 func (p *PriFiCommunicateProtocol) registerHandlers() error {
 	//register handlers
-	err := p.RegisterHandler(p.Received_ALL_ALL_PARAMETERS_NEW)
-	if err != nil {
-		return errors.New("couldn't register handler: " + err.Error())
-	}
-	err = p.RegisterHandler(p.Received_ALL_ALL_SHUTDOWN)
+	err := p.RegisterHandler(p.Received_ALL_ALL_SHUTDOWN)
 	if err != nil {
 		return errors.New("couldn't register handler: " + err.Error())
 	}
 
 	//register client handlers
-	err = p.RegisterHandler(p.Received_REL_CLI_DOWNSTREAM_DATA)
-	if err != nil {
-		return errors.New("couldn't register handler: " + err.Error())
-	}
 	err = p.RegisterHandler(p.Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG)
 	if err != nil {
 		return errors.New("couldn't register handler: " + err.Error())
 	}
-	err = p.RegisterHandler(p.Received_REL_CLI_TELL_TRUSTEES_PK)
+	err = p.RegisterHandler(p.Received_REL_CLI_DOWNSTREAM_DATA)
 	if err != nil {
 		return errors.New("couldn't register handler: " + err.Error())
 	}
 
 	//register relay handlers
-	err = p.RegisterHandler(p.Received_CLI_REL_TELL_PK_AND_EPH_PK_1)
-	if err != nil {
-		return errors.New("couldn't register handler: " + err.Error())
-	}
-	err = p.RegisterHandler(p.Received_CLI_REL_TELL_PK_AND_EPH_PK_2)
+	err = p.RegisterHandler(p.Received_TRU_REL_SHUFFLE_SIG_2)
 	if err != nil {
 		return errors.New("couldn't register handler: " + err.Error())
 	}
@@ -195,33 +164,17 @@ func (p *PriFiCommunicateProtocol) registerHandlers() error {
 	if err != nil {
 		return errors.New("couldn't register handler: " + err.Error())
 	}
-	err = p.RegisterHandler(p.Received_TRU_REL_DC_CIPHER)
-	if err != nil {
-		return errors.New("couldn't register handler: " + err.Error())
-	}
-	err = p.RegisterHandler(p.Received_TRU_REL_SHUFFLE_SIG)
-	if err != nil {
-		return errors.New("couldn't register handler: " + err.Error())
-	}
-	err = p.RegisterHandler(p.Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS)
-	if err != nil {
-		return errors.New("couldn't register handler: " + err.Error())
-	}
-	err = p.RegisterHandler(p.Received_TRU_REL_TELL_PK)
-	if err != nil {
-		return errors.New("couldn't register handler: " + err.Error())
-	}
 	err = p.RegisterHandler(p.Received_CLI_REL_CLI_REL_OPENCLOSED_DATA)
+	if err != nil {
+		return errors.New("couldn't register handler: " + err.Error())
+	}
+	err = p.RegisterHandler(p.Received_TRU_REL_DC_CIPHER)
 	if err != nil {
 		return errors.New("couldn't register handler: " + err.Error())
 	}
 
 	//register trustees handlers
-	err = p.RegisterHandler(p.Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE)
-	if err != nil {
-		return errors.New("couldn't register handler: " + err.Error())
-	}
-	err = p.RegisterHandler(p.Received_REL_TRU_TELL_TRANSCRIPT)
+	err = p.RegisterHandler(p.Received_REL_TRU_TELL_READY)
 	if err != nil {
 		return errors.New("couldn't register handler: " + err.Error())
 	}

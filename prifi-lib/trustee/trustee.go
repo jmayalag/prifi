@@ -271,6 +271,20 @@ func (p *PriFiLibTrusteeInstance) Received_REL_TRU_TELL_TRANSCRIPT(msg net.REL_T
 
 	p.stateMachine.ChangeState("READY")
 
+	return false, nil, nil
+}
+
+/*
+Received_REL_TRU_TELL_TRANSCRIPT handles REL_TRU_TELL_TRANSCRIPT messages.
+Those are sent when all trustees have already shuffled. They need to verify all the shuffles, and also that
+their own shuffle has been included in the chain of shuffles. If that's the case, this trustee signs the *last*
+shuffle (which will be used by the clients), and sends it back to the relay.
+If everything succeed, starts the goroutine for sending DC-net ciphers to the relay.
+*/
+func (p *PriFiLibTrusteeInstance) Received_REL_TRU_TELL_READY(msg net.REL_TRU_TELL_READY) (bool, interface{}, error) {
+
+	p.stateMachine.ChangeState("COMMUNICATING")
+
 	//everything is ready, we start sending
 	go p.Send_TRU_REL_DC_CIPHER(p.trusteeState.sendingRate)
 

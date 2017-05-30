@@ -692,7 +692,7 @@ We do nothing until we have all signatures; when we do, we pack those
 in one message with the result of the Neff-Shuffle and send them to the clients.
 When this is done, we are finally ready to communicate. We wait for the client's messages.
 */
-func (p *PriFiLibRelayInstance) Received_TRU_REL_SHUFFLE_SIG(msg net.TRU_REL_SHUFFLE_SIG) (bool, interface{}, error) {
+func (p *PriFiLibRelayInstance) Received_TRU_REL_SHUFFLE_SIG_1(msg net.TRU_REL_SHUFFLE_SIG_1) (bool, interface{}, error) {
 
 	done, err := p.relayState.neffShuffle.ReceivedSignatureFromTrustee(msg.TrusteeID, msg.Sig)
 	if err != nil {
@@ -703,33 +703,54 @@ func (p *PriFiLibRelayInstance) Received_TRU_REL_SHUFFLE_SIG(msg net.TRU_REL_SHU
 
 	// if we have all the signatures
 	if done {
-		trusteesPks := make([]abstract.Point, p.relayState.nTrustees)
-		i := 0
-		for _, v := range p.relayState.trustees {
-			trusteesPks[i] = v.PublicKey
-			i++
-		}
-
-		toSend5, err := p.relayState.neffShuffle.VerifySigsAndSendToClients(trusteesPks)
-		if err != nil {
-			e := "Could not do p.relayState.neffShuffle.VerifySigsAndSendToClients(), error is " + err.Error()
-			log.Error(e)
-			return false, nil, errors.New(e)
-		}
-		msg := toSend5.(*net.REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG)
-		// changing state
-		log.Lvl2("Relay : ready to communicate.")
-		p.stateMachine.ChangeState("COMMUNICATING")
-
-		// broadcast to all clients
-		for i := 0; i < p.relayState.nClients; i++ {
-			// send to the i-th client
-			p.messageSender.SendToClientWithLog(i, msg, "(client "+strconv.Itoa(i+1)+")")
-		}
-
-		//client will answer will CLI_REL_UPSTREAM_DATA. There is no data down on round 0. We set the following variable to 1 since the reception of CLI_REL_UPSTREAM_DATA decrements it.
-		p.relayState.numberOfNonAckedDownstreamPackets = 1
+		return true, p, nil
 	}
+
+	return false, nil, nil
+}
+
+/*
+Received_TRU_REL_SHUFFLE_SIG handles TRU_REL_SHUFFLE_SIG messages.
+Those contain the signature from the NeffShuffleS-transcript from one trustee.
+We do nothing until we have all signatures; when we do, we pack those
+in one message with the result of the Neff-Shuffle and send them to the clients.
+When this is done, we are finally ready to communicate. We wait for the client's messages.
+*/
+func (p *PriFiLibRelayInstance) Received_TRU_REL_SHUFFLE_SIG_2(msg net.TRU_REL_SHUFFLE_SIG_2) (bool, interface{}, error) {
+
+	// broadcast to all trustees
+	for j := 0; j < p.relayState.nTrustees; j++ {
+		toSend := &net.REL_TRU_TELL_READY{TrusteeID: j}
+		// send to the j-th trustee
+		p.messageSender.SendToTrusteeWithLog(j, toSend, "(trustee "+strconv.Itoa(j+1)+")")
+	}
+
+	trusteesPks := make([]abstract.Point, p.relayState.nTrustees)
+	i := 0
+	for _, v := range p.relayState.trustees {
+		trusteesPks[i] = v.PublicKey
+		i++
+	}
+
+	toSend5, err := p.relayState.neffShuffle.VerifySigsAndSendToClients(trusteesPks)
+	if err != nil {
+		e := "Could not do p.relayState.neffShuffle.VerifySigsAndSendToClients(), error is " + err.Error()
+		log.Error(e)
+		return false, nil, errors.New(e)
+	}
+	n_msg := toSend5.(*net.REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG)
+	// changing state
+	log.Lvl2("Relay : ready to communicate.")
+	p.stateMachine.ChangeState("COMMUNICATING")
+
+	// broadcast to all clients
+	for i := 0; i < p.relayState.nClients; i++ {
+		// send to the i-th client
+		p.messageSender.SendToClientWithLog(i, n_msg, "(client "+strconv.Itoa(i+1)+")")
+	}
+
+	//client will answer will CLI_REL_UPSTREAM_DATA. There is no data down on round 0. We set the following variable to 1 since the reception of CLI_REL_UPSTREAM_DATA decrements it.
+	p.relayState.numberOfNonAckedDownstreamPackets = 1
 
 	return false, nil, nil
 }

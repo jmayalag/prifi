@@ -45,7 +45,7 @@ func NewTrustee(msgSender *net.MessageSenderWrapper) *PriFiLibTrusteeInstance {
 	trusteeState.neffShuffle = neffShuffle.TrusteeView
 
 	//init the state machine
-	states := []string{"BEFORE_INIT", "INITIALIZING", "SHUFFLE_DONE", "READY", "SHUTDOWN"}
+	states := []string{"BEFORE_INIT", "INITIALIZING", "SHUFFLE_DONE", "READY", "COMMUNICATING", "SHUTDOWN"}
 	sm := new(utils.StateMachine)
 	logFn := func(s interface{}) {
 		log.Lvl3(s)
@@ -116,8 +116,12 @@ func (p *PriFiLibTrusteeInstance) ReceivedMessage(msg interface{}) (bool, interf
 		if p.stateMachine.AssertState("SHUFFLE_DONE") {
 			endStep, state, err = p.Received_REL_TRU_TELL_TRANSCRIPT(typedMsg)
 		}
-	case net.REL_TRU_TELL_RATE_CHANGE:
+	case net.REL_TRU_TELL_READY:
 		if p.stateMachine.AssertState("READY") {
+			endStep, state, err = p.Received_REL_TRU_TELL_READY(typedMsg)
+		}
+	case net.REL_TRU_TELL_RATE_CHANGE:
+		if p.stateMachine.AssertState("COMMUNICATING") {
 			endStep, state, err = p.Received_REL_TRU_TELL_RATE_CHANGE(typedMsg)
 		}
 	default:
@@ -127,4 +131,18 @@ func (p *PriFiLibTrusteeInstance) ReceivedMessage(msg interface{}) (bool, interf
 	}
 
 	return endStep, state, err
+}
+
+// SetMessageSender is used to change the message sender of the current Trustee Instance
+func (p *PriFiLibTrusteeInstance) SetMessageSender(msgSender net.MessageSender) error {
+	errHandling := func(e error) { /* do nothing yet, we are alerted of errors via the SDA */ }
+	loggingSuccessFunction := func(e interface{}) { log.Lvl3(e) }
+	loggingErrorFunction := func(e interface{}) { log.Error(e) }
+
+	msw, err := net.NewMessageSenderWrapper(true, loggingSuccessFunction, loggingErrorFunction, errHandling, msgSender)
+	if err != nil {
+		log.Fatal("Could not create a MessageSenderWrapper, error is", err)
+	}
+	p.messageSender = msw
+	return nil
 }

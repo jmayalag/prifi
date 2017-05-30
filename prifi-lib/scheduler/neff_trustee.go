@@ -183,7 +183,7 @@ func (t *NeffShuffleTrustee) ReceivedTranscriptFromRelay(bases []abstract.Point,
 	signature := crypto.SchnorrSign(config.CryptoSuite, random.Stream, blob, t.PrivateKey)
 
 	//send the answer
-	msg := &net.TRU_REL_SHUFFLE_SIG{
+	msg := &net.TRU_REL_SHUFFLE_SIG_1{
 		TrusteeID: t.TrusteeID,
 		Sig:       signature}
 

@@ -78,9 +78,15 @@ type Struct_TRU_REL_DC_CIPHER struct {
 }
 
 //Struct_TRU_REL_SHUFFLE_SIG is a wrapper for TRU_REL_SHUFFLE_SIG (but also contains a *onet.TreeNode)
-type Struct_TRU_REL_SHUFFLE_SIG struct {
+type Struct_TRU_REL_SHUFFLE_SIG_1 struct {
 	*onet.TreeNode
-	net.TRU_REL_SHUFFLE_SIG
+	net.TRU_REL_SHUFFLE_SIG_1
+}
+
+//Struct_TRU_REL_SHUFFLE_SIG is a wrapper for TRU_REL_SHUFFLE_SIG (but also contains a *onet.TreeNode)
+type Struct_TRU_REL_SHUFFLE_SIG_2 struct {
+	*onet.TreeNode
+	net.TRU_REL_SHUFFLE_SIG_2
 }
 
 //Struct_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS is a wrapper for TRU_REL_TELL_NEW_BASE_AND_EPH_PKS (but also contains a *onet.TreeNode)
@@ -93,6 +99,12 @@ type Struct_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS struct {
 type Struct_TRU_REL_TELL_PK struct {
 	*onet.TreeNode
 	net.TRU_REL_TELL_PK
+}
+
+//Struct_REL_TRU_TELL_READY is a wrapper for REL_TRU_TELL_READY (but also contains a *onet.TreeNode)
+type Struct_REL_TRU_TELL_READY struct {
+	*onet.TreeNode
+	net.REL_TRU_TELL_READY
 }
 
 //Struct_REL_TRU_TELL_RATE_CHANGE is a wrapper for REL_TRU_TELL_RATE_CHANGE (but also contains a *onet.TreeNode)

@@ -149,6 +149,7 @@ func (p *PriFiScheduleProtocol) SetConfigFromPriFiService(config *PriFiWrapperCo
 	}
 
 	p.prifiLibInstance = oldPrifiLib
+	p.prifiLibInstance.SetMessageSender(p.ms)
 
 	p.registerHandlers()
 
@@ -163,7 +164,7 @@ func (p *PriFiScheduleProtocol) SetTimeoutHandler(handler func([]string, []strin
 
 // SetConfig configures the PriFi node.
 // It **MUST** be called in service.newProtocol or before Start().
-func (p *PriFiCommunicateProtocol) SetConfigFromPriFiService(config *PriFiWrapperConfig) {
+func (p *PriFiCommunicateProtocol) SetConfigFromPriFiService(config *PriFiWrapperConfig, oldPrifiLib prifi_lib.SpecializedLibInstance) {
 	p.config = *config
 	p.role = config.Role
 
@@ -189,23 +190,8 @@ func (p *PriFiCommunicateProtocol) SetConfigFromPriFiService(config *PriFiWrappe
 		}
 	}
 
-	experimentResultChan := p.ResultChannel
-
-	switch config.Role {
-	case Relay:
-		relayOutputEnabled := config.Toml.RelayDataOutputEnabled
-		p.prifiLibInstance = prifi_lib.NewPriFiRelay(relayOutputEnabled,
-			config.RelaySideSocksConfig.DownstreamChannel, config.RelaySideSocksConfig.UpstreamChannel,
-			experimentResultChan, p.handleTimeout, ms)
-	case Trustee:
-		p.prifiLibInstance = prifi_lib.NewPriFiTrustee(ms)
-
-	case Client:
-		doLatencyTests := config.Toml.DoLatencyTests
-		clientDataOutputEnabled := config.Toml.ClientDataOutputEnabled
-		p.prifiLibInstance = prifi_lib.NewPriFiClient(doLatencyTests, clientDataOutputEnabled,
-			config.ClientSideSocksConfig.UpstreamChannel, config.ClientSideSocksConfig.DownstreamChannel, ms)
-	}
+	p.prifiLibInstance = oldPrifiLib
+	p.prifiLibInstance.SetMessageSender(p.ms)
 
 	p.registerHandlers()
 

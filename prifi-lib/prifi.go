@@ -28,6 +28,7 @@ type PriFiLibInstance struct {
 //Prifi's "Relay", "Client" and "Trustee" instance all can receive a message
 type SpecializedLibInstance interface {
 	ReceivedMessage(msg interface{}) (bool, interface{}, error)
+	SetMessageSender(msgSender net.MessageSender) error
 }
 
 // Possible role of PriFi entities.
@@ -96,6 +97,16 @@ func (p *PriFiLibInstance) ReceivedMessage(msg interface{}) (bool, interface{}, 
 		log.Error(err)
 	}
 	return endStep, state, nil
+}
+
+// ReceivedMessage must be called when a PriFi host receives a message.
+// It takes care to call the correct message handler function.
+func (p *PriFiLibInstance) SetMessageSender(msgSender net.MessageSender) error {
+	err := p.specializedLibInstance.SetMessageSender(msgSender)
+	if err != nil {
+		log.Error(err)
+	}
+	return nil
 }
 
 func newMessageSenderWrapper(msgSender net.MessageSender) *net.MessageSenderWrapper {

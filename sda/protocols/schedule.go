@@ -98,6 +98,9 @@ func init() {
 	//register the prifi_lib's message with the network lib here
 	network.RegisterMessage(net.CLI_REL_TELL_PK_AND_EPH_PK_2{})
 	network.RegisterMessage(net.REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE{})
+	network.RegisterMessage(net.TRU_REL_TELL_NEW_BASE_AND_EPH_PKS{})
+	network.RegisterMessage(net.REL_TRU_TELL_TRANSCRIPT{})
+	network.RegisterMessage(net.TRU_REL_SHUFFLE_SIG_1{})
 
 	onet.GlobalProtocolRegister("PrifiScheduleProtocol", NewPriFiScheduleWrapperProtocol)
 }
@@ -145,9 +148,21 @@ func (p *PriFiScheduleProtocol) registerHandlers() error {
 	if err != nil {
 		return errors.New("couldn't register handler: " + err.Error())
 	}
+	err = p.RegisterHandler(p.Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS)
+	if err != nil {
+		return errors.New("couldn't register handler: " + err.Error())
+	}
+	err = p.RegisterHandler(p.Received_TRU_REL_SHUFFLE_SIG_1)
+	if err != nil {
+		return errors.New("couldn't register handler: " + err.Error())
+	}
 
 	//register trustees handlers
 	err = p.RegisterHandler(p.Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE)
+	if err != nil {
+		return errors.New("couldn't register handler: " + err.Error())
+	}
+	err = p.RegisterHandler(p.Received_REL_TRU_TELL_TRANSCRIPT)
 	if err != nil {
 		return errors.New("couldn't register handler: " + err.Error())
 	}
