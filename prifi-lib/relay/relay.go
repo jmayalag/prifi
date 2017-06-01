@@ -745,9 +745,14 @@ func (p* PriFiLibRelayInstance) Received_CLI_REL_QUERY(msg net.CLI_REL_QUERY) er
 
 	//Check NIZK
 
+	encryptedMessage, dataLeft := config.CryptoSuite.Point().Pick(p.relayState.DCNetData,config.CryptoSuite.Cipher([]byte("encryption")))
+	if dataLeft != nil {
+		log.Lvl2("Message could not entirely be embedded in the point")
+	}
+	encryptedMessage = config.CryptoSuite.Point().Add(encryptedMessage, msg.Pk)
 	toSend := &net.REL_CLI_QUERY{
 		RoundID: msg.RoundID,
-		EncryptedData: p.relayState.DCNetData} // todo encrypt data
+		EncryptedData: encryptedMessage}
 
 	// broadcast to all clients
 	for i := 0; i < p.relayState.nClients; i++ {

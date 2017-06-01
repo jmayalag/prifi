@@ -182,7 +182,7 @@ type CLI_REL_QUERY struct {
 
 type REL_CLI_QUERY struct {
 	RoundID 	int32
-	EncryptedData   []byte
+	EncryptedData   abstract.Point
 }
 
 type CLI_REL_BLAME struct {

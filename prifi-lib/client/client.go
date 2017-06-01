@@ -519,9 +519,16 @@ We compare the plaintexts to find the flipped bits.
 func (p *PriFiLibClientInstance) Received_REL_CLI_QUERY(msg net.REL_CLI_QUERY) error {
 	//decrypt and compare plaintext with data @ RoundID
 
+	point, _ := config.CryptoSuite.Point().Pick(nil, config.CryptoSuite.Cipher([]byte("encryption")))
+	point.Mul(point,p.clientState.ephemeralPrivateKey)
+	point.Add(point,msg.EncryptedData)
+	message, err := point.Data()
+	if err != nil {
+		log.Fatal("Impossible to decode message sent by relay")
+	}
 	for roundID, data := range p.clientState.DataHistory {
 		if msg.RoundID == roundID {
-			bitPos := comparePlaintexts(data, msg.EncryptedData) //todo change when data encrypted
+			bitPos := comparePlaintexts(data, message)
 			toSend := &net.CLI_REL_BLAME{
 				RoundID: roundID,
 				NIZK:    make([]byte,1),
