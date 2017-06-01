@@ -560,8 +560,7 @@ func comparePlaintexts(data1, data2 []byte) int {
 
 func (p *PriFiLibClientInstance) Received_REL_ALL_REVEAL(msg net.REL_ALL_REVEAL) error {
 	//p.stateMachine.ChangeState("BLAMING")
-	// function in dcnet to retrieve bits with round number and bitPos
-	bits := p.clientState.DCNet_RoundManager.RevealBits(msg.RoundID, msg.BitPos)
+	bits := p.clientState.DCNet_RoundManager.RevealBits(msg.RoundID, msg.BitPos, p.clientState.UsablePayloadLength)
 	toSend := &net.ALL_REL_REVEAL{
 		Bits:bits}
 	p.messageSender.SendToRelayWithLog(toSend, "Revealed bits")

@@ -5,7 +5,6 @@ import (
 	"gopkg.in/dedis/crypto.v0/abstract"
 	"gopkg.in/dedis/onet.v1/log"
 	"github.com/lbarman/prifi/prifi-lib/config"
-	"errors"
 	"math"
 )
 
@@ -20,18 +19,19 @@ func (dc *DCNet_RoundManager) TrusteeSetup(sharedSecrets []abstract.Point) {
 	dc.sharedSecrets = sharedSecrets
 }
 
-func (dc *DCNet_RoundManager) RevealBits(roundID int32, bitPos int) map[int]int {
+func (dc *DCNet_RoundManager) RevealBits(roundID int32, bitPos int, payloadLength int) map[int]int {
 	roundId := roundID
 	if roundId > dc.currentRound {
 		log.Fatal("Trying to reveal a future round")
 	}
 	var bits map[int]int
+	bits = make(map[int]int)
 
 	sharedPRNGs := make([]abstract.Cipher, len(dc.sharedSecrets))
 	for i := 0; i < len(dc.sharedSecrets); i++ {
 		bytes, err := dc.sharedSecrets[i].MarshalBinary()
 		if err != nil {
-			return errors.New("Could not marshal point !")
+			log.Fatal("Could not marshal point !")
 		}
 		sharedPRNGs[i] = config.CryptoSuite.Cipher(bytes)
 	}
@@ -43,34 +43,27 @@ func (dc *DCNet_RoundManager) RevealBits(roundID int32, bitPos int) map[int]int 
 		dcCiphers[i] = config.CryptoSuite.Cipher(key)
 	}
 
-	payloadLength := dc.CellCoder.ClientCellSize()
-	for dc.currentRound > roundId {
+	for i := int32(0); i < roundId; i++ {
 		//discard crypto material
 		dst := make([]byte, payloadLength)
 		for i := range dcCiphers {
 			dcCiphers[i].Read(dst)
 		}
-		roundId++
 	}
 
-	if dc.currentRound == roundId { //sanity check
-
-		for i := range dcCiphers {
-			dst := make([]byte, payloadLength)
-			dcCiphers[i].Read(dst)
-			m := float64(bitPos)/float64(8)
-			m = math.Floor(m)
-			n := bitPos % 8
-			mask := byte(1 << uint8(n))
-			if (dst[m] & mask) == 0 {
-				bits[i] = 0
-			} else {
-				bits[i] = 1
-			}
+	for i := range dcCiphers {
+		dst := make([]byte, payloadLength)
+		dcCiphers[i].Read(dst)
+		m := float64(bitPos)/float64(8)
+		m = math.Floor(m)
+		m2 := int(m)
+		n := bitPos % 8
+		mask := byte(1 << uint8(n))
+		if (dst[m2] & mask) == 0 {
+			bits[i] = 0
+		} else {
+			bits[i] = 1
 		}
-
-
 	}
-
 	return bits
 }

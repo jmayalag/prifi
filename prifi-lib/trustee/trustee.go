@@ -280,8 +280,7 @@ func (p *PriFiLibTrusteeInstance) Received_REL_TRU_TELL_TRANSCRIPT(msg net.REL_T
 
 func (p *PriFiLibTrusteeInstance) Received_REL_ALL_REVEAL(msg net.REL_ALL_REVEAL) error {
 	//p.stateMachine.ChangeState("BLAMING")
-	// function in dcnet to retrieve bits with round number and bitPos
-	bits := p.trusteeState.DCNet_RoundManager.RevealBits(msg.RoundID, msg.BitPos)
+	bits := p.trusteeState.DCNet_RoundManager.RevealBits(msg.RoundID, msg.BitPos, p.trusteeState.PayloadLength)
 	toSend := &net.ALL_REL_REVEAL{
 		Bits:bits}
 	p.messageSender.SendToRelayWithLog(toSend, "Revealed bits")
