@@ -749,7 +749,7 @@ func (p* PriFiLibRelayInstance) Received_CLI_REL_QUERY(msg net.CLI_REL_QUERY) er
 	if dataLeft != nil {
 		log.Lvl2("Message could not entirely be embedded in the point")
 	}
-	encryptedMessage = config.CryptoSuite.Point().Add(encryptedMessage, msg.Pk)
+	encryptedMessage.Add(encryptedMessage, msg.Pk)
 	toSend := &net.REL_CLI_QUERY{
 		RoundID: msg.RoundID,
 		EncryptedData: encryptedMessage}

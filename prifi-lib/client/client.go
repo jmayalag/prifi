@@ -176,19 +176,19 @@ func (p *PriFiLibClientInstance) ProcessDownStreamData(msg net.REL_CLI_DOWNSTREA
 	//processing hash
 
 	if msg.Hash != nil {
-		log.Lvl3("hist length", len(p.clientState.DataHistory))
+		log.Lvl1("hist length", len(p.clientState.DataHistory))
 		for roundID, data := range p.clientState.DataHistory {
-			log.Lvl3("IDs : ", msg.HashRoundID, " and ", roundID, "are equal : ", msg.HashRoundID == roundID)
+			log.Lvl1("IDs : ", msg.HashRoundID, " and ", roundID, "are equal : ", msg.HashRoundID == roundID)
 			if msg.HashRoundID == roundID {
 				var hash []byte
 				hash2 := sha256.Sum256(data)
 				hash = hash2[:]
 				if bytes.Equal(msg.Hash, hash) {
-					log.Lvl3("Hash equal")
+					log.Lvl1("Hash equal")
 					delete(p.clientState.DataHistory, roundID)
 				} else {
 					//start of blame procedure
-					log.Lvl3("Hash different from message, hash 1 : ", msg.Hash, " hash2 : ", hash2, " data : ", data)
+					log.Lvl1("Hash different from message, hash 1 : ", msg.Hash, " hash2 : ", hash2, " data : ", data)
 					p.clientState.BlameStarted = true
 					p.clientState.CorruptedID = roundID
 				}
@@ -373,10 +373,10 @@ func (p *PriFiLibClientInstance) SendUpstreamData() error {
 			}
 		}
 		content := make([]byte, len(upstreamCellContent))
-		log.Lvl3("data : ", upstreamCellContent)
+		log.Lvl1("data : ", upstreamCellContent)
 		copy(content[:], upstreamCellContent[:])
 		p.clientState.DataHistory[p.clientState.RoundNo] = content
-		log.Lvl3("data : ", content)
+		//log.Lvl3("data : ", content)
 	}
 
 	//query the corrupted plaintext if it was corrupted
@@ -385,7 +385,7 @@ func (p *PriFiLibClientInstance) SendUpstreamData() error {
 		EphPublicKey, p.clientState.BlamePrivateKey = crypto.NewKeyPair()
 
 		toSend := &net.CLI_REL_QUERY{
-			RoundID: p.clientState.RoundNo,
+			RoundID: p.clientState.RoundNo -1,
 			NIZK: make([]byte,1),
 			Pk: EphPublicKey}
 		p.messageSender.SendToRelayWithLog(toSend, "Query for the blame procedure sent.")
