@@ -119,8 +119,14 @@ type Struct_REL_ALL_REVEAL struct {
 	net.REL_ALL_REVEAL
 }
 
-//Struct_ALL_REL_REVEAL is a wrapper for ALL_REL_REVEAL (but also contains a *onet.TreeNode)
-type Struct_ALL_REL_REVEAL struct {
+//Struct_CLI_REL_REVEAL is a wrapper for CLI_REL_REVEAL (but also contains a *onet.TreeNode)
+type Struct_CLI_REL_REVEAL struct {
 	*onet.TreeNode
-	net.ALL_REL_REVEAL
+	net.CLI_REL_REVEAL
+}
+
+//Struct_TRU_REL_REVEAL is a wrapper for TRU_REL_REVEAL (but also contains a *onet.TreeNode)
+type Struct_TRU_REL_REVEAL struct {
+	*onet.TreeNode
+	net.TRU_REL_REVEAL
 }

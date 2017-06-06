@@ -113,6 +113,8 @@ func (p *PriFiLibRelayInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARA
 	p.relayState.nVkeysCollected = 0
 	p.relayState.dcnetRoundManager = NewDCNetRoundManager(windowSize)
 	p.relayState.dcNetType = dcNetType
+	p.relayState.clientBitMap = make(map[int]map[int]int)
+	p.relayState.trusteeBitMap = make(map[int]map[int]int)
 
 	switch dcNetType {
 	case "Simple":
@@ -792,10 +794,44 @@ func (p *PriFiLibRelayInstance) Received_CLI_REL_BLAME(msg net.CLI_REL_BLAME) er
 }
 
 /*
-Received_ALL_REL_REVEAL handles ALL_REL_REVEAL messages
-Put bits in a matrix, compare between those and the disrupted round, find disruptor
+Received_CLI_REL_REVEAL handles CLI_REL_REVEAL messages
+Put bits in maps and find the disruptor if we received everything
 */
-func (p *PriFiLibRelayInstance) Received_ALL_REL_REVEAL(msg net.ALL_REL_REVEAL) error {
+func (p *PriFiLibRelayInstance) Received_CLI_REL_REVEAL(msg net.CLI_REL_REVEAL) error {
 
+	p.relayState.clientBitMap[msg.ClientID] = msg.Bits
+
+	if (len(p.relayState.clientBitMap) == p.relayState.nClients) && (len(p.relayState.trusteeBitMap) == p.relayState.nTrustees) {
+		p.findDisruptor()
+	}
+	return nil
+}
+
+/*
+Received_TRU_REL_REVEAL handles TRU_REL_REVEAL messages
+Put bits in maps and find the disruptor if we received everything
+*/
+func (p *PriFiLibRelayInstance) Received_TRU_REL_REVEAL(msg net.TRU_REL_REVEAL) error {
+
+	p.relayState.trusteeBitMap[msg.TrusteeID] = msg.Bits
+
+	if (len(p.relayState.clientBitMap) == p.relayState.nClients) && (len(p.relayState.trusteeBitMap) == p.relayState.nTrustees) {
+		p.findDisruptor()
+	}
+	return nil
+}
+
+/*
+findDisruptor is called when we received all the bits from clients and trustees, we must find a mismatch
+ */
+func (p *PriFiLibRelayInstance) findDisruptor() error {
+
+	for i, val := range p.relayState.clientBitMap {
+		for j, values := range p.relayState.trusteeBitMap {
+			if val[j] != values[i] {
+				log.Lvl1("Found difference between client ", i, " and trustee ", j)
+			}
+		}
+	}
 	return nil
 }

@@ -564,7 +564,8 @@ We send back one bit per trustee, from the shared cipher, at bitPos
 */
 func (p *PriFiLibClientInstance) Received_REL_ALL_REVEAL(msg net.REL_ALL_REVEAL) error {
 	bits := p.clientState.DCNet_RoundManager.RevealBits(msg.RoundID, msg.BitPos, p.clientState.UsablePayloadLength)
-	toSend := &net.ALL_REL_REVEAL{
+	toSend := &net.CLI_REL_REVEAL{
+		ClientID:p.clientState.ID,
 		Bits: bits}
 	p.messageSender.SendToRelayWithLog(toSend, "Revealed bits")
 	return nil

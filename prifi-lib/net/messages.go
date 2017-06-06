@@ -200,8 +200,15 @@ type REL_ALL_REVEAL struct {
 	BitPos  int
 }
 
-// ALL_REL_REVEAL contains a map with individual bits to find a disruptor, and is sent to the relay
-type ALL_REL_REVEAL struct {
+// CLI_REL_REVEAL contains a map with individual bits to find a disruptor, and is sent to the relay
+type CLI_REL_REVEAL struct {
+	ClientID int
+	Bits map[int]int
+}
+
+// TRU_REL_REVEAL contains a map with individual bits to find a disruptor, and is sent to the relay
+type TRU_REL_REVEAL struct {
+	TrusteeID int
 	Bits map[int]int
 }
 

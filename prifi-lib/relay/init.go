@@ -175,6 +175,8 @@ type RelayState struct {
 	timeStatistics                    map[string]*prifilog.TimeStatistics
 	slotScheduler                     *scheduler.BitMaskSlotScheduler_Relay
 	dcNetType                         string
+	clientBitMap			  map[int]map[int]int
+	trusteeBitMap			  map[int]map[int]int
 
 	//Used for verifiable DC-net, part of the dcnet/owned.go
 	VerifiableDCNetKeys [][]byte
@@ -230,9 +232,13 @@ func (p *PriFiLibRelayInstance) ReceivedMessage(msg interface{}) error {
 		if p.stateMachine.AssertState("COMMUNICATING") {
 			err = p.Received_CLI_REL_BLAME(typedMsg)
 		}
-	case net.ALL_REL_REVEAL:
+	case net.CLI_REL_REVEAL:
 		if p.stateMachine.AssertState("COMMUNICATING") {
-			err = p.Received_ALL_REL_REVEAL(typedMsg)
+			err = p.Received_CLI_REL_REVEAL(typedMsg)
+		}
+	case net.TRU_REL_REVEAL:
+		if p.stateMachine.AssertState("COMMUNICATING") {
+			err = p.Received_TRU_REL_REVEAL(typedMsg)
 		}
 	default:
 		err = errors.New("Unrecognized message, type" + reflect.TypeOf(msg).String())
