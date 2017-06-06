@@ -176,19 +176,15 @@ func (p *PriFiLibClientInstance) ProcessDownStreamData(msg net.REL_CLI_DOWNSTREA
 	//processing hash
 
 	if msg.Hash != nil {
-		log.Lvl1("hist length", len(p.clientState.DataHistory))
 		for roundID, data := range p.clientState.DataHistory {
-			log.Lvl1("IDs : ", msg.HashRoundID, " and ", roundID, "are equal : ", msg.HashRoundID == roundID)
 			if msg.HashRoundID == roundID {
 				var hash []byte
 				hash2 := sha256.Sum256(data)
 				hash = hash2[:]
 				if bytes.Equal(msg.Hash, hash) {
-					log.Lvl1("Hash equal")
 					delete(p.clientState.DataHistory, roundID)
 				} else {
 					//start of blame procedure
-					log.Lvl1("Hash different from message, hash 1 : ", msg.Hash, " hash2 : ", hash2, " data : ", data)
 					p.clientState.BlameStarted = true
 					p.clientState.CorruptedID = roundID
 				}
@@ -373,7 +369,6 @@ func (p *PriFiLibClientInstance) SendUpstreamData() error {
 			}
 		}
 		content := make([]byte, len(upstreamCellContent))
-		log.Lvl1("data : ", upstreamCellContent)
 		copy(content[:], upstreamCellContent[:])
 		p.clientState.DataHistory[p.clientState.RoundNo] = content
 		//log.Lvl3("data : ", content)
@@ -519,9 +514,8 @@ We compare the plaintexts to find the flipped bits.
 func (p *PriFiLibClientInstance) Received_REL_CLI_QUERY(msg net.REL_CLI_QUERY) error {
 	//decrypt and compare plaintext with data @ RoundID
 
-	point, _ := config.CryptoSuite.Point().Pick(nil, config.CryptoSuite.Cipher([]byte("encryption")))
-	point.Mul(point,p.clientState.ephemeralPrivateKey)
-	point.Add(point,msg.EncryptedData)
+	p2 := config.CryptoSuite.Point().Mul(config.CryptoSuite.Point().Base(), p.clientState.BlamePrivateKey)
+	point := config.CryptoSuite.Point().Sub(msg.EncryptedData, p2)
 	message, err := point.Data()
 	if err != nil {
 		log.Fatal("Impossible to decode message sent by relay")

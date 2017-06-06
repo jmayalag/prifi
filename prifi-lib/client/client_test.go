@@ -683,7 +683,7 @@ func TestClient3(t *testing.T) {
 		t.Error("should be in round 1, we sent a CLI_REL_UPSTREAM_DATA (there is no REL_CLI_DOWNSTREAM_DATA on round 0)")
 	}
 
-	data := sha256.Sum256([]byte{3, 5, 6})
+	data := sha256.Sum256([]byte{4, 5, 7})
 	hash := make([]byte,32)
 	copy(hash[:], data[:])
 
@@ -738,7 +738,7 @@ func TestClient3(t *testing.T) {
 	}
 
 	//Should send a CLI_REL_UPSTREAM_DATA and CLI_REL_QUERY
-	if len(sentToRelay) == 0 {
+	if len(sentToRelay) != 2 {
 		t.Error("Client should have sent a CLI_REL_UPSTREAM_DATA and CLI_REL_QUERY to the relay")
 	}
 
@@ -747,14 +747,34 @@ func TestClient3(t *testing.T) {
 		t.Error("Client should have sent a QUERY for round 1")
 	}
 
-	encryptedMessage, _ := config.CryptoSuite.Point().Pick([]byte{3, 5, 6}, config.CryptoSuite.Cipher([]byte("encryption")))
+	msg10b := sentToRelay[1].(*net.CLI_REL_UPSTREAM_DATA)
+	sentToRelay = make([]interface{}, 0)
+	if msg10b.RoundID != int32(2){
+		t.Error("Client sent a wrong RoundID")
+	}
+
+	encryptedMessage, _ := config.CryptoSuite.Point().Pick([]byte{4, 5, 7}, config.CryptoSuite.Cipher([]byte("encryption")))
 	encryptedMessage.Add(encryptedMessage, msg10.Pk)
-	msg11 := &net.REL_CLI_QUERY{
+
+	msg11 := net.REL_CLI_QUERY{
 		RoundID: msg10.RoundID,
 		EncryptedData: encryptedMessage}
 
 	err11 := client.ReceivedMessage(msg11)
 	if err11 != nil {
 		t.Error("Client should be able to receive this data")
+	}
+
+	//Should send a CLI_REL_BLAME
+	if len(sentToRelay) == 0 {
+		t.Error("Client should have sent a CLI_REL_BLAME to the relay")
+	}
+
+	msg13 := sentToRelay[0].(*net.CLI_REL_BLAME)
+	if msg13.RoundID != 1 {
+		t.Error("Client should have sent a BLAME for round 1")
+	}
+	if msg13.BitPos != 23 { //added a 1 in the last position of 3rd bit
+		t.Error("Client sent wrong bitPos")
 	}
 }

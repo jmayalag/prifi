@@ -334,7 +334,6 @@ func (p *PriFiLibRelayInstance) finalizeUpstreamData() error {
 		p.relayState.CellCoder.DecodeTrustee(s)
 	}
 	upstreamPlaintext := p.relayState.CellCoder.DecodeCell()
-	log.Lvl3("Data : ", upstreamPlaintext)
 	p.relayState.DCNetData = upstreamPlaintext
 	p.relayState.HashRoundID = p.relayState.dcnetRoundManager.currentRound
 
@@ -451,7 +450,6 @@ func (p *PriFiLibRelayInstance) sendDownstreamData() error {
 		FlagOpenClosedRequest: flagOpenClosedRequest}
 
 	if p.relayState.DCNetData != nil { //we have sent an upstream message so we broadcast the hash
-		log.Lvl3("Hash added, data : ",p.relayState.DCNetData)
 		toSend.HashRoundID = p.relayState.HashRoundID
 		hash := sha256.Sum256(p.relayState.DCNetData)
 		toSend.Hash = hash[:]
@@ -747,7 +745,7 @@ func (p* PriFiLibRelayInstance) Received_CLI_REL_QUERY(msg net.CLI_REL_QUERY) er
 
 	encryptedMessage, dataLeft := config.CryptoSuite.Point().Pick(p.relayState.DCNetData,config.CryptoSuite.Cipher([]byte("encryption")))
 	if dataLeft != nil {
-		log.Lvl2("Message could not entirely be embedded in the point")
+		log.Lvl2("Message could not entirely be embedded in the point") //todo what to do then ?
 	}
 	encryptedMessage.Add(encryptedMessage, msg.Pk)
 	toSend := &net.REL_CLI_QUERY{

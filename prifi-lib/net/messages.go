@@ -260,8 +260,8 @@ func (m *REL_CLI_DOWNSTREAM_DATA_UDP) FromBytes(buffer []byte) (interface{}, err
 	hashRoundID := int32(binary.BigEndian.Uint32(buffer[len(buffer)-44:len(buffer)-40]))
 	flagResyncInt := int(binary.BigEndian.Uint32(buffer[len(buffer)-8 : len(buffer)-4]))
 	flagOpenClosedInt := int(binary.BigEndian.Uint32(buffer[len(buffer)-4:]))
-	data := buffer[4 : len(buffer)-8]
-	hash := buffer[len(buffer)-40:len(buffer)-8]
+	data := buffer[4 : len(buffer)-44]
+	hash := buffer[len(buffer)-40 : len(buffer)-8]
 
 	flagResync := false
 	if flagResyncInt == 1 {
