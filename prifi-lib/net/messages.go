@@ -65,12 +65,12 @@ type CLI_REL_OPENCLOSED_DATA struct {
 // REL_CLI_DOWNSTREAM_DATA message contains the downstream data for a client for a given round
 // and is sent by the relay to the clients.
 type REL_CLI_DOWNSTREAM_DATA struct {
-	RoundID    		int32
-	Data       		[]byte
-	HashRoundID		int32
-	Hash			[]byte
-	FlagResync 		bool
-	FlagOpenClosedRequest 	bool
+	RoundID               int32
+	Data                  []byte
+	HashRoundID           int32
+	Hash                  []byte
+	FlagResync            bool
+	FlagOpenClosedRequest bool
 }
 
 //Converts []ByteArray -> [][]byte and returns it
@@ -174,31 +174,37 @@ type TRU_REL_TELL_PK struct {
 	Pk        abstract.Point
 }
 
+// CLI_REL_QUERY contains a disrupted roundID and the public key of its owner, and is sent to the relay
 type CLI_REL_QUERY struct {
 	RoundID int32
-	NIZK	[]byte
-	Pk 	abstract.Point
+	NIZK    []byte
+	Pk      abstract.Point
 }
 
+// REL_CLI_QUERY contains a disrupted round's data encrypted for the owner, and is sent by the relay
 type REL_CLI_QUERY struct {
-	RoundID 	int32
-	EncryptedData   abstract.Point
+	RoundID       int32
+	EncryptedData abstract.Point
 }
 
+// CLI_REL_BLAME contains a disrupted roundID and the position where a bit was flipped, and is sent to the relay
 type CLI_REL_BLAME struct {
 	RoundID int32
-	NIZK	[]byte
-	BitPos	int
+	NIZK    []byte
+	BitPos  int
 }
 
+// REL_ALL_REVEAL contains a disrupted roundID and the position where a bit was flipped, and is sent by the relay
 type REL_ALL_REVEAL struct {
 	RoundID int32
 	BitPos  int
 }
 
+// ALL_REL_REVEAL contains a map with individual bits to find a disruptor, and is sent to the relay
 type ALL_REL_REVEAL struct {
 	Bits map[int]int
 }
+
 /*
 REL_CLI_DOWNSTREAM_DATA_UDP message is a bit special. It's a REL_CLI_DOWNSTREAM_DATA, simply named with _UDP postfix to be able to distinguish them from type,
 and theoretically that should be it. But since it doesn't go through SDA (which does not support UDP yet), we have to manually convert it to bytes.
@@ -257,7 +263,7 @@ func (m *REL_CLI_DOWNSTREAM_DATA_UDP) FromBytes(buffer []byte) (interface{}, err
 
 	// [0:4 roundID] [4:end-8 data] [end-8:end-4 resyncFlag] [end-4:end openClosedFlag]
 	roundID := int32(binary.BigEndian.Uint32(buffer[0:4]))
-	hashRoundID := int32(binary.BigEndian.Uint32(buffer[len(buffer)-44:len(buffer)-40]))
+	hashRoundID := int32(binary.BigEndian.Uint32(buffer[len(buffer)-44 : len(buffer)-40]))
 	flagResyncInt := int(binary.BigEndian.Uint32(buffer[len(buffer)-8 : len(buffer)-4]))
 	flagOpenClosedInt := int(binary.BigEndian.Uint32(buffer[len(buffer)-4:]))
 	data := buffer[4 : len(buffer)-44]

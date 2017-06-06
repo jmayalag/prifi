@@ -278,11 +278,14 @@ func (p *PriFiLibTrusteeInstance) Received_REL_TRU_TELL_TRANSCRIPT(msg net.REL_T
 	return nil
 }
 
+/*
+Received_REL_ALL_REVEAL handles REL_ALL_REVEAL messages.
+We send back one bit per client, from the shared cipher, at bitPos
+*/
 func (p *PriFiLibTrusteeInstance) Received_REL_ALL_REVEAL(msg net.REL_ALL_REVEAL) error {
-	//p.stateMachine.ChangeState("BLAMING")
 	bits := p.trusteeState.DCNet_RoundManager.RevealBits(msg.RoundID, msg.BitPos, p.trusteeState.PayloadLength)
 	toSend := &net.ALL_REL_REVEAL{
-		Bits:bits}
+		Bits: bits}
 	p.messageSender.SendToRelayWithLog(toSend, "Revealed bits")
 	return nil
 }

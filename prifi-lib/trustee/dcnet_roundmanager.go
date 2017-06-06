@@ -1,24 +1,26 @@
 package trustee
 
 import (
+	"github.com/lbarman/prifi/prifi-lib/config"
 	"github.com/lbarman/prifi/prifi-lib/dcnet"
 	"gopkg.in/dedis/crypto.v0/abstract"
 	"gopkg.in/dedis/onet.v1/log"
-	"github.com/lbarman/prifi/prifi-lib/config"
 	"math"
 )
 
 // DCNet_RoundManager allows to request DC-net pads for a specific round
 type DCNet_RoundManager struct {
-	CellCoder    	dcnet.CellCoder
-	currentRound 	int32
-	sharedSecrets 	[]abstract.Point
+	CellCoder     dcnet.CellCoder
+	currentRound  int32
+	sharedSecrets []abstract.Point
 }
 
+// TrusteeSetup stores the sharedSecrets to be able to reveal bits in case of disruption
 func (dc *DCNet_RoundManager) TrusteeSetup(sharedSecrets []abstract.Point) {
 	dc.sharedSecrets = sharedSecrets
 }
 
+// RevealBits reveals the individual bits from each cipher in case of disruption
 func (dc *DCNet_RoundManager) RevealBits(roundID int32, bitPos int, payloadLength int) map[int]int {
 	roundId := roundID
 	if roundId > dc.currentRound {
@@ -54,7 +56,7 @@ func (dc *DCNet_RoundManager) RevealBits(roundID int32, bitPos int, payloadLengt
 	for i := range dcCiphers {
 		dst := make([]byte, payloadLength)
 		dcCiphers[i].Read(dst)
-		m := float64(bitPos)/float64(8)
+		m := float64(bitPos) / float64(8)
 		m = math.Floor(m)
 		m2 := int(m)
 		n := bitPos % 8

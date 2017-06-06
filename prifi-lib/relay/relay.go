@@ -37,13 +37,13 @@ import (
 	"strconv"
 	"time"
 
+	"crypto/sha256"
 	"github.com/lbarman/prifi/prifi-lib/config"
 	"github.com/lbarman/prifi/prifi-lib/dcnet"
 	"github.com/lbarman/prifi/prifi-lib/net"
 	socks "github.com/lbarman/prifi/prifi-socks"
 	"github.com/lbarman/prifi/utils/timing"
 	"gopkg.in/dedis/crypto.v0/abstract"
-	"crypto/sha256"
 	"gopkg.in/dedis/onet.v1/log"
 )
 
@@ -444,8 +444,8 @@ func (p *PriFiLibRelayInstance) sendDownstreamData() error {
 	toSend := &net.REL_CLI_DOWNSTREAM_DATA{
 		RoundID:               nextDownstreamRoundID,
 		Data:                  downstreamCellContent,
-		HashRoundID: 	       -1,
-		Hash: 		       nil,
+		HashRoundID:           -1,
+		Hash:                  nil,
 		FlagResync:            flagResync,
 		FlagOpenClosedRequest: flagOpenClosedRequest}
 
@@ -738,18 +738,18 @@ func (p *PriFiLibRelayInstance) Received_TRU_REL_SHUFFLE_SIG(msg net.TRU_REL_SHU
 Received_CLI_REL_QUERY handles CLI_REL_QUERY messages.
 When we receive it we check the NIZK (not yet).
 If correct we send back the corrupted plaintext message encrypted with the received public key.
- */
-func (p* PriFiLibRelayInstance) Received_CLI_REL_QUERY(msg net.CLI_REL_QUERY) error {
+*/
+func (p *PriFiLibRelayInstance) Received_CLI_REL_QUERY(msg net.CLI_REL_QUERY) error {
 
 	//Check NIZK
 
-	encryptedMessage, dataLeft := config.CryptoSuite.Point().Pick(p.relayState.DCNetData,config.CryptoSuite.Cipher([]byte("encryption")))
+	encryptedMessage, dataLeft := config.CryptoSuite.Point().Pick(p.relayState.DCNetData, config.CryptoSuite.Cipher([]byte("encryption")))
 	if dataLeft != nil {
 		log.Lvl2("Message could not entirely be embedded in the point") //todo what to do then ?
 	}
 	encryptedMessage.Add(encryptedMessage, msg.Pk)
 	toSend := &net.REL_CLI_QUERY{
-		RoundID: msg.RoundID,
+		RoundID:       msg.RoundID,
 		EncryptedData: encryptedMessage}
 
 	// broadcast to all clients
@@ -765,14 +765,14 @@ func (p* PriFiLibRelayInstance) Received_CLI_REL_QUERY(msg net.CLI_REL_QUERY) er
 Received_CLI_REL_BLAME handles CLI_REL_BLAME messages.
 When we receive it we check the NIZK (not yet).
 If correct we stop communication (after ending current round) and ask all users to reveal bits.
- */
-func (p* PriFiLibRelayInstance) Received_CLI_REL_BLAME(msg net.CLI_REL_BLAME) error {
+*/
+func (p *PriFiLibRelayInstance) Received_CLI_REL_BLAME(msg net.CLI_REL_BLAME) error {
 
 	//Check NIZK
 
 	toSend := &net.REL_ALL_REVEAL{
 		RoundID: msg.RoundID,
-		BitPos: msg.BitPos}
+		BitPos:  msg.BitPos}
 
 	// broadcast to all trustees
 	for j := 0; j < p.relayState.nTrustees; j++ {
@@ -791,7 +791,11 @@ func (p* PriFiLibRelayInstance) Received_CLI_REL_BLAME(msg net.CLI_REL_BLAME) er
 	return nil
 }
 
-func (p* PriFiLibRelayInstance) Received_ALL_REL_REVEAL(msg net.ALL_REL_REVEAL) error {
-	//Put bits in a matrix, compare between those and the disrupted round, find disruptor
+/*
+Received_ALL_REL_REVEAL handles ALL_REL_REVEAL messages
+Put bits in a matrix, compare between those and the disrupted round, find disruptor
+*/
+func (p *PriFiLibRelayInstance) Received_ALL_REL_REVEAL(msg net.ALL_REL_REVEAL) error {
+
 	return nil
 }

@@ -89,7 +89,7 @@ func NewRelay(dataOutputEnabled bool, dataForClients chan []byte, dataFromDCNet 
 	relayState.Name = "Relay"
 
 	//init the state machine
-	states := []string{"BEFORE_INIT", "COLLECTING_TRUSTEES_PKS", "COLLECTING_CLIENT_PKS", "COLLECTING_SHUFFLES", "COLLECTING_SHUFFLE_SIGNATURES", "COMMUNICATING", "BLAMING", "SHUTDOWN"}
+	states := []string{"BEFORE_INIT", "COLLECTING_TRUSTEES_PKS", "COLLECTING_CLIENT_PKS", "COLLECTING_SHUFFLES", "COLLECTING_SHUFFLE_SIGNATURES", "COMMUNICATING", "SHUTDOWN"}
 	sm := new(utils.StateMachine)
 	logFn := func(s interface{}) {
 		log.Lvl2(s)
@@ -148,9 +148,9 @@ type RelayState struct {
 	DataForClients                    chan []byte // VPN / SOCKS should put data there !
 	PriorityDataForClients            chan []byte
 	DataFromDCNet                     chan []byte // VPN / SOCKS should read data from there !
-	DCNetData		  	  []byte
-	HashRoundID			  int32
-	DataOutputEnabled                 bool        // If FALSE, nothing will be written to DataFromDCNet
+	DCNetData                         []byte
+	HashRoundID                       int32
+	DataOutputEnabled                 bool // If FALSE, nothing will be written to DataFromDCNet
 	DownstreamCellSize                int
 	MessageHistory                    abstract.Cipher
 	Name                              string
@@ -231,7 +231,7 @@ func (p *PriFiLibRelayInstance) ReceivedMessage(msg interface{}) error {
 			err = p.Received_CLI_REL_BLAME(typedMsg)
 		}
 	case net.ALL_REL_REVEAL:
-		if p.stateMachine.AssertState("BLAMING") {
+		if p.stateMachine.AssertState("COMMUNICATING") {
 			err = p.Received_ALL_REL_REVEAL(typedMsg)
 		}
 	default:

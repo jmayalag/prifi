@@ -33,14 +33,14 @@ import (
 	"gopkg.in/dedis/crypto.v0/abstract"
 	"gopkg.in/dedis/onet.v1/log"
 
+	"bytes"
+	"crypto/sha256"
 	"github.com/lbarman/prifi/prifi-lib/dcnet"
 	"github.com/lbarman/prifi/prifi-lib/scheduler"
 	socks "github.com/lbarman/prifi/prifi-socks"
 	"github.com/lbarman/prifi/utils/timing"
 	"math/rand"
 	"time"
-	"crypto/sha256"
-	"bytes"
 )
 
 // Received_ALL_CLI_SHUTDOWN handles ALL_CLI_SHUTDOWN messages.
@@ -380,9 +380,9 @@ func (p *PriFiLibClientInstance) SendUpstreamData() error {
 		EphPublicKey, p.clientState.BlamePrivateKey = crypto.NewKeyPair()
 
 		toSend := &net.CLI_REL_QUERY{
-			RoundID: p.clientState.RoundNo -1,
-			NIZK: make([]byte,1),
-			Pk: EphPublicKey}
+			RoundID: p.clientState.RoundNo - 1,
+			NIZK:    make([]byte, 1),
+			Pk:      EphPublicKey}
 		p.messageSender.SendToRelayWithLog(toSend, "Query for the blame procedure sent.")
 	}
 	//produce the next upstream cell
@@ -510,7 +510,7 @@ func (p *PriFiLibClientInstance) Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(
 /*
 Received_REL_CLI_QUERY handles REL_CLI_QUERY messages.
 We compare the plaintexts to find the flipped bits.
- */
+*/
 func (p *PriFiLibClientInstance) Received_REL_CLI_QUERY(msg net.REL_CLI_QUERY) error {
 	//decrypt and compare plaintext with data @ RoundID
 
@@ -525,7 +525,7 @@ func (p *PriFiLibClientInstance) Received_REL_CLI_QUERY(msg net.REL_CLI_QUERY) e
 			bitPos := comparePlaintexts(data, message)
 			toSend := &net.CLI_REL_BLAME{
 				RoundID: roundID,
-				NIZK:    make([]byte,1),
+				NIZK:    make([]byte, 1),
 				BitPos:  bitPos,
 			}
 
@@ -535,35 +535,37 @@ func (p *PriFiLibClientInstance) Received_REL_CLI_QUERY(msg net.REL_CLI_QUERY) e
 		}
 	}
 
-
 	return nil
 }
 
 /*
 comparePlaintexts returns the first position where a 0 in the first array was flipped to a 1 in the second,
 or -1 if there is no such position
- */
+*/
 func comparePlaintexts(data1, data2 []byte) int {
 
 	for i := 0; i < len(data1); i++ {
 		b1 := data1[i]
 		b2 := data2[i]
 
-		for j := 0; j< 8; j++ {
+		for j := 0; j < 8; j++ {
 			mask := byte(1 << uint8(j))
-			if (b1 & mask) != (b2 & mask) && (b1 & mask) == 0 { //difference between b1 and b2 and it's a 0 in b1
-				return (i*8 + 7-j)
+			if (b1&mask) != (b2&mask) && (b1&mask) == 0 { //difference between b1 and b2 and it's a 0 in b1
+				return (i*8 + 7 - j)
 			}
 		}
 	}
 	return -1
 }
 
+/*
+Received_REL_ALL_REVEAL handles REL_ALL_REVEAL messages.
+We send back one bit per trustee, from the shared cipher, at bitPos
+*/
 func (p *PriFiLibClientInstance) Received_REL_ALL_REVEAL(msg net.REL_ALL_REVEAL) error {
-	//p.stateMachine.ChangeState("BLAMING")
 	bits := p.clientState.DCNet_RoundManager.RevealBits(msg.RoundID, msg.BitPos, p.clientState.UsablePayloadLength)
 	toSend := &net.ALL_REL_REVEAL{
-		Bits:bits}
+		Bits: bits}
 	p.messageSender.SendToRelayWithLog(toSend, "Revealed bits")
 	return nil
 }

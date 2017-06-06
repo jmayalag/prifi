@@ -61,11 +61,10 @@ type ClientState struct {
 	MessageHistory            abstract.Cipher
 	StartStopReceiveBroadcast chan bool
 	timeStatistics            map[string]*prifilog.TimeStatistics
-	DataHistory		  map[int32][]byte
-	BlameStarted		  bool
+	DataHistory               map[int32][]byte
+	BlameStarted              bool
 	CorruptedID               int32
-	BlamePrivateKey		  abstract.Scalar
-
+	BlamePrivateKey           abstract.Scalar
 
 	//concurrent stuff
 	RoundNo           int32
@@ -105,7 +104,7 @@ func NewClient(doLatencyTest bool, dataOutputEnabled bool, dataForDCNet chan []b
 	clientState.DCNet_RoundManager = new(DCNet_RoundManager)
 
 	//init the state machine
-	states := []string{"BEFORE_INIT", "INITIALIZING", "EPH_KEYS_SENT", "READY", "BLAMING", "SHUTDOWN"}
+	states := []string{"BEFORE_INIT", "INITIALIZING", "EPH_KEYS_SENT", "READY", "SHUTDOWN"}
 	sm := new(utils.StateMachine)
 	logFn := func(s interface{}) {
 		log.Lvl2(s)

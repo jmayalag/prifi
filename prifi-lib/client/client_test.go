@@ -2,6 +2,7 @@ package client
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/binary"
 	"errors"
 	"github.com/lbarman/prifi/prifi-lib/config"
@@ -13,7 +14,6 @@ import (
 	"gopkg.in/dedis/onet.v1/log"
 	"testing"
 	"time"
-	"crypto/sha256"
 )
 
 /**
@@ -684,17 +684,17 @@ func TestClient3(t *testing.T) {
 	}
 
 	data := sha256.Sum256([]byte{4, 5, 7})
-	hash := make([]byte,32)
+	hash := make([]byte, 32)
 	copy(hash[:], data[:])
 
 	//Receive some data down
 	dataDown := []byte{1, 2, 3}
 	msg7 := net.REL_CLI_DOWNSTREAM_DATA{
-		RoundID:    1,
-		Data:       dataDown,
-		FlagResync: false,
-		HashRoundID: 	1,
-		Hash: 		hash,
+		RoundID:     1,
+		Data:        dataDown,
+		FlagResync:  false,
+		HashRoundID: 1,
+		Hash:        hash,
 	}
 	err := client.ReceivedMessage(msg7)
 	if err != nil {
@@ -726,11 +726,11 @@ func TestClient3(t *testing.T) {
 	}
 
 	msg9 := net.REL_CLI_DOWNSTREAM_DATA{
-		RoundID:    2,
-		Data:       dataDown,
-		FlagResync: false,
-		HashRoundID: 	1,
-		Hash: 		hash,
+		RoundID:     2,
+		Data:        dataDown,
+		FlagResync:  false,
+		HashRoundID: 1,
+		Hash:        hash,
 	}
 	err9 := client.ReceivedMessage(msg9)
 	if err9 != nil {
@@ -749,7 +749,7 @@ func TestClient3(t *testing.T) {
 
 	msg10b := sentToRelay[1].(*net.CLI_REL_UPSTREAM_DATA)
 	sentToRelay = make([]interface{}, 0)
-	if msg10b.RoundID != int32(2){
+	if msg10b.RoundID != int32(2) {
 		t.Error("Client sent a wrong RoundID")
 	}
 
@@ -757,7 +757,7 @@ func TestClient3(t *testing.T) {
 	encryptedMessage.Add(encryptedMessage, msg10.Pk)
 
 	msg11 := net.REL_CLI_QUERY{
-		RoundID: msg10.RoundID,
+		RoundID:       msg10.RoundID,
 		EncryptedData: encryptedMessage}
 
 	err11 := client.ReceivedMessage(msg11)
