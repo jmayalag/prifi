@@ -22,8 +22,8 @@ func (dc *DCNet_RoundManager) TrusteeSetup(sharedSecrets []abstract.Point) {
 
 // RevealBits reveals the individual bits from each cipher in case of disruption
 func (dc *DCNet_RoundManager) RevealBits(roundID int32, bitPos int, payloadLength int) map[int]int {
-	roundId := roundID
-	if roundId > dc.currentRound {
+	round_ID := roundID
+	if round_ID > dc.currentRound {
 		log.Fatal("Trying to reveal a future round")
 	}
 	var bits map[int]int
@@ -45,7 +45,7 @@ func (dc *DCNet_RoundManager) RevealBits(roundID int32, bitPos int, payloadLengt
 		dcCiphers[i] = config.CryptoSuite.Cipher(key)
 	}
 
-	for i := int32(0); i < roundId; i++ {
+	for i := int32(0); i < round_ID; i++ {
 		//discard crypto material
 		dst := make([]byte, payloadLength)
 		for i := range dcCiphers {
