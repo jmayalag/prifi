@@ -283,10 +283,25 @@ Received_REL_ALL_REVEAL handles REL_ALL_REVEAL messages.
 We send back one bit per client, from the shared cipher, at bitPos
 */
 func (p *PriFiLibTrusteeInstance) Received_REL_ALL_REVEAL(msg net.REL_ALL_REVEAL) error {
+	p.stateMachine.ChangeState("BLAMING")
 	bits := p.trusteeState.DCNet_RoundManager.RevealBits(msg.RoundID, msg.BitPos, p.trusteeState.PayloadLength)
 	toSend := &net.TRU_REL_REVEAL{
 		TrusteeID:p.trusteeState.ID,
 		Bits: bits}
 	p.messageSender.SendToRelayWithLog(toSend, "Revealed bits")
+	return nil
+}
+
+/*
+Received_REL_ALL_SECRET handles REL_ALL_SECRET messages.
+We send back the shared secret with the indicated client
+*/
+func (p *PriFiLibTrusteeInstance) Received_REL_ALL_SECRET(msg net.REL_ALL_SECRET) error {
+
+	secret := p.trusteeState.DCNet_RoundManager.GetSecret(msg.UserID) //check how it behaves vs client ID
+	toSend := &net.TRU_REL_SECRET{
+		Secret: secret,
+		NIZK: make([]byte, 0)}
+	p.messageSender.SendToRelayWithLog(toSend, "Sent secret to relay")
 	return nil
 }

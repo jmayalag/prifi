@@ -130,3 +130,21 @@ type Struct_TRU_REL_REVEAL struct {
 	*onet.TreeNode
 	net.TRU_REL_REVEAL
 }
+
+//Struct_REL_ALL_SECRET is a wrapper for REL_ALL_SECRET (but also contains a *onet.TreeNode)
+type Struct_REL_ALL_SECRET struct {
+	*onet.TreeNode
+	net.REL_ALL_SECRET
+}
+
+//Struct_CLI_REL_SECRET is a wrapper for CLI_REL_SECRET (but also contains a *onet.TreeNode)
+type Struct_CLI_REL_SECRET struct {
+	*onet.TreeNode
+	net.CLI_REL_SECRET
+}
+
+//Struct_TRU_REL_SECRET is a wrapper for TRU_REL_SECRET (but also contains a *onet.TreeNode)
+type Struct_TRU_REL_SECRET struct {
+	*onet.TreeNode
+	net.TRU_REL_SECRET
+}

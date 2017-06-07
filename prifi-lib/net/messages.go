@@ -212,6 +212,23 @@ type TRU_REL_REVEAL struct {
 	Bits map[int]int
 }
 
+// REL_ALL_SECRET contains request ro reveal the shared secret with the specified recipient, and is sent by the relay
+type REL_ALL_SECRET struct {
+	UserID int
+}
+
+// CLI_REL_SECRET contains the shared secret requested by the relay, with a proof we computed it correctly
+type CLI_REL_SECRET struct {
+	Secret abstract.Point
+	NIZK []byte
+}
+
+// TRU_REL_SECRET contains the shared secret requested by the relay, with a proof we computed it correctly
+type TRU_REL_SECRET struct {
+	Secret abstract.Point
+	NIZK []byte
+}
+
 /*
 REL_CLI_DOWNSTREAM_DATA_UDP message is a bit special. It's a REL_CLI_DOWNSTREAM_DATA, simply named with _UDP postfix to be able to distinguish them from type,
 and theoretically that should be it. But since it doesn't go through SDA (which does not support UDP yet), we have to manually convert it to bytes.

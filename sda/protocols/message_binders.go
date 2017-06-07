@@ -106,3 +106,18 @@ func (p *PriFiSDAProtocol) Received_CLI_REL_REVEAL(msg Struct_CLI_REL_REVEAL) er
 func (p *PriFiSDAProtocol) Received_TRU_REL_REVEAL(msg Struct_TRU_REL_REVEAL) error {
 	return p.prifiLibInstance.ReceivedMessage(msg.TRU_REL_REVEAL)
 }
+
+//Received_REL_ALL_SECRET forward an REL_ALL_SECRET message to PriFi's lib
+func (p *PriFiSDAProtocol) Received_REL_ALL_SECRET(msg Struct_REL_ALL_SECRET) error {
+	return p.prifiLibInstance.ReceivedMessage(msg.REL_ALL_SECRET)
+}
+
+//Received_CLI_REL_SECRET forward an CLI_REL_SECRET message to PriFi's lib
+func (p *PriFiSDAProtocol) Received_CLI_REL_SECRET(msg Struct_CLI_REL_SECRET) error {
+	return p.prifiLibInstance.ReceivedMessage(msg.CLI_REL_SECRET)
+}
+
+//Received_TRU_REL_SECRET forward an TRU_REL_SECRET message to PriFi's lib
+func (p *PriFiSDAProtocol) Received_TRU_REL_SECRET(msg Struct_TRU_REL_SECRET) error {
+	return p.prifiLibInstance.ReceivedMessage(msg.TRU_REL_SECRET)
+}

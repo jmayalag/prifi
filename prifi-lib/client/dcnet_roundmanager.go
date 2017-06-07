@@ -20,6 +20,11 @@ func (dc *DCNet_RoundManager) ClientSetup(sharedSecrets []abstract.Point) {
 	dc.sharedSecrets = sharedSecrets
 }
 
+// GetSecret returns the requested shared secret
+func (dc *DCNet_RoundManager) GetSecret(trusteeID int) abstract.Point {
+	return dc.sharedSecrets[trusteeID]
+}
+
 // ClientEncodeForRound allows to request DC-net pads for a specific round
 func (dc *DCNet_RoundManager) ClientEncodeForRound(roundID int32, payload []byte, payloadSize int, history abstract.Cipher) []byte {
 

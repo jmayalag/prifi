@@ -89,7 +89,7 @@ func NewRelay(dataOutputEnabled bool, dataForClients chan []byte, dataFromDCNet 
 	relayState.Name = "Relay"
 
 	//init the state machine
-	states := []string{"BEFORE_INIT", "COLLECTING_TRUSTEES_PKS", "COLLECTING_CLIENT_PKS", "COLLECTING_SHUFFLES", "COLLECTING_SHUFFLE_SIGNATURES", "COMMUNICATING", "SHUTDOWN"}
+	states := []string{"BEFORE_INIT", "COLLECTING_TRUSTEES_PKS", "COLLECTING_CLIENT_PKS", "COLLECTING_SHUFFLES", "COLLECTING_SHUFFLE_SIGNATURES", "COMMUNICATING", "BLAMING", "SHUTDOWN"}
 	sm := new(utils.StateMachine)
 	logFn := func(s interface{}) {
 		log.Lvl2(s)
@@ -177,6 +177,8 @@ type RelayState struct {
 	dcNetType                         string
 	clientBitMap			  map[int]map[int]int
 	trusteeBitMap			  map[int]map[int]int
+	blamingData			  []int //[round#, bitPos, clientID, bitRevealed, trusteeID, bitRevealed]
+
 
 	//Used for verifiable DC-net, part of the dcnet/owned.go
 	VerifiableDCNetKeys [][]byte
@@ -233,12 +235,20 @@ func (p *PriFiLibRelayInstance) ReceivedMessage(msg interface{}) error {
 			err = p.Received_CLI_REL_BLAME(typedMsg)
 		}
 	case net.CLI_REL_REVEAL:
-		if p.stateMachine.AssertState("COMMUNICATING") {
+		if p.stateMachine.AssertState("BLAMING") {
 			err = p.Received_CLI_REL_REVEAL(typedMsg)
 		}
 	case net.TRU_REL_REVEAL:
-		if p.stateMachine.AssertState("COMMUNICATING") {
+		if p.stateMachine.AssertState("BLAMING") {
 			err = p.Received_TRU_REL_REVEAL(typedMsg)
+		}
+	case net.TRU_REL_SECRET:
+		if p.stateMachine.AssertState("BLAMING") {
+			err = p.Received_TRU_REL_SECRET(typedMsg)
+		}
+	case net.CLI_REL_SECRET:
+		if p.stateMachine.AssertState("BLAMING") {
+			err = p.Received_CLI_REL_SECRET(typedMsg)
 		}
 	default:
 		err = errors.New("Unrecognized message, type" + reflect.TypeOf(msg).String())

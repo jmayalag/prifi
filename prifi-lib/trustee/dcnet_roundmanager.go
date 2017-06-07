@@ -20,6 +20,11 @@ func (dc *DCNet_RoundManager) TrusteeSetup(sharedSecrets []abstract.Point) {
 	dc.sharedSecrets = sharedSecrets
 }
 
+// GetSecret returns the requested shared secret
+func (dc *DCNet_RoundManager) GetSecret(clientID int) abstract.Point {
+	return dc.sharedSecrets[clientID]
+}
+
 // RevealBits reveals the individual bits from each cipher in case of disruption
 func (dc *DCNet_RoundManager) RevealBits(roundID int32, bitPos int, payloadLength int) map[int]int {
 	round_ID := roundID

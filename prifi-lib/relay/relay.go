@@ -115,6 +115,7 @@ func (p *PriFiLibRelayInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARA
 	p.relayState.dcNetType = dcNetType
 	p.relayState.clientBitMap = make(map[int]map[int]int)
 	p.relayState.trusteeBitMap = make(map[int]map[int]int)
+	p.relayState.blamingData = make([]int, 6)
 
 	switch dcNetType {
 	case "Simple":
@@ -771,10 +772,14 @@ If correct we stop communication (after ending current round) and ask all users 
 func (p *PriFiLibRelayInstance) Received_CLI_REL_BLAME(msg net.CLI_REL_BLAME) error {
 
 	//Check NIZK
+	p.stateMachine.ChangeState("BLAMING")
 
 	toSend := &net.REL_ALL_REVEAL{
 		RoundID: msg.RoundID,
 		BitPos:  msg.BitPos}
+
+	p.relayState.blamingData[0] = int(msg.RoundID)
+	p.relayState.blamingData[1] = msg.BitPos
 
 	// broadcast to all trustees
 	for j := 0; j < p.relayState.nTrustees; j++ {
@@ -830,8 +835,39 @@ func (p *PriFiLibRelayInstance) findDisruptor() error {
 		for j, values := range p.relayState.trusteeBitMap {
 			if val[j] != values[i] {
 				log.Lvl1("Found difference between client ", i, " and trustee ", j)
+
+				// message to trustee j and client i to reveal secrets
+				p.relayState.blamingData[2] = i
+				p.relayState.blamingData[3] = val[j]
+				p.relayState.blamingData[4] = j
+				p.relayState.blamingData[5] = values[i]
+				toSend := &net.REL_ALL_SECRET{
+					UserID: i}
+				p.messageSender.SendToTrustee(j, toSend)
+				toSend2 := &net.REL_ALL_SECRET{
+					UserID: j}
+				p.messageSender.SendToClient(i, toSend2)
 			}
 		}
 	}
+	log.Lvl1("Found no differences in revealed bits")
+	return nil
+}
+
+/*
+Received_TRU_REL_SECRET handles TRU_REL_SECRET messages
+Check the NIZK, if correct regenerate the cipher up to the disrupted round and check if this trustee is the disruptor
+*/
+func (p *PriFiLibRelayInstance) Received_TRU_REL_SECRET(msg net.TRU_REL_SECRET) error {
+
+	return nil
+}
+
+/*
+Received_CLI_REL_SECRET handles CLI_REL_SECRET messages
+Check the NIZK, if correct regenerate the cipher up to the disrupted round and check if this client is the disruptor
+*/
+func (p *PriFiLibRelayInstance) Received_CLI_REL_SECRET(msg net.CLI_REL_SECRET) error {
+
 	return nil
 }
