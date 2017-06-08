@@ -36,6 +36,7 @@ import (
 	"errors"
 	"strconv"
 	"time"
+	"math"
 
 	"crypto/sha256"
 	"github.com/lbarman/prifi/prifi-lib/config"
@@ -831,22 +832,22 @@ findDisruptor is called when we received all the bits from clients and trustees,
  */
 func (p *PriFiLibRelayInstance) findDisruptor() error {
 
-	for i, val := range p.relayState.clientBitMap {
-		for j, values := range p.relayState.trusteeBitMap {
-			if val[j] != values[i] {
-				log.Lvl1("Found difference between client ", i, " and trustee ", j)
+	for clientID, val := range p.relayState.clientBitMap {
+		for trusteeID, values := range p.relayState.trusteeBitMap {
+			if val[trusteeID] != values[clientID] {
+				log.Lvl1("Found difference between client ", clientID, " and trustee ", trusteeID)
 
 				// message to trustee j and client i to reveal secrets
-				p.relayState.blamingData[2] = i
-				p.relayState.blamingData[3] = val[j]
-				p.relayState.blamingData[4] = j
-				p.relayState.blamingData[5] = values[i]
+				p.relayState.blamingData[2] = clientID
+				p.relayState.blamingData[3] = val[trusteeID]
+				p.relayState.blamingData[4] = trusteeID
+				p.relayState.blamingData[5] = values[clientID]
 				toSend := &net.REL_ALL_SECRET{
-					UserID: i}
-				p.messageSender.SendToTrustee(j, toSend)
+					UserID: clientID}
+				p.messageSender.SendToTrustee(trusteeID, toSend)
 				toSend2 := &net.REL_ALL_SECRET{
-					UserID: j}
-				p.messageSender.SendToClient(i, toSend2)
+					UserID: trusteeID}
+				p.messageSender.SendToClient(clientID, toSend2)
 			}
 		}
 	}
@@ -859,7 +860,10 @@ Received_TRU_REL_SECRET handles TRU_REL_SECRET messages
 Check the NIZK, if correct regenerate the cipher up to the disrupted round and check if this trustee is the disruptor
 */
 func (p *PriFiLibRelayInstance) Received_TRU_REL_SECRET(msg net.TRU_REL_SECRET) error {
-
+	val := p.replayRounds(msg.Secret)
+	if val != p.relayState.blamingData[5] {
+		log.Fatal("Trustee ", p.relayState.blamingData[4], " lied and is considered a disruptor")
+	}
 	return nil
 }
 
@@ -868,6 +872,45 @@ Received_CLI_REL_SECRET handles CLI_REL_SECRET messages
 Check the NIZK, if correct regenerate the cipher up to the disrupted round and check if this client is the disruptor
 */
 func (p *PriFiLibRelayInstance) Received_CLI_REL_SECRET(msg net.CLI_REL_SECRET) error {
-
+	val := p.replayRounds(msg.Secret)
+	if val != p.relayState.blamingData[3] {
+		log.Fatal("Client ", p.relayState.blamingData[2], " lied and is considered a disruptor")
+	}
 	return nil
+}
+
+/*
+replayRounds takes the secret revealed by a user and recomputes until the disrupted bit
+ */
+func (p *PriFiLibRelayInstance) replayRounds(secret abstract.Point) int {
+	bytes, err := secret.MarshalBinary()
+	if err != nil {
+		log.Fatal("Could not marshal point !")
+	}
+	roundID := p.relayState.blamingData[0]
+	sharedPRNG := config.CryptoSuite.Cipher(bytes)
+	key := make([]byte, config.CryptoSuite.Cipher(nil).KeySize())
+	sharedPRNG.Partial(key, key, nil)
+	dcCipher := config.CryptoSuite.Cipher(key)
+
+	for i := int32(0); i < roundID; i++ {
+		//discard crypto material
+		dst := make([]byte, p.relayState.UpstreamCellSize)
+		dcCipher.Read(dst)
+	}
+
+	dst := make([]byte, p.relayState.UpstreamCellSize)
+	dcCipher.Read(dst)
+	bitPos := p.relayState.blamingData[0]
+	m := float64(bitPos) / float64(8)
+	m = math.Floor(m)
+	m2 := int(m)
+	n := bitPos % 8
+	mask := byte(1 << uint8(n))
+	if (dst[m2] & mask) == 0 {
+		return 0
+	} else {
+		return 1
+	}
+
 }

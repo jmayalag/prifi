@@ -298,7 +298,7 @@ We send back the shared secret with the indicated client
 */
 func (p *PriFiLibTrusteeInstance) Received_REL_ALL_SECRET(msg net.REL_ALL_SECRET) error {
 
-	secret := p.trusteeState.DCNet_RoundManager.GetSecret(msg.UserID) //check how it behaves vs client ID
+	secret := p.trusteeState.sharedSecrets[msg.UserID]
 	toSend := &net.TRU_REL_SECRET{
 		Secret: secret,
 		NIZK: make([]byte, 0)}
