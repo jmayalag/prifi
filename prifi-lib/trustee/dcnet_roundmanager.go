@@ -30,7 +30,8 @@ func (dc *DCNet_RoundManager) TrusteeEncode(payloadLength int) []byte {
 // RevealBits reveals the individual bits from each cipher in case of disruption
 func (dc *DCNet_RoundManager) RevealBits(roundID int32, bitPos int, payloadLength int) map[int]int {
 	round_ID := roundID
-	if round_ID > dc.currentRound {
+	curRound := dc.currentRound
+	if round_ID > curRound {
 		log.Fatal("Trying to reveal a future round")
 	}
 	var bits map[int]int
