@@ -770,11 +770,49 @@ func TestClient3(t *testing.T) {
 		t.Error("Client should have sent a CLI_REL_BLAME to the relay")
 	}
 
-	msg13 := sentToRelay[0].(*net.CLI_REL_BLAME)
-	if msg13.RoundID != 1 {
+	msg12 := sentToRelay[0].(*net.CLI_REL_BLAME)
+	sentToRelay = make([]interface{}, 0)
+	if msg12.RoundID != 1 {
 		t.Error("Client should have sent a BLAME for round 1")
 	}
-	if msg13.BitPos != 23 { //added a 1 in the last position of 3rd bit
+	if msg12.BitPos != 23 { //added a 1 in the last position of 3rd bit
 		t.Error("Client sent wrong bitPos")
+	}
+
+	msg13 := net.REL_ALL_REVEAL{
+		RoundID: 1,
+		BitPos:  23}
+	err13 := client.ReceivedMessage(msg13)
+	if err13 != nil {
+		t.Error("Client should be able to receive this data")
+	}
+
+	//Should send a CLI_REL_REVEAL
+	if len(sentToRelay) == 0 {
+		t.Error("Client should have sent a CLI_REL_REVEAL to the relay")
+	}
+
+	msg14 := sentToRelay[0].(*net.CLI_REL_REVEAL)
+	sentToRelay = make([]interface{}, 0)
+	if msg14.ClientID != clientID {
+		t.Error("CLient sent wrong ID")
+	}
+
+	msg15 := net.REL_ALL_SECRET{
+		UserID: 1}
+	err15 := client.ReceivedMessage(msg15)
+	if err15 != nil {
+		t.Error("Client should be able to receive this data")
+	}
+
+	//Should send a CLI_REL_SECRET
+	if len(sentToRelay) == 0 {
+		t.Error("Client should have sent a CLI_REL_SECRET to the relay")
+	}
+
+	msg16 := sentToRelay[0].(*net.CLI_REL_SECRET)
+	sentToRelay = make([]interface{}, 0)
+	if msg16.Secret == nil {
+		t.Error("Client sent empty secret")
 	}
 }

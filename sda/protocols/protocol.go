@@ -126,7 +126,8 @@ func init() {
 	network.RegisterMessage(net.REL_CLI_QUERY{})
 	network.RegisterMessage(net.CLI_REL_BLAME{})
 	network.RegisterMessage(net.REL_ALL_REVEAL{})
-	network.RegisterMessage(net.ALL_REL_REVEAL{})
+	network.RegisterMessage(net.TRU_REL_REVEAL{})
+	network.RegisterMessage(net.CLI_REL_REVEAL{})
 
 	onet.GlobalProtocolRegister(ProtocolName, NewPriFiSDAWrapperProtocol)
 }
@@ -248,7 +249,11 @@ func (p *PriFiSDAProtocol) registerHandlers() error {
 	if err != nil {
 		return errors.New("couldn't register handler: " + err.Error())
 	}
-	err = p.RegisterHandler(p.Received_ALL_REL_REVEAL)
+	err = p.RegisterHandler(p.Received_TRU_REL_REVEAL)
+	if err != nil {
+		return errors.New("couldn't register handler: " + err.Error())
+	}
+	err = p.RegisterHandler(p.Received_CLI_REL_REVEAL)
 	if err != nil {
 		return errors.New("couldn't register handler: " + err.Error())
 	}

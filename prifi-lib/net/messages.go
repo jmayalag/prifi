@@ -203,13 +203,13 @@ type REL_ALL_REVEAL struct {
 // CLI_REL_REVEAL contains a map with individual bits to find a disruptor, and is sent to the relay
 type CLI_REL_REVEAL struct {
 	ClientID int
-	Bits map[int]int
+	Bits     map[int]int
 }
 
 // TRU_REL_REVEAL contains a map with individual bits to find a disruptor, and is sent to the relay
 type TRU_REL_REVEAL struct {
 	TrusteeID int
-	Bits map[int]int
+	Bits      map[int]int
 }
 
 // REL_ALL_SECRET contains request ro reveal the shared secret with the specified recipient, and is sent by the relay
@@ -220,13 +220,13 @@ type REL_ALL_SECRET struct {
 // CLI_REL_SECRET contains the shared secret requested by the relay, with a proof we computed it correctly
 type CLI_REL_SECRET struct {
 	Secret abstract.Point
-	NIZK []byte
+	NIZK   []byte
 }
 
 // TRU_REL_SECRET contains the shared secret requested by the relay, with a proof we computed it correctly
 type TRU_REL_SECRET struct {
 	Secret abstract.Point
-	NIZK []byte
+	NIZK   []byte
 }
 
 /*

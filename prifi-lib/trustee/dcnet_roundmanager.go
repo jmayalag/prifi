@@ -20,6 +20,12 @@ func (dc *DCNet_RoundManager) TrusteeSetup(sharedSecrets []abstract.Point) {
 	dc.sharedSecrets = sharedSecrets
 }
 
+func (dc *DCNet_RoundManager) TrusteeEncode(payloadLength int) []byte {
+	data := dc.CellCoder.TrusteeEncode(payloadLength)
+	dc.currentRound++
+	return data
+}
+
 // RevealBits reveals the individual bits from each cipher in case of disruption
 func (dc *DCNet_RoundManager) RevealBits(roundID int32, bitPos int, payloadLength int) map[int]int {
 	round_ID := roundID

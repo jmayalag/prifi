@@ -34,9 +34,9 @@ considered disconnected
 import (
 	"encoding/binary"
 	"errors"
+	"math"
 	"strconv"
 	"time"
-	"math"
 
 	"crypto/sha256"
 	"github.com/lbarman/prifi/prifi-lib/config"
@@ -829,7 +829,7 @@ func (p *PriFiLibRelayInstance) Received_TRU_REL_REVEAL(msg net.TRU_REL_REVEAL) 
 
 /*
 findDisruptor is called when we received all the bits from clients and trustees, we must find a mismatch
- */
+*/
 func (p *PriFiLibRelayInstance) findDisruptor() error {
 
 	for clientID, val := range p.relayState.clientBitMap {
@@ -881,7 +881,7 @@ func (p *PriFiLibRelayInstance) Received_CLI_REL_SECRET(msg net.CLI_REL_SECRET) 
 
 /*
 replayRounds takes the secret revealed by a user and recomputes until the disrupted bit
- */
+*/
 func (p *PriFiLibRelayInstance) replayRounds(secret abstract.Point) int {
 	bytes, err := secret.MarshalBinary()
 	if err != nil {
@@ -893,7 +893,7 @@ func (p *PriFiLibRelayInstance) replayRounds(secret abstract.Point) int {
 	sharedPRNG.Partial(key, key, nil)
 	dcCipher := config.CryptoSuite.Cipher(key)
 
-	for i := int32(0); i < roundID; i++ {
+	for i := 0; i < roundID; i++ {
 		//discard crypto material
 		dst := make([]byte, p.relayState.UpstreamCellSize)
 		dcCipher.Read(dst)
@@ -909,8 +909,6 @@ func (p *PriFiLibRelayInstance) replayRounds(secret abstract.Point) int {
 	mask := byte(1 << uint8(n))
 	if (dst[m2] & mask) == 0 {
 		return 0
-	} else {
-		return 1
 	}
-
+	return 1
 }

@@ -566,8 +566,8 @@ func (p *PriFiLibClientInstance) Received_REL_ALL_REVEAL(msg net.REL_ALL_REVEAL)
 	p.stateMachine.ChangeState("BLAMING")
 	bits := p.clientState.DCNet_RoundManager.RevealBits(msg.RoundID, msg.BitPos, p.clientState.UsablePayloadLength)
 	toSend := &net.CLI_REL_REVEAL{
-		ClientID:p.clientState.ID,
-		Bits: bits}
+		ClientID: p.clientState.ID,
+		Bits:     bits}
 	p.messageSender.SendToRelayWithLog(toSend, "Revealed bits")
 	return nil
 }
@@ -581,7 +581,7 @@ func (p *PriFiLibClientInstance) Received_REL_ALL_SECRET(msg net.REL_ALL_SECRET)
 	secret := p.clientState.sharedSecrets[msg.UserID]
 	toSend := &net.CLI_REL_SECRET{
 		Secret: secret,
-		NIZK: make([]byte, 0)}
+		NIZK:   make([]byte, 0)}
 	p.messageSender.SendToRelayWithLog(toSend, "Sent secret to relay")
 	return nil
 }

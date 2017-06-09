@@ -171,7 +171,7 @@ sendData is an auxiliary function used by Send_TRU_REL_DC_CIPHER. It computes th
 It returns the new round number (previous + 1).
 */
 func sendData(p *PriFiLibTrusteeInstance, roundID int32) (int32, error) {
-	data := p.trusteeState.DCNet_RoundManager.CellCoder.TrusteeEncode(p.trusteeState.PayloadLength)
+	data := p.trusteeState.DCNet_RoundManager.TrusteeEncode(p.trusteeState.PayloadLength)
 
 	//send the data
 	toSend := &net.TRU_REL_DC_CIPHER{
@@ -286,8 +286,8 @@ func (p *PriFiLibTrusteeInstance) Received_REL_ALL_REVEAL(msg net.REL_ALL_REVEAL
 	p.stateMachine.ChangeState("BLAMING")
 	bits := p.trusteeState.DCNet_RoundManager.RevealBits(msg.RoundID, msg.BitPos, p.trusteeState.PayloadLength)
 	toSend := &net.TRU_REL_REVEAL{
-		TrusteeID:p.trusteeState.ID,
-		Bits: bits}
+		TrusteeID: p.trusteeState.ID,
+		Bits:      bits}
 	p.messageSender.SendToRelayWithLog(toSend, "Revealed bits")
 	return nil
 }
@@ -301,7 +301,7 @@ func (p *PriFiLibTrusteeInstance) Received_REL_ALL_SECRET(msg net.REL_ALL_SECRET
 	secret := p.trusteeState.sharedSecrets[msg.UserID]
 	toSend := &net.TRU_REL_SECRET{
 		Secret: secret,
-		NIZK: make([]byte, 0)}
+		NIZK:   make([]byte, 0)}
 	p.messageSender.SendToRelayWithLog(toSend, "Sent secret to relay")
 	return nil
 }

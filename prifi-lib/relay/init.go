@@ -175,10 +175,9 @@ type RelayState struct {
 	timeStatistics                    map[string]*prifilog.TimeStatistics
 	slotScheduler                     *scheduler.BitMaskSlotScheduler_Relay
 	dcNetType                         string
-	clientBitMap			  map[int]map[int]int
-	trusteeBitMap			  map[int]map[int]int
-	blamingData			  []int //[round#, bitPos, clientID, bitRevealed, trusteeID, bitRevealed]
-
+	clientBitMap                      map[int]map[int]int
+	trusteeBitMap                     map[int]map[int]int
+	blamingData                       []int //[round#, bitPos, clientID, bitRevealed, trusteeID, bitRevealed]
 
 	//Used for verifiable DC-net, part of the dcnet/owned.go
 	VerifiableDCNetKeys [][]byte

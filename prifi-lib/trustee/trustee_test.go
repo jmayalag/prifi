@@ -324,5 +324,4 @@ func TestTrustee(t *testing.T) {
 		t.Error("Trustee should be in state SHUTDOWN")
 	}
 
-	t.SkipNow() //we started a goroutine, let's kill everything, we're good
 }
