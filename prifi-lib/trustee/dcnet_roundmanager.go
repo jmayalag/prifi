@@ -20,6 +20,7 @@ func (dc *DCNet_RoundManager) TrusteeSetup(sharedSecrets []abstract.Point) {
 	dc.sharedSecrets = sharedSecrets
 }
 
+// TrusteeEncode to keep up with the roundID
 func (dc *DCNet_RoundManager) TrusteeEncode(payloadLength int) []byte {
 	data := dc.CellCoder.TrusteeEncode(payloadLength)
 	dc.currentRound++
