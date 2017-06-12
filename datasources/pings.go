@@ -1,13 +1,12 @@
 package datasources
 
 import (
-	"time"
-	"sync"
 	"golang.org/x/tools/go/gcimporter15/testdata"
+	"sync"
+	"time"
 )
 
 type DataSource interface {
-
 	HasData() bool
 
 	GetDataFromSource() (int, []byte)
@@ -15,7 +14,6 @@ type DataSource interface {
 	AckDataToSource(int)
 
 	SendDataToSource([]byte)
-
 }
 
 // One buffered latency test message. We only need to store the "createdAt" time.
@@ -32,9 +30,9 @@ type DataSourcePings struct {
 
 func NewDataSourcePings(interval time.Duration) *DataSourcePings {
 
-	dsp := &DataSourcePings {
+	dsp := &DataSourcePings{
 		LatencyTestsInterval: interval,
-		LatencyTestsToSend: make([]*LatencyTestToSend, 0),
+		LatencyTestsToSend:   make([]*LatencyTestToSend, 0),
 	}
 
 	go latencyMsgGenerator(interval)
@@ -43,7 +41,7 @@ func NewDataSourcePings(interval time.Duration) *DataSourcePings {
 }
 
 // periodically generates latency test messages
-func (dsp* DataSourcePings) latencyMsgGenerator(interval time.Duration){
+func (dsp *DataSourcePings) latencyMsgGenerator(interval time.Duration) {
 	for {
 		time.Sleep(interval)
 
@@ -58,24 +56,23 @@ func (dsp* DataSourcePings) latencyMsgGenerator(interval time.Duration){
 }
 
 //
-func (dsp* DataSourcePings) HasData() bool {
+func (dsp *DataSourcePings) HasData() bool {
 	dsp.Lock()
 	defer dsp.Unlock()
 
 	return (len(dsp.LatencyTestsToSend) != 0)
 }
 
-func (dsp* DataSourcePings) GetDataFromSource() (int, []byte) {
+func (dsp *DataSourcePings) GetDataFromSource() (int, []byte) {
 	dsp.Lock()
 	defer dsp.Unlock()
 
-
 }
 
-func (dsp* DataSourcePings) AckDataToSource(int) {
+func (dsp *DataSourcePings) AckDataToSource(int) {
 	//no ACK for pings
 }
 
-func (dsp* DataSourcePings) SendDataToSource([]byte) {
+func (dsp *DataSourcePings) SendDataToSource([]byte) {
 
 }

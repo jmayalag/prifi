@@ -1,8 +1,6 @@
 package client
 
-
 type DataSource interface {
-
 	HasData() bool
 
 	GetDataFromSource() (int, []byte)
@@ -10,5 +8,4 @@ type DataSource interface {
 	AckDataToSource(int)
 
 	SendDataToSource([]byte)
-
 }
