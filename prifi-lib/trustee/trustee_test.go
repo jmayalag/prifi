@@ -508,7 +508,7 @@ func TestTrusteeBlame(t *testing.T) {
 		WindowCapacity: 0,
 	}
 
-	time.Sleep(TRUSTEE_BASE_SLEEP_TIME / 2) //just time for one message
+	time.Sleep(TRUSTEE_BASE_SLEEP_TIME) //just time for one message
 
 	if err := trustee.ReceivedMessage(*stopMsg); err != nil {
 		t.Error("Should handle this stop message, but", err)

@@ -848,6 +848,7 @@ func (p *PriFiLibRelayInstance) findDisruptor() error {
 				toSend2 := &net.REL_ALL_SECRET{
 					UserID: trusteeID}
 				p.messageSender.SendToClient(clientID, toSend2)
+				return nil
 			}
 		}
 	}
@@ -862,7 +863,7 @@ Check the NIZK, if correct regenerate the cipher up to the disrupted round and c
 func (p *PriFiLibRelayInstance) Received_TRU_REL_SECRET(msg net.TRU_REL_SECRET) error {
 	val := p.replayRounds(msg.Secret)
 	if val != p.relayState.blamingData[5] {
-		log.Fatal("Trustee ", p.relayState.blamingData[4], " lied and is considered a disruptor")
+		log.Lvl1("Trustee ", p.relayState.blamingData[4], " lied and is considered a disruptor")
 	}
 	return nil
 }
@@ -874,7 +875,7 @@ Check the NIZK, if correct regenerate the cipher up to the disrupted round and c
 func (p *PriFiLibRelayInstance) Received_CLI_REL_SECRET(msg net.CLI_REL_SECRET) error {
 	val := p.replayRounds(msg.Secret)
 	if val != p.relayState.blamingData[3] {
-		log.Fatal("Client ", p.relayState.blamingData[2], " lied and is considered a disruptor")
+		log.Lvl1("Client ", p.relayState.blamingData[2], " lied and is considered a disruptor")
 	}
 	return nil
 }
