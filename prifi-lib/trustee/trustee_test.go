@@ -514,10 +514,6 @@ func TestTrusteeBlame(t *testing.T) {
 		t.Error("Should handle this stop message, but", err)
 	}
 
-	if ts.sendingRate != 0 {
-		t.Error("Sending rate should be 0")
-	}
-
 	//should have sent a few ciphers before getting the stop message
 	select {
 	case msg8 := <-msgSender.sentToRelay:
