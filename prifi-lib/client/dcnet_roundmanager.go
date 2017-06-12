@@ -6,10 +6,12 @@ import (
 	"gopkg.in/dedis/crypto.v0/abstract"
 	"gopkg.in/dedis/onet.v1/log"
 	"math"
+	"sync"
 )
 
 // DCNet_RoundManager allows to request DC-net pads for a specific round
 type DCNet_RoundManager struct {
+	sync.Mutex
 	CellCoder     dcnet.CellCoder
 	currentRound  int32
 	sharedSecrets []abstract.Point
@@ -22,6 +24,8 @@ func (dc *DCNet_RoundManager) ClientSetup(sharedSecrets []abstract.Point) {
 
 // ClientEncodeForRound allows to request DC-net pads for a specific round
 func (dc *DCNet_RoundManager) ClientEncodeForRound(roundID int32, payload []byte, payloadSize int, history abstract.Cipher) []byte {
+	dc.Lock()
+	defer dc.Unlock()
 
 	for dc.currentRound < roundID {
 		//discard crypto material
@@ -39,6 +43,8 @@ func (dc *DCNet_RoundManager) ClientEncodeForRound(roundID int32, payload []byte
 
 // RevealBits reveals the individual bits from each cipher in case of disruption
 func (dc *DCNet_RoundManager) RevealBits(roundID int32, bitPos int, payloadLength int) map[int]int {
+	dc.Lock()
+	defer dc.Unlock()
 	round_ID := roundID
 	if round_ID > dc.currentRound {
 		log.Fatal("Trying to reveal a future round")

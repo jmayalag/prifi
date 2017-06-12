@@ -6,10 +6,12 @@ import (
 	"gopkg.in/dedis/crypto.v0/abstract"
 	"gopkg.in/dedis/onet.v1/log"
 	"math"
+	"sync"
 )
 
 // DCNet_RoundManager allows to request DC-net pads for a specific round
 type DCNet_RoundManager struct {
+	sync.Mutex
 	CellCoder     dcnet.CellCoder
 	currentRound  int32
 	sharedSecrets []abstract.Point
@@ -22,6 +24,8 @@ func (dc *DCNet_RoundManager) TrusteeSetup(sharedSecrets []abstract.Point) {
 
 // TrusteeEncode to keep up with the roundID
 func (dc *DCNet_RoundManager) TrusteeEncode(payloadLength int) []byte {
+	dc.Lock()
+	defer dc.Unlock()
 	data := dc.CellCoder.TrusteeEncode(payloadLength)
 	dc.currentRound++
 	return data
@@ -29,6 +33,8 @@ func (dc *DCNet_RoundManager) TrusteeEncode(payloadLength int) []byte {
 
 // RevealBits reveals the individual bits from each cipher in case of disruption
 func (dc *DCNet_RoundManager) RevealBits(roundID int32, bitPos int, payloadLength int) map[int]int {
+	dc.Lock()
+	defer dc.Unlock()
 	round_ID := roundID
 	curRound := dc.currentRound
 	if round_ID > curRound {
