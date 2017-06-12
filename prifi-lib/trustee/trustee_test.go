@@ -514,6 +514,10 @@ func TestTrusteeBlame(t *testing.T) {
 		t.Error("Should handle this stop message, but", err)
 	}
 
+	if ts.sendingRate != 0 {
+		t.Error("Sending rate should be 0")
+	}
+
 	//should have sent a few ciphers before getting the stop message
 	select {
 	case msg8 := <-msgSender.sentToRelay:
@@ -533,7 +537,7 @@ func TestTrusteeBlame(t *testing.T) {
 		t.Error("Trustee should have sent a TRU_REL_DC_CIPHER to the relay")
 	}
 
-	time.Sleep(TRUSTEE_BASE_SLEEP_TIME * 2)
+	time.Sleep(TRUSTEE_BASE_SLEEP_TIME)
 
 	//empty the chan
 	empty := false
