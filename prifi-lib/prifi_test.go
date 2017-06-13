@@ -36,8 +36,8 @@ func TestPrifi(t *testing.T) {
 	in := make(chan []byte, 6)
 	out := make(chan []byte, 3)
 
-	client0 := NewPriFiClient(true, true, in, out, msgSender)
-	client1 := NewPriFiClient(true, true, in, out, msgSender)
+	client0 := NewPriFiClient(true, true, in, out, false, "./", msgSender)
+	client1 := NewPriFiClient(true, true, in, out, false, "./", msgSender)
 
 	timeoutHandler := func(clients, trustees []int) { log.Error(clients, trustees) }
 	resultChan := make(chan interface{}, 1)
