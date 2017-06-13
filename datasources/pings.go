@@ -14,7 +14,7 @@ type LatencyTestToSend struct {
 type DataSourcePings struct {
 	sync.Mutex
 	LatencyTestsInterval time.Duration
-	LatencyTestsToSend   []*LatencyTestToSend //lock the mutex before accessing this$
+	LatencyTestsToSend   []*LatencyTestToSend //lock the mutex before accessing this
 	PingSentFunction	func(int64) //(timeStayedInBuffer)
 	PingReceivedFunction func(int32, int32, int64) //(originalRoundId, roundDiff, timeDiff)
 	ClientID	     int
@@ -50,7 +50,6 @@ func (dsp *DataSourcePings) latencyMsgGenerator(interval time.Duration) {
 	}
 }
 
-//
 func (dsp *DataSourcePings) HasData() bool {
 	dsp.Lock()
 	defer dsp.Unlock()
