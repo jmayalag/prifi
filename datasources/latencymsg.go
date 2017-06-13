@@ -9,12 +9,6 @@ import (
 const pattern uint16 = uint16(43690) //1010101010101010
 const latencyMsgLength int = 12      // 4bytes roundID + 8bytes timeStamp
 
-// MsTimeStamp converts time.Time into int64
-func MsTimeStamp(t time.Time) int64 {
-	//http://stackoverflow.com/questions/24122821/go-golang-time-now-unixnano-convert-to-milliseconds
-	return t.UnixNano() / int64(time.Millisecond)
-}
-
 func genLatencyMessagePayload(creationTime time.Time, roundID int32) []byte {
 	latencyMsgBytes := make([]byte, 12)
 	currTime := MsTimeStamp(creationTime) //timestamp in Ms
