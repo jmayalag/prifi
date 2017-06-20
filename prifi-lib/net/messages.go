@@ -41,15 +41,15 @@ type ALL_ALL_SHUTDOWN struct {
 
 // CLI_REL_TELL_PK_AND_EPH_PK message contains the public key and ephemeral key of a client
 // and is sent to the relay.
-type CLI_REL_TELL_PK_AND_EPH_PK_1 struct {
+type CLI_REL_TELL_PK_AND_EPH_PK struct {
 	ClientID int
 	Pk       abstract.Point
 	EphPk    abstract.Point
 }
 
-// CLI_REL_TELL_PK_AND_EPH_PK message contains the public key and ephemeral key of a client
-// and is sent to the relay.
-type CLI_REL_TELL_PK_AND_EPH_PK_2 struct {
+// SERVICE_REL_TELL_PK_AND_EPH_PK contains the acknowledgement of CLI_REL_TELL_PK_AND_EPH_PK and is sent to the
+// relay from the service to start the schedule phase.
+type SERVICE_REL_TELL_PK_AND_EPH_PK struct {
 	ClientID int
 }
 
@@ -157,13 +157,14 @@ type TRU_REL_DC_CIPHER struct {
 }
 
 // TRU_REL_SHUFFLE_SIG contains the signatures shuffled by a trustee and is sent to the relay.
-type TRU_REL_SHUFFLE_SIG_1 struct {
+type TRU_REL_SHUFFLE_SIG struct {
 	TrusteeID int
 	Sig       []byte
 }
 
-// TRU_REL_SHUFFLE_SIG contains the signatures shuffled by a trustee and is sent to the relay.
-type TRU_REL_SHUFFLE_SIG_2 struct {
+// SERVICE_REL_SHUFFLE_SIG contains the acknowledgement of the signatures and is sent to the relay from the service to start
+// the communication phase.
+type SERVICE_REL_SHUFFLE_SIG struct {
 	TrusteeID int
 }
 

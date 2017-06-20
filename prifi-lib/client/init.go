@@ -175,7 +175,7 @@ func (p *PriFiLibClientInstance) ReceivedMessage(msg interface{}) (bool, interfa
 	return endStep, state, err
 }
 
-// SetMessageSender is used to change the message sender of the current CLient Instance
+// SetMessageSender is used by the service to configure the message sender of the current Client Instance
 func (p *PriFiLibClientInstance) SetMessageSender(msgSender net.MessageSender) error {
 	errHandling := func(e error) { /* do nothing yet, we are alerted of errors via the SDA */ }
 	loggingSuccessFunction := func(e interface{}) { log.Lvl3(e) }

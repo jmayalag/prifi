@@ -60,8 +60,12 @@ type ServiceState struct {
 	PriFiScheduleProtocol    *prifi_protocol.PriFiScheduleProtocol
 	PriFiCommunicateProtocol *prifi_protocol.PriFiCommunicateProtocol
 
+	alreadyCommunicating   bool
+	oldCommunicateProtocol *prifi_protocol.PriFiCommunicateProtocol
+
 	//this hold the prifi lib instance when any protocol run
-	prifiLibInstance prifi_lib.SpecializedLibInstance
+	prifiLibInstance    prifi_lib.SpecializedLibInstance
+	oldPrifiLibInstance prifi_lib.SpecializedLibInstance
 
 	//used to hold "stoppers" for go-routines; send "true" to kill
 	socksStopChan []chan bool
@@ -149,7 +153,7 @@ func (s *ServiceState) NewScheduleProtocol(tn *onet.TreeNodeInstance, conf *onet
 
 	wrapper := pi.(*prifi_protocol.PriFiScheduleProtocol)
 	s.PriFiScheduleProtocol = wrapper
-	s.setConfigToPriFiScheduleProtocol(wrapper)
+	s.setConfigToPriFiScheduleProtocol(wrapper, nil)
 
 	return wrapper, nil
 }
@@ -165,7 +169,7 @@ func (s *ServiceState) NewCommunicateProtocol(tn *onet.TreeNodeInstance, conf *o
 
 	wrapper := pi.(*prifi_protocol.PriFiCommunicateProtocol)
 	s.PriFiCommunicateProtocol = wrapper
-	s.setConfigToPriFiCommunicateProtocol(wrapper)
+	s.setConfigToPriFiCommunicateProtocol(wrapper, nil)
 
 	return wrapper, nil
 }
@@ -200,8 +204,8 @@ func (s *ServiceState) StartRelay(group *app.Group) error {
 
 	if s.AutoStart {
 		s.churnHandler.startExchangeProtocol = s.StartPriFiExchangeProtocol
-		s.churnHandler.startScheduleProtocol = s.StartPriFiScheduleProtocol
-		s.churnHandler.startCommunicateProtocol = s.StartPriFiCommunicateProtocol
+		s.churnHandler.startScheduleProtocol = nil
+		s.churnHandler.startCommunicateProtocol = nil
 	} else {
 		s.churnHandler.startExchangeProtocol = nil
 		s.churnHandler.startScheduleProtocol = nil

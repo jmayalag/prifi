@@ -17,7 +17,7 @@ func (p *PriFiExchangeProtocol) Received_ALL_ALL_PARAMETERS_NEW(msg Struct_ALL_A
 	return err
 }
 
-//Received_TRU_REL_TELL_PK forward an ALL_ALL_PARAMETERS message to PriFi's lib
+//Received_TRU_REL_TELL_PK forward an TRU_REL_TELL_PK message to PriFi's lib
 func (p *PriFiExchangeProtocol) Received_TRU_REL_TELL_PK(msg Struct_TRU_REL_TELL_PK) error {
 	endStep, state, err := p.prifiLibInstance.ReceivedMessage(msg.TRU_REL_TELL_PK)
 	log.LLvl4("Err: ", err, " endStep: ", endStep, " state: ", state)
@@ -32,11 +32,11 @@ func (p *PriFiExchangeProtocol) Received_REL_CLI_TELL_TRUSTEES_PK(msg Struct_REL
 }
 
 //Received_CLI_REL_TELL_PK_AND_EPH_PK forwards an CLI_REL_TELL_PK_AND_EPH_PK message to PriFi's lib
-func (p *PriFiExchangeProtocol) Received_CLI_REL_TELL_PK_AND_EPH_PK_1(msg Struct_CLI_REL_TELL_PK_AND_EPH_PK_1) error {
-	endStep, state, err := p.prifiLibInstance.ReceivedMessage(msg.CLI_REL_TELL_PK_AND_EPH_PK_1)
+func (p *PriFiExchangeProtocol) Received_CLI_REL_TELL_PK_AND_EPH_PK(msg Struct_CLI_REL_TELL_PK_AND_EPH_PK) error {
+	endStep, state, err := p.prifiLibInstance.ReceivedMessage(msg.CLI_REL_TELL_PK_AND_EPH_PK)
 	log.LLvl4("Err: ", err, " endStep: ", endStep, " state: ", state)
 	if endStep == true {
-		p.WhenFinished()
+		p.WhenFinished(p.prifiLibInstance)
 		p.Done()
 		log.LLvl4("Done")
 	}
@@ -52,14 +52,14 @@ func (p *PriFiScheduleProtocol) Received_ALL_ALL_SHUTDOWN(msg Struct_ALL_ALL_SHU
 	return err
 }
 
-//Received_CLI_REL_TELL_PK_AND_EPH_PK forwards an CLI_REL_TELL_PK_AND_EPH_PK message to PriFi's lib
-func (p *PriFiScheduleProtocol) Received_CLI_REL_TELL_PK_AND_EPH_PK_2(msg Struct_CLI_REL_TELL_PK_AND_EPH_PK_2) error {
-	endStep, state, err := p.prifiLibInstance.ReceivedMessage(msg.CLI_REL_TELL_PK_AND_EPH_PK_2)
+//Received_SERVICE_REL_TELL_PK_AND_EPH_PK forwards an SERVICE_REL_TELL_PK_AND_EPH_PK message to PriFi's lib
+func (p *PriFiScheduleProtocol) Received_SERVICE_REL_TELL_PK_AND_EPH_PK(msg Struct_SERVICE_REL_TELL_PK_AND_EPH_PK) error {
+	endStep, state, err := p.prifiLibInstance.ReceivedMessage(msg.SERVICE_REL_TELL_PK_AND_EPH_PK)
 	log.LLvl4("Err: ", err, " endStep: ", endStep, " state: ", state)
 	return err
 }
 
-//Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE forward an ALL_ALL_PARAMETERS message to PriFi's lib
+//Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE forward an REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE message to PriFi's lib
 func (p *PriFiScheduleProtocol) Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE(msg Struct_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE) error {
 	endStep, state, err := p.prifiLibInstance.ReceivedMessage(msg.REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE)
 	log.LLvl4("Err: ", err, " endStep: ", endStep, " state: ", state)
@@ -73,7 +73,7 @@ func (p *PriFiScheduleProtocol) Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS(msg S
 	return err
 }
 
-//Received_REL_TRU_TELL_TRANSCRIPT forward an ALL_ALL_PARAMETERS message to PriFi's lib
+//Received_REL_TRU_TELL_TRANSCRIPT forward an REL_TRU_TELL_TRANSCRIPT message to PriFi's lib
 func (p *PriFiScheduleProtocol) Received_REL_TRU_TELL_TRANSCRIPT(msg Struct_REL_TRU_TELL_TRANSCRIPT) error {
 	endStep, state, err := p.prifiLibInstance.ReceivedMessage(msg.REL_TRU_TELL_TRANSCRIPT)
 	log.LLvl4("Err: ", err, " endStep: ", endStep, " state: ", state)
@@ -81,11 +81,11 @@ func (p *PriFiScheduleProtocol) Received_REL_TRU_TELL_TRANSCRIPT(msg Struct_REL_
 }
 
 //Received_TRU_REL_SHUFFLE_SIG forwards an TRU_REL_SHUFFLE_SIG message to PriFi's lib
-func (p *PriFiScheduleProtocol) Received_TRU_REL_SHUFFLE_SIG_1(msg Struct_TRU_REL_SHUFFLE_SIG_1) error {
-	endStep, state, err := p.prifiLibInstance.ReceivedMessage(msg.TRU_REL_SHUFFLE_SIG_1)
+func (p *PriFiScheduleProtocol) Received_TRU_REL_SHUFFLE_SIG(msg Struct_TRU_REL_SHUFFLE_SIG) error {
+	endStep, state, err := p.prifiLibInstance.ReceivedMessage(msg.TRU_REL_SHUFFLE_SIG)
 	log.LLvl4("Err: ", err, " endStep: ", endStep, " state: ", state)
 	if endStep == true {
-		p.WhenFinished()
+		p.WhenFinished(p.prifiLibInstance)
 		p.Done()
 		log.LLvl4("Done")
 	}
@@ -100,9 +100,9 @@ func (p *PriFiCommunicateProtocol) Received_ALL_ALL_SHUTDOWN(msg Struct_ALL_ALL_
 	return err
 }
 
-//Received_TRU_REL_SHUFFLE_SIG forwards an TRU_REL_SHUFFLE_SIG message to PriFi's lib
-func (p *PriFiCommunicateProtocol) Received_TRU_REL_SHUFFLE_SIG_2(msg Struct_TRU_REL_SHUFFLE_SIG_2) error {
-	endStep, state, err := p.prifiLibInstance.ReceivedMessage(msg.TRU_REL_SHUFFLE_SIG_2)
+//Received_SERVICE_REL_SHUFFLE_SIG forwards an SERVICE_REL_SHUFFLE_SIG message to PriFi's lib
+func (p *PriFiCommunicateProtocol) Received_SERVICE_REL_SHUFFLE_SIG(msg Struct_SERVICE_REL_SHUFFLE_SIG) error {
+	endStep, state, err := p.prifiLibInstance.ReceivedMessage(msg.SERVICE_REL_SHUFFLE_SIG)
 	log.LLvl4("Err: ", err, " endStep: ", endStep, " state: ", state)
 	return err
 }
@@ -128,7 +128,7 @@ func (p *PriFiCommunicateProtocol) Received_REL_CLI_DOWNSTREAM_DATA(msg Struct_R
 	return err
 }
 
-//Received_CLI_REL_UPSTREAM_DATA forwards an CLI_REL_UPSTREAM_DATA message to PriFi's lib
+//Received_CLI_REL_CLI_REL_OPENCLOSED_DATA forwards an CLI_REL_OPENCLOSED_DATA message to PriFi's lib
 func (p *PriFiCommunicateProtocol) Received_CLI_REL_CLI_REL_OPENCLOSED_DATA(msg Struct_CLI_REL_OPENCLOSED_DATA) error {
 	endStep, state, err := p.prifiLibInstance.ReceivedMessage(msg.CLI_REL_OPENCLOSED_DATA)
 	log.LLvl4("Err: ", err, " endStep: ", endStep, " state: ", state)

@@ -412,7 +412,7 @@ func (p *PriFiLibClientInstance) Received_REL_CLI_TELL_TRUSTEES_PK(msg net.REL_C
 	p.clientState.EphemeralPublicKey, p.clientState.ephemeralPrivateKey = crypto.NewKeyPair()
 
 	//send the keys to the relay
-	toSend := &net.CLI_REL_TELL_PK_AND_EPH_PK_1{
+	toSend := &net.CLI_REL_TELL_PK_AND_EPH_PK{
 		ClientID: p.clientState.ID,
 		Pk:       p.clientState.PublicKey,
 		EphPk:    p.clientState.EphemeralPublicKey,

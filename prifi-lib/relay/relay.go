@@ -561,9 +561,9 @@ func (p *PriFiLibRelayInstance) Received_TRU_REL_TELL_PK(msg net.TRU_REL_TELL_PK
 Received_CLI_REL_TELL_PK_AND_EPH_PK handles CLI_REL_TELL_PK_AND_EPH_PK messages.
 Those are sent by the client to tell their identity.
 We do nothing until we have collected one per client; then, we pack them in one message
-and send them to the first trustee for it to Neff-Shuffle them.
+and return to the service waiting on the scheduling phase to send them to the first trustee for it to Neff-Shuffle them.
 */
-func (p *PriFiLibRelayInstance) Received_CLI_REL_TELL_PK_AND_EPH_PK_1(msg net.CLI_REL_TELL_PK_AND_EPH_PK_1) (bool, interface{},
+func (p *PriFiLibRelayInstance) Received_CLI_REL_TELL_PK_AND_EPH_PK(msg net.CLI_REL_TELL_PK_AND_EPH_PK) (bool, interface{},
 	error) {
 
 	p.relayState.clients[msg.ClientID] = NodeRepresentation{msg.ClientID, true, msg.Pk, msg.EphPk}
@@ -580,12 +580,12 @@ func (p *PriFiLibRelayInstance) Received_CLI_REL_TELL_PK_AND_EPH_PK_1(msg net.CL
 }
 
 /*
-Received_CLI_REL_TELL_PK_AND_EPH_PK handles CLI_REL_TELL_PK_AND_EPH_PK messages.
-Those are sent by the client to tell their identity.
-We do nothing until we have collected one per client; then, we pack them in one message
-and send them to the first trustee for it to Neff-Shuffle them.
+Received_SERvICE_REL_TELL_PK_AND_EPH_PK handles SERVICE_REL_TELL_PK_AND_EPH_PK messages.
+Those are sent by the service to tell that all ephemeral keys have been received and
+we send them to the first trustee for it to Neff-Shuffle them during the scheduling phase.
 */
-func (p *PriFiLibRelayInstance) Received_CLI_REL_TELL_PK_AND_EPH_PK_2(msg net.CLI_REL_TELL_PK_AND_EPH_PK_2) (bool, interface{},
+func (p *PriFiLibRelayInstance) Received_SERVICE_REL_TELL_PK_AND_EPH_PK(msg net.SERVICE_REL_TELL_PK_AND_EPH_PK) (bool,
+	interface{},
 	error) {
 	p.relayState.neffShuffle.Init(p.relayState.nTrustees)
 
@@ -689,10 +689,10 @@ func (p *PriFiLibRelayInstance) Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS(msg n
 Received_TRU_REL_SHUFFLE_SIG handles TRU_REL_SHUFFLE_SIG messages.
 Those contain the signature from the NeffShuffleS-transcript from one trustee.
 We do nothing until we have all signatures; when we do, we pack those
-in one message with the result of the Neff-Shuffle and send them to the clients.
-When this is done, we are finally ready to communicate. We wait for the client's messages.
+in one message with the result of the Neff-Shuffle and send return to the service
+waiting on the communication phase to them to the clients.
 */
-func (p *PriFiLibRelayInstance) Received_TRU_REL_SHUFFLE_SIG_1(msg net.TRU_REL_SHUFFLE_SIG_1) (bool, interface{}, error) {
+func (p *PriFiLibRelayInstance) Received_TRU_REL_SHUFFLE_SIG(msg net.TRU_REL_SHUFFLE_SIG) (bool, interface{}, error) {
 
 	done, err := p.relayState.neffShuffle.ReceivedSignatureFromTrustee(msg.TrusteeID, msg.Sig)
 	if err != nil {
@@ -710,13 +710,11 @@ func (p *PriFiLibRelayInstance) Received_TRU_REL_SHUFFLE_SIG_1(msg net.TRU_REL_S
 }
 
 /*
-Received_TRU_REL_SHUFFLE_SIG handles TRU_REL_SHUFFLE_SIG messages.
+Received_SERVICE_REL_SHUFFLE_SIG handles SERVICE_REL_SHUFFLE_SIG messages.
 Those contain the signature from the NeffShuffleS-transcript from one trustee.
-We do nothing until we have all signatures; when we do, we pack those
-in one message with the result of the Neff-Shuffle and send them to the clients.
-When this is done, we are finally ready to communicate. We wait for the client's messages.
+Receiving this message inform us we are finally ready to communicate. We wait for the client's messages.
 */
-func (p *PriFiLibRelayInstance) Received_TRU_REL_SHUFFLE_SIG_2(msg net.TRU_REL_SHUFFLE_SIG_2) (bool, interface{}, error) {
+func (p *PriFiLibRelayInstance) Received_SERVICE_REL_SHUFFLE_SIG(msg net.SERVICE_REL_SHUFFLE_SIG) (bool, interface{}, error) {
 
 	// broadcast to all trustees
 	for j := 0; j < p.relayState.nTrustees; j++ {

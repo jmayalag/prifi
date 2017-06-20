@@ -43,7 +43,7 @@ type PriFiScheduleProtocol struct {
 	ms            MessageSender
 	toHandler     func([]string, []string)
 	ResultChannel chan interface{}
-	WhenFinished  func()
+	WhenFinished  func(prifi_lib.SpecializedLibInstance)
 
 	//this is the actual "PriFi" (DC-net) protocol/library, defined in prifi-lib/prifi.go
 	prifiLibInstance prifi_lib.SpecializedLibInstance
@@ -62,7 +62,7 @@ func (p *PriFiScheduleProtocol) Start() error {
 	log.Lvl3("Starting PriFi-Schedule-Wrapper Protocol")
 
 	//Perform the suffling once all keys are shared
-	msg := new(net.CLI_REL_TELL_PK_AND_EPH_PK_2)
+	msg := new(net.SERVICE_REL_TELL_PK_AND_EPH_PK)
 
 	p.SendTo(p.TreeNode(), msg)
 
@@ -96,11 +96,11 @@ func (p *PriFiScheduleProtocol) Stop() {
 func init() {
 
 	//register the prifi_lib's message with the network lib here
-	network.RegisterMessage(net.CLI_REL_TELL_PK_AND_EPH_PK_2{})
+	network.RegisterMessage(net.SERVICE_REL_TELL_PK_AND_EPH_PK{})
 	network.RegisterMessage(net.REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE{})
 	network.RegisterMessage(net.TRU_REL_TELL_NEW_BASE_AND_EPH_PKS{})
 	network.RegisterMessage(net.REL_TRU_TELL_TRANSCRIPT{})
-	network.RegisterMessage(net.TRU_REL_SHUFFLE_SIG_1{})
+	network.RegisterMessage(net.TRU_REL_SHUFFLE_SIG{})
 
 	onet.GlobalProtocolRegister("PrifiScheduleProtocol", NewPriFiScheduleWrapperProtocol)
 }
@@ -144,7 +144,7 @@ func (p *PriFiScheduleProtocol) registerHandlers() error {
 	}
 
 	//register relay handlers
-	err = p.RegisterHandler(p.Received_CLI_REL_TELL_PK_AND_EPH_PK_2)
+	err = p.RegisterHandler(p.Received_SERVICE_REL_TELL_PK_AND_EPH_PK)
 	if err != nil {
 		return errors.New("couldn't register handler: " + err.Error())
 	}
@@ -152,7 +152,7 @@ func (p *PriFiScheduleProtocol) registerHandlers() error {
 	if err != nil {
 		return errors.New("couldn't register handler: " + err.Error())
 	}
-	err = p.RegisterHandler(p.Received_TRU_REL_SHUFFLE_SIG_1)
+	err = p.RegisterHandler(p.Received_TRU_REL_SHUFFLE_SIG)
 	if err != nil {
 		return errors.New("couldn't register handler: " + err.Error())
 	}

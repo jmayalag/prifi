@@ -210,25 +210,25 @@ func (p *PriFiLibRelayInstance) ReceivedMessage(msg interface{}) (bool, interfac
 		if p.stateMachine.AssertState("COLLECTING_TRUSTEES_PKS") {
 			endStep, state, err = p.Received_TRU_REL_TELL_PK(typedMsg)
 		}
-	case net.CLI_REL_TELL_PK_AND_EPH_PK_1:
+	case net.CLI_REL_TELL_PK_AND_EPH_PK:
 		if p.stateMachine.AssertState("COLLECTING_CLIENT_PKS") {
-			endStep, state, err = p.Received_CLI_REL_TELL_PK_AND_EPH_PK_1(typedMsg)
+			endStep, state, err = p.Received_CLI_REL_TELL_PK_AND_EPH_PK(typedMsg)
 		}
-	case net.CLI_REL_TELL_PK_AND_EPH_PK_2:
+	case net.SERVICE_REL_TELL_PK_AND_EPH_PK:
 		if p.stateMachine.AssertState("COLLECTING_CLIENT_PKS") {
-			endStep, state, err = p.Received_CLI_REL_TELL_PK_AND_EPH_PK_2(typedMsg)
+			endStep, state, err = p.Received_SERVICE_REL_TELL_PK_AND_EPH_PK(typedMsg)
 		}
 	case net.TRU_REL_TELL_NEW_BASE_AND_EPH_PKS:
 		if p.stateMachine.AssertState("COLLECTING_SHUFFLES") {
 			endStep, state, err = p.Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS(typedMsg)
 		}
-	case net.TRU_REL_SHUFFLE_SIG_1:
+	case net.TRU_REL_SHUFFLE_SIG:
 		if p.stateMachine.AssertState("COLLECTING_SHUFFLE_SIGNATURES") {
-			endStep, state, err = p.Received_TRU_REL_SHUFFLE_SIG_1(typedMsg)
+			endStep, state, err = p.Received_TRU_REL_SHUFFLE_SIG(typedMsg)
 		}
-	case net.TRU_REL_SHUFFLE_SIG_2:
+	case net.SERVICE_REL_SHUFFLE_SIG:
 		if p.stateMachine.AssertState("COLLECTING_SHUFFLE_SIGNATURES") {
-			endStep, state, err = p.Received_TRU_REL_SHUFFLE_SIG_2(typedMsg)
+			endStep, state, err = p.Received_SERVICE_REL_SHUFFLE_SIG(typedMsg)
 		}
 	default:
 		err = errors.New("Unrecognized message, type" + reflect.TypeOf(msg).String())
@@ -239,7 +239,7 @@ func (p *PriFiLibRelayInstance) ReceivedMessage(msg interface{}) (bool, interfac
 	return endStep, state, err
 }
 
-// SetMessageSender is used to change the message sender of the current Relay Instance
+// SetMessageSender is used by the service to configure the message sender of the current Relay Instance
 func (p *PriFiLibRelayInstance) SetMessageSender(msgSender net.MessageSender) error {
 	errHandling := func(e error) { /* do nothing yet, we are alerted of errors via the SDA */ }
 	loggingSuccessFunction := func(e interface{}) { log.Lvl3(e) }

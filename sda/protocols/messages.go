@@ -18,15 +18,15 @@ type Struct_ALL_ALL_PARAMETERS_NEW struct {
 }
 
 //Struct_CLI_REL_TELL_PK_AND_EPH_PK is a wrapper for CLI_REL_TELL_PK_AND_EPH_PK (but also contains a *onet.TreeNode)
-type Struct_CLI_REL_TELL_PK_AND_EPH_PK_1 struct {
+type Struct_CLI_REL_TELL_PK_AND_EPH_PK struct {
 	*onet.TreeNode
-	net.CLI_REL_TELL_PK_AND_EPH_PK_1
+	net.CLI_REL_TELL_PK_AND_EPH_PK
 }
 
-//Struct_CLI_REL_TELL_PK_AND_EPH_PK is a wrapper for CLI_REL_TELL_PK_AND_EPH_PK (but also contains a *onet.TreeNode)
-type Struct_CLI_REL_TELL_PK_AND_EPH_PK_2 struct {
+//Struct_SERVICE_REL_TELL_PK_AND_EPH_PK is a wrapper for SERVICE_REL_TELL_PK_AND_EPH_PK (but also contains a *onet.TreeNode)
+type Struct_SERVICE_REL_TELL_PK_AND_EPH_PK struct {
 	*onet.TreeNode
-	net.CLI_REL_TELL_PK_AND_EPH_PK_2
+	net.SERVICE_REL_TELL_PK_AND_EPH_PK
 }
 
 //Struct_CLI_REL_UPSTREAM_DATA is a wrapper for CLI_REL_UPSTREAM_DATA (but also contains a *onet.TreeNode)
@@ -35,7 +35,7 @@ type Struct_CLI_REL_UPSTREAM_DATA struct {
 	net.CLI_REL_UPSTREAM_DATA
 }
 
-//Struct_CLI_REL_UPSTREAM_DATA is a wrapper for CLI_REL_OPENCLOSED_DATA (but also contains a *onet.TreeNode)
+//Struct_CLI_REL_OPENCLOSED_DATA is a wrapper for CLI_REL_OPENCLOSED_DATA (but also contains a *onet.TreeNode)
 type Struct_CLI_REL_OPENCLOSED_DATA struct {
 	*onet.TreeNode
 	net.CLI_REL_OPENCLOSED_DATA
@@ -78,15 +78,15 @@ type Struct_TRU_REL_DC_CIPHER struct {
 }
 
 //Struct_TRU_REL_SHUFFLE_SIG is a wrapper for TRU_REL_SHUFFLE_SIG (but also contains a *onet.TreeNode)
-type Struct_TRU_REL_SHUFFLE_SIG_1 struct {
+type Struct_TRU_REL_SHUFFLE_SIG struct {
 	*onet.TreeNode
-	net.TRU_REL_SHUFFLE_SIG_1
+	net.TRU_REL_SHUFFLE_SIG
 }
 
-//Struct_TRU_REL_SHUFFLE_SIG is a wrapper for TRU_REL_SHUFFLE_SIG (but also contains a *onet.TreeNode)
-type Struct_TRU_REL_SHUFFLE_SIG_2 struct {
+//Struct_SERVICE_REL_SHUFFLE_SIG is a wrapper for SERVICE_REL_SHUFFLE_SIG (but also contains a *onet.TreeNode)
+type Struct_SERVICE_REL_SHUFFLE_SIG struct {
 	*onet.TreeNode
-	net.TRU_REL_SHUFFLE_SIG_2
+	net.SERVICE_REL_SHUFFLE_SIG
 }
 
 //Struct_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS is a wrapper for TRU_REL_TELL_NEW_BASE_AND_EPH_PKS (but also contains a *onet.TreeNode)

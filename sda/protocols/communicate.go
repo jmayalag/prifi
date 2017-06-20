@@ -61,7 +61,7 @@ func (p *PriFiCommunicateProtocol) Start() error {
 	log.Lvl3("Starting PriFi-Communicate-Wrapper Protocol")
 
 	//emulate the reception of a ALL_ALL_PARAMETERS with StartNow=true
-	msg := new(net.TRU_REL_SHUFFLE_SIG_2)
+	msg := new(net.SERVICE_REL_SHUFFLE_SIG)
 
 	p.SendTo(p.TreeNode(), msg)
 
@@ -95,7 +95,7 @@ func (p *PriFiCommunicateProtocol) Stop() {
 func init() {
 
 	//register the prifi_lib's message with the network lib here
-	network.RegisterMessage(net.TRU_REL_SHUFFLE_SIG_2{})
+	network.RegisterMessage(net.SERVICE_REL_SHUFFLE_SIG{})
 	network.RegisterMessage(net.REL_TRU_TELL_READY{})
 	network.RegisterMessage(net.REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG{})
 	network.RegisterMessage(net.CLI_REL_UPSTREAM_DATA{})
@@ -156,7 +156,7 @@ func (p *PriFiCommunicateProtocol) registerHandlers() error {
 	}
 
 	//register relay handlers
-	err = p.RegisterHandler(p.Received_TRU_REL_SHUFFLE_SIG_2)
+	err = p.RegisterHandler(p.Received_SERVICE_REL_SHUFFLE_SIG)
 	if err != nil {
 		return errors.New("couldn't register handler: " + err.Error())
 	}

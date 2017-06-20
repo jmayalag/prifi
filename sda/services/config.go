@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 
+	prifi_lib "github.com/lbarman/prifi/prifi-lib"
 	prifi_protocol "github.com/lbarman/prifi/sda/protocols"
 	"gopkg.in/dedis/onet.v1/app"
 	"gopkg.in/dedis/onet.v1/log"
@@ -91,7 +92,7 @@ func (s *ServiceState) setConfigToPriFiExchangeProtocol(wrapper *prifi_protocol.
 	wrapper.SetTimeoutHandler(s.handleTimeout)
 }
 
-func (s *ServiceState) setConfigToPriFiScheduleProtocol(wrapper *prifi_protocol.PriFiScheduleProtocol) {
+func (s *ServiceState) setConfigToPriFiScheduleProtocol(wrapper *prifi_protocol.PriFiScheduleProtocol, libInstance prifi_lib.SpecializedLibInstance) {
 
 	//normal nodes only needs the relay in their identity map
 	identitiesMap := make(map[string]prifi_protocol.PriFiIdentity)
@@ -119,7 +120,7 @@ func (s *ServiceState) setConfigToPriFiScheduleProtocol(wrapper *prifi_protocol.
 	wrapper.SetTimeoutHandler(s.handleTimeout)
 }
 
-func (s *ServiceState) setConfigToPriFiCommunicateProtocol(wrapper *prifi_protocol.PriFiCommunicateProtocol) {
+func (s *ServiceState) setConfigToPriFiCommunicateProtocol(wrapper *prifi_protocol.PriFiCommunicateProtocol, libInstance prifi_lib.SpecializedLibInstance) {
 
 	//normal nodes only needs the relay in their identity map
 	identitiesMap := make(map[string]prifi_protocol.PriFiIdentity)

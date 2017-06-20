@@ -43,14 +43,14 @@ type PriFiExchangeProtocol struct {
 	ms            MessageSender
 	toHandler     func([]string, []string)
 	ResultChannel chan interface{}
-	WhenFinished  func()
+	WhenFinished  func(prifi_lib.SpecializedLibInstance)
 
 	//this is the actual "PriFi" (DC-net) protocol/library, defined in prifi-lib/prifi.go
 	prifiLibInstance prifi_lib.SpecializedLibInstance
 	HasStopped       bool //when set to true, the protocol has been stopped by PriFi-lib and should be destroyed
 }
 
-//Start is called on the Relay by the service when ChurnHandler decides so
+//Start is called on the Relay by the service when ChurnHandler decid 	es so
 func (p *PriFiExchangeProtocol) Start() error {
 
 	if !p.configSet {
@@ -111,7 +111,7 @@ func init() {
 	network.RegisterMessage(net.ALL_ALL_PARAMETERS_NEW{})
 	network.RegisterMessage(net.TRU_REL_TELL_PK{})
 	network.RegisterMessage(net.REL_CLI_TELL_TRUSTEES_PK{})
-	network.RegisterMessage(net.CLI_REL_TELL_PK_AND_EPH_PK_1{})
+	network.RegisterMessage(net.CLI_REL_TELL_PK_AND_EPH_PK{})
 
 	onet.GlobalProtocolRegister("PrifiExchangeProtocol", NewPriFiExchangeWrapperProtocol)
 }
@@ -169,7 +169,7 @@ func (p *PriFiExchangeProtocol) registerHandlers() error {
 	if err != nil {
 		return errors.New("couldn't register handler: " + err.Error())
 	}
-	err = p.RegisterHandler(p.Received_CLI_REL_TELL_PK_AND_EPH_PK_1)
+	err = p.RegisterHandler(p.Received_CLI_REL_TELL_PK_AND_EPH_PK)
 	if err != nil {
 		return errors.New("couldn't register handler: " + err.Error())
 	}

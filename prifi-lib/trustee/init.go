@@ -133,7 +133,7 @@ func (p *PriFiLibTrusteeInstance) ReceivedMessage(msg interface{}) (bool, interf
 	return endStep, state, err
 }
 
-// SetMessageSender is used to change the message sender of the current Trustee Instance
+// SetMessageSender is used by the service to configure the message sender of the current Trustee Instance
 func (p *PriFiLibTrusteeInstance) SetMessageSender(msgSender net.MessageSender) error {
 	errHandling := func(e error) { /* do nothing yet, we are alerted of errors via the SDA */ }
 	loggingSuccessFunction := func(e interface{}) { log.Lvl3(e) }

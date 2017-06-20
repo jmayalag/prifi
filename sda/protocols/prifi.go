@@ -1,7 +1,7 @@
 package protocols
 
 import (
-	prifi_lib "github.com/lbarman/prifi/prifi-lib"
+	"github.com/lbarman/prifi/prifi-lib"
 	"gopkg.in/dedis/onet.v1/log"
 	"gopkg.in/dedis/onet.v1/network"
 )
@@ -125,7 +125,7 @@ func (p *PriFiExchangeProtocol) SetTimeoutHandler(handler func([]string, []strin
 
 // SetConfig configures the PriFi node.
 // It **MUST** be called in service.newProtocol or before Start().
-func (p *PriFiScheduleProtocol) SetConfigFromPriFiService(config *PriFiWrapperConfig, oldPrifiLib prifi_lib.SpecializedLibInstance) {
+func (p *PriFiScheduleProtocol) SetConfigFromPriFiService(config *PriFiWrapperConfig, libInstance prifi_lib.SpecializedLibInstance) {
 	p.config = *config
 	p.role = config.Role
 
@@ -151,7 +151,7 @@ func (p *PriFiScheduleProtocol) SetConfigFromPriFiService(config *PriFiWrapperCo
 		}
 	}
 
-	p.prifiLibInstance = oldPrifiLib
+	p.prifiLibInstance = libInstance
 	p.prifiLibInstance.SetMessageSender(p.ms)
 
 	p.registerHandlers()
@@ -167,7 +167,7 @@ func (p *PriFiScheduleProtocol) SetTimeoutHandler(handler func([]string, []strin
 
 // SetConfig configures the PriFi node.
 // It **MUST** be called in service.newProtocol or before Start().
-func (p *PriFiCommunicateProtocol) SetConfigFromPriFiService(config *PriFiWrapperConfig, oldPrifiLib prifi_lib.SpecializedLibInstance) {
+func (p *PriFiCommunicateProtocol) SetConfigFromPriFiService(config *PriFiWrapperConfig, libInstance prifi_lib.SpecializedLibInstance) {
 	p.config = *config
 	p.role = config.Role
 
@@ -193,7 +193,7 @@ func (p *PriFiCommunicateProtocol) SetConfigFromPriFiService(config *PriFiWrappe
 		}
 	}
 
-	p.prifiLibInstance = oldPrifiLib
+	p.prifiLibInstance = libInstance
 	p.prifiLibInstance.SetMessageSender(p.ms)
 
 	p.registerHandlers()

@@ -25,7 +25,7 @@ type PriFiLibInstance struct {
 	specializedLibInstance SpecializedLibInstance
 }
 
-//Prifi's "Relay", "Client" and "Trustee" instance all can receive a message
+//Prifi's "Relay", "Client" and "Trustee" instance all can receive and send messages
 type SpecializedLibInstance interface {
 	ReceivedMessage(msg interface{}) (bool, interface{}, error)
 	SetMessageSender(msgSender net.MessageSender) error
@@ -99,9 +99,9 @@ func (p *PriFiLibInstance) ReceivedMessage(msg interface{}) (bool, interface{}, 
 	return endStep, state, nil
 }
 
-// ReceivedMessage must be called when a PriFi host receives a message.
-// It takes care to call the correct message handler function.
+// SetMessageSender must be call to configure the message sender to continue the PriFi protocol at the next step
 func (p *PriFiLibInstance) SetMessageSender(msgSender net.MessageSender) error {
+	p.messageSender = msgSender
 	err := p.specializedLibInstance.SetMessageSender(msgSender)
 	if err != nil {
 		log.Error(err)
@@ -109,8 +109,13 @@ func (p *PriFiLibInstance) SetMessageSender(msgSender net.MessageSender) error {
 	return nil
 }
 
-func newMessageSenderWrapper(msgSender net.MessageSender) *net.MessageSenderWrapper {
+// SetMessageSender must be call to configure the message sender to continue the PriFi protocol at the next step
+func (p *PriFiLibInstance) SetSpecializedLibInstance(libInstance SpecializedLibInstance) error {
+	p.specializedLibInstance = libInstance
+	return nil
+}
 
+func newMessageSenderWrapper(msgSender net.MessageSender) *net.MessageSenderWrapper {
 	errHandling := func(e error) { /* do nothing yet, we are alerted of errors via the SDA */ }
 	loggingSuccessFunction := func(e interface{}) { log.Lvl3(e) }
 	loggingErrorFunction := func(e interface{}) { log.Error(e) }

@@ -1,6 +1,7 @@
 package services
 
 import (
+	prifi_lib "github.com/lbarman/prifi/prifi-lib"
 	prifi_protocol "github.com/lbarman/prifi/sda/protocols"
 	"github.com/lbarman/prifi/utils/timing"
 	"gopkg.in/dedis/onet.v1/log"
@@ -33,9 +34,6 @@ const DELAY_BEFORE_CONNECT_TO_RELAY = 5 * time.Second
 
 //Delay before the relay re-tried to connect to the trustees
 const DELAY_BEFORE_CONNECT_TO_TRUSTEES = 30 * time.Second
-
-var alreadyCommunicating = false
-var oldCommunicateProtocol *prifi_protocol.PriFiCommunicateProtocol
 
 // returns true if the PriFi exchange protocol is running
 func (s *ServiceState) IsPriFiExchangeProtocolRunning() bool {
@@ -217,15 +215,15 @@ func (s *ServiceState) StopPriFiExchangeProtocol() {
 }
 
 // Called when the PriFiExchangeProtocol has finished
-func (s *ServiceState) PrifiExchangeProtocolFinished() {
+func (s *ServiceState) PrifiExchangeProtocolFinished(libInstance prifi_lib.SpecializedLibInstance) {
 	log.Lvl1("PriFi exchange protocol has finished")
-	s.StartPriFiScheduleProtocol()
+	s.StartPriFiScheduleProtocol(libInstance)
 }
 
 // startPriFiScheduleProtocol starts a PriFi schedule protocol. It is called
 // by the relay as soon as enough participants are
 // ready (one trustee and two clients).
-func (s *ServiceState) StartPriFiScheduleProtocol() {
+func (s *ServiceState) StartPriFiScheduleProtocol(libInstance prifi_lib.SpecializedLibInstance) {
 	log.Lvl1("Starting PriFi schedule protocol")
 
 	if s.role != prifi_protocol.Relay {
@@ -252,7 +250,7 @@ func (s *ServiceState) StartPriFiScheduleProtocol() {
 	//assign and start the protocol
 	s.PriFiScheduleProtocol = wrapper
 
-	s.setConfigToPriFiScheduleProtocol(wrapper)
+	s.setConfigToPriFiScheduleProtocol(wrapper, libInstance)
 	s.PriFiScheduleProtocol.WhenFinished = s.PrifiScheduleProtocolFinished
 
 	wrapper.Start()
@@ -276,19 +274,15 @@ func (s *ServiceState) StopPriFiScheduleProtocol() {
 }
 
 // Called when the PriFiScheduleProtocol has finished
-func (s *ServiceState) PrifiScheduleProtocolFinished() {
+func (s *ServiceState) PrifiScheduleProtocolFinished(libInstance prifi_lib.SpecializedLibInstance) {
 	log.Lvl1("PriFi schedule protocol has finished")
-	/*if alreadyCommunicating {
-		oldCommunicateProtocol.Stop()
-		alreadyCommunicating = false
-	}*/
-	s.StartPriFiCommunicateProtocol()
+	s.StartPriFiCommunicateProtocol(libInstance)
 }
 
 // startPriFiCommunicateProtocol starts a PriFi communication protocol. It is called
 // by the relay as soon as enough participants are
 // ready (one trustee and two clients).
-func (s *ServiceState) StartPriFiCommunicateProtocol() {
+func (s *ServiceState) StartPriFiCommunicateProtocol(libInstance prifi_lib.SpecializedLibInstance) {
 	log.Lvl1("Starting PriFi communication protocol")
 
 	if s.role != prifi_protocol.Relay {
@@ -315,15 +309,23 @@ func (s *ServiceState) StartPriFiCommunicateProtocol() {
 	//assign and start the protocol
 	s.PriFiCommunicateProtocol = wrapper
 
-	s.setConfigToPriFiCommunicateProtocol(wrapper)
+	s.setConfigToPriFiCommunicateProtocol(wrapper, libInstance)
 
 	wrapper.Start()
 
 	timing.StartMeasure("Resync")
 
 	//s.PriFiExchangeProtocol.WhenFinished = nil
-	oldCommunicateProtocol = s.PriFiCommunicateProtocol
-	alreadyCommunicating = true
+	if s.alreadyCommunicating {
+		log.Lvl1("Stopping old PriFi communication protocol")
+		s.oldCommunicateProtocol.Stop()
+		s.oldCommunicateProtocol.Done()
+		s.oldCommunicateProtocol = nil
+		log.LLvl4("Done")
+	}
+
+	s.oldCommunicateProtocol = s.PriFiCommunicateProtocol
+	s.alreadyCommunicating = true
 }
 
 // stopPriFiCommunicateProtocol stops the PriFi communication protocol currently running.
