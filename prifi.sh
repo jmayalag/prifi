@@ -21,7 +21,7 @@ socksServer1Port=8080           # the port for the SOCKS-Server-1 (part of the P
 socksServer2Port=8090           # the port to attempt connect to (from the PriFi relay) for the SOCKS-Server-2
                                 # notes : see <https://github.com/lbarman/prifi/blob/master/README_architecture.md>
 
-all_localhost_n_clients=2      # number of clients to start in the "all-localhost" script
+all_localhost_n_clients=6      # number of clients to start in the "all-localhost" script
 
 # default file names :
 

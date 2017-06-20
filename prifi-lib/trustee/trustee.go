@@ -138,7 +138,7 @@ func (p *PriFiLibTrusteeInstance) Send_TRU_REL_DC_CIPHER(rateChan chan int16) {
 				roundID, _ = sendData(p, roundID)
 
 			} else if currentRate == TRUSTEE_RATE_STOPPED {
-				time.Sleep(0 * TRUSTEE_BASE_SLEEP_TIME)
+				time.Sleep(1 * TRUSTEE_BASE_SLEEP_TIME)
 				roundID, _ = sendData(p, roundID)
 
 			} else {
@@ -171,16 +171,14 @@ sendData is an auxiliary function used by Send_TRU_REL_DC_CIPHER. It computes th
 It returns the new round number (previous + 1).
 */
 func sendData(p *PriFiLibTrusteeInstance, roundID int32) (int32, error) {
-	if roundID < 10 {
-		data := p.trusteeState.CellCoder.TrusteeEncode(p.trusteeState.PayloadLength)
+	data := p.trusteeState.CellCoder.TrusteeEncode(p.trusteeState.PayloadLength)
 
-		//send the data
-		toSend := &net.TRU_REL_DC_CIPHER{
-			RoundID:   roundID,
-			TrusteeID: p.trusteeState.ID,
-			Data:      data}
-		p.messageSender.SendToRelayWithLog(toSend, "(round "+strconv.Itoa(int(roundID))+")")
-	}
+	//send the data
+	toSend := &net.TRU_REL_DC_CIPHER{
+		RoundID:   roundID,
+		TrusteeID: p.trusteeState.ID,
+		Data:      data}
+	p.messageSender.SendToRelayWithLog(toSend, "(round "+strconv.Itoa(int(roundID))+")")
 
 	return roundID + 1, nil
 }

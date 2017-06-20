@@ -91,7 +91,7 @@ func NewPriFiTrustee(msgSender net.MessageSender) *PriFiLibInstance {
 // It takes care to call the correct message handler function.
 func (p *PriFiLibInstance) ReceivedMessage(msg interface{}) (bool, interface{}, error) {
 	typemsg := reflect.TypeOf(msg)
-	log.LLvl3("Received message ", typemsg)
+	log.Lvl3("Received message ", typemsg)
 	endStep, state, err := p.specializedLibInstance.ReceivedMessage(msg)
 	if err != nil {
 		log.Error(err)

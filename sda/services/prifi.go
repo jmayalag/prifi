@@ -1,7 +1,7 @@
 package services
 
 import (
-	prifi_lib "github.com/lbarman/prifi/prifi-lib"
+	"github.com/lbarman/prifi/prifi-lib"
 	prifi_protocol "github.com/lbarman/prifi/sda/protocols"
 	"github.com/lbarman/prifi/utils/timing"
 	"gopkg.in/dedis/onet.v1/log"
@@ -321,7 +321,7 @@ func (s *ServiceState) StartPriFiCommunicateProtocol(libInstance prifi_lib.Speci
 		s.oldCommunicateProtocol.Stop()
 		s.oldCommunicateProtocol.Done()
 		s.oldCommunicateProtocol = nil
-		log.LLvl4("Done")
+		log.Lvl3("Done")
 	}
 
 	s.oldCommunicateProtocol = s.PriFiCommunicateProtocol

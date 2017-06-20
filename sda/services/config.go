@@ -5,7 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 
-	prifi_lib "github.com/lbarman/prifi/prifi-lib"
+	"github.com/lbarman/prifi/prifi-lib"
 	prifi_protocol "github.com/lbarman/prifi/sda/protocols"
 	"gopkg.in/dedis/onet.v1/app"
 	"gopkg.in/dedis/onet.v1/log"
