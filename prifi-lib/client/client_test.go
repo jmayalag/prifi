@@ -67,6 +67,7 @@ func TestClient(t *testing.T) {
 	out := make(chan []byte, 3)
 
 	client := NewClient(true, true, in, out, false, "./", msw)
+	client.SetMessageSender(msgSender)
 
 	//when receiving no message, client should have some parameters ready
 	cs := client.clientState
@@ -450,6 +451,7 @@ func TestClient2(t *testing.T) {
 	out := make(chan []byte, 3)
 
 	client := NewClient(true, true, in, out, false, "./", msw)
+	client.SetMessageSender(msgSender)
 	cs := client.clientState
 
 	//we start by receiving a ALL_ALL_PARAMETERS from relay

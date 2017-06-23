@@ -105,6 +105,7 @@ func TestRelayRun1(t *testing.T) {
 	dataFromDCNet := make(chan []byte, 3)
 
 	relay := NewRelay(true, dataForClients, dataFromDCNet, resultChan, timeoutHandler, msw)
+	relay.SetMessageSender(msgSender)
 
 	//when receiving no message, client should have some parameters ready
 	rs := relay.relayState
@@ -455,6 +456,7 @@ func TestRelayRun2(t *testing.T) {
 	dataFromDCNet := make(chan []byte, 3)
 
 	relay := NewRelay(true, dataForClients, dataFromDCNet, resultChan, timeoutHandler, msw)
+	relay.SetMessageSender(msgSender)
 	rs := relay.relayState
 
 	//we start by receiving a ALL_ALL_PARAMETERS from relay
@@ -901,6 +903,7 @@ func TestRelayRun4(t *testing.T) {
 	dataFromDCNet := make(chan []byte, 3)
 
 	relay := NewRelay(true, dataForClients, dataFromDCNet, resultChan, timeoutHandler, msw)
+	relay.SetMessageSender(msgSender)
 
 	//we start by receiving a ALL_ALL_PARAMETERS from relay
 	msg := new(net.ALL_ALL_PARAMETERS_NEW)
@@ -951,6 +954,7 @@ func TestRelayRun4(t *testing.T) {
 	}
 
 	relay2 := NewRelay(true, dataForClients, dataFromDCNet, resultChan, timeoutHandler, msw)
+	relay2.SetMessageSender(msgSender)
 
 	//we start by receiving a ALL_ALL_PARAMETERS from relay
 	msg21 := new(net.ALL_ALL_PARAMETERS_NEW)

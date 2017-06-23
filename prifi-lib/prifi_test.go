@@ -38,11 +38,17 @@ func TestPrifi(t *testing.T) {
 
 	client0 := NewPriFiClient(true, true, in, out, false, "./", msgSender)
 	client1 := NewPriFiClient(true, true, in, out, false, "./", msgSender)
+	client0.SetMessageSender(msgSender)
+	client1.SetMessageSender(msgSender)
+	client0.SetSpecializedLibInstance(client1)
+	client1.SetSpecializedLibInstance(client1)
 
 	timeoutHandler := func(clients, trustees []int) { log.Error(clients, trustees) }
 	resultChan := make(chan interface{}, 1)
 
 	relay := NewPriFiRelay(true, in, out, resultChan, timeoutHandler, msgSender)
+	relay.SetMessageSender(msgSender)
+	relay.SetSpecializedLibInstance(relay)
 
 	trustee0 := NewPriFiTrustee(msgSender)
 	trustee1 := NewPriFiTrustee(msgSender)
