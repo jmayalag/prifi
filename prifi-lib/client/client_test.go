@@ -37,7 +37,7 @@ func (t *TestMessageSender) SendToRelay(msg interface{}) error {
 func (t *TestMessageSender) BroadcastToAllClients(msg interface{}) error {
 	return errors.New("Clients should never sent to other clients")
 }
-func (t *TestMessageSender) ClientSubscribeToBroadcast(clientID int, messageReceived func(interface{}) error, startStopChan chan bool) error {
+func (t *TestMessageSender) ClientSubscribeToBroadcast(clientID int, messageReceived func(interface{}) (bool, interface{}, error), startStopChan chan bool) error {
 	return nil
 }
 
@@ -100,7 +100,7 @@ func TestClient(t *testing.T) {
 	msg.Add("UseUDP", true)
 	msg.Add("DCNetType", dcNetType)
 
-	if err := client.ReceivedMessage(*msg); err != nil {
+	if _, _, err := client.ReceivedMessage(*msg); err != nil {
 		t.Error("Client should be able to receive this message:", err)
 	}
 
@@ -145,7 +145,7 @@ func TestClient(t *testing.T) {
 		trusteesPubKeys[i], trusteesPrivKeys[i] = crypto.NewKeyPair()
 	}
 	msg2 := net.REL_CLI_TELL_TRUSTEES_PK{Pks: trusteesPubKeys}
-	if err := client.ReceivedMessage(msg2); err != nil {
+	if _, _, err := client.ReceivedMessage(msg2); err != nil {
 		t.Error("Should be able to receive this message,", err.Error())
 	}
 
@@ -217,7 +217,7 @@ func TestClient(t *testing.T) {
 	parsed5 := toSend5.(*net.REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG)
 
 	//should receive a Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG
-	err4 := client.ReceivedMessage(*parsed5)
+	_, _, err4 := client.ReceivedMessage(*parsed5)
 	if err4 != nil {
 		t.Error("Should be able to receive this message,", err4)
 	}
@@ -259,7 +259,7 @@ func TestClient(t *testing.T) {
 		Data:       dataDown,
 		FlagResync: false,
 	}
-	err := client.ReceivedMessage(msg7)
+	_, _, err := client.ReceivedMessage(msg7)
 	if err != nil {
 		t.Error("Client should be able to receive this data")
 	}
@@ -296,7 +296,7 @@ func TestClient(t *testing.T) {
 		Data:       dataDown,
 		FlagResync: true, //this should not matter
 	}
-	err = client.ReceivedMessage(msg9_ignored)
+	_, _, err = client.ReceivedMessage(msg9_ignored)
 	if err != nil {
 		t.Error("Client should be able to receive this data")
 	}
@@ -314,7 +314,7 @@ func TestClient(t *testing.T) {
 		Data:       dataDown,
 		FlagResync: false,
 	}
-	err = client.ReceivedMessage(msg9_futur)
+	_, _, err = client.ReceivedMessage(msg9_futur)
 	if err != nil {
 		t.Error("Client should be able to receive this data")
 	}
@@ -337,7 +337,7 @@ func TestClient(t *testing.T) {
 	msg9udp := net.REL_CLI_DOWNSTREAM_DATA_UDP{
 		REL_CLI_DOWNSTREAM_DATA: msg9,
 	}
-	err = client.ReceivedMessage(msg9udp)
+	_, _, err = client.ReceivedMessage(msg9udp)
 	if err != nil {
 		t.Error("Client should be able to receive this data")
 	}
@@ -381,7 +381,7 @@ func TestClient(t *testing.T) {
 		Data:       latencyMessage,
 		FlagResync: false,
 	}
-	err = client.ReceivedMessage(msg12)
+	_, _, err = client.ReceivedMessage(msg12)
 	if err != nil {
 		t.Error("Client should be able to receive this data")
 	}
@@ -412,7 +412,7 @@ func TestClient(t *testing.T) {
 		Data:       dataDown,
 		FlagResync: true, //should stop the client
 	}
-	err = client.ReceivedMessage(msg13)
+	_, _, err = client.ReceivedMessage(msg13)
 	if err != nil {
 		t.Error("Client should be able to receive this data")
 	}
@@ -427,7 +427,7 @@ func TestClient(t *testing.T) {
 	}
 
 	randomMsg := &net.CLI_REL_TELL_PK_AND_EPH_PK{}
-	if err := client.ReceivedMessage(randomMsg); err == nil {
+	if _, _, err := client.ReceivedMessage(randomMsg); err == nil {
 		t.Error("Should not accept this CLI_REL_TELL_PK_AND_EPH_PK message")
 	}
 
@@ -466,7 +466,7 @@ func TestClient2(t *testing.T) {
 	msg.Add("UseUDP", true)
 	msg.Add("DCNetType", dcNetType)
 
-	if err := client.ReceivedMessage(*msg); err != nil {
+	if _, _, err := client.ReceivedMessage(*msg); err != nil {
 		t.Error("Client should be able to receive this message:", err)
 	}
 
@@ -477,7 +477,7 @@ func TestClient2(t *testing.T) {
 		trusteesPubKeys[i], trusteesPrivKeys[i] = crypto.NewKeyPair()
 	}
 	msg2 := net.REL_CLI_TELL_TRUSTEES_PK{Pks: trusteesPubKeys}
-	if err := client.ReceivedMessage(msg2); err != nil {
+	if _, _, err := client.ReceivedMessage(msg2); err != nil {
 		t.Error("Should be able to receive this message,", err.Error())
 	}
 
@@ -520,7 +520,7 @@ func TestClient2(t *testing.T) {
 	parsed5 := toSend5.(*net.REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG)
 
 	//should receive a Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG
-	err4 := client.ReceivedMessage(*parsed5)
+	_, _, err4 := client.ReceivedMessage(*parsed5)
 	if err4 != nil {
 		t.Error("Should be able to receive this message,", err4)
 	}
@@ -552,7 +552,7 @@ func TestClient2(t *testing.T) {
 		FlagResync:            false,
 		FlagOpenClosedRequest: false,
 	}
-	err := client.ReceivedMessage(msg7)
+	_, _, err := client.ReceivedMessage(msg7)
 	if err != nil {
 		t.Error("Client should be able to receive this data")
 	}
@@ -568,7 +568,7 @@ func TestClient2(t *testing.T) {
 		FlagResync:            false,
 		FlagOpenClosedRequest: true,
 	}
-	err = client.ReceivedMessage(msg8)
+	_, _, err = client.ReceivedMessage(msg8)
 	if err != nil {
 		t.Error("Client should be able to receive this data")
 	}

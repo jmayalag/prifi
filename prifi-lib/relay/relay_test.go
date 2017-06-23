@@ -47,7 +47,7 @@ func (t *TestMessageSender) SendToRelay(msg interface{}) error {
 func (t *TestMessageSender) BroadcastToAllClients(msg interface{}) error {
 	return t.SendToClient(0, msg)
 }
-func (t *TestMessageSender) ClientSubscribeToBroadcast(clientID int, messageReceived func(interface{}) error, startStopChan chan bool) error {
+func (t *TestMessageSender) ClientSubscribeToBroadcast(clientID int, messageReceived func(interface{}) (bool, interface{}, error), startStopChan chan bool) error {
 	return errors.New("Not for relay")
 }
 
@@ -154,7 +154,7 @@ func TestRelayRun1(t *testing.T) {
 	msg.Add("ExperimentRoundLimit", 2)
 	msg.Add("DCNetType", dcNetType)
 
-	if err := relay.ReceivedMessage(*msg); err != nil {
+	if _, _, err := relay.ReceivedMessage(*msg); err != nil {
 		t.Error("Relay should be able to receive this message, but", err)
 	}
 	if rs.nClients != nClients {
@@ -269,7 +269,7 @@ func TestRelayRun1(t *testing.T) {
 		TrusteeID: 0,
 		Pk:        trusteePub,
 	}
-	if err := relay.ReceivedMessage(msg6); err != nil {
+	if _, _, err := relay.ReceivedMessage(msg6); err != nil {
 		t.Error("Relay should be able to receive this message, but", err)
 	}
 	if relay.stateMachine.State() != "COLLECTING_CLIENT_PKS" {
@@ -297,9 +297,17 @@ func TestRelayRun1(t *testing.T) {
 		Pk:       cliPub,
 		EphPk:    cliEphPub,
 	}
-	if err := relay.ReceivedMessage(msg9); err != nil {
+	if _, _, err := relay.ReceivedMessage(msg9); err != nil {
 		t.Error("Relay should be able to receive this message, but", err)
 	}
+
+	msg9_2 := net.SERVICE_REL_TELL_PK_AND_EPH_PK{
+		ClientID: 0,
+	}
+	if _, _, err := relay.ReceivedMessage(msg9_2); err != nil {
+		t.Error("Relay should be able to receive this message, but", err)
+	}
+
 	if relay.stateMachine.State() != "COLLECTING_SHUFFLES" {
 		t.Error("In wrong state ! we should be in COLLECTING_SHUFFLES, but are in ", relay.stateMachine.State())
 	}
@@ -322,7 +330,7 @@ func TestRelayRun1(t *testing.T) {
 		Proof:     make([]byte, 50),
 	}
 
-	if err := relay.ReceivedMessage(msg12); err != nil {
+	if _, _, err := relay.ReceivedMessage(msg12); err != nil {
 		t.Error("Relay should be able to receive this message, but", err)
 	}
 
@@ -341,7 +349,15 @@ func TestRelayRun1(t *testing.T) {
 	msg14 := net.TRU_REL_SHUFFLE_SIG{
 		TrusteeID: 0,
 		Sig:       make([]byte, 0)}
-	if err := relay.ReceivedMessage(msg14); err == nil {
+
+	msg14_2 := net.SERVICE_REL_SHUFFLE_SIG{
+		TrusteeID: 0,
+	}
+	if _, _, err := relay.ReceivedMessage(msg14); err != nil {
+		t.Error("Relay should be able to receive this message, but", err)
+	}
+
+	if _, _, err := relay.ReceivedMessage(msg14_2); err == nil {
 		t.Error("Relay should not continue if the signature is not valid !")
 	}
 	rs.neffShuffle.SignatureCount = 0
@@ -367,9 +383,17 @@ func TestRelayRun1(t *testing.T) {
 	msg15 := net.TRU_REL_SHUFFLE_SIG{
 		TrusteeID: 0,
 		Sig:       signature}
-	if err := relay.ReceivedMessage(msg15); err != nil {
+	if _, _, err := relay.ReceivedMessage(msg15); err != nil {
 		t.Error("Relay should be able to receive this message, but", err)
 	}
+
+	msg15_2 := net.SERVICE_REL_SHUFFLE_SIG{
+		TrusteeID: 0,
+	}
+	if _, _, err := relay.ReceivedMessage(msg15_2); err != nil {
+		t.Error("Relay should be able to receive this message, but", err)
+	}
+
 	if relay.stateMachine.State() != "COMMUNICATING" {
 		t.Error("In wrong state ! we should be in COMMUNICATING, but are in ", relay.stateMachine.State())
 	}
@@ -387,7 +411,7 @@ func TestRelayRun1(t *testing.T) {
 		RoundID:  0,
 		Data:     make([]byte, upCellSize),
 	}
-	if err := relay.ReceivedMessage(msg17); err != nil {
+	if _, _, err := relay.ReceivedMessage(msg17); err != nil {
 		t.Error("Relay should be able to receive this message, but", err)
 	}
 
@@ -401,7 +425,7 @@ func TestRelayRun1(t *testing.T) {
 		RoundID:   0,
 		Data:      make([]byte, upCellSize),
 	}
-	if err := relay.ReceivedMessage(msg18); err != nil {
+	if _, _, err := relay.ReceivedMessage(msg18); err != nil {
 		t.Error("Relay should be able to receive this message, but", err)
 	}
 
@@ -410,7 +434,7 @@ func TestRelayRun1(t *testing.T) {
 
 	//suppose we receive a ALL_ALL_SHUTDOWN (since we had a timeout)
 	shutdownMsg := net.ALL_ALL_SHUTDOWN{}
-	if err := relay.ReceivedMessage(shutdownMsg); err != nil {
+	if _, _, err := relay.ReceivedMessage(shutdownMsg); err != nil {
 		t.Error("Should handle this ALL_ALL_SHUTDOWN message, but", err)
 	}
 	if relay.stateMachine.State() != "SHUTDOWN" {
@@ -451,7 +475,7 @@ func TestRelayRun2(t *testing.T) {
 	msg.Add("ExperimentRoundLimit", 2)
 	msg.Add("DCNetType", dcNetType)
 
-	if err := relay.ReceivedMessage(*msg); err != nil {
+	if _, _, err := relay.ReceivedMessage(*msg); err != nil {
 		t.Error("Relay should be able to receive this message, but", err)
 	}
 
@@ -476,7 +500,7 @@ func TestRelayRun2(t *testing.T) {
 		TrusteeID: 0,
 		Pk:        trusteePub,
 	}
-	if err := relay.ReceivedMessage(msg6); err != nil {
+	if _, _, err := relay.ReceivedMessage(msg6); err != nil {
 		t.Error("Relay should be able to receive this message, but", err)
 	}
 
@@ -497,7 +521,14 @@ func TestRelayRun2(t *testing.T) {
 		Pk:       cliPub,
 		EphPk:    cliEphPub,
 	}
-	if err := relay.ReceivedMessage(msg9); err != nil {
+	if _, _, err := relay.ReceivedMessage(msg9); err != nil {
+		t.Error("Relay should be able to receive this message, but", err)
+	}
+
+	msg9_2 := net.SERVICE_REL_TELL_PK_AND_EPH_PK{
+		ClientID: 0,
+	}
+	if _, _, err := relay.ReceivedMessage(msg9_2); err != nil {
 		t.Error("Relay should be able to receive this message, but", err)
 	}
 
@@ -514,7 +545,7 @@ func TestRelayRun2(t *testing.T) {
 		NewEphPks: msg11.EphPks,
 		Proof:     make([]byte, 50),
 	}
-	if err := relay.ReceivedMessage(msg12); err != nil {
+	if _, _, err := relay.ReceivedMessage(msg12); err != nil {
 		t.Error("Relay should be able to receive this message, but", err)
 	}
 
@@ -547,7 +578,14 @@ func TestRelayRun2(t *testing.T) {
 	msg15 := net.TRU_REL_SHUFFLE_SIG{
 		TrusteeID: 0,
 		Sig:       signature}
-	if err := relay.ReceivedMessage(msg15); err != nil {
+	if _, _, err := relay.ReceivedMessage(msg15); err != nil {
+		t.Error("Relay should be able to receive this message, but", err)
+	}
+
+	msg15_2 := net.SERVICE_REL_SHUFFLE_SIG{
+		TrusteeID: 0,
+	}
+	if _, _, err := relay.ReceivedMessage(msg15_2); err != nil {
 		t.Error("Relay should be able to receive this message, but", err)
 	}
 
@@ -564,7 +602,7 @@ func TestRelayRun2(t *testing.T) {
 		RoundID:   0,
 		Data:      make([]byte, upCellSize),
 	}
-	if err := relay.ReceivedMessage(msg17); err != nil {
+	if _, _, err := relay.ReceivedMessage(msg17); err != nil {
 		t.Error("Relay should be able to receive this message, but", err)
 	}
 
@@ -578,7 +616,7 @@ func TestRelayRun2(t *testing.T) {
 		RoundID:  0,
 		Data:     make([]byte, upCellSize),
 	}
-	if err := relay.ReceivedMessage(msg18); err != nil {
+	if _, _, err := relay.ReceivedMessage(msg18); err != nil {
 		t.Error("Relay should be able to receive this message, but", err)
 	}
 
@@ -588,7 +626,7 @@ func TestRelayRun2(t *testing.T) {
 		RoundID:   1,
 		Data:      make([]byte, upCellSize),
 	}
-	if err := relay.ReceivedMessage(msg19); err != nil {
+	if _, _, err := relay.ReceivedMessage(msg19); err != nil {
 		t.Error("Relay should be able to receive this message, but", err)
 	}
 
@@ -598,13 +636,13 @@ func TestRelayRun2(t *testing.T) {
 		RoundID:  1,
 		Data:     make([]byte, upCellSize),
 	}
-	if err := relay.ReceivedMessage(msg20); err != nil {
+	if _, _, err := relay.ReceivedMessage(msg20); err != nil {
 		t.Error("Relay should be able to receive this message, but", err)
 	}
 
 	//suppose we should refuse this random message
 	randomMsg := net.REL_CLI_TELL_TRUSTEES_PK{}
-	if err := relay.ReceivedMessage(randomMsg); err == nil {
+	if _, _, err := relay.ReceivedMessage(randomMsg); err == nil {
 		t.Error("Should not accept this REL_CLI_TELL_TRUSTEES_PK message")
 	}
 }
@@ -641,7 +679,7 @@ func TestRelayRun3(t *testing.T) {
 	msg.Add("ExperimentRoundLimit", -1)
 	msg.Add("DCNetType", dcNetType)
 
-	if err := relay.ReceivedMessage(*msg); err != nil {
+	if _, _, err := relay.ReceivedMessage(*msg); err != nil {
 		t.Error("Relay should be able to receive this message, but", err)
 	}
 
@@ -671,14 +709,14 @@ func TestRelayRun3(t *testing.T) {
 		TrusteeID: 0,
 		Pk:        trusteePub,
 	}
-	if err := relay.ReceivedMessage(msg6); err != nil {
+	if _, _, err := relay.ReceivedMessage(msg6); err != nil {
 		t.Error("Relay should be able to receive this message, but", err)
 	}
 	msg6_2 := net.TRU_REL_TELL_PK{
 		TrusteeID: 1,
 		Pk:        trusteePub,
 	}
-	if err := relay.ReceivedMessage(msg6_2); err != nil {
+	if _, _, err := relay.ReceivedMessage(msg6_2); err != nil {
 		t.Error("Relay should be able to receive this message, but", err)
 	}
 
@@ -699,7 +737,13 @@ func TestRelayRun3(t *testing.T) {
 		Pk:       cliPub,
 		EphPk:    cliEphPub,
 	}
-	if err := relay.ReceivedMessage(msg9); err != nil {
+	if _, _, err := relay.ReceivedMessage(msg9); err != nil {
+		t.Error("Relay should be able to receive this message, but", err)
+	}
+	msg9_2 := net.SERVICE_REL_TELL_PK_AND_EPH_PK{
+		ClientID: 0,
+	}
+	if _, _, err := relay.ReceivedMessage(msg9_2); err != nil {
 		t.Error("Relay should be able to receive this message, but", err)
 	}
 
@@ -716,7 +760,7 @@ func TestRelayRun3(t *testing.T) {
 		NewEphPks: msg11.EphPks,
 		Proof:     make([]byte, 50),
 	}
-	if err := relay.ReceivedMessage(msg12); err != nil {
+	if _, _, err := relay.ReceivedMessage(msg12); err != nil {
 		t.Error("Relay should be able to receive this message, but", err)
 	}
 
@@ -733,7 +777,7 @@ func TestRelayRun3(t *testing.T) {
 		NewEphPks: msg11.EphPks,
 		Proof:     make([]byte, 50),
 	}
-	if err := relay.ReceivedMessage(msg12_2); err != nil {
+	if _, _, err := relay.ReceivedMessage(msg12_2); err != nil {
 		t.Error("Relay should be able to receive this message, but", err)
 	}
 
@@ -766,13 +810,20 @@ func TestRelayRun3(t *testing.T) {
 	msg15 := net.TRU_REL_SHUFFLE_SIG{
 		TrusteeID: 0,
 		Sig:       signature}
-	if err := relay.ReceivedMessage(msg15); err != nil {
+	if _, _, err := relay.ReceivedMessage(msg15); err != nil {
 		t.Error("Relay should be able to receive this message, but", err)
 	}
 	msg15 = net.TRU_REL_SHUFFLE_SIG{
 		TrusteeID: 1,
 		Sig:       signature}
-	if err := relay.ReceivedMessage(msg15); err != nil {
+	if _, _, err := relay.ReceivedMessage(msg15); err != nil {
+		t.Error("Relay should be able to receive this message, but", err)
+	}
+
+	msg15_2 := net.SERVICE_REL_SHUFFLE_SIG{
+		TrusteeID: 0,
+	}
+	if _, _, err := relay.ReceivedMessage(msg15_2); err != nil {
 		t.Error("Relay should be able to receive this message, but", err)
 	}
 
@@ -789,7 +840,7 @@ func TestRelayRun3(t *testing.T) {
 		RoundID:   0,
 		Data:      make([]byte, upCellSize),
 	}
-	if err := relay.ReceivedMessage(msg17); err != nil {
+	if _, _, err := relay.ReceivedMessage(msg17); err != nil {
 		t.Error("Relay should be able to receive this message, but", err)
 	}
 	msg17 = net.TRU_REL_DC_CIPHER{
@@ -797,7 +848,7 @@ func TestRelayRun3(t *testing.T) {
 		RoundID:   0,
 		Data:      make([]byte, upCellSize),
 	}
-	if err := relay.ReceivedMessage(msg17); err != nil {
+	if _, _, err := relay.ReceivedMessage(msg17); err != nil {
 		t.Error("Relay should be able to receive this message, but", err)
 	}
 
@@ -810,7 +861,7 @@ func TestRelayRun3(t *testing.T) {
 		RoundID:  0,
 		Data:     latencyMessage,
 	}
-	if err := relay.ReceivedMessage(msg18); err != nil {
+	if _, _, err := relay.ReceivedMessage(msg18); err != nil {
 		t.Error("Relay should be able to receive this message, but", err)
 	}
 
@@ -831,7 +882,7 @@ func TestRelayRun3(t *testing.T) {
 		RoundID:  0,
 		Data:     nil,
 	}
-	if err := relay.Received_CLI_REL_UPSTREAM_DATA(msg21); err != nil {
+	if _, _, err := relay.Received_CLI_REL_UPSTREAM_DATA(msg21); err != nil {
 		t.Error("Relay should be able to receive this message but", err)
 	}
 
@@ -869,7 +920,7 @@ func TestRelayRun4(t *testing.T) {
 	msg.Add("ExperimentRoundLimit", -1)
 	msg.Add("DCNetType", dcNetType)
 
-	if err := relay.ReceivedMessage(*msg); err != nil {
+	if _, _, err := relay.ReceivedMessage(*msg); err != nil {
 		t.Error("Relay should be able to receive this message, but", err)
 	}
 
@@ -916,7 +967,7 @@ func TestRelayRun4(t *testing.T) {
 	msg21.Add("ExperimentRoundLimit", -1)
 	msg21.Add("DCNetType", dcNetType2)
 
-	if err := relay2.ReceivedMessage(*msg21); err == nil {
+	if _, _, err := relay2.ReceivedMessage(*msg21); err == nil {
 		t.Error("Relay should output an error when DCNetType != {Simple, Verifiable}")
 	}
 }
