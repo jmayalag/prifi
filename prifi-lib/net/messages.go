@@ -18,6 +18,7 @@ import (
 // ALL_ALL_SHUTDOWN
 // ALL_ALL_PARAMETERS
 // CLI_REL_TELL_PK_AND_EPH_PK
+// SERVICE_REL_TELL_PK_AND_EPH_PK
 // CLI_REL_UPSTREAM_DATA
 // REL_CLI_DOWNSTREAM_DATA
 // REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG
@@ -26,9 +27,11 @@ import (
 // REL_TRU_TELL_TRANSCRIPT
 // TRU_REL_DC_CIPHER
 // TRU_REL_SHUFFLE_SIG
+// SERVICE_REL_SHUFFLE_SIG
 // REL_TRU_TELL_RATE_CHANGE
 // TRU_REL_TELL_NEW_BASE_AND_EPH_PKS
 // TRU_REL_TELL_PK
+// REL_TRU_TELL_READY
 // REL_TRU_TELL_RATE_CHANGE
 
 //not used yet :
@@ -45,6 +48,12 @@ type CLI_REL_TELL_PK_AND_EPH_PK struct {
 	ClientID int
 	Pk       abstract.Point
 	EphPk    abstract.Point
+}
+
+// SERVICE_REL_TELL_PK_AND_EPH_PK contains the acknowledgement of CLI_REL_TELL_PK_AND_EPH_PK and is sent to the
+// relay from the service to start the schedule phase.
+type SERVICE_REL_TELL_PK_AND_EPH_PK struct {
+	ClientID int
 }
 
 // CLI_REL_UPSTREAM_DATA message contains the upstream data of a client for a given round
@@ -138,6 +147,11 @@ type REL_TRU_TELL_TRANSCRIPT struct {
 	Proofs []ByteArray
 }
 
+// REL_TRU_TELL_READY message used to notify the trustee they are ready to transmit DC_CIPHER
+type REL_TRU_TELL_READY struct {
+	TrusteeID int
+}
+
 // TRU_REL_DC_CIPHER message contains the DC-net cipher of a trustee for a given round and is sent to the relay.
 type TRU_REL_DC_CIPHER struct {
 	RoundID   int32
@@ -149,6 +163,12 @@ type TRU_REL_DC_CIPHER struct {
 type TRU_REL_SHUFFLE_SIG struct {
 	TrusteeID int
 	Sig       []byte
+}
+
+// SERVICE_REL_SHUFFLE_SIG contains the acknowledgement of the signatures and is sent to the relay from the service to start
+// the communication phase.
+type SERVICE_REL_SHUFFLE_SIG struct {
+	TrusteeID int
 }
 
 // REL_TRU_TELL_RATE_CHANGE message asks the trustees to update their window capacity to adapt their

@@ -6,6 +6,7 @@ import (
 	"github.com/lbarman/prifi/prifi-lib/relay"
 	"github.com/lbarman/prifi/prifi-lib/trustee"
 	"gopkg.in/dedis/onet.v1/log"
+	"reflect"
 )
 
 /*
@@ -17,15 +18,17 @@ Then, it runs the PriFi anonymous communication network among those entities.
 */
 
 // PriFiLibInstance contains the mutable state of a PriFi entity.
-type PriFiLibInstance struct { //todo remove this, like it was done for client
+type PriFiLibInstance struct {
+	//todo remove this, like it was done for client
 	role                   int16
 	messageSender          net.MessageSender
 	specializedLibInstance SpecializedLibInstance
 }
 
-//Prifi's "Relay", "Client" and "Trustee" instance all can receive a message
+//Prifi's "Relay", "Client" and "Trustee" instance all can receive and send messages
 type SpecializedLibInstance interface {
-	ReceivedMessage(msg interface{}) error
+	ReceivedMessage(msg interface{}) (bool, interface{}, error)
+	SetMessageSender(msgSender net.MessageSender) error
 }
 
 // Possible role of PriFi entities.
@@ -86,17 +89,33 @@ func NewPriFiTrustee(msgSender net.MessageSender) *PriFiLibInstance {
 
 // ReceivedMessage must be called when a PriFi host receives a message.
 // It takes care to call the correct message handler function.
-func (p *PriFiLibInstance) ReceivedMessage(msg interface{}) error {
-	err := p.specializedLibInstance.ReceivedMessage(msg)
+func (p *PriFiLibInstance) ReceivedMessage(msg interface{}) (bool, interface{}, error) {
+	typemsg := reflect.TypeOf(msg)
+	log.Lvl3("Received message ", typemsg)
+	endStep, state, err := p.specializedLibInstance.ReceivedMessage(msg)
 	if err != nil {
 		log.Error(err)
-		return err
+	}
+	return endStep, state, nil
+}
+
+// SetMessageSender must be call to configure the message sender to continue the PriFi protocol at the next step
+func (p *PriFiLibInstance) SetMessageSender(msgSender net.MessageSender) error {
+	p.messageSender = msgSender
+	err := p.specializedLibInstance.SetMessageSender(msgSender)
+	if err != nil {
+		log.Error(err)
 	}
 	return nil
 }
 
-func newMessageSenderWrapper(msgSender net.MessageSender) *net.MessageSenderWrapper {
+// SetMessageSender must be call to configure the message sender to continue the PriFi protocol at the next step
+func (p *PriFiLibInstance) SetSpecializedLibInstance(libInstance SpecializedLibInstance) error {
+	p.specializedLibInstance = libInstance
+	return nil
+}
 
+func newMessageSenderWrapper(msgSender net.MessageSender) *net.MessageSenderWrapper {
 	errHandling := func(e error) { /* do nothing yet, we are alerted of errors via the SDA */ }
 	loggingSuccessFunction := func(e interface{}) { log.Lvl3(e) }
 	loggingErrorFunction := func(e interface{}) { log.Error(e) }

@@ -21,7 +21,7 @@ socksServer1Port=8080           # the port for the SOCKS-Server-1 (part of the P
 socksServer2Port=8090           # the port to attempt connect to (from the PriFi relay) for the SOCKS-Server-2
                                 # notes : see <https://github.com/lbarman/prifi/blob/master/README_architecture.md>
 
-all_localhost_n_clients=3      # number of clients to start in the "all-localhost" script
+all_localhost_n_clients=6      # number of clients to start in the "all-localhost" script
 
 # default file names :
 
@@ -44,7 +44,7 @@ min_go_version=17                           # min required go version, without t
 
 # unimportant variable (but do not change, ofc)
 
-sleeptime_between_spawns=1                  # time in second between entities launch in all-localhost part
+sleeptime_between_spawns=3                  # time in second between entities launch in all-localhost part
 cothorityBranchRequired="v1.0"              # the branch required for the cothority (SDA) framework
 
 #pretty colored message
@@ -397,7 +397,7 @@ case $1 in
 		read -p "PriFi deployed. Press [enter] to kill all..." key
 		echo "Gonna run kill -TERM -- -\"$THISPGID\""
 
-		kill -TERM -- -"$THISPGID"
+		kill -9 -- -"$THISPGID"
 		;;
 
 	gen-id|Gen-Id|GEN-ID)
@@ -674,7 +674,7 @@ case $1 in
 		echo -n "Simulation done, cleaning up... " | tee ../../last-simul.log
 		rm -f "$EXEC_NAME" | tee ../../last-simul.log
 		echo -e "$okMsg" | tee ../../last-simul.log
-		
+
 		status=$(ssh $deterlabUser@users.deterlab.net "cat ~/remote/.lastsimul")
 		echo -e "Status is ${highlightOn}${status}${highlightOff}." | tee ../../last-simul.log
 
@@ -818,7 +818,7 @@ case $1 in
 		#     ssh client-$i.LB-LLD.SAFER.isi.deterlab.net './mcast2.sh'
 		# done
 		# [EOF]
-		
+
 		deterlabUser="lbarman"
 
 		echo -n "Setting multicast to go through 10.0.1.0/8 network... "

@@ -181,48 +181,74 @@ type RelayState struct {
 
 // ReceivedMessage must be called when a PriFi host receives a message.
 // It takes care to call the correct message handler function.
-func (p *PriFiLibRelayInstance) ReceivedMessage(msg interface{}) error {
+func (p *PriFiLibRelayInstance) ReceivedMessage(msg interface{}) (bool, interface{}, error) {
 
 	var err error
+	var endStep bool
+	var state interface{}
 
 	switch typedMsg := msg.(type) {
 	case net.ALL_ALL_PARAMETERS_NEW:
 		if typedMsg.ForceParams || p.stateMachine.AssertState("BEFORE_INIT") {
-			err = p.Received_ALL_ALL_PARAMETERS(typedMsg)
+			endStep, state, err = p.Received_ALL_ALL_PARAMETERS(typedMsg)
 		}
 	case net.ALL_ALL_SHUTDOWN:
-		err = p.Received_ALL_ALL_SHUTDOWN(typedMsg)
+		endStep, state, err = p.Received_ALL_ALL_SHUTDOWN(typedMsg)
 	case net.CLI_REL_UPSTREAM_DATA:
 		if p.stateMachine.AssertState("COMMUNICATING") {
-			err = p.Received_CLI_REL_UPSTREAM_DATA(typedMsg)
+			endStep, state, err = p.Received_CLI_REL_UPSTREAM_DATA(typedMsg)
 		}
 	case net.CLI_REL_OPENCLOSED_DATA:
 		if p.stateMachine.AssertState("COMMUNICATING") {
-			err = p.Received_CLI_REL_OPENCLOSED_DATA(typedMsg)
+			endStep, state, err = p.Received_CLI_REL_OPENCLOSED_DATA(typedMsg)
 		}
 	case net.TRU_REL_DC_CIPHER:
 		if p.stateMachine.AssertStateOrState("COMMUNICATING", "COLLECTING_SHUFFLE_SIGNATURES") {
-			err = p.Received_TRU_REL_DC_CIPHER(typedMsg)
+			endStep, state, err = p.Received_TRU_REL_DC_CIPHER(typedMsg)
 		}
 	case net.TRU_REL_TELL_PK:
 		if p.stateMachine.AssertState("COLLECTING_TRUSTEES_PKS") {
-			err = p.Received_TRU_REL_TELL_PK(typedMsg)
+			endStep, state, err = p.Received_TRU_REL_TELL_PK(typedMsg)
 		}
 	case net.CLI_REL_TELL_PK_AND_EPH_PK:
 		if p.stateMachine.AssertState("COLLECTING_CLIENT_PKS") {
-			err = p.Received_CLI_REL_TELL_PK_AND_EPH_PK(typedMsg)
+			endStep, state, err = p.Received_CLI_REL_TELL_PK_AND_EPH_PK(typedMsg)
+		}
+	case net.SERVICE_REL_TELL_PK_AND_EPH_PK:
+		if p.stateMachine.AssertState("COLLECTING_CLIENT_PKS") {
+			endStep, state, err = p.Received_SERVICE_REL_TELL_PK_AND_EPH_PK(typedMsg)
 		}
 	case net.TRU_REL_TELL_NEW_BASE_AND_EPH_PKS:
 		if p.stateMachine.AssertState("COLLECTING_SHUFFLES") {
-			err = p.Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS(typedMsg)
+			endStep, state, err = p.Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS(typedMsg)
 		}
 	case net.TRU_REL_SHUFFLE_SIG:
 		if p.stateMachine.AssertState("COLLECTING_SHUFFLE_SIGNATURES") {
-			err = p.Received_TRU_REL_SHUFFLE_SIG(typedMsg)
+			endStep, state, err = p.Received_TRU_REL_SHUFFLE_SIG(typedMsg)
+		}
+	case net.SERVICE_REL_SHUFFLE_SIG:
+		if p.stateMachine.AssertState("COLLECTING_SHUFFLE_SIGNATURES") {
+			endStep, state, err = p.Received_SERVICE_REL_SHUFFLE_SIG(typedMsg)
 		}
 	default:
 		err = errors.New("Unrecognized message, type" + reflect.TypeOf(msg).String())
+		endStep = false
+		state = nil
 	}
 
-	return err
+	return endStep, state, err
+}
+
+// SetMessageSender is used by the service to configure the message sender of the current Relay Instance
+func (p *PriFiLibRelayInstance) SetMessageSender(msgSender net.MessageSender) error {
+	errHandling := func(e error) { /* do nothing yet, we are alerted of errors via the SDA */ }
+	loggingSuccessFunction := func(e interface{}) { log.Lvl3(e) }
+	loggingErrorFunction := func(e interface{}) { log.Error(e) }
+
+	msw, err := net.NewMessageSenderWrapper(true, loggingSuccessFunction, loggingErrorFunction, errHandling, msgSender)
+	if err != nil {
+		log.Fatal("Could not create a MessageSenderWrapper, error is", err)
+	}
+	p.messageSender = msw
+	return nil
 }

@@ -21,7 +21,89 @@ type MessageSender struct {
 
 // buildMessageSender creates a MessageSender struct
 // given a mep between server identities and PriFi identities.
-func (p *PriFiSDAProtocol) buildMessageSender(identities map[string]PriFiIdentity) MessageSender {
+func (p *PriFiExchangeProtocol) buildMessageSender(identities map[string]PriFiIdentity) MessageSender {
+	nodes := p.List() // Has type []*onet.TreeNode
+	trustees := make(map[int]*onet.TreeNode)
+	clients := make(map[int]*onet.TreeNode)
+	trusteeID := 0
+	clientID := 0
+	var relay *onet.TreeNode
+
+	for i := 0; i < len(nodes); i++ {
+		identifier := nodes[i].ServerIdentity.Public.String()
+		id, ok := identities[identifier]
+		port, _ := strconv.Atoi(nodes[i].ServerIdentity.Address.Port())
+		portForFastChannel := port + 3
+
+		log.Lvl3("Found identity", identifier, " -> ", port, portForFastChannel)
+
+		if !ok {
+			log.Lvl3("Skipping unknow node with address", identifier)
+			continue
+		}
+		switch id.Role {
+		case Client:
+			clients[clientID] = nodes[i] //TODO : wrong
+			clientID++
+		case Trustee:
+			trustees[trusteeID] = nodes[i]
+			trusteeID++
+		case Relay:
+			if relay == nil {
+				relay = nodes[i]
+			} else {
+				log.Fatal("Multiple relays")
+			}
+		}
+	}
+
+	return MessageSender{p.TreeNodeInstance, relay, clients, trustees, newRealUDPChannel()}
+}
+
+// buildMessageSender creates a MessageSender struct
+// given a mep between server identities and PriFi identities.
+func (p *PriFiScheduleProtocol) buildMessageSender(identities map[string]PriFiIdentity) MessageSender {
+	nodes := p.List() // Has type []*onet.TreeNode
+	trustees := make(map[int]*onet.TreeNode)
+	clients := make(map[int]*onet.TreeNode)
+	trusteeID := 0
+	clientID := 0
+	var relay *onet.TreeNode
+
+	for i := 0; i < len(nodes); i++ {
+		identifier := nodes[i].ServerIdentity.Public.String()
+		id, ok := identities[identifier]
+		port, _ := strconv.Atoi(nodes[i].ServerIdentity.Address.Port())
+		portForFastChannel := port + 3
+
+		log.Lvl3("Found identity", identifier, " -> ", port, portForFastChannel)
+
+		if !ok {
+			log.Lvl3("Skipping unknow node with address", identifier)
+			continue
+		}
+		switch id.Role {
+		case Client:
+			clients[clientID] = nodes[i] //TODO : wrong
+			clientID++
+		case Trustee:
+			trustees[trusteeID] = nodes[i]
+			trusteeID++
+		case Relay:
+			if relay == nil {
+				relay = nodes[i]
+			} else {
+				log.Fatal("Multiple relays")
+			}
+		}
+	}
+
+	return MessageSender{p.TreeNodeInstance, relay, clients, trustees, newRealUDPChannel()}
+}
+
+// buildMessageSender creates a MessageSender struct
+// given a mep between server identities and PriFi identities.
+func (p *PriFiCommunicateProtocol) buildMessageSender(identities map[string]PriFiIdentity) MessageSender {
 	nodes := p.List() // Has type []*onet.TreeNode
 	trustees := make(map[int]*onet.TreeNode)
 	clients := make(map[int]*onet.TreeNode)
@@ -124,7 +206,8 @@ func (ms MessageSender) BroadcastToAllClients(msg interface{}) error {
 }
 
 //ClientSubscribeToBroadcast allows a client to subscribe to UDP broadcast
-func (ms MessageSender) ClientSubscribeToBroadcast(clientID int, messageReceived func(interface{}) error, startStopChan chan bool) error {
+func (ms MessageSender) ClientSubscribeToBroadcast(clientID int, messageReceived func(interface{}) (bool, interface{}, error),
+	startStopChan chan bool) error {
 
 	clientName := "client-" + strconv.Itoa(clientID)
 	log.Lvl3(clientName, " started UDP-listener helper.")

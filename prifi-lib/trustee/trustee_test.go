@@ -35,7 +35,7 @@ func (t *TestMessageSender) SendToRelay(msg interface{}) error {
 func (t *TestMessageSender) BroadcastToAllClients(msg interface{}) error {
 	return errors.New("Clients should never sent to other clients")
 }
-func (t *TestMessageSender) ClientSubscribeToBroadcast(clientID int, messageReceived func(interface{}) error, startStopChan chan bool) error {
+func (t *TestMessageSender) ClientSubscribeToBroadcast(clientID int, messageReceived func(interface{}) (bool, interface{}, error), startStopChan chan bool) error {
 	return nil
 }
 
@@ -62,6 +62,7 @@ func TestTrustee(t *testing.T) {
 	msgSender := new(TestMessageSender)
 	msw := newTestMessageSenderWrapper(msgSender)
 	trustee := NewTrustee(msw)
+	trustee.SetMessageSender(msgSender)
 
 	ts := trustee.trusteeState
 	if ts.sendingRate == nil {
@@ -80,22 +81,22 @@ func TestTrustee(t *testing.T) {
 	//should not be able to receive those weird messages
 	weird := new(net.ALL_ALL_PARAMETERS_NEW)
 	weird.Add("NextFreeTrusteeID", -1)
-	if err := trustee.ReceivedMessage(*weird); err == nil {
+	if _, _, err := trustee.ReceivedMessage(*weird); err == nil {
 		t.Error("Trustee should not accept this message")
 	}
 	weird.Add("NextFreeTrusteeID", 0)
 	weird.Add("NTrustees", 0)
-	if err := trustee.ReceivedMessage(*weird); err == nil {
+	if _, _, err := trustee.ReceivedMessage(*weird); err == nil {
 		t.Error("Trustee should not accept this message")
 	}
 	weird.Add("NTrustees", 1)
 	weird.Add("NClients", 0)
-	if err := trustee.ReceivedMessage(*weird); err == nil {
+	if _, _, err := trustee.ReceivedMessage(*weird); err == nil {
 		t.Error("Trustee should not accept this message")
 	}
 	weird.Add("NClients", 1)
 	weird.Add("UpstreamCellSize", 0)
-	if err := trustee.ReceivedMessage(*weird); err == nil {
+	if _, _, err := trustee.ReceivedMessage(*weird); err == nil {
 		t.Error("Trustee should not accept this message")
 	}
 
@@ -114,7 +115,7 @@ func TestTrustee(t *testing.T) {
 	msg.Add("NextFreeTrusteeID", trusteeID)
 	msg.Add("DCNetType", dcNetType)
 
-	if err := trustee.ReceivedMessage(*msg); err != nil {
+	if _, _, err := trustee.ReceivedMessage(*msg); err != nil {
 		t.Error("Trustee should be able to receive this message:", err)
 	}
 
@@ -181,7 +182,7 @@ func TestTrustee(t *testing.T) {
 	}
 
 	//we receive the shuffle
-	if err := trustee.ReceivedMessage(*msg4); err != nil {
+	if _, _, err := trustee.ReceivedMessage(*msg4); err != nil {
 		t.Error("Trustee should be able to receive this message:", err)
 	}
 
@@ -218,7 +219,7 @@ func TestTrustee(t *testing.T) {
 	}
 	msg6 := toSend3.(*net.REL_TRU_TELL_TRANSCRIPT)
 
-	if err := trustee.ReceivedMessage(*msg6); err != nil {
+	if _, _, err := trustee.ReceivedMessage(*msg6); err != nil {
 		t.Error("Trustee should be able to receive this message:", err)
 	}
 
@@ -234,13 +235,23 @@ func TestTrustee(t *testing.T) {
 		t.Error("Trustee should be in state READY")
 	}
 
+	readyMsg := net.REL_TRU_TELL_READY{
+		TrusteeID: 3,
+	}
+	if _, _, err := trustee.ReceivedMessage(readyMsg); err != nil {
+		t.Error("Should be able to receive this message, but", err)
+	}
+	if trustee.stateMachine.State() != "COMMUNICATING" {
+		t.Error("Trustee should be in state COMMUNICATING")
+	}
+
 	stopMsg := &net.REL_TRU_TELL_RATE_CHANGE{
 		WindowCapacity: 0,
 	}
 
 	time.Sleep(TRUSTEE_BASE_SLEEP_TIME / 2) //just time for one message
 
-	if err := trustee.ReceivedMessage(*stopMsg); err != nil {
+	if _, _, err := trustee.ReceivedMessage(*stopMsg); err != nil {
 		t.Error("Should handle this stop message, but", err)
 	}
 
@@ -290,7 +301,7 @@ func TestTrustee(t *testing.T) {
 
 	time.Sleep(TRUSTEE_BASE_SLEEP_TIME) //just time for one message
 
-	if err := trustee.ReceivedMessage(*startMsg); err != nil {
+	if _, _, err := trustee.ReceivedMessage(*startMsg); err != nil {
 		t.Error("Should handle this start message, but", err)
 	}
 
@@ -312,12 +323,12 @@ func TestTrustee(t *testing.T) {
 	}
 
 	randomMsg := net.CLI_REL_TELL_PK_AND_EPH_PK{}
-	if err := trustee.ReceivedMessage(randomMsg); err == nil {
+	if _, _, err := trustee.ReceivedMessage(randomMsg); err == nil {
 		t.Error("Should not accept this CLI_REL_TELL_PK_AND_EPH_PK message")
 	}
 
 	shutdownMsg := net.ALL_ALL_SHUTDOWN{}
-	if err := trustee.ReceivedMessage(shutdownMsg); err != nil {
+	if _, _, err := trustee.ReceivedMessage(shutdownMsg); err != nil {
 		t.Error("Should handle this ALL_ALL_SHUTDOWN message, but", err)
 	}
 	if trustee.stateMachine.State() != "SHUTDOWN" {

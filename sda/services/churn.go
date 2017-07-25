@@ -59,11 +59,22 @@ type churnHandler struct {
 	nextFreeTrusteeID int
 	relayIdentity     *network.ServerIdentity //necessary to call createRoster
 	trusteesIDs       []*network.ServerIdentity
+	roster            *onet.Roster
 
 	//to be specified when instantiated
-	startProtocol     func()
-	stopProtocol      func()
-	isProtocolRunning func() bool
+	startExchangeProtocol    func()
+	startScheduleProtocol    func()
+	startCommunicateProtocol func()
+
+	stopPrifiProtocol       func()
+	stopExchangeProtocol    func()
+	stopScheduleProtocol    func()
+	stopCommunicateProtocol func()
+
+	isPrifiProtocolRunning       func() bool
+	isExchangeProtocolRunning    func() bool
+	isScheduleProtocolRunning    func() bool
+	isCommunicateProtocolRunning func() bool
 }
 
 func (c *churnHandler) init(relayID *network.ServerIdentity, trusteesIDs []*network.ServerIdentity) {
@@ -107,7 +118,7 @@ func (wq *waitQueue) count() (int, int) {
 /**
  * Creates a roster from waiting nodes, used by SDA
  */
-func (c *churnHandler) createRoster() *onet.Roster {
+func (c *churnHandler) createRoster() {
 
 	n, m := c.waitQueue.count()
 	nParticipants := n + m + 1
@@ -124,8 +135,7 @@ func (c *churnHandler) createRoster() *onet.Roster {
 		i++
 	}
 
-	roster := onet.NewRoster(participants)
-	return roster
+	c.roster = onet.NewRoster(participants)
 }
 
 // CountParticipants returns nTrustees, nClients already connected
@@ -250,7 +260,7 @@ func (c *churnHandler) handleUnknownDisconnection() {
 	c.nextFreeClientID = 0
 	c.nextFreeTrusteeID = 0
 
-	c.stopProtocol()
+	c.stopPrifiProtocol()
 	c.tryStartProtocol()
 }
 
@@ -298,14 +308,11 @@ func (c *churnHandler) tryStartProtocol() {
 	nClients, nTrustees := c.waitQueue.count()
 
 	if nClients >= 1 && nTrustees >= 1 {
-		if c.isProtocolRunning() {
-			c.stopProtocol()
-		}
-		if c.startProtocol == nil {
+		if c.startExchangeProtocol == nil {
 			log.Lvl1("Enough participants (", nClients, "clients and", nTrustees, "trustees), but no handler to start.")
 			return
 		}
-		c.startProtocol()
+		c.startExchangeProtocol()
 	} else {
 		log.Lvl1("Too few participants (", nClients, "clients and", nTrustees, "trustees), waiting...")
 	}

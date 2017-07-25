@@ -45,7 +45,7 @@ func NewTrustee(msgSender *net.MessageSenderWrapper) *PriFiLibTrusteeInstance {
 	trusteeState.neffShuffle = neffShuffle.TrusteeView
 
 	//init the state machine
-	states := []string{"BEFORE_INIT", "INITIALIZING", "SHUFFLE_DONE", "READY", "SHUTDOWN"}
+	states := []string{"BEFORE_INIT", "INITIALIZING", "SHUFFLE_DONE", "READY", "COMMUNICATING", "SHUTDOWN"}
 	sm := new(utils.StateMachine)
 	logFn := func(s interface{}) {
 		log.Lvl3(s)
@@ -95,32 +95,54 @@ type NeffShuffleResult struct {
 
 // ReceivedMessage must be called when a PriFi host receives a message.
 // It takes care to call the correct message handler function.
-func (p *PriFiLibTrusteeInstance) ReceivedMessage(msg interface{}) error {
+func (p *PriFiLibTrusteeInstance) ReceivedMessage(msg interface{}) (bool, interface{}, error) {
 
 	var err error
+	var endStep bool
+	var state interface{}
 
 	switch typedMsg := msg.(type) {
 	case net.ALL_ALL_PARAMETERS_NEW:
 		if typedMsg.ForceParams || p.stateMachine.AssertState("BEFORE_INIT") {
-			err = p.Received_ALL_ALL_PARAMETERS(typedMsg) //todo change this name
+			endStep, state, err = p.Received_ALL_ALL_PARAMETERS(typedMsg) //todo change this name
 		}
 	case net.ALL_ALL_SHUTDOWN:
-		err = p.Received_ALL_ALL_SHUTDOWN(typedMsg)
+		endStep, state, err = p.Received_ALL_ALL_SHUTDOWN(typedMsg)
 	case net.REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE:
 		if p.stateMachine.AssertState("INITIALIZING") {
-			err = p.Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE(typedMsg)
+			endStep, state, err = p.Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE(typedMsg)
 		}
 	case net.REL_TRU_TELL_TRANSCRIPT:
 		if p.stateMachine.AssertState("SHUFFLE_DONE") {
-			err = p.Received_REL_TRU_TELL_TRANSCRIPT(typedMsg)
+			endStep, state, err = p.Received_REL_TRU_TELL_TRANSCRIPT(typedMsg)
+		}
+	case net.REL_TRU_TELL_READY:
+		if p.stateMachine.AssertState("READY") {
+			endStep, state, err = p.Received_REL_TRU_TELL_READY(typedMsg)
 		}
 	case net.REL_TRU_TELL_RATE_CHANGE:
-		if p.stateMachine.AssertState("READY") {
-			err = p.Received_REL_TRU_TELL_RATE_CHANGE(typedMsg)
+		if p.stateMachine.AssertState("COMMUNICATING") {
+			endStep, state, err = p.Received_REL_TRU_TELL_RATE_CHANGE(typedMsg)
 		}
 	default:
 		err = errors.New("Unrecognized message, type" + reflect.TypeOf(msg).String())
+		endStep = false
+		state = nil
 	}
 
-	return err
+	return endStep, state, err
+}
+
+// SetMessageSender is used by the service to configure the message sender of the current Trustee Instance
+func (p *PriFiLibTrusteeInstance) SetMessageSender(msgSender net.MessageSender) error {
+	errHandling := func(e error) { /* do nothing yet, we are alerted of errors via the SDA */ }
+	loggingSuccessFunction := func(e interface{}) { log.Lvl3(e) }
+	loggingErrorFunction := func(e interface{}) { log.Error(e) }
+
+	msw, err := net.NewMessageSenderWrapper(true, loggingSuccessFunction, loggingErrorFunction, errHandling, msgSender)
+	if err != nil {
+		log.Fatal("Could not create a MessageSenderWrapper, error is", err)
+	}
+	p.messageSender = msw
+	return nil
 }
