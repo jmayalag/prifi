@@ -102,6 +102,15 @@ func TestClient(t *testing.T) {
 	msg.Add("UseUDP", true)
 	msg.Add("DCNetType", dcNetType)
 
+	// ALL_ALL_PARAMETERS contains the public keys of the trustees when it is REL -> CLI
+	trusteesPubKeys := make([]abstract.Point, nTrustees)
+	trusteesPrivKeys := make([]abstract.Scalar, nTrustees)
+	for i := 0; i < nTrustees; i++ {
+		trusteesPubKeys[i], trusteesPrivKeys[i] = crypto.NewKeyPair()
+	}
+
+	msg.TrusteesPks = trusteesPubKeys
+
 	if err := client.ReceivedMessage(*msg); err != nil {
 		t.Error("Client should be able to receive this message:", err)
 	}
@@ -135,20 +144,6 @@ func TestClient(t *testing.T) {
 	}
 	if len(cs.sharedSecrets) != nTrustees {
 		t.Error("Len(SharedSecrets) should be equal to NTrustees")
-	}
-	if client.stateMachine.State() != "INITIALIZING" {
-		t.Error("Client should be in state CLIENT_STATE_INITIALIZING")
-	}
-
-	//Should receive a Received_REL_CLI_TELL_TRUSTEES_PK
-	trusteesPubKeys := make([]abstract.Point, nTrustees)
-	trusteesPrivKeys := make([]abstract.Scalar, nTrustees)
-	for i := 0; i < nTrustees; i++ {
-		trusteesPubKeys[i], trusteesPrivKeys[i] = crypto.NewKeyPair()
-	}
-	msg2 := net.REL_CLI_TELL_TRUSTEES_PK{Pks: trusteesPubKeys}
-	if err := client.ReceivedMessage(msg2); err != nil {
-		t.Error("Should be able to receive this message,", err.Error())
 	}
 
 	for i := 0; i < nTrustees; i++ {
@@ -424,8 +419,8 @@ func TestClient(t *testing.T) {
 	if len(sentToRelay) > 0 {
 		t.Error("should not have sent anything")
 	}
-	if client.stateMachine.State() != "INITIALIZING" {
-		t.Error("Should be in state CLIENT_STATE_INITIALIZING", client.stateMachine.State())
+	if client.stateMachine.State() != "BEFORE_INIT" {
+		t.Error("Should be in state BEFORE_INIT", client.stateMachine.State())
 	}
 
 	randomMsg := &net.CLI_REL_TELL_PK_AND_EPH_PK{}
@@ -467,20 +462,16 @@ func TestClient2(t *testing.T) {
 	msg.Add("NextFreeClientID", clientID)
 	msg.Add("UseUDP", true)
 	msg.Add("DCNetType", dcNetType)
-
-	if err := client.ReceivedMessage(*msg); err != nil {
-		t.Error("Client should be able to receive this message:", err)
-	}
-
-	//Should receive a Received_REL_CLI_TELL_TRUSTEES_PK
 	trusteesPubKeys := make([]abstract.Point, nTrustees)
 	trusteesPrivKeys := make([]abstract.Scalar, nTrustees)
 	for i := 0; i < nTrustees; i++ {
 		trusteesPubKeys[i], trusteesPrivKeys[i] = crypto.NewKeyPair()
 	}
-	msg2 := net.REL_CLI_TELL_TRUSTEES_PK{Pks: trusteesPubKeys}
-	if err := client.ReceivedMessage(msg2); err != nil {
-		t.Error("Should be able to receive this message,", err.Error())
+
+	msg.TrusteesPks = trusteesPubKeys
+
+	if err := client.ReceivedMessage(*msg); err != nil {
+		t.Error("Client should be able to receive this message:", err)
 	}
 
 	//Should send a CLI_REL_TELL_PK_AND_EPH_PK
@@ -604,6 +595,12 @@ func TestDisruptionClient(t *testing.T) {
 	msg.Add("UseUDP", true)
 	msg.Add("DCNetType", dcNetType)
 	msg.Add("DisruptionProtectionEnabled", disruptionProtection)
+	trusteesPubKeys := make([]abstract.Point, nTrustees)
+	trusteesPrivKeys := make([]abstract.Scalar, nTrustees)
+	for i := 0; i < nTrustees; i++ {
+		trusteesPubKeys[i], trusteesPrivKeys[i] = crypto.NewKeyPair()
+	}
+	msg.TrusteesPks = trusteesPubKeys
 
 	if err := client.ReceivedMessage(*msg); err != nil {
 		t.Error("Client should be able to receive this message:", err)
@@ -611,17 +608,6 @@ func TestDisruptionClient(t *testing.T) {
 
 	if cs.DisruptionProtectionEnabled != true {
 		t.Error("Client should have the disruption protection enabled")
-	}
-
-	//Should receive a Received_REL_CLI_TELL_TRUSTEES_PK
-	trusteesPubKeys := make([]abstract.Point, nTrustees)
-	trusteesPrivKeys := make([]abstract.Scalar, nTrustees)
-	for i := 0; i < nTrustees; i++ {
-		trusteesPubKeys[i], trusteesPrivKeys[i] = crypto.NewKeyPair()
-	}
-	msg2 := net.REL_CLI_TELL_TRUSTEES_PK{Pks: trusteesPubKeys}
-	if err := client.ReceivedMessage(msg2); err != nil {
-		t.Error("Should be able to receive this message,", err.Error())
 	}
 
 	//Should send a CLI_REL_TELL_PK_AND_EPH_PK

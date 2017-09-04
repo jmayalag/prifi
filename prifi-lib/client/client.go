@@ -225,8 +225,8 @@ func (p *PriFiLibClientInstance) ProcessDownStreamData(msg net.REL_CLI_DOWNSTREA
 	//if the flag "Resync" is on, we cannot write data up, but need to resend the keys instead
 	if msg.FlagResync == true {
 
-		log.Lvl1("Client " + strconv.Itoa(p.clientState.ID) + " : Relay wants to resync, going to state CLIENT_STATE_INITIALIZING ")
-		p.stateMachine.ChangeState("INITIALIZING")
+		log.Lvl1("Client " + strconv.Itoa(p.clientState.ID) + " : Relay wants to resync, going to state BEFORE_INIT ")
+		p.stateMachine.ChangeState("BEFORE_INIT")
 
 		//TODO : regenerate ephemeral keys ?
 
