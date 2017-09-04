@@ -606,7 +606,6 @@ func (p *PriFiLibRelayInstance) Received_TRU_REL_TELL_PK(msg net.TRU_REL_TELL_PK
 			trusteesPk[i] = p.relayState.trustees[i].PublicKey
 		}
 
-
 		//send that to the clients, along with the parameters
 		toSend := new(net.ALL_ALL_PARAMETERS_NEW)
 		toSend.Add("NClients", p.relayState.nClients)

@@ -7,12 +7,15 @@ import (
 	//"gopkg.in/dedis/onet.v1/log"
 )
 
+// LBARMAN: this does not work yet !! the math don't cancel out
+
 var modulus = int64(123456789)
 
+// Equivocation holds the functions needed for equivocation protection
 type Equivocation struct {
 }
 
-func Hash(b []byte) []byte {
+func hash(b []byte) []byte {
 	t := sha256.Sum256(b)
 	return t[:]
 }
@@ -27,7 +30,7 @@ func (e *Equivocation) ClientEncryptPayload(payload []byte, history []byte, pads
 	// hash the pads
 	hashOfPads := make([][]byte, len(pads))
 	for k := range hashOfPads {
-		hashOfPads[k] = Hash(pads[k])
+		hashOfPads[k] = hash(pads[k])
 		//log.Lvl1("HashOfPad", k, hashOfPads[k])
 	}
 
@@ -89,7 +92,7 @@ func (e *Equivocation) TrusteeGetContribution(pads [][]byte) []byte {
 	// hash the pads
 	hashOfPads := make([][]byte, len(pads))
 	for k := range hashOfPads {
-		hashOfPads[k] = Hash(pads[k])
+		hashOfPads[k] = hash(pads[k])
 		//log.Lvl1("HashOfPad", k, hashOfPads[k])
 	}
 
@@ -109,6 +112,7 @@ func (e *Equivocation) TrusteeGetContribution(pads [][]byte) []byte {
 	return res.Bytes()
 }
 
+// given all contributions, decodes the payload
 func (e *Equivocation) RelayDecode(encryptedPayload []byte, history []byte, trusteesContributions [][]byte, clientsContributions [][]byte) []byte {
 
 	// modulus

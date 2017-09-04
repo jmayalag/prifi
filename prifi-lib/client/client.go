@@ -145,7 +145,7 @@ SOCKS/VPN data, or if we're running latency tests, we send a "ping" message to c
 */
 func (p *PriFiLibClientInstance) Received_REL_CLI_DOWNSTREAM_DATA(msg net.REL_CLI_DOWNSTREAM_DATA) error {
 
-	if msg.RoundID == 1{
+	if msg.RoundID == 1 {
 		p.clientState.pcapReplay.time0 = uint64(MsTimeStampNow())
 	}
 
@@ -221,7 +221,6 @@ func (p *PriFiLibClientInstance) ProcessDownStreamData(msg net.REL_CLI_DOWNSTREA
 		p.clientState.LatencyTest.NextLatencyTest = now.Add(p.clientState.LatencyTest.LatencyTestsInterval)
 		p.clientState.LatencyTest.NextLatencyTest = p.clientState.LatencyTest.NextLatencyTest.Add(time.Duration(rand.Intn(1000)) * time.Millisecond)
 	}
-
 
 	//if the flag "Resync" is on, we cannot write data up, but need to resend the keys instead
 	if msg.FlagResync == true {
@@ -346,7 +345,7 @@ func (p *PriFiLibClientInstance) SendUpstreamData(ownerSlotID int) error {
 			//if there are some pcap packets to replay
 			if p.clientState.pcapReplay.Enabled && p.clientState.pcapReplay.currentPacket < len(p.clientState.pcapReplay.Packets) {
 
-				if p.clientState.pcapReplay.currentPacket >= len(p.clientState.pcapReplay.Packets) - 2 {
+				if p.clientState.pcapReplay.currentPacket >= len(p.clientState.pcapReplay.Packets)-2 {
 					log.Fatal("End of experiment, client sent all packets!")
 				}
 				//if it is time to send some packet
@@ -370,7 +369,7 @@ func (p *PriFiLibClientInstance) SendUpstreamData(ownerSlotID int) error {
 				}
 				totalPackets := len(p.clientState.pcapReplay.Packets)
 				log.Lvl2("Adding pcap packets", basePacketID, "-", lastPacketID, "/", totalPackets)
-				if basePacketID % 100 == 0 || basePacketID + 10 > totalPackets {
+				if basePacketID%100 == 0 || basePacketID+10 > totalPackets {
 					log.Lvl2("PCAP: added pcap packets", basePacketID, "-", lastPacketID, "/", totalPackets)
 				}
 

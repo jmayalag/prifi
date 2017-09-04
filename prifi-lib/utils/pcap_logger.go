@@ -56,7 +56,6 @@ func (pl *PCAPLog) ReceivedPcap(ID uint32, frag bool, tsSent uint64, tsExperimen
 		IsFinalFragment: frag,
 	}
 
-
 	log.Lvl1("Received pcap", p.ID, p.Delay, p.DataLen)
 
 	pl.receivedPackets = append(pl.receivedPackets, p)
