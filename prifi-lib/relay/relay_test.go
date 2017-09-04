@@ -208,7 +208,7 @@ func TestRelayRun1(t *testing.T) {
 	}
 
 	// should send ALL_ALL_PARAMETERS to clients
-	msg2, err := getClientMessage("ALL_ALL_PARAMETERS")
+	msg2, err := getTrusteeMessage("ALL_ALL_PARAMETERS")
 	if err != nil {
 		t.Error(err)
 	}
@@ -233,8 +233,22 @@ func TestRelayRun1(t *testing.T) {
 		t.Error("DCNetType not set correctly")
 	}
 
-	// should send ALL_ALL_PARAMETERS to trustees
-	msg4, err := getTrusteeMessage("ALL_ALL_PARAMETERS")
+	//since startNow = true, trustee sends TRU_REL_TELL_PK
+	trusteePub, trusteePriv := crypto.NewKeyPair()
+	_ = trusteePriv
+	msg6 := net.TRU_REL_TELL_PK{
+		TrusteeID: 0,
+		Pk:        trusteePub,
+	}
+	if err := relay.ReceivedMessage(msg6); err != nil {
+		t.Error("Relay should be able to receive this message, but", err)
+	}
+	if relay.stateMachine.State() != "COLLECTING_CLIENT_PKS" {
+		t.Error("In wrong state ! we should be in COLLECTING_CLIENT_PKS, but are in ", relay.stateMachine.State())
+	}
+
+	// should send ALL_ALL_PARAMETERS to clients
+	msg4, err := getClientMessage("ALL_ALL_PARAMETERS")
 	if err != nil {
 		t.Error(err)
 	}
@@ -258,29 +272,7 @@ func TestRelayRun1(t *testing.T) {
 	if msg5.ParamsStr["DCNetType"] != "Simple" {
 		t.Error("DCNetType not set correctly")
 	}
-
-	//since startNow = true, trustee sends TRU_REL_TELL_PK
-	trusteePub, trusteePriv := crypto.NewKeyPair()
-	_ = trusteePriv
-	msg6 := net.TRU_REL_TELL_PK{
-		TrusteeID: 0,
-		Pk:        trusteePub,
-	}
-	if err := relay.ReceivedMessage(msg6); err != nil {
-		t.Error("Relay should be able to receive this message, but", err)
-	}
-	if relay.stateMachine.State() != "COLLECTING_CLIENT_PKS" {
-		t.Error("In wrong state ! we should be in COLLECTING_CLIENT_PKS, but are in ", relay.stateMachine.State())
-	}
-
-	// should send REL_CLI_TELL_TRUSTEES_PK to clients
-	msg7, err := getClientMessage("REL_CLI_TELL_TRUSTEES_PK")
-	if err != nil {
-		t.Error(err)
-	}
-	msg8 := msg7.(*net.REL_CLI_TELL_TRUSTEES_PK)
-
-	if !msg8.Pks[0].Equal(trusteePub) {
+	if !msg5.TrusteesPks[0].Equal(trusteePub) {
 		t.Error("Relay sent wrong public key")
 	}
 
@@ -453,13 +445,6 @@ func TestRelayRun2(t *testing.T) {
 		t.Error("Relay should be able to receive this message, but", err)
 	}
 
-	// should send ALL_ALL_PARAMETERS to clients
-	msg2, err := getClientMessage("ALL_ALL_PARAMETERS")
-	if err != nil {
-		t.Error(err)
-	}
-	_ = msg2.(*net.ALL_ALL_PARAMETERS_NEW)
-
 	// should send ALL_ALL_PARAMETERS to trustees
 	msg4, err := getTrusteeMessage("ALL_ALL_PARAMETERS")
 	if err != nil {
@@ -478,12 +463,12 @@ func TestRelayRun2(t *testing.T) {
 		t.Error("Relay should be able to receive this message, but", err)
 	}
 
-	// should send REL_CLI_TELL_TRUSTEES_PK to clients
-	msg7, err := getClientMessage("REL_CLI_TELL_TRUSTEES_PK")
+	// should send ALL_ALL_PARAMETERS to clients
+	msg2, err := getClientMessage("ALL_ALL_PARAMETERS")
 	if err != nil {
 		t.Error(err)
 	}
-	_ = msg7.(*net.REL_CLI_TELL_TRUSTEES_PK)
+	_ = msg2.(*net.ALL_ALL_PARAMETERS_NEW)
 
 	//should receive a CLI_REL_TELL_PK_AND_EPH_PK
 	cliPub, cliPriv := crypto.NewKeyPair()
@@ -644,13 +629,6 @@ func TestRelayRun3(t *testing.T) {
 		t.Error("Relay should be able to receive this message, but", err)
 	}
 
-	// should send ALL_ALL_PARAMETERS to clients
-	msg2, err := getClientMessage("ALL_ALL_PARAMETERS")
-	if err != nil {
-		t.Error(err)
-	}
-	_ = msg2.(*net.ALL_ALL_PARAMETERS_NEW)
-
 	// should send ALL_ALL_PARAMETERS to trustees
 	msg4, err := getTrusteeMessage("ALL_ALL_PARAMETERS")
 	if err != nil {
@@ -681,12 +659,12 @@ func TestRelayRun3(t *testing.T) {
 		t.Error("Relay should be able to receive this message, but", err)
 	}
 
-	// should send REL_CLI_TELL_TRUSTEES_PK to clients
-	msg7, err := getClientMessage("REL_CLI_TELL_TRUSTEES_PK")
+	// should send ALL_ALL_PARAMETERS to clients
+	msg2, err := getClientMessage("ALL_ALL_PARAMETERS")
 	if err != nil {
 		t.Error(err)
 	}
-	_ = msg7.(*net.REL_CLI_TELL_TRUSTEES_PK)
+	_ = msg2.(*net.ALL_ALL_PARAMETERS_NEW)
 
 	//should receive a CLI_REL_TELL_PK_AND_EPH_PK
 	cliPub, cliPriv := crypto.NewKeyPair()
@@ -878,17 +856,6 @@ func TestRelayRun4(t *testing.T) {
 		t.Error("DCNetType not set correctly")
 	}
 
-	// should send ALL_ALL_PARAMETERS to clients
-	msg2, err := getClientMessage("ALL_ALL_PARAMETERS")
-	if err != nil {
-		t.Error(err)
-	}
-	msg3 := msg2.(*net.ALL_ALL_PARAMETERS_NEW)
-
-	if msg3.ParamsStr["DCNetType"] != "Verifiable" {
-		t.Error("DCNetType not passed correctly to Client")
-	}
-
 	// should send ALL_ALL_PARAMETERS to trustees
 	msg4, err := getTrusteeMessage("ALL_ALL_PARAMETERS")
 	if err != nil {
@@ -898,6 +865,35 @@ func TestRelayRun4(t *testing.T) {
 
 	if msg5.ParamsStr["DCNetType"] != "Verifiable" {
 		t.Error("DCNetType not passed correctly to Trustee")
+	}
+
+	//since startNow = true, trustee sends TRU_REL_TELL_PK
+	trusteePub, trusteePriv := crypto.NewKeyPair()
+	_ = trusteePriv
+	msg6 := net.TRU_REL_TELL_PK{
+		TrusteeID: 0,
+		Pk:        trusteePub,
+	}
+	if err := relay.ReceivedMessage(msg6); err != nil {
+		t.Error("Relay should be able to receive this message, but", err)
+	}
+	msg6_2 := net.TRU_REL_TELL_PK{
+		TrusteeID: 1,
+		Pk:        trusteePub,
+	}
+	if err := relay.ReceivedMessage(msg6_2); err != nil {
+		t.Error("Relay should be able to receive this message, but", err)
+	}
+
+	// should send ALL_ALL_PARAMETERS to clients
+	msg2, err := getClientMessage("ALL_ALL_PARAMETERS")
+	if err != nil {
+		t.Error(err)
+	}
+	msg3 := msg2.(*net.ALL_ALL_PARAMETERS_NEW)
+
+	if msg3.ParamsStr["DCNetType"] != "Verifiable" {
+		t.Error("DCNetType not passed correctly to Client")
 	}
 
 	relay2 := NewRelay(true, dataForClients, dataFromDCNet, resultChan, ocSleep, timeoutHandler, msw)

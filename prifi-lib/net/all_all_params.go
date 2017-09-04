@@ -6,7 +6,7 @@ import (
 
 // ALL_ALL_PARAMETERS message contains all the parameters used by the protocol.
 type ALL_ALL_PARAMETERS_NEW struct {
-	TrusteesPks []abstract.Point //quick fix, for clients
+	TrusteesPks []abstract.Point // only filled when the relay sends this to the clients
 	ForceParams bool
 	ParamsInt   map[string]int
 	ParamsStr   map[string]string

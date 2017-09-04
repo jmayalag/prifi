@@ -2,7 +2,6 @@ package prifi_lib
 
 import (
 	"errors"
-	"github.com/lbarman/prifi/prifi-lib/crypto"
 	"github.com/lbarman/prifi/prifi-lib/net"
 	"gopkg.in/dedis/onet.v1/log"
 	"testing"
@@ -50,10 +49,6 @@ func TestPrifi(t *testing.T) {
 	trustee1 := NewPriFiTrustee(neverSlowDown, msgSender)
 
 	//TODO : emulate network connectivity, and run for a few rounds
-
-	//should trigger an error, not ready
-	pub, _ := crypto.NewKeyPair()
-	relay.ReceivedMessage(net.TRU_REL_TELL_PK{Pk: pub})
 
 	//emulate the reception of a ALL_ALL_PARAMETERS with StartNow=true
 	msg := new(net.ALL_ALL_PARAMETERS_NEW)
