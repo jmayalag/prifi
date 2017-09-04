@@ -75,7 +75,11 @@ func main() {
 	log.Lvl2("Starting SOCKS exit...")
 
 	// listen on all interfaces
-	ln, _ := net.Listen("tcp", port)
+	ln, err := net.Listen("tcp", port)
+
+	if err != nil {
+		log.Fatal("Could not listen on port", port, "error is", err)
+	}
 
 	log.Lvl1("Server listening on port " + port)
 
