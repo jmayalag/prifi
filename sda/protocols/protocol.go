@@ -62,7 +62,7 @@ func (p *PriFiSDAProtocol) Start() error {
 	log.Lvl3("Starting PriFi-SDA-Wrapper Protocol")
 
 	//emulate the reception of a ALL_ALL_PARAMETERS with StartNow=true
-	msg := new(net.ALL_ALL_PARAMETERS_NEW)
+	msg := new(net.ALL_ALL_PARAMETERS)
 	msg.Add("StartNow", true)
 	msg.Add("NTrustees", len(p.ms.trustees))
 	msg.Add("NClients", len(p.ms.clients))
@@ -109,13 +109,12 @@ func (p *PriFiSDAProtocol) Stop() {
 func init() {
 
 	//register the prifi_lib's message with the network lib here
-	network.RegisterMessage(net.ALL_ALL_PARAMETERS_NEW{})
+	network.RegisterMessage(net.ALL_ALL_PARAMETERS{})
 	network.RegisterMessage(net.CLI_REL_TELL_PK_AND_EPH_PK{})
 	network.RegisterMessage(net.CLI_REL_UPSTREAM_DATA{})
 	network.RegisterMessage(net.REL_CLI_DOWNSTREAM_DATA{})
 	network.RegisterMessage(net.CLI_REL_OPENCLOSED_DATA{})
 	network.RegisterMessage(net.REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG{})
-	network.RegisterMessage(net.REL_CLI_TELL_TRUSTEES_PK{})
 	network.RegisterMessage(net.REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE{})
 	network.RegisterMessage(net.REL_TRU_TELL_TRANSCRIPT{})
 	network.RegisterMessage(net.TRU_REL_DC_CIPHER{})
@@ -183,10 +182,6 @@ func (p *PriFiSDAProtocol) registerHandlers() error {
 		return errors.New("couldn't register handler: " + err.Error())
 	}
 	err = p.RegisterHandler(p.Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG)
-	if err != nil {
-		return errors.New("couldn't register handler: " + err.Error())
-	}
-	err = p.RegisterHandler(p.Received_REL_CLI_TELL_TRUSTEES_PK)
 	if err != nil {
 		return errors.New("couldn't register handler: " + err.Error())
 	}

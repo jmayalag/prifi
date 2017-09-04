@@ -5,7 +5,7 @@ import (
 )
 
 // ALL_ALL_PARAMETERS message contains all the parameters used by the protocol.
-type ALL_ALL_PARAMETERS_NEW struct {
+type ALL_ALL_PARAMETERS struct {
 	TrusteesPks []abstract.Point // only filled when the relay sends this to the clients
 	ForceParams bool
 	ParamsInt   map[string]int
@@ -16,7 +16,7 @@ type ALL_ALL_PARAMETERS_NEW struct {
 /**
  * Adds a (key, val) to the ALL_ALL_PARAMS message
  */
-func (m *ALL_ALL_PARAMETERS_NEW) Add(key string, val interface{}) {
+func (m *ALL_ALL_PARAMETERS) Add(key string, val interface{}) {
 	switch typedVal := val.(type) {
 	case int:
 		if m.ParamsInt == nil {
@@ -40,7 +40,7 @@ func (m *ALL_ALL_PARAMETERS_NEW) Add(key string, val interface{}) {
 /**
  * From the message, returns the "data[key]" if it exists, or "elseVal"
  */
-func (m *ALL_ALL_PARAMETERS_NEW) BoolValueOrElse(key string, elseVal bool) bool {
+func (m *ALL_ALL_PARAMETERS) BoolValueOrElse(key string, elseVal bool) bool {
 	if val, ok := m.ParamsBool[key]; ok {
 		return val
 	}
@@ -50,7 +50,7 @@ func (m *ALL_ALL_PARAMETERS_NEW) BoolValueOrElse(key string, elseVal bool) bool 
 /**
  * From the message, returns the "data[key]" if it exists, or "elseVal"
  */
-func (m *ALL_ALL_PARAMETERS_NEW) IntValueOrElse(key string, elseVal int) int {
+func (m *ALL_ALL_PARAMETERS) IntValueOrElse(key string, elseVal int) int {
 	if val, ok := m.ParamsInt[key]; ok {
 		return val
 	}
@@ -60,7 +60,7 @@ func (m *ALL_ALL_PARAMETERS_NEW) IntValueOrElse(key string, elseVal int) int {
 /**
  * From the message, returns the "data[key]" if it exists, or "elseVal"
  */
-func (m *ALL_ALL_PARAMETERS_NEW) StringValueOrElse(key string, elseVal string) string {
+func (m *ALL_ALL_PARAMETERS) StringValueOrElse(key string, elseVal string) string {
 	if val, ok := m.ParamsStr[key]; ok {
 		return val
 	}

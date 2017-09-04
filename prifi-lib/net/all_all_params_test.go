@@ -7,7 +7,7 @@ import (
 
 func TestUtils(t *testing.T) {
 
-	m := new(ALL_ALL_PARAMETERS_NEW)
+	m := new(ALL_ALL_PARAMETERS)
 
 	m.Add("key1", "val1")
 	m.Add("key2", 123)
@@ -76,7 +76,7 @@ func TestEncodeDecodeStdMessage(t *testing.T) {
 func TestEncodeDecode(t *testing.T) {
 
 	//create fake message
-	msg := new(ALL_ALL_PARAMETERS_NEW)
+	msg := new(ALL_ALL_PARAMETERS)
 	msg.ForceParams = true
 	msg.Add("key1", "val1")
 	msg.Add("key2", 123)
@@ -90,7 +90,7 @@ func TestEncodeDecode(t *testing.T) {
 	}
 
 	//decode it
-	emptyMsg := &ALL_ALL_PARAMETERS_NEW{}
+	emptyMsg := &ALL_ALL_PARAMETERS{}
 	err = protobuf.Decode(bytes, emptyMsg)
 	if err != nil {
 		t.Error("Could not decode," + err.Error())
@@ -113,7 +113,7 @@ func TestEncodeDecode(t *testing.T) {
 func TestEncodeDecodeEmpty(t *testing.T) {
 
 	//create fake message
-	msg := new(ALL_ALL_PARAMETERS_NEW)
+	msg := new(ALL_ALL_PARAMETERS)
 	msg.ForceParams = true
 
 	//encode it
@@ -124,7 +124,7 @@ func TestEncodeDecodeEmpty(t *testing.T) {
 	}
 
 	//decode it
-	emptyMsg := new(ALL_ALL_PARAMETERS_NEW)
+	emptyMsg := new(ALL_ALL_PARAMETERS)
 	err = protobuf.Decode(bytes, emptyMsg)
 	if err != nil {
 		t.Error("Could not decode," + err.Error())

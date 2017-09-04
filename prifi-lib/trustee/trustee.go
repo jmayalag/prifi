@@ -43,7 +43,7 @@ func (p *PriFiLibTrusteeInstance) Received_ALL_ALL_SHUTDOWN(msg net.ALL_ALL_SHUT
 Received_ALL_ALL_PARAMETERS handles ALL_ALL_PARAMETERS.
 It initializes the trustee with the parameters contained in the message.
 */
-func (p *PriFiLibTrusteeInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARAMETERS_NEW) error {
+func (p *PriFiLibTrusteeInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARAMETERS) error {
 
 	startNow := msg.BoolValueOrElse("StartNow", false)
 	trusteeID := msg.IntValueOrElse("NextFreeTrusteeID", -1)

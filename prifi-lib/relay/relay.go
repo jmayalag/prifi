@@ -83,7 +83,7 @@ func (p *PriFiLibRelayInstance) Received_ALL_ALL_SHUTDOWN(msg net.ALL_ALL_SHUTDO
 Received_ALL_REL_PARAMETERS handles ALL_REL_PARAMETERS.
 It initializes the relay with the parameters contained in the message.
 */
-func (p *PriFiLibRelayInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARAMETERS_NEW) error {
+func (p *PriFiLibRelayInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARAMETERS) error {
 
 	startNow := msg.BoolValueOrElse("StartNow", false)
 	nTrustees := msg.IntValueOrElse("NTrustees", p.relayState.nTrustees)
@@ -170,7 +170,7 @@ func (p *PriFiLibRelayInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARA
 func (p *PriFiLibRelayInstance) BroadcastParameters() error {
 
 	// Craft default parameters
-	msg := new(net.ALL_ALL_PARAMETERS_NEW)
+	msg := new(net.ALL_ALL_PARAMETERS)
 	msg.Add("NClients", p.relayState.nClients)
 	msg.Add("NTrustees", p.relayState.nTrustees)
 	msg.Add("UseUDP", p.relayState.UseUDP)
@@ -607,7 +607,7 @@ func (p *PriFiLibRelayInstance) Received_TRU_REL_TELL_PK(msg net.TRU_REL_TELL_PK
 		}
 
 		//send that to the clients, along with the parameters
-		toSend := new(net.ALL_ALL_PARAMETERS_NEW)
+		toSend := new(net.ALL_ALL_PARAMETERS)
 		toSend.Add("NClients", p.relayState.nClients)
 		toSend.Add("NTrustees", p.relayState.nTrustees)
 		toSend.Add("UseUDP", p.relayState.UseUDP)

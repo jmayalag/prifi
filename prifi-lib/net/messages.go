@@ -21,7 +21,6 @@ import (
 // CLI_REL_UPSTREAM_DATA
 // REL_CLI_DOWNSTREAM_DATA
 // REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG
-// REL_CLI_TELL_TRUSTEES_PK
 // REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE
 // REL_TRU_TELL_TRANSCRIPT
 // TRU_REL_DC_CIPHER
@@ -87,12 +86,6 @@ type REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG struct {
 	Base         abstract.Point
 	EphPks       []abstract.Point
 	TrusteesSigs []ByteArray
-}
-
-// REL_CLI_TELL_TRUSTEES_PK message contains the public keys of the trustees
-// and is sent by the relay to the clients.
-type REL_CLI_TELL_TRUSTEES_PK struct {
-	Pks []abstract.Point
 }
 
 // REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE message contains the public keys and ephemeral keys

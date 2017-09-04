@@ -56,7 +56,7 @@ func (p *PriFiLibClientInstance) Received_ALL_ALL_SHUTDOWN(msg net.ALL_ALL_SHUTD
 
 // Received_ALL_CLI_PARAMETERS handles ALL_CLI_PARAMETERS messages.
 // It uses the message's parameters to initialize the client.
-func (p *PriFiLibClientInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARAMETERS_NEW) error {
+func (p *PriFiLibClientInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARAMETERS) error {
 	clientID := msg.IntValueOrElse("NextFreeClientID", -1)
 	nTrustees := msg.IntValueOrElse("NTrustees", p.clientState.nTrustees)
 	nClients := msg.IntValueOrElse("NClients", p.clientState.nClients)
