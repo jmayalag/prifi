@@ -51,7 +51,7 @@ func TestPrifi(t *testing.T) {
 	//TODO : emulate network connectivity, and run for a few rounds
 
 	//emulate the reception of a ALL_ALL_PARAMETERS with StartNow=true
-	msg := new(net.ALL_ALL_PARAMETERS_NEW)
+	msg := new(net.ALL_ALL_PARAMETERS)
 	msg.Add("StartNow", true)
 	msg.Add("NTrustees", 2)
 	msg.Add("NClients", 2)

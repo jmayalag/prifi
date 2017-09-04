@@ -78,7 +78,7 @@ func TestTrustee(t *testing.T) {
 	}
 
 	//should not be able to receive those weird messages
-	weird := new(net.ALL_ALL_PARAMETERS_NEW)
+	weird := new(net.ALL_ALL_PARAMETERS)
 	weird.Add("NextFreeTrusteeID", -1)
 	if err := trustee.ReceivedMessage(*weird); err == nil {
 		t.Error("Trustee should not accept this message")
@@ -100,7 +100,7 @@ func TestTrustee(t *testing.T) {
 	}
 
 	//we start by receiving a ALL_ALL_PARAMETERS from relay
-	msg := new(net.ALL_ALL_PARAMETERS_NEW)
+	msg := new(net.ALL_ALL_PARAMETERS)
 	msg.ForceParams = true
 	trusteeID := 3
 	nClients := 3

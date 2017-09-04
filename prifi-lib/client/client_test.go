@@ -89,7 +89,7 @@ func TestClient(t *testing.T) {
 	}
 
 	//we start by receiving a ALL_ALL_PARAMETERS from relay
-	msg := new(net.ALL_ALL_PARAMETERS_NEW)
+	msg := new(net.ALL_ALL_PARAMETERS)
 	msg.ForceParams = true
 	clientID := 3
 	nTrustees := 2
@@ -450,7 +450,7 @@ func TestClient2(t *testing.T) {
 	cs := client.clientState
 
 	//we start by receiving a ALL_ALL_PARAMETERS from relay
-	msg := new(net.ALL_ALL_PARAMETERS_NEW)
+	msg := new(net.ALL_ALL_PARAMETERS)
 	msg.ForceParams = true
 	clientID := 3
 	nTrustees := 2
@@ -581,7 +581,7 @@ func TestDisruptionClient(t *testing.T) {
 	cs := client.clientState
 
 	//we start by receiving a ALL_ALL_PARAMETERS from relay
-	msg := new(net.ALL_ALL_PARAMETERS_NEW)
+	msg := new(net.ALL_ALL_PARAMETERS)
 	msg.ForceParams = true
 	clientID := 3
 	nTrustees := 2

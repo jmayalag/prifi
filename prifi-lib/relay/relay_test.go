@@ -138,7 +138,7 @@ func TestRelayRun1(t *testing.T) {
 	}
 
 	//we start by receiving a ALL_ALL_PARAMETERS from relay
-	msg := new(net.ALL_ALL_PARAMETERS_NEW)
+	msg := new(net.ALL_ALL_PARAMETERS)
 	msg.ForceParams = true
 	nClients := 1
 	nTrustees := 1
@@ -212,7 +212,7 @@ func TestRelayRun1(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	msg3 := msg2.(*net.ALL_ALL_PARAMETERS_NEW)
+	msg3 := msg2.(*net.ALL_ALL_PARAMETERS)
 
 	if msg3.ParamsInt["NClients"] != nClients {
 		t.Error("nClients not set correctly")
@@ -252,7 +252,7 @@ func TestRelayRun1(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	msg5 := msg4.(*net.ALL_ALL_PARAMETERS_NEW)
+	msg5 := msg4.(*net.ALL_ALL_PARAMETERS)
 
 	if msg5.ParamsInt["NClients"] != nClients {
 		t.Error("nClients not set correctly")
@@ -424,7 +424,7 @@ func TestRelayRun2(t *testing.T) {
 	rs := relay.relayState
 
 	//we start by receiving a ALL_ALL_PARAMETERS from relay
-	msg := new(net.ALL_ALL_PARAMETERS_NEW)
+	msg := new(net.ALL_ALL_PARAMETERS)
 	msg.ForceParams = true
 	nClients := 1
 	nTrustees := 1
@@ -450,7 +450,7 @@ func TestRelayRun2(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	_ = msg4.(*net.ALL_ALL_PARAMETERS_NEW)
+	_ = msg4.(*net.ALL_ALL_PARAMETERS)
 
 	//since startNow = true, trustee sends TRU_REL_TELL_PK
 	trusteePub, trusteePriv := crypto.NewKeyPair()
@@ -468,7 +468,7 @@ func TestRelayRun2(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	_ = msg2.(*net.ALL_ALL_PARAMETERS_NEW)
+	_ = msg2.(*net.ALL_ALL_PARAMETERS)
 
 	//should receive a CLI_REL_TELL_PK_AND_EPH_PK
 	cliPub, cliPriv := crypto.NewKeyPair()
@@ -586,9 +586,9 @@ func TestRelayRun2(t *testing.T) {
 	}
 
 	//suppose we should refuse this random message
-	randomMsg := net.REL_CLI_TELL_TRUSTEES_PK{}
+	randomMsg := net.REL_CLI_DOWNSTREAM_DATA{}
 	if err := relay.ReceivedMessage(randomMsg); err == nil {
-		t.Error("Should not accept this REL_CLI_TELL_TRUSTEES_PK message")
+		t.Error("Should not accept this REL_CLI_DOWNSTREAM_DATA message")
 	}
 }
 
@@ -608,7 +608,7 @@ func TestRelayRun3(t *testing.T) {
 	relay := NewRelay(true, dataForClients, dataFromDCNet, resultChan, ocSleep, timeoutHandler, msw)
 
 	//we start by receiving a ALL_ALL_PARAMETERS from relay
-	msg := new(net.ALL_ALL_PARAMETERS_NEW)
+	msg := new(net.ALL_ALL_PARAMETERS)
 	msg.ForceParams = true
 	nClients := 1
 	nTrustees := 2
@@ -634,12 +634,12 @@ func TestRelayRun3(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	_ = msg4.(*net.ALL_ALL_PARAMETERS_NEW)
+	_ = msg4.(*net.ALL_ALL_PARAMETERS)
 	msg4, err = getTrusteeMessage("ALL_ALL_PARAMETERS")
 	if err != nil {
 		t.Error(err)
 	}
-	_ = msg4.(*net.ALL_ALL_PARAMETERS_NEW)
+	_ = msg4.(*net.ALL_ALL_PARAMETERS)
 
 	//since startNow = true, trustee sends TRU_REL_TELL_PK
 	trusteePub, trusteePriv := crypto.NewKeyPair()
@@ -664,7 +664,7 @@ func TestRelayRun3(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	_ = msg2.(*net.ALL_ALL_PARAMETERS_NEW)
+	_ = msg2.(*net.ALL_ALL_PARAMETERS)
 
 	//should receive a CLI_REL_TELL_PK_AND_EPH_PK
 	cliPub, cliPriv := crypto.NewKeyPair()
@@ -831,7 +831,7 @@ func TestRelayRun4(t *testing.T) {
 	relay := NewRelay(true, dataForClients, dataFromDCNet, resultChan, ocSleep, timeoutHandler, msw)
 
 	//we start by receiving a ALL_ALL_PARAMETERS from relay
-	msg := new(net.ALL_ALL_PARAMETERS_NEW)
+	msg := new(net.ALL_ALL_PARAMETERS)
 	msg.ForceParams = true
 	nClients := 1
 	nTrustees := 2
@@ -861,7 +861,7 @@ func TestRelayRun4(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	msg5 := msg4.(*net.ALL_ALL_PARAMETERS_NEW)
+	msg5 := msg4.(*net.ALL_ALL_PARAMETERS)
 
 	if msg5.ParamsStr["DCNetType"] != "Verifiable" {
 		t.Error("DCNetType not passed correctly to Trustee")
@@ -890,7 +890,7 @@ func TestRelayRun4(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	msg3 := msg2.(*net.ALL_ALL_PARAMETERS_NEW)
+	msg3 := msg2.(*net.ALL_ALL_PARAMETERS)
 
 	if msg3.ParamsStr["DCNetType"] != "Verifiable" {
 		t.Error("DCNetType not passed correctly to Client")
@@ -899,7 +899,7 @@ func TestRelayRun4(t *testing.T) {
 	relay2 := NewRelay(true, dataForClients, dataFromDCNet, resultChan, ocSleep, timeoutHandler, msw)
 
 	//we start by receiving a ALL_ALL_PARAMETERS from relay
-	msg21 := new(net.ALL_ALL_PARAMETERS_NEW)
+	msg21 := new(net.ALL_ALL_PARAMETERS)
 	msg21.ForceParams = true
 	dcNetType2 := "Random"
 	msg21.Add("StartNow", true)
