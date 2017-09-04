@@ -10,15 +10,13 @@
 package timing
 
 import (
-	"fmt"
-	"github.com/lbarman/prifi/utils/output"
+	"gopkg.in/dedis/onet.v1/log"
 	"sync"
 	"time"
 )
 
 var startTimes = make(map[string]time.Time)
 var mutex sync.Mutex
-var outputInterface output.Output = &output.NullOutput{}
 
 // StartMeasure starts a time measure identified by a name.
 func StartMeasure(name string) {
@@ -27,8 +25,6 @@ func StartMeasure(name string) {
 	if _, present := startTimes[name]; present {
 		// Unlock before potentially expensive writing to output.
 		mutex.Unlock()
-		msg := fmt.Sprint("WARNING: starting a measure that already exists with name: ", name, " (nothing will happen)")
-		outputInterface.Print(msg)
 	} else {
 		startTimes[name] = time.Now()
 		mutex.Unlock()
@@ -51,23 +47,22 @@ func StopMeasure(name string) time.Duration {
 		// Unlock before potentially expensive writing to output.
 		mutex.Unlock()
 
-		msg := fmt.Sprint("Measured time for ", name, ": ", duration)
-		outputInterface.Print(msg)
-
 		return duration
 	}
 
 	// Unlock before potentially expensive writing to output.
 	mutex.Unlock()
-
-	msg := fmt.Sprint("WARNING: stopping a measure that was not started with name: ", name)
-	outputInterface.Print(msg)
-
 	return time.Duration(0)
 }
 
-// SetOutputInterface sets the output interface to use
-// to print measure results.
-func SetOutputInterface(out output.Output) {
-	outputInterface = out
+// StopMeasureAndLog prints the value to Lvl1 instead of returning it
+func StopMeasureAndLog(name string) {
+	duration := StopMeasure(name)
+	log.Lvl1("[StopMeasureAndLog] measured time for", name, ":", duration.Nanoseconds(), "ns")
+}
+
+// StopMeasureAndLog prints the value to Lvl1 instead of returning it (logs "info" too)
+func StopMeasureAndLogWithInfo(name, info string) {
+	duration := StopMeasure(name)
+	log.Lvl1("[StopMeasureAndLog] measured time for", name, ":", duration.Nanoseconds(), "ns, info:", info)
 }

@@ -1,7 +1,7 @@
 package protocols
 
 import (
-	"github.com/lbarman/prifi/prifi-lib"
+	prifi_lib "github.com/lbarman/prifi/prifi-lib"
 	"gopkg.in/dedis/onet.v1/log"
 	"gopkg.in/dedis/onet.v1/network"
 )
@@ -33,28 +33,33 @@ type SOCKSConfig struct {
 
 //The configuration read in prifi.toml
 type PrifiTomlConfig struct {
-	ForceConsoleColor       bool
-	OverrideLogLevel        int
-	ClientDataOutputEnabled bool
-	RelayDataOutputEnabled  bool
-	CellSizeUp              int
-	CellSizeDown            int
-	RelayWindowSize         int
-	RelayUseOpenClosedSlots bool
-	RelayUseDummyDataDown   bool
-	RelayReportingLimit     int
-	UseUDP                  bool
-	DoLatencyTests          bool
-	SocksServerPort         int
-	SocksClientPort         int
-	ProtocolVersion         string
-	DCNetType               string
-	ReplayPCAP              bool
-	PCAPFolder              string
+	ForceConsoleColor                      bool
+	OverrideLogLevel                       int
+	ClientDataOutputEnabled                bool
+	RelayDataOutputEnabled                 bool
+	CellSizeUp                             int
+	CellSizeDown                           int
+	RelayWindowSize                        int
+	RelayUseOpenClosedSlots                bool
+	RelayUseDummyDataDown                  bool
+	RelayReportingLimit                    int
+	UseUDP                                 bool
+	DoLatencyTests                         bool
+	SocksServerPort                        int
+	SocksClientPort                        int
+	ProtocolVersion                        string
+	DCNetType                              string
+	ReplayPCAP                             bool
+	PCAPFolder                             string
+	TrusteeNeverSlowDown                   bool
+	SimulDelayBetweenClients               int
+	DisruptionProtectionEnabled            bool
+	EquivocationProtectionEnabled          bool // not linked in the back
+	OpenClosedSlotsMinDelayBetweenRequests int
 }
 
-//PriFiExchangeWrapperConfig is all the information the SDA-Protocols needs. It contains the network map of identities, our role, and the socks parameters if we are the corresponding role
-type PriFiWrapperConfig struct {
+//PriFiSDAWrapperConfig is all the information the SDA-Protocols needs. It contains the network map of identities, our role, and the socks parameters if we are the corresponding role
+type PriFiSDAWrapperConfig struct {
 	Toml                  *PrifiTomlConfig
 	Identities            map[string]PriFiIdentity
 	Role                  PriFiRole
@@ -65,7 +70,7 @@ type PriFiWrapperConfig struct {
 
 // SetConfig configures the PriFi node.
 // It **MUST** be called in service.newProtocol or before Start().
-func (p *PriFiExchangeProtocol) SetConfigFromPriFiService(config *PriFiWrapperConfig) prifi_lib.SpecializedLibInstance {
+func (p *PriFiSDAProtocol) SetConfigFromPriFiService(config *PriFiSDAWrapperConfig) {
 	p.config = *config
 	p.role = config.Role
 
@@ -98,9 +103,9 @@ func (p *PriFiExchangeProtocol) SetConfigFromPriFiService(config *PriFiWrapperCo
 		relayOutputEnabled := config.Toml.RelayDataOutputEnabled
 		p.prifiLibInstance = prifi_lib.NewPriFiRelay(relayOutputEnabled,
 			config.RelaySideSocksConfig.DownstreamChannel, config.RelaySideSocksConfig.UpstreamChannel,
-			experimentResultChan, p.handleTimeout, ms)
+			experimentResultChan, config.Toml.OpenClosedSlotsMinDelayBetweenRequests, p.handleTimeout, ms)
 	case Trustee:
-		p.prifiLibInstance = prifi_lib.NewPriFiTrustee(ms)
+		p.prifiLibInstance = prifi_lib.NewPriFiTrustee(config.Toml.TrusteeNeverSlowDown, ms)
 
 	case Client:
 		doLatencyTests := config.Toml.DoLatencyTests
@@ -113,96 +118,10 @@ func (p *PriFiExchangeProtocol) SetConfigFromPriFiService(config *PriFiWrapperCo
 	p.registerHandlers()
 
 	p.configSet = true
-
-	return p.prifiLibInstance
 }
 
 // SetTimeoutHandler sets the function that will be called on round timeout
 // if the protocol runs as the relay.
-func (p *PriFiExchangeProtocol) SetTimeoutHandler(handler func([]string, []string)) {
-	p.toHandler = handler
-}
-
-// SetConfig configures the PriFi node.
-// It **MUST** be called in service.newProtocol or before Start().
-func (p *PriFiScheduleProtocol) SetConfigFromPriFiService(config *PriFiWrapperConfig, libInstance prifi_lib.SpecializedLibInstance) {
-	p.config = *config
-	p.role = config.Role
-
-	ms := p.buildMessageSender(config.Identities)
-	p.ms = ms
-
-	//sanity check
-	switch config.Role {
-	case Trustee:
-		if ms.relay == nil {
-			log.Fatal("Relay is not reachable (I'm a trustee, and I need it) !")
-		}
-	case Client:
-		if ms.relay == nil {
-			log.Fatal("Relay is not reachable (I'm a client, and I need it) !")
-		}
-	case Relay:
-		if len(ms.clients) < 1 {
-			log.Fatal("Less than one client reachable (I'm a relay, and there's no use starting the protocol) !")
-		}
-		if len(ms.trustees) < 1 {
-			log.Fatal("No trustee reachable (I'm a relay, and I cannot start the protocol) !")
-		}
-	}
-
-	p.prifiLibInstance = libInstance
-	p.prifiLibInstance.SetMessageSender(p.ms)
-
-	p.registerHandlers()
-
-	p.configSet = true
-}
-
-// SetTimeoutHandler sets the function that will be called on round timeout
-// if the protocol runs as the relay.
-func (p *PriFiScheduleProtocol) SetTimeoutHandler(handler func([]string, []string)) {
-	p.toHandler = handler
-}
-
-// SetConfig configures the PriFi node.
-// It **MUST** be called in service.newProtocol or before Start().
-func (p *PriFiCommunicateProtocol) SetConfigFromPriFiService(config *PriFiWrapperConfig, libInstance prifi_lib.SpecializedLibInstance) {
-	p.config = *config
-	p.role = config.Role
-
-	ms := p.buildMessageSender(config.Identities)
-	p.ms = ms
-
-	//sanity check
-	switch config.Role {
-	case Trustee:
-		if ms.relay == nil {
-			log.Fatal("Relay is not reachable (I'm a trustee, and I need it) !")
-		}
-	case Client:
-		if ms.relay == nil {
-			log.Fatal("Relay is not reachable (I'm a client, and I need it) !")
-		}
-	case Relay:
-		if len(ms.clients) < 1 {
-			log.Fatal("Less than one client reachable (I'm a relay, and there's no use starting the protocol) !")
-		}
-		if len(ms.trustees) < 1 {
-			log.Fatal("No trustee reachable (I'm a relay, and I cannot start the protocol) !")
-		}
-	}
-
-	p.prifiLibInstance = libInstance
-	p.prifiLibInstance.SetMessageSender(p.ms)
-
-	p.registerHandlers()
-
-	p.configSet = true
-}
-
-// SetTimeoutHandler sets the function that will be called on round timeout
-// if the protocol runs as the relay.
-func (p *PriFiCommunicateProtocol) SetTimeoutHandler(handler func([]string, []string)) {
+func (p *PriFiSDAProtocol) SetTimeoutHandler(handler func([]string, []string)) {
 	p.toHandler = handler
 }

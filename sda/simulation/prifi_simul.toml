@@ -1,31 +1,34 @@
+RelayUseOpenClosedSlots = false
+DoLatencyTests = false
+ReplayPCAP = false
+DisruptionProtectionEnabled = false
+RelayUseDummyDataDown = false
+Hosts = 92
+CellSizeUp = 500
+RelayWindowSize = 4
+OverrideLogLevel = 1
 Simulation = "PriFi"
 Servers = 9
 Depth = 1
 CloseWait = 10000000
 RunWait = 10000000
-NTrustees = 3
-CellSizeUp = 5000
+NTrustees = 1
 CellSizeDown = 17500
-RelayWindowSize = 7
 DCNetType = "Simple"
-OverrideLogLevel = 1
 ForceConsoleColor = true
-RelayUseOpenClosedSlots = true
-RelayUseDummyDataDown = true
-RelayReportingLimit = 10000
+RelayReportingLimit = 100000
 RelayDataOutputEnabled = true
-RelayUseOpenClosedSlots = true
-ClientDataOutputEnabled = true
+ClientDataOutputEnabled = false
 UseUDP = true
-DoLatencyTests = true
 SocksServerPort = 8080
 SocksClientPort = 8090
 TrusteeIPRegexPattern = "10\\.1\\.0\\.([0-9]+)"
 ClientIPRegexPattern = "10\\.0\\.1\\.([0-9]+)"
 RelayIPRegexPattern = "10\\.([0-9]+)\\.([0-9]+)\\.254"
-Hosts = 5
-ReplayPCAP = true
 PCAPFolder = "pcap/"
+SimulDelayBetweenClients = 0
+OpenClosedSlotsMinDelayBetweenRequests = 0
+TrusteeNeverSlowDown = true
 
 Rounds
 1

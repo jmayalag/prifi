@@ -21,7 +21,7 @@ socksServer1Port=8080           # the port for the SOCKS-Server-1 (part of the P
 socksServer2Port=8090           # the port to attempt connect to (from the PriFi relay) for the SOCKS-Server-2
                                 # notes : see <https://github.com/lbarman/prifi/blob/master/README_architecture.md>
 
-all_localhost_n_clients=6      # number of clients to start in the "all-localhost" script
+all_localhost_n_clients=3      # number of clients to start in the "all-localhost" script
 
 # default file names :
 
@@ -44,7 +44,7 @@ min_go_version=17                           # min required go version, without t
 
 # unimportant variable (but do not change, ofc)
 
-sleeptime_between_spawns=3                  # time in second between entities launch in all-localhost part
+sleeptime_between_spawns=1                  # time in second between entities launch in all-localhost part
 cothorityBranchRequired="v1.0"              # the branch required for the cothority (SDA) framework
 
 #pretty colored message
@@ -397,7 +397,7 @@ case $1 in
 		read -p "PriFi deployed. Press [enter] to kill all..." key
 		echo "Gonna run kill -TERM -- -\"$THISPGID\""
 
-		kill -9 -- -"$THISPGID"
+		kill -TERM -- -"$THISPGID"
 		;;
 
 	gen-id|Gen-Id|GEN-ID)
@@ -674,7 +674,7 @@ case $1 in
 		echo -n "Simulation done, cleaning up... " | tee ../../last-simul.log
 		rm -f "$EXEC_NAME" | tee ../../last-simul.log
 		echo -e "$okMsg" | tee ../../last-simul.log
-
+		
 		status=$(ssh $deterlabUser@users.deterlab.net "cat ~/remote/.lastsimul")
 		echo -e "Status is ${highlightOn}${status}${highlightOff}." | tee ../../last-simul.log
 
@@ -772,17 +772,17 @@ case $1 in
 
 		thisScript="$0"
 
-		NTRUSTEES=3
+		NTRUSTEES=1
 		NRELAY=1
 		TEMPLATE_FILE="sda/simulation/prifi_simul_template.toml"
 		CONFIG_FILE="sda/simulation/prifi_simul.toml"
-		TIMEOUT="400"
+		TIMEOUT="300"
 
 		"$thisScript" simul-cl
 
-		for repeat in {1..3}
+		for repeat in {4..6}
 		do
-			for i in {5..95..5}
+			for i in {10..90..10}
 			do
 				hosts=$(($NTRUSTEES + $NRELAY + $i))
 				echo "Simulating for HOSTS=$hosts..."
@@ -792,8 +792,61 @@ case $1 in
 				sed "s/Hosts = x/Hosts = $hosts/g" "$TEMPLATE_FILE" > "$CONFIG_FILE"
 
 				timeout "$TIMEOUT" "$thisScript" simul | tee experiment_${i}_${repeat}.txt
+			done
+		done
 
-				exit 1
+		;;
+
+	simul-vary-nclients2)
+
+		thisScript="$0"
+
+		NTRUSTEES=1
+		NRELAY=1
+		TEMPLATE_FILE="sda/simulation/prifi_simul_template.toml"
+		CONFIG_FILE="sda/simulation/prifi_simul.toml"
+		TIMEOUT="600"
+
+		for i in {10..90..10}
+		do
+			for repeat in {1..4}
+			do
+				hosts=$(($NTRUSTEES + $NRELAY + $i))
+				echo "Simulating for HOSTS=$hosts..."
+
+				#fix the config
+				rm -f "$CONFIG_FILE"
+				sed "s/Hosts = x/Hosts = $hosts/g" "$TEMPLATE_FILE" > "$CONFIG_FILE"
+
+				timeout "$TIMEOUT" "$thisScript" simul | tee experiment_${i}_${repeat}.txt
+			done
+		done
+
+		;;
+
+	simul-vary-sleep)
+
+		thisScript="$0"
+
+		NTRUSTEES=3
+		NRELAY=1
+		TEMPLATE_FILE="sda/simulation/prifi_simul_template.toml"
+		CONFIG_FILE="sda/simulation/prifi_simul.toml"
+		TIMEOUT="400"
+
+		"$thisScript" simul-cl
+
+		for repeat in {1..10}
+		do
+			for i in {0..100..10}
+			do
+				echo "Simulating for Delay=$i..."
+
+				#fix the config
+				rm -f "$CONFIG_FILE"
+				sed "s/OpenClosedSlotsMinDelayBetweenRequests = x/OpenClosedSlotsMinDelayBetweenRequests = $i/g" "$TEMPLATE_FILE" > "$CONFIG_FILE"
+
+				timeout "$TIMEOUT" "$thisScript" simul | tee experiment_${i}_${repeat}.txt
 			done
 		done
 
@@ -818,7 +871,7 @@ case $1 in
 		#     ssh client-$i.LB-LLD.SAFER.isi.deterlab.net './mcast2.sh'
 		# done
 		# [EOF]
-
+		
 		deterlabUser="lbarman"
 
 		echo -n "Setting multicast to go through 10.0.1.0/8 network... "
@@ -838,7 +891,7 @@ case $1 in
 
 		for repeat in {1..3}
 		do
-			for window in 4 6 8 10 12
+			for window in {1..10}
 			do
 				echo "Simulating for WINDOW=$window..."
 
@@ -863,7 +916,7 @@ case $1 in
 
 		for repeat in {1..10}
 		do
-			for upsize in 1000 1500 2000 2500 3000 3500 4000 4500 5000 5500 6000 6500 7000 7500 8000 8500 9000 9500 10000
+			for upsize in 1000 2000 3000 4000 5000 6000 7000 8000 9000 10000
 			do
 				echo "Simulating for upsize=$upsize  (repeat $repeat)..."
 
@@ -910,6 +963,31 @@ case $1 in
 	clean|Clean|CLEAN)
 		echo -n "Cleaning local log files... 			"
 		rm *.log 1>/dev/null 2>&1
+		echo -e "$okMsg"
+		;;
+
+
+	ping-through-prifi)
+
+		#create a file ~/curl_format.cnf with this content
+		#
+		#    time_namelookup:  %{time_namelookup}\n
+		#       time_connect:  %{time_connect}\n
+		#    time_appconnect:  %{time_appconnect}\n
+		#   time_pretransfer:  %{time_pretransfer}\n
+		#      time_redirect:  %{time_redirect}\n
+		# time_starttransfer:  %{time_starttransfer}\n
+		#                    ----------\n
+		#         time_total:  %{time_total}\n
+
+		echo -n "Performing CURL through SOCKS:8081 to google.com, measuring latency..."
+
+		for repeat in {1..10}
+		do
+			#curl -w "@curl_format.cnf" --socks5 127.0.0.1:8081 --max-time 10 -o /dev/null -s "http://google.com/"
+			curl -w "@curl_format.cnf" --socks5 127.0.0.1:8081 --max-time 10 -o /dev/null -s "http://google.com/" > curl_ping_$repeat.txt
+		done
+
 		echo -e "$okMsg"
 		;;
 

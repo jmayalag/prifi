@@ -12,14 +12,13 @@ import (
 	"io/ioutil"
 	"strconv"
 
-	"errors"
-	"github.com/lbarman/prifi/prifi-lib"
 	prifi_socks "github.com/lbarman/prifi/prifi-socks"
 	prifi_protocol "github.com/lbarman/prifi/sda/protocols"
 	"gopkg.in/dedis/onet.v1"
 	"gopkg.in/dedis/onet.v1/app"
 	"gopkg.in/dedis/onet.v1/log"
 	"gopkg.in/dedis/onet.v1/network"
+	"time"
 )
 
 //The name of the service, used by SDA's internals
@@ -55,17 +54,8 @@ type ServiceState struct {
 	//this hold the churn handler; protocol is started there. Only relay has this != nil
 	churnHandler *churnHandler
 
-	//this hold the running protocols (when they run)
-	PriFiExchangeProtocol    *prifi_protocol.PriFiExchangeProtocol
-	PriFiScheduleProtocol    *prifi_protocol.PriFiScheduleProtocol
-	PriFiCommunicateProtocol *prifi_protocol.PriFiCommunicateProtocol
-
-	alreadyCommunicating   bool
-	oldCommunicateProtocol *prifi_protocol.PriFiCommunicateProtocol
-
-	//this hold the prifi lib instance when any protocol run
-	prifiLibInstance    prifi_lib.SpecializedLibInstance
-	oldPrifiLibInstance prifi_lib.SpecializedLibInstance
+	//this hold the running protocol (when it runs)
+	PriFiSDAProtocol *prifi_protocol.PriFiSDAProtocol
 
 	//used to hold "stoppers" for go-routines; send "true" to kill
 	socksStopChan []chan bool
@@ -115,61 +105,14 @@ func newService(c *onet.Context) onet.Service {
 // give some extra-configuration to your protocol in here.
 func (s *ServiceState) NewProtocol(tn *onet.TreeNodeInstance, conf *onet.GenericConfig) (onet.ProtocolInstance, error) {
 
-	log.LLvlf2("Starting new %s", tn.ProtocolName())
-	switch tn.ProtocolName() {
-	case "PrifiExchangeProtocol":
-		return s.NewExchangeProtocol(tn, conf)
-	case "PrifiScheduleProtocol":
-		return s.NewScheduleProtocol(tn, conf)
-	case "PrifiCommunicateProtocol":
-		return s.NewCommunicateProtocol(tn, conf)
-	default:
-		return nil, errors.New("Unknown protocol")
-	}
-}
-
-// NewExchangeProtocol
-func (s *ServiceState) NewExchangeProtocol(tn *onet.TreeNodeInstance, conf *onet.GenericConfig) (onet.ProtocolInstance, error) {
-
-	pi, err := prifi_protocol.NewPriFiExchangeWrapperProtocol(tn)
+	pi, err := prifi_protocol.NewPriFiSDAWrapperProtocol(tn)
 	if err != nil {
 		return nil, err
 	}
 
-	wrapper := pi.(*prifi_protocol.PriFiExchangeProtocol)
-	s.PriFiExchangeProtocol = wrapper
-	s.setConfigToPriFiExchangeProtocol(wrapper)
-
-	return wrapper, nil
-}
-
-// NewScheduleProtocol
-func (s *ServiceState) NewScheduleProtocol(tn *onet.TreeNodeInstance, conf *onet.GenericConfig) (onet.ProtocolInstance, error) {
-
-	pi, err := prifi_protocol.NewPriFiScheduleWrapperProtocol(tn)
-	if err != nil {
-		return nil, err
-	}
-
-	wrapper := pi.(*prifi_protocol.PriFiScheduleProtocol)
-	s.PriFiScheduleProtocol = wrapper
-	s.setConfigToPriFiScheduleProtocol(wrapper, nil)
-
-	return wrapper, nil
-}
-
-// NewCommunicateProtocol
-func (s *ServiceState) NewCommunicateProtocol(tn *onet.TreeNodeInstance, conf *onet.GenericConfig) (onet.ProtocolInstance,
-	error) {
-
-	pi, err := prifi_protocol.NewPriFiCommunicateWrapperProtocol(tn)
-	if err != nil {
-		return nil, err
-	}
-
-	wrapper := pi.(*prifi_protocol.PriFiCommunicateProtocol)
-	s.PriFiCommunicateProtocol = wrapper
-	s.setConfigToPriFiCommunicateProtocol(wrapper, nil)
+	wrapper := pi.(*prifi_protocol.PriFiSDAProtocol)
+	s.PriFiSDAProtocol = wrapper
+	s.setConfigToPriFiProtocol(wrapper)
 
 	return wrapper, nil
 }
@@ -180,7 +123,7 @@ func (s *ServiceState) RelayAllowAutoStart() {
 	if s.churnHandler == nil {
 		log.Fatal("Cannot allow auto start when relay has not been initialized")
 	}
-	s.churnHandler.isPrifiProtocolRunning = s.IsPriFiProtocolRunning
+	s.churnHandler.startProtocol = s.StartPriFiCommunicateProtocol
 }
 
 // StartRelay starts the necessary
@@ -197,24 +140,13 @@ func (s *ServiceState) StartRelay(group *app.Group) error {
 	//creates the ChurnHandler, part of the Relay's Service, that will start/stop the protocol
 	s.churnHandler = new(churnHandler)
 	s.churnHandler.init(relayID, trusteesIDs)
-	s.churnHandler.isPrifiProtocolRunning = s.IsPriFiProtocolRunning
-	s.churnHandler.isExchangeProtocolRunning = s.IsPriFiExchangeProtocolRunning
-	s.churnHandler.isScheduleProtocolRunning = s.IsPriFiScheduleProtocolRunning
-	s.churnHandler.isCommunicateProtocolRunning = s.IsPriFiCommunicateProtocolRunning
-
+	s.churnHandler.isProtocolRunning = s.IsPriFiProtocolRunning
 	if s.AutoStart {
-		s.churnHandler.startExchangeProtocol = s.StartPriFiExchangeProtocol
-		s.churnHandler.startScheduleProtocol = nil
-		s.churnHandler.startCommunicateProtocol = nil
+		s.churnHandler.startProtocol = s.StartPriFiCommunicateProtocol
 	} else {
-		s.churnHandler.startExchangeProtocol = nil
-		s.churnHandler.startScheduleProtocol = nil
-		s.churnHandler.startCommunicateProtocol = nil
+		s.churnHandler.startProtocol = nil
 	}
-	s.churnHandler.stopPrifiProtocol = s.StopAllPriFiProtocols
-	s.churnHandler.stopExchangeProtocol = s.StopPriFiExchangeProtocol
-	s.churnHandler.stopScheduleProtocol = s.StopPriFiScheduleProtocol
-	s.churnHandler.stopCommunicateProtocol = s.StopPriFiCommunicateProtocol
+	s.churnHandler.stopProtocol = s.StopPriFiCommunicateProtocol
 
 	socksServerConfig = &prifi_protocol.SOCKSConfig{
 		Port:              "127.0.0.1:" + strconv.Itoa(s.prifiTomlConfig.SocksClientPort),
@@ -239,7 +171,7 @@ func (s *ServiceState) StartRelay(group *app.Group) error {
 
 // StartClient starts the necessary
 // protocols to enable the client-mode.
-func (s *ServiceState) StartClient(group *app.Group) error {
+func (s *ServiceState) StartClient(group *app.Group, delay time.Duration) error {
 	log.Info("Service", s, "running in client mode")
 	s.role = prifi_protocol.Client
 
@@ -264,7 +196,15 @@ func (s *ServiceState) StartClient(group *app.Group) error {
 
 	s.connectToRelayStopChan = make(chan bool)
 	s.trusteeIDs = trusteeIDs
-	go s.connectToRelay(relayID, s.connectToRelayStopChan)
+
+	go func() {
+		if delay > 0 {
+			log.Lvl1("Client sleeping for", (delay * time.Second))
+			time.Sleep(delay * time.Second)
+			log.Lvl1("Client done sleeping (for", (delay * time.Second), ")")
+		}
+		go s.connectToRelay(relayID, s.connectToRelayStopChan)
+	}()
 
 	return nil
 }

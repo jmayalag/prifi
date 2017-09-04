@@ -28,7 +28,7 @@ import (
 Received_ALL_ALL_SHUTDOWN handles ALL_ALL_SHUTDOWN messages.
 When we receive this message we should  clean up resources.
 */
-func (p *PriFiLibTrusteeInstance) Received_ALL_ALL_SHUTDOWN(msg net.ALL_ALL_SHUTDOWN) (bool, interface{}, error) {
+func (p *PriFiLibTrusteeInstance) Received_ALL_ALL_SHUTDOWN(msg net.ALL_ALL_SHUTDOWN) error {
 	log.Lvl1("Trustee " + strconv.Itoa(p.trusteeState.ID) + " : Received a SHUTDOWN message. ")
 
 	//stop the sending process
@@ -36,14 +36,14 @@ func (p *PriFiLibTrusteeInstance) Received_ALL_ALL_SHUTDOWN(msg net.ALL_ALL_SHUT
 
 	p.stateMachine.ChangeState("SHUTDOWN")
 
-	return false, nil, nil
+	return nil
 }
 
 /*
 Received_ALL_ALL_PARAMETERS handles ALL_ALL_PARAMETERS.
 It initializes the trustee with the parameters contained in the message.
 */
-func (p *PriFiLibTrusteeInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARAMETERS_NEW) (bool, interface{}, error) {
+func (p *PriFiLibTrusteeInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARAMETERS_NEW) error {
 
 	startNow := msg.BoolValueOrElse("StartNow", false)
 	trusteeID := msg.IntValueOrElse("NextFreeTrusteeID", -1)
@@ -54,23 +54,23 @@ func (p *PriFiLibTrusteeInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PA
 
 	//sanity checks
 	if trusteeID < -1 {
-		return false, nil, errors.New("trusteeID cannot be negative")
+		return errors.New("trusteeID cannot be negative")
 	}
 	if nTrustees < 1 {
-		return false, nil, errors.New("nTrustees cannot be smaller than 1")
+		return errors.New("nTrustees cannot be smaller than 1")
 	}
 	if nClients < 1 {
-		return false, nil, errors.New("nClients cannot be smaller than 1")
+		return errors.New("nClients cannot be smaller than 1")
 	}
 	if cellSize < 1 {
-		return false, nil, errors.New("UpCellSize cannot be 0")
+		return errors.New("UpCellSize cannot be 0")
 	}
 
 	switch dcNetType {
 	case "Simple":
-		p.trusteeState.CellCoder = dcnet.SimpleCoderFactory()
+		p.trusteeState.DCNet_RoundManager.CellCoder = dcnet.SimpleCoderFactory()
 	case "Verifiable":
-		p.trusteeState.CellCoder = dcnet.OwnedCoderFactory()
+		p.trusteeState.DCNet_RoundManager.CellCoder = dcnet.OwnedCoderFactory()
 	default:
 		log.Fatal("DCNetType must be Simple or Verifiable")
 	}
@@ -96,7 +96,7 @@ func (p *PriFiLibTrusteeInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PA
 
 	log.Lvlf5("%+v\n", p.trusteeState)
 	log.Lvl2("Trustee " + strconv.Itoa(p.trusteeState.ID) + " has been initialized by message. ")
-	return false, nil, nil
+	return nil
 }
 
 /*
@@ -104,10 +104,10 @@ Send_TRU_REL_PK tells the relay's public key to the relay
 (this, of course, provides no security, but this is an early version of the protocol).
 This is the first action of the trustee.
 */
-func (p *PriFiLibTrusteeInstance) Send_TRU_REL_PK() (bool, interface{}, error) {
+func (p *PriFiLibTrusteeInstance) Send_TRU_REL_PK() error {
 	toSend := &net.TRU_REL_TELL_PK{TrusteeID: p.trusteeState.ID, Pk: p.trusteeState.PublicKey}
 	p.messageSender.SendToRelayWithLog(toSend, "")
-	return false, nil, nil
+	return nil
 }
 
 /*
@@ -135,11 +135,21 @@ func (p *PriFiLibTrusteeInstance) Send_TRU_REL_DC_CIPHER(rateChan chan int16) {
 
 		default:
 			if currentRate == TRUSTEE_RATE_ACTIVE {
-				roundID, _ = sendData(p, roundID)
+				newRoundID, err := sendData(p, roundID)
+				if err != nil {
+					stop = true
+				}
+				roundID = newRoundID
 
-			} else if currentRate == TRUSTEE_RATE_STOPPED {
-				time.Sleep(0 * TRUSTEE_BASE_SLEEP_TIME)
-				roundID, _ = sendData(p, roundID)
+			} else if currentRate == TRUSTEE_RATE_HALVED {
+				if !p.trusteeState.NeverSlowDown { //sorry double neg. If NeverSlowDown = true, we skip this sleep
+					time.Sleep(TRUSTEE_BASE_SLEEP_TIME)
+				}
+				newRoundID, err := sendData(p, roundID)
+				if err != nil {
+					stop = true
+				}
+				roundID = newRoundID
 
 			} else {
 				log.Lvl2("Trustee " + strconv.Itoa(p.trusteeState.ID) + " : In unrecognized sending state")
@@ -147,6 +157,7 @@ func (p *PriFiLibTrusteeInstance) Send_TRU_REL_DC_CIPHER(rateChan chan int16) {
 
 		}
 	}
+	log.Lvl2("Trustee " + strconv.Itoa(p.trusteeState.ID) + " : Stopped.")
 }
 
 /*
@@ -155,15 +166,15 @@ by changing the cipher sending rate.
 Either the trustee must stop sending because the relay is at full capacity
 or the trustee sends normally because the relay has emptied up enough capacity.
 */
-func (p *PriFiLibTrusteeInstance) Received_REL_TRU_TELL_RATE_CHANGE(msg net.REL_TRU_TELL_RATE_CHANGE) (bool, interface{}, error) {
+func (p *PriFiLibTrusteeInstance) Received_REL_TRU_TELL_RATE_CHANGE(msg net.REL_TRU_TELL_RATE_CHANGE) error {
 
 	if msg.WindowCapacity == 0 {
-		p.trusteeState.sendingRate <- TRUSTEE_RATE_STOPPED
+		p.trusteeState.sendingRate <- TRUSTEE_RATE_HALVED
 	} else {
 		p.trusteeState.sendingRate <- TRUSTEE_RATE_ACTIVE
 	}
 
-	return false, nil, nil
+	return nil
 }
 
 /*
@@ -171,14 +182,16 @@ sendData is an auxiliary function used by Send_TRU_REL_DC_CIPHER. It computes th
 It returns the new round number (previous + 1).
 */
 func sendData(p *PriFiLibTrusteeInstance, roundID int32) (int32, error) {
-	data := p.trusteeState.CellCoder.TrusteeEncode(p.trusteeState.PayloadLength)
+	data := p.trusteeState.DCNet_RoundManager.TrusteeEncode(p.trusteeState.PayloadLength)
 
 	//send the data
 	toSend := &net.TRU_REL_DC_CIPHER{
 		RoundID:   roundID,
 		TrusteeID: p.trusteeState.ID,
 		Data:      data}
-	p.messageSender.SendToRelayWithLog(toSend, "(round "+strconv.Itoa(int(roundID))+")")
+	if !p.messageSender.SendToRelayWithLog(toSend, "(round "+strconv.Itoa(int(roundID))+")") {
+		return -1, errors.New("Could not send")
+	}
 
 	return roundID + 1, nil
 }
@@ -191,7 +204,7 @@ and a base given by the relay. In addition to deriving the secrets,
 the trustee uses the ephemeral keys to perform a Neff shuffle. It remembers
 this shuffle in order to check the correctness of the chain of shuffle afterwards.
 */
-func (p *PriFiLibTrusteeInstance) Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE(msg net.REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE) (bool, interface{}, error) {
+func (p *PriFiLibTrusteeInstance) Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE(msg net.REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE) error {
 
 	//begin parsing the message
 	clientsPks := msg.Pks
@@ -201,17 +214,17 @@ func (p *PriFiLibTrusteeInstance) Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_
 	if len(clientsPks) < 1 {
 		e := "Trustee " + strconv.Itoa(p.trusteeState.ID) + " : len(clientsPks) must be >= 1"
 		log.Error(e)
-		return false, nil, errors.New(e)
+		return errors.New(e)
 	}
 	if len(clientsEphemeralPks) < 1 {
 		e := "Trustee " + strconv.Itoa(p.trusteeState.ID) + " : len(clientsEphemeralPks) must be >= 1"
 		log.Error(e)
-		return false, nil, errors.New(e)
+		return errors.New(e)
 	}
 	if len(clientsPks) != len(clientsEphemeralPks) {
 		e := "Trustee " + strconv.Itoa(p.trusteeState.ID) + " : len(clientsPks) must be == len(clientsEphemeralPks)"
 		log.Error(e)
-		return false, nil, errors.New(e)
+		return errors.New(e)
 	}
 
 	//fill in the clients keys
@@ -225,12 +238,13 @@ func (p *PriFiLibTrusteeInstance) Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_
 	for i := 0; i < p.trusteeState.nClients; i++ {
 		bytes, err := p.trusteeState.sharedSecrets[i].MarshalBinary()
 		if err != nil {
-			return false, nil, errors.New("Could not marshal point !")
+			return errors.New("Could not marshal point !")
 		}
 		sharedPRNGs[i] = config.CryptoSuite.Cipher(bytes)
 	}
 
-	vkey := p.trusteeState.CellCoder.TrusteeSetup(config.CryptoSuite, sharedPRNGs)
+	p.trusteeState.DCNet_RoundManager.TrusteeSetup(p.trusteeState.sharedSecrets)
+	vkey := p.trusteeState.DCNet_RoundManager.CellCoder.TrusteeSetup(config.CryptoSuite, sharedPRNGs)
 	//In case we use the simple dcnet, vkey isn't needed
 	if vkey == nil {
 		vkey = make([]byte, 1)
@@ -238,7 +252,7 @@ func (p *PriFiLibTrusteeInstance) Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_
 
 	toSend, err := p.trusteeState.neffShuffle.ReceivedShuffleFromRelay(msg.Base, msg.EphPks, true, vkey)
 	if err != nil {
-		return false, nil, errors.New("Could not do ReceivedShuffleFromRelay, error is " + err.Error())
+		return errors.New("Could not do ReceivedShuffleFromRelay, error is " + err.Error())
 	}
 
 	//send the answer
@@ -246,7 +260,7 @@ func (p *PriFiLibTrusteeInstance) Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_
 
 	p.stateMachine.ChangeState("SHUFFLE_DONE")
 
-	return false, nil, nil
+	return nil
 }
 
 /*
@@ -256,11 +270,11 @@ their own shuffle has been included in the chain of shuffles. If that's the case
 shuffle (which will be used by the clients), and sends it back to the relay.
 If everything succeed, starts the goroutine for sending DC-net ciphers to the relay.
 */
-func (p *PriFiLibTrusteeInstance) Received_REL_TRU_TELL_TRANSCRIPT(msg net.REL_TRU_TELL_TRANSCRIPT) (bool, interface{}, error) {
+func (p *PriFiLibTrusteeInstance) Received_REL_TRU_TELL_TRANSCRIPT(msg net.REL_TRU_TELL_TRANSCRIPT) error {
 
 	toSend, err := p.trusteeState.neffShuffle.ReceivedTranscriptFromRelay(msg.Bases, msg.GetKeys(), msg.GetProofs())
 	if err != nil {
-		return false, nil, errors.New("Could not do ReceivedTranscriptFromRelay, error is " + err.Error())
+		return errors.New("Could not do ReceivedTranscriptFromRelay, error is " + err.Error())
 	}
 
 	//send the answer
@@ -271,22 +285,36 @@ func (p *PriFiLibTrusteeInstance) Received_REL_TRU_TELL_TRANSCRIPT(msg net.REL_T
 
 	p.stateMachine.ChangeState("READY")
 
-	return false, nil, nil
-}
-
-/*
-Received_REL_TRU_TELL_TRANSCRIPT handles REL_TRU_TELL_TRANSCRIPT messages.
-Those are sent when all trustees have already shuffled. They need to verify all the shuffles, and also that
-their own shuffle has been included in the chain of shuffles. If that's the case, this trustee signs the *last*
-shuffle (which will be used by the clients), and sends it back to the relay.
-If everything succeed, starts the goroutine for sending DC-net ciphers to the relay.
-*/
-func (p *PriFiLibTrusteeInstance) Received_REL_TRU_TELL_READY(msg net.REL_TRU_TELL_READY) (bool, interface{}, error) {
-
-	p.stateMachine.ChangeState("COMMUNICATING")
-
 	//everything is ready, we start sending
 	go p.Send_TRU_REL_DC_CIPHER(p.trusteeState.sendingRate)
 
-	return false, nil, nil
+	return nil
+}
+
+/*
+Received_REL_ALL_REVEAL handles REL_ALL_REVEAL messages.
+We send back one bit per client, from the shared cipher, at bitPos
+*/
+func (p *PriFiLibTrusteeInstance) Received_REL_ALL_REVEAL(msg net.REL_ALL_DISRUPTION_REVEAL) error {
+	p.stateMachine.ChangeState("BLAMING")
+	bits := p.trusteeState.DCNet_RoundManager.RevealBits(msg.RoundID, msg.BitPos, p.trusteeState.PayloadLength)
+	toSend := &net.TRU_REL_DISRUPTION_REVEAL{
+		TrusteeID: p.trusteeState.ID,
+		Bits:      bits}
+	p.messageSender.SendToRelayWithLog(toSend, "Revealed bits")
+	return nil
+}
+
+/*
+Received_REL_ALL_SECRET handles REL_ALL_SECRET messages.
+We send back the shared secret with the indicated client
+*/
+func (p *PriFiLibTrusteeInstance) Received_REL_ALL_SECRET(msg net.REL_ALL_DISRUPTION_SECRET) error {
+
+	secret := p.trusteeState.sharedSecrets[msg.UserID]
+	toSend := &net.TRU_REL_DISRUPTION_SECRET{
+		Secret: secret,
+		NIZK:   make([]byte, 0)}
+	p.messageSender.SendToRelayWithLog(toSend, "Sent secret to relay")
+	return nil
 }

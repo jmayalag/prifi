@@ -6,7 +6,6 @@ import (
 	"github.com/lbarman/prifi/prifi-lib/relay"
 	"github.com/lbarman/prifi/prifi-lib/trustee"
 	"gopkg.in/dedis/onet.v1/log"
-	"reflect"
 )
 
 /*
@@ -18,17 +17,15 @@ Then, it runs the PriFi anonymous communication network among those entities.
 */
 
 // PriFiLibInstance contains the mutable state of a PriFi entity.
-type PriFiLibInstance struct {
-	//todo remove this, like it was done for client
+type PriFiLibInstance struct { //todo remove this, like it was done for client
 	role                   int16
 	messageSender          net.MessageSender
 	specializedLibInstance SpecializedLibInstance
 }
 
-//Prifi's "Relay", "Client" and "Trustee" instance all can receive and send messages
+//Prifi's "Relay", "Client" and "Trustee" instance all can receive a message
 type SpecializedLibInstance interface {
-	ReceivedMessage(msg interface{}) (bool, interface{}, error)
-	SetMessageSender(msgSender net.MessageSender) error
+	ReceivedMessage(msg interface{}) error
 }
 
 // Possible role of PriFi entities.
@@ -54,9 +51,9 @@ func NewPriFiClient(doLatencyTest bool, dataOutputEnabled bool, dataForDCNet cha
 }
 
 // NewPriFiRelay creates a new PriFi relay
-func NewPriFiRelay(dataOutputEnabled bool, dataForClients chan []byte, dataFromDCNet chan []byte, experimentResultChan chan interface{}, timeoutHandler func([]int, []int), msgSender net.MessageSender) *PriFiLibInstance {
+func NewPriFiRelay(dataOutputEnabled bool, dataForClients chan []byte, dataFromDCNet chan []byte, experimentResultChan chan interface{}, openClosedSlotsMinDelayBetweenRequests int, timeoutHandler func([]int, []int), msgSender net.MessageSender) *PriFiLibInstance {
 	msw := newMessageSenderWrapper(msgSender)
-	r := relay.NewRelay(dataOutputEnabled, dataForClients, dataFromDCNet, experimentResultChan, timeoutHandler, msw)
+	r := relay.NewRelay(dataOutputEnabled, dataForClients, dataFromDCNet, experimentResultChan, openClosedSlotsMinDelayBetweenRequests, timeoutHandler, msw)
 	p := &PriFiLibInstance{
 		role: PRIFI_ROLE_RELAY,
 		specializedLibInstance: r,
@@ -66,7 +63,7 @@ func NewPriFiRelay(dataOutputEnabled bool, dataForClients chan []byte, dataFromD
 }
 
 // NewPriFiTrustee creates a new PriFi trustee
-func NewPriFiTrustee(msgSender net.MessageSender) *PriFiLibInstance {
+func NewPriFiTrustee(neverSlowDown bool, msgSender net.MessageSender) *PriFiLibInstance {
 	//msw := newMessageSenderWrapper(msgSender)
 
 	errHandling := func(e error) { /* do nothing yet, we are alerted of errors via the SDA */ }
@@ -78,7 +75,7 @@ func NewPriFiTrustee(msgSender net.MessageSender) *PriFiLibInstance {
 		log.Fatal("Could not create a MessageSenderWrapper, error is", err)
 	}
 
-	t := trustee.NewTrustee(msw)
+	t := trustee.NewTrustee(neverSlowDown, msw)
 	p := &PriFiLibInstance{
 		role: PRIFI_ROLE_TRUSTEE,
 		specializedLibInstance: t,
@@ -89,33 +86,17 @@ func NewPriFiTrustee(msgSender net.MessageSender) *PriFiLibInstance {
 
 // ReceivedMessage must be called when a PriFi host receives a message.
 // It takes care to call the correct message handler function.
-func (p *PriFiLibInstance) ReceivedMessage(msg interface{}) (bool, interface{}, error) {
-	typemsg := reflect.TypeOf(msg)
-	log.Lvl3("Received message ", typemsg)
-	endStep, state, err := p.specializedLibInstance.ReceivedMessage(msg)
+func (p *PriFiLibInstance) ReceivedMessage(msg interface{}) error {
+	err := p.specializedLibInstance.ReceivedMessage(msg)
 	if err != nil {
 		log.Error(err)
+		return err
 	}
-	return endStep, state, nil
-}
-
-// SetMessageSender must be call to configure the message sender to continue the PriFi protocol at the next step
-func (p *PriFiLibInstance) SetMessageSender(msgSender net.MessageSender) error {
-	p.messageSender = msgSender
-	err := p.specializedLibInstance.SetMessageSender(msgSender)
-	if err != nil {
-		log.Error(err)
-	}
-	return nil
-}
-
-// SetMessageSender must be call to configure the message sender to continue the PriFi protocol at the next step
-func (p *PriFiLibInstance) SetSpecializedLibInstance(libInstance SpecializedLibInstance) error {
-	p.specializedLibInstance = libInstance
 	return nil
 }
 
 func newMessageSenderWrapper(msgSender net.MessageSender) *net.MessageSenderWrapper {
+
 	errHandling := func(e error) { /* do nothing yet, we are alerted of errors via the SDA */ }
 	loggingSuccessFunction := func(e interface{}) { log.Lvl3(e) }
 	loggingErrorFunction := func(e interface{}) { log.Error(e) }

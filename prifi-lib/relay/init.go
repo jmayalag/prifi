@@ -59,7 +59,7 @@ type PriFiLibRelayInstance struct {
 // Note: the returned state is not sufficient for the PrFi protocol
 // to start; this entity will expect a ALL_ALL_PARAMETERS message as
 // first received message to complete it's state.
-func NewRelay(dataOutputEnabled bool, dataForClients chan []byte, dataFromDCNet chan []byte, experimentResultChan chan interface{}, timeoutHandler func([]int, []int), msgSender *net.MessageSenderWrapper) *PriFiLibRelayInstance {
+func NewRelay(dataOutputEnabled bool, dataForClients chan []byte, dataFromDCNet chan []byte, experimentResultChan chan interface{}, openClosedSlotsMinDelayBetweenRequests int, timeoutHandler func([]int, []int), msgSender *net.MessageSenderWrapper) *PriFiLibRelayInstance {
 	relayState := new(RelayState)
 
 	//init the static stuff
@@ -70,26 +70,25 @@ func NewRelay(dataOutputEnabled bool, dataForClients chan []byte, dataFromDCNet 
 	relayState.ExperimentResultChannel = experimentResultChan
 	relayState.ExperimentResultData = make([]string, 0)
 	relayState.PriorityDataForClients = make(chan []byte, 10) // This is used for relay's control message (like latency-tests)
+	relayState.OpenClosedSlotsMinDelayBetweenRequests = openClosedSlotsMinDelayBetweenRequests
+	relayState.ScheduleLengthRepartitions = make(map[int]int)
 	relayState.bitrateStatistics = prifilog.NewBitRateStatistics()
 	relayState.timeStatistics = make(map[string]*prifilog.TimeStatistics)
 	relayState.timeStatistics["round-duration"] = prifilog.NewTimeStatistics()
 	relayState.timeStatistics["waiting-on-clients"] = prifilog.NewTimeStatistics()
 	relayState.timeStatistics["waiting-on-trustees"] = prifilog.NewTimeStatistics()
 	relayState.timeStatistics["sending-data"] = prifilog.NewTimeStatistics()
-	relayState.timeStatistics["dcnet-add"] = prifilog.NewTimeStatistics()
-	relayState.timeStatistics["dcnet-decode"] = prifilog.NewTimeStatistics()
-	relayState.timeStatistics["socks-out"] = prifilog.NewTimeStatistics()
-	relayState.timeStatistics["round-transition"] = prifilog.NewTimeStatistics()
+	relayState.timeStatistics["pcap-delay"] = prifilog.NewTimeStatistics()
 	relayState.PublicKey, relayState.privateKey = crypto.NewKeyPair()
 	relayState.slotScheduler = new(scheduler.BitMaskSlotScheduler_Relay)
-	relayState.bufferManager = new(BufferManager)
+	relayState.roundManager = new(BufferableRoundManager)
 	neffShuffle := new(scheduler.NeffShuffle)
 	neffShuffle.Init()
 	relayState.neffShuffle = neffShuffle.RelayView
 	relayState.Name = "Relay"
 
 	//init the state machine
-	states := []string{"BEFORE_INIT", "COLLECTING_TRUSTEES_PKS", "COLLECTING_CLIENT_PKS", "COLLECTING_SHUFFLES", "COLLECTING_SHUFFLE_SIGNATURES", "COMMUNICATING", "SHUTDOWN"}
+	states := []string{"BEFORE_INIT", "COLLECTING_TRUSTEES_PKS", "COLLECTING_CLIENT_PKS", "COLLECTING_SHUFFLES", "COLLECTING_SHUFFLE_SIGNATURES", "COMMUNICATING", "BLAMING", "SHUTDOWN"}
 	sm := new(utils.StateMachine)
 	logFn := func(s interface{}) {
 		log.Lvl2(s)
@@ -98,7 +97,7 @@ func NewRelay(dataOutputEnabled bool, dataForClients chan []byte, dataFromDCNet 
 		if strings.Contains(s.(string), ", but in state SHUTDOWN") { //it's an "acceptable error"
 			log.Lvl4(s)
 		} else {
-			log.Error(s)
+			log.Fatal(s)
 		}
 	}
 	sm.Init(states, logFn, errFn)
@@ -111,17 +110,17 @@ func NewRelay(dataOutputEnabled bool, dataForClients chan []byte, dataFromDCNet 
 	return &prifi
 }
 
-// The minimum time between two OpenClosed Slots Requests (if the first request has all closed slots, how long do you wait)
-const OPENCLOSEDSLOTS_MIN_DELAY_BETWEEN_REQUESTS = 1000 * time.Millisecond
+//The timeout before retransmission (UDP)
+const TIME_SLEEP_BEFORE_CLIENT_START = 10 * time.Second
 
 //The time slept between each round
 const PROCESSING_LOOP_SLEEP_TIME = 0 * time.Millisecond
 
 //The timeout before retransmission (UDP)
-const TIMEOUT_PHASE_1 = 1 * time.Second
+const TIMEOUT_PHASE_1 = 10 * time.Second
 
 //The timeout before kicking a client/trustee
-const TIMEOUT_PHASE_2 = 2 * time.Second
+const TIMEOUT_PHASE_2 = 20 * time.Second
 
 // Number of ciphertexts buffered by trustees. When <= TRUSTEE_CACHE_LOWBOUND, resume sending
 const TRUSTEE_CACHE_LOWBOUND = 1
@@ -139,40 +138,50 @@ type NodeRepresentation struct {
 
 // RelayState contains the mutable state of the relay.
 type RelayState struct {
-	bufferManager                     *BufferManager
-	CellCoder                         dcnet.CellCoder
-	clients                           []NodeRepresentation
-	dcnetRoundManager                 *DCNetRoundManager
-	neffShuffle                       *scheduler.NeffShuffleRelay
-	currentState                      int16
-	DataForClients                    chan []byte // VPN / SOCKS should put data there !
-	PriorityDataForClients            chan []byte
-	DataFromDCNet                     chan []byte // VPN / SOCKS should read data from there !
-	DataOutputEnabled                 bool        // If FALSE, nothing will be written to DataFromDCNet
-	DownstreamCellSize                int
-	MessageHistory                    abstract.Cipher
-	Name                              string
-	nClients                          int
-	nClientsPkCollected               int
-	nTrustees                         int
-	nTrusteesPkCollected              int
-	privateKey                        abstract.Scalar
-	PublicKey                         abstract.Point
-	ExperimentRoundLimit              int
-	trustees                          []NodeRepresentation
-	UpstreamCellSize                  int
-	UseDummyDataDown                  bool
-	UseOpenClosedSlots                bool
-	UseUDP                            bool
-	numberOfNonAckedDownstreamPackets int
-	WindowSize                        int
-	ExperimentResultChannel           chan interface{}
-	ExperimentResultData              []string
-	timeoutHandler                    func([]int, []int)
-	bitrateStatistics                 *prifilog.BitrateStatistics
-	timeStatistics                    map[string]*prifilog.TimeStatistics
-	slotScheduler                     *scheduler.BitMaskSlotScheduler_Relay
-	dcNetType                         string
+	CellCoder                              dcnet.CellCoder
+	clients                                []NodeRepresentation
+	roundManager                           *BufferableRoundManager
+	neffShuffle                            *scheduler.NeffShuffleRelay
+	currentState                           int16
+	DataForClients                         chan []byte // VPN / SOCKS should put data there !
+	PriorityDataForClients                 chan []byte
+	DataFromDCNet                          chan []byte // VPN / SOCKS should read data from there !
+	DataOutputEnabled                      bool        // If FALSE, nothing will be written to DataFromDCNet
+	DownstreamCellSize                     int
+	MessageHistory                         abstract.Cipher
+	Name                                   string
+	nClients                               int
+	nClientsPkCollected                    int
+	nTrustees                              int
+	nTrusteesPkCollected                   int
+	privateKey                             abstract.Scalar
+	PublicKey                              abstract.Point
+	ExperimentRoundLimit                   int
+	trustees                               []NodeRepresentation
+	UpstreamCellSize                       int
+	UseDummyDataDown                       bool
+	UseOpenClosedSlots                     bool
+	UseUDP                                 bool
+	numberOfNonAckedDownstreamPackets      int
+	WindowSize                             int
+	ExperimentResultChannel                chan interface{}
+	ExperimentResultData                   []string
+	timeoutHandler                         func([]int, []int)
+	bitrateStatistics                      *prifilog.BitrateStatistics
+	timeStatistics                         map[string]*prifilog.TimeStatistics
+	slotScheduler                          *scheduler.BitMaskSlotScheduler_Relay
+	dcNetType                              string
+	time0                                  uint64
+	pcapLogger                             *utils.PCAPLog
+	DisruptionProtectionEnabled            bool
+	OpenClosedSlotsMinDelayBetweenRequests int
+	ScheduleLengthRepartitions             map[int]int
+	OpenClosedSlotsRequestsRoundID         map[int32]bool // contains roundID -> true if that round should be a OC slot request
+
+	//disruption protection
+	clientBitMap  map[int]map[int]int
+	trusteeBitMap map[int]map[int]int
+	blamingData   []int //[round#, bitPos, clientID, bitRevealed, trusteeID, bitRevealed]
 
 	//Used for verifiable DC-net, part of the dcnet/owned.go
 	VerifiableDCNetKeys [][]byte
@@ -181,74 +190,48 @@ type RelayState struct {
 
 // ReceivedMessage must be called when a PriFi host receives a message.
 // It takes care to call the correct message handler function.
-func (p *PriFiLibRelayInstance) ReceivedMessage(msg interface{}) (bool, interface{}, error) {
+func (p *PriFiLibRelayInstance) ReceivedMessage(msg interface{}) error {
 
 	var err error
-	var endStep bool
-	var state interface{}
 
 	switch typedMsg := msg.(type) {
 	case net.ALL_ALL_PARAMETERS_NEW:
 		if typedMsg.ForceParams || p.stateMachine.AssertState("BEFORE_INIT") {
-			endStep, state, err = p.Received_ALL_ALL_PARAMETERS(typedMsg)
+			err = p.Received_ALL_ALL_PARAMETERS(typedMsg)
 		}
 	case net.ALL_ALL_SHUTDOWN:
-		endStep, state, err = p.Received_ALL_ALL_SHUTDOWN(typedMsg)
+		err = p.Received_ALL_ALL_SHUTDOWN(typedMsg)
 	case net.CLI_REL_UPSTREAM_DATA:
 		if p.stateMachine.AssertState("COMMUNICATING") {
-			endStep, state, err = p.Received_CLI_REL_UPSTREAM_DATA(typedMsg)
+			err = p.Received_CLI_REL_UPSTREAM_DATA(typedMsg)
 		}
 	case net.CLI_REL_OPENCLOSED_DATA:
 		if p.stateMachine.AssertState("COMMUNICATING") {
-			endStep, state, err = p.Received_CLI_REL_OPENCLOSED_DATA(typedMsg)
+			err = p.Received_CLI_REL_OPENCLOSED_DATA(typedMsg)
 		}
 	case net.TRU_REL_DC_CIPHER:
 		if p.stateMachine.AssertStateOrState("COMMUNICATING", "COLLECTING_SHUFFLE_SIGNATURES") {
-			endStep, state, err = p.Received_TRU_REL_DC_CIPHER(typedMsg)
+			err = p.Received_TRU_REL_DC_CIPHER(typedMsg)
 		}
 	case net.TRU_REL_TELL_PK:
 		if p.stateMachine.AssertState("COLLECTING_TRUSTEES_PKS") {
-			endStep, state, err = p.Received_TRU_REL_TELL_PK(typedMsg)
+			err = p.Received_TRU_REL_TELL_PK(typedMsg)
 		}
 	case net.CLI_REL_TELL_PK_AND_EPH_PK:
 		if p.stateMachine.AssertState("COLLECTING_CLIENT_PKS") {
-			endStep, state, err = p.Received_CLI_REL_TELL_PK_AND_EPH_PK(typedMsg)
-		}
-	case net.SERVICE_REL_TELL_PK_AND_EPH_PK:
-		if p.stateMachine.AssertState("COLLECTING_CLIENT_PKS") {
-			endStep, state, err = p.Received_SERVICE_REL_TELL_PK_AND_EPH_PK(typedMsg)
+			err = p.Received_CLI_REL_TELL_PK_AND_EPH_PK(typedMsg)
 		}
 	case net.TRU_REL_TELL_NEW_BASE_AND_EPH_PKS:
 		if p.stateMachine.AssertState("COLLECTING_SHUFFLES") {
-			endStep, state, err = p.Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS(typedMsg)
+			err = p.Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS(typedMsg)
 		}
 	case net.TRU_REL_SHUFFLE_SIG:
 		if p.stateMachine.AssertState("COLLECTING_SHUFFLE_SIGNATURES") {
-			endStep, state, err = p.Received_TRU_REL_SHUFFLE_SIG(typedMsg)
-		}
-	case net.SERVICE_REL_SHUFFLE_SIG:
-		if p.stateMachine.AssertState("COLLECTING_SHUFFLE_SIGNATURES") {
-			endStep, state, err = p.Received_SERVICE_REL_SHUFFLE_SIG(typedMsg)
+			err = p.Received_TRU_REL_SHUFFLE_SIG(typedMsg)
 		}
 	default:
 		err = errors.New("Unrecognized message, type" + reflect.TypeOf(msg).String())
-		endStep = false
-		state = nil
 	}
 
-	return endStep, state, err
-}
-
-// SetMessageSender is used by the service to configure the message sender of the current Relay Instance
-func (p *PriFiLibRelayInstance) SetMessageSender(msgSender net.MessageSender) error {
-	errHandling := func(e error) { /* do nothing yet, we are alerted of errors via the SDA */ }
-	loggingSuccessFunction := func(e interface{}) { log.Lvl3(e) }
-	loggingErrorFunction := func(e interface{}) { log.Error(e) }
-
-	msw, err := net.NewMessageSenderWrapper(true, loggingSuccessFunction, loggingErrorFunction, errHandling, msgSender)
-	if err != nil {
-		log.Fatal("Could not create a MessageSenderWrapper, error is", err)
-	}
-	p.messageSender = msw
-	return nil
+	return err
 }

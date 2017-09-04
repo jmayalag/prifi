@@ -3,7 +3,6 @@ package trustee
 import (
 	"errors"
 	"github.com/lbarman/prifi/prifi-lib/crypto"
-	"github.com/lbarman/prifi/prifi-lib/dcnet"
 	"github.com/lbarman/prifi/prifi-lib/net"
 	"github.com/lbarman/prifi/prifi-lib/scheduler"
 	"github.com/lbarman/prifi/prifi-lib/utils"
@@ -18,11 +17,11 @@ import (
 const (
 	TRUSTEE_KILL_SEND_PROCESS int16 = iota // kills the goroutine responsible for sending messages
 	TRUSTEE_RATE_ACTIVE
-	TRUSTEE_RATE_STOPPED
+	TRUSTEE_RATE_HALVED
 )
 
 // TRUSTEE_BASE_SLEEP_TIME is the base unit for how much time the trustee sleeps between sending ciphers to the relay.
-const TRUSTEE_BASE_SLEEP_TIME = 10 * time.Millisecond
+const TRUSTEE_BASE_SLEEP_TIME = 100 * time.Millisecond
 
 // PriFiLibTrusteeInstance contains the mutable state of a PriFi entity.
 type PriFiLibTrusteeInstance struct {
@@ -32,20 +31,21 @@ type PriFiLibTrusteeInstance struct {
 }
 
 // NewPriFiClientWithState creates a new PriFi client entity state.
-func NewTrustee(msgSender *net.MessageSenderWrapper) *PriFiLibTrusteeInstance {
+func NewTrustee(neverSlowDown bool, msgSender *net.MessageSenderWrapper) *PriFiLibTrusteeInstance {
 
 	trusteeState := new(TrusteeState)
 
 	//init the static stuff
 	trusteeState.sendingRate = make(chan int16, 10)
-	//trusteeState.CellCoder = config.Factory()
+	trusteeState.DCNet_RoundManager = new(DCNet_RoundManager)
 	trusteeState.PublicKey, trusteeState.privateKey = crypto.NewKeyPair()
 	neffShuffle := new(scheduler.NeffShuffle)
 	neffShuffle.Init()
 	trusteeState.neffShuffle = neffShuffle.TrusteeView
+	trusteeState.NeverSlowDown = neverSlowDown
 
 	//init the state machine
-	states := []string{"BEFORE_INIT", "INITIALIZING", "SHUFFLE_DONE", "READY", "COMMUNICATING", "SHUTDOWN"}
+	states := []string{"BEFORE_INIT", "INITIALIZING", "SHUFFLE_DONE", "READY", "BLAMING", "SHUTDOWN"}
 	sm := new(utils.StateMachine)
 	logFn := func(s interface{}) {
 		log.Lvl3(s)
@@ -54,7 +54,7 @@ func NewTrustee(msgSender *net.MessageSenderWrapper) *PriFiLibTrusteeInstance {
 		if strings.Contains(s.(string), ", but in state SHUTDOWN") { //it's an "acceptable error"
 			log.Lvl2(s)
 		} else {
-			log.Error(s)
+			log.Fatal(s)
 		}
 	}
 	sm.Init(states, logFn, errFn)
@@ -69,20 +69,21 @@ func NewTrustee(msgSender *net.MessageSenderWrapper) *PriFiLibTrusteeInstance {
 
 // TrusteeState contains the mutable state of the trustee.
 type TrusteeState struct {
-	CellCoder        dcnet.CellCoder
-	ClientPublicKeys []abstract.Point
-	ID               int
-	MessageHistory   abstract.Cipher
-	Name             string
-	nClients         int
-	neffShuffle      *scheduler.NeffShuffleTrustee
-	nTrustees        int
-	PayloadLength    int
-	privateKey       abstract.Scalar
-	PublicKey        abstract.Point
-	sendingRate      chan int16
-	sharedSecrets    []abstract.Point
-	TrusteeID        int
+	DCNet_RoundManager *DCNet_RoundManager
+	ClientPublicKeys   []abstract.Point
+	ID                 int
+	MessageHistory     abstract.Cipher
+	Name               string
+	nClients           int
+	neffShuffle        *scheduler.NeffShuffleTrustee
+	nTrustees          int
+	PayloadLength      int
+	privateKey         abstract.Scalar
+	PublicKey          abstract.Point
+	sendingRate        chan int16
+	sharedSecrets      []abstract.Point
+	TrusteeID          int
+	NeverSlowDown      bool //ignore the sleep in the sending function if rate is STOPPED
 }
 
 // NeffShuffleResult holds the result of the NeffShuffle,
@@ -95,54 +96,42 @@ type NeffShuffleResult struct {
 
 // ReceivedMessage must be called when a PriFi host receives a message.
 // It takes care to call the correct message handler function.
-func (p *PriFiLibTrusteeInstance) ReceivedMessage(msg interface{}) (bool, interface{}, error) {
+func (p *PriFiLibTrusteeInstance) ReceivedMessage(msg interface{}) error {
 
 	var err error
-	var endStep bool
-	var state interface{}
 
 	switch typedMsg := msg.(type) {
 	case net.ALL_ALL_PARAMETERS_NEW:
 		if typedMsg.ForceParams || p.stateMachine.AssertState("BEFORE_INIT") {
-			endStep, state, err = p.Received_ALL_ALL_PARAMETERS(typedMsg) //todo change this name
+			err = p.Received_ALL_ALL_PARAMETERS(typedMsg) //todo change this name
 		}
 	case net.ALL_ALL_SHUTDOWN:
-		endStep, state, err = p.Received_ALL_ALL_SHUTDOWN(typedMsg)
+		err = p.Received_ALL_ALL_SHUTDOWN(typedMsg)
 	case net.REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE:
 		if p.stateMachine.AssertState("INITIALIZING") {
-			endStep, state, err = p.Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE(typedMsg)
+			err = p.Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE(typedMsg)
 		}
 	case net.REL_TRU_TELL_TRANSCRIPT:
 		if p.stateMachine.AssertState("SHUFFLE_DONE") {
-			endStep, state, err = p.Received_REL_TRU_TELL_TRANSCRIPT(typedMsg)
-		}
-	case net.REL_TRU_TELL_READY:
-		if p.stateMachine.AssertState("READY") {
-			endStep, state, err = p.Received_REL_TRU_TELL_READY(typedMsg)
+			err = p.Received_REL_TRU_TELL_TRANSCRIPT(typedMsg)
 		}
 	case net.REL_TRU_TELL_RATE_CHANGE:
-		if p.stateMachine.AssertState("COMMUNICATING") {
-			endStep, state, err = p.Received_REL_TRU_TELL_RATE_CHANGE(typedMsg)
+		if p.stateMachine.AssertState("READY") {
+			err = p.Received_REL_TRU_TELL_RATE_CHANGE(typedMsg)
+		}
+	case net.REL_ALL_DISRUPTION_REVEAL:
+		if p.stateMachine.AssertState("READY") {
+			log.Fatal("not implemented")
+			//err = p.Received_REL_ALL_REVEAL(typedMsg)
+		}
+	case net.REL_ALL_DISRUPTION_SECRET:
+		if p.stateMachine.AssertState("BLAMING") {
+			log.Fatal("not implemented")
+			//err = p.Received_REL_ALL_SECRET(typedMsg)
 		}
 	default:
 		err = errors.New("Unrecognized message, type" + reflect.TypeOf(msg).String())
-		endStep = false
-		state = nil
 	}
 
-	return endStep, state, err
-}
-
-// SetMessageSender is used by the service to configure the message sender of the current Trustee Instance
-func (p *PriFiLibTrusteeInstance) SetMessageSender(msgSender net.MessageSender) error {
-	errHandling := func(e error) { /* do nothing yet, we are alerted of errors via the SDA */ }
-	loggingSuccessFunction := func(e interface{}) { log.Lvl3(e) }
-	loggingErrorFunction := func(e interface{}) { log.Error(e) }
-
-	msw, err := net.NewMessageSenderWrapper(true, loggingSuccessFunction, loggingErrorFunction, errHandling, msgSender)
-	if err != nil {
-		log.Fatal("Could not create a MessageSenderWrapper, error is", err)
-	}
-	p.messageSender = msw
-	return nil
+	return err
 }

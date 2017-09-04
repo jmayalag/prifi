@@ -18,7 +18,6 @@ import (
 // ALL_ALL_SHUTDOWN
 // ALL_ALL_PARAMETERS
 // CLI_REL_TELL_PK_AND_EPH_PK
-// SERVICE_REL_TELL_PK_AND_EPH_PK
 // CLI_REL_UPSTREAM_DATA
 // REL_CLI_DOWNSTREAM_DATA
 // REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG
@@ -27,11 +26,9 @@ import (
 // REL_TRU_TELL_TRANSCRIPT
 // TRU_REL_DC_CIPHER
 // TRU_REL_SHUFFLE_SIG
-// SERVICE_REL_SHUFFLE_SIG
 // REL_TRU_TELL_RATE_CHANGE
 // TRU_REL_TELL_NEW_BASE_AND_EPH_PKS
 // TRU_REL_TELL_PK
-// REL_TRU_TELL_READY
 // REL_TRU_TELL_RATE_CHANGE
 
 //not used yet :
@@ -50,17 +47,11 @@ type CLI_REL_TELL_PK_AND_EPH_PK struct {
 	EphPk    abstract.Point
 }
 
-// SERVICE_REL_TELL_PK_AND_EPH_PK contains the acknowledgement of CLI_REL_TELL_PK_AND_EPH_PK and is sent to the
-// relay from the service to start the schedule phase.
-type SERVICE_REL_TELL_PK_AND_EPH_PK struct {
-	ClientID int
-}
-
 // CLI_REL_UPSTREAM_DATA message contains the upstream data of a client for a given round
 // and is sent to the relay.
 type CLI_REL_UPSTREAM_DATA struct {
 	ClientID int
-	RoundID  int32
+	RoundID  int32 // rounds increase 1 by 1, only represent ciphers
 	Data     []byte
 }
 
@@ -75,6 +66,7 @@ type CLI_REL_OPENCLOSED_DATA struct {
 // and is sent by the relay to the clients.
 type REL_CLI_DOWNSTREAM_DATA struct {
 	RoundID               int32
+	OwnershipID           int // ownership may vary with open or closed slots
 	Data                  []byte
 	FlagResync            bool
 	FlagOpenClosedRequest bool
@@ -147,11 +139,6 @@ type REL_TRU_TELL_TRANSCRIPT struct {
 	Proofs []ByteArray
 }
 
-// REL_TRU_TELL_READY message used to notify the trustee they are ready to transmit DC_CIPHER
-type REL_TRU_TELL_READY struct {
-	TrusteeID int
-}
-
 // TRU_REL_DC_CIPHER message contains the DC-net cipher of a trustee for a given round and is sent to the relay.
 type TRU_REL_DC_CIPHER struct {
 	RoundID   int32
@@ -163,12 +150,6 @@ type TRU_REL_DC_CIPHER struct {
 type TRU_REL_SHUFFLE_SIG struct {
 	TrusteeID int
 	Sig       []byte
-}
-
-// SERVICE_REL_SHUFFLE_SIG contains the acknowledgement of the signatures and is sent to the relay from the service to start
-// the communication phase.
-type SERVICE_REL_SHUFFLE_SIG struct {
-	TrusteeID int
 }
 
 // REL_TRU_TELL_RATE_CHANGE message asks the trustees to update their window capacity to adapt their
@@ -217,7 +198,7 @@ func (m *REL_CLI_DOWNSTREAM_DATA_UDP) SetContent(data REL_CLI_DOWNSTREAM_DATA) {
 func (m *REL_CLI_DOWNSTREAM_DATA_UDP) ToBytes() ([]byte, error) {
 
 	//convert the message to bytes
-	buf := make([]byte, 4+len(m.REL_CLI_DOWNSTREAM_DATA.Data)+4+4)
+	buf := make([]byte, 4+4+len(m.REL_CLI_DOWNSTREAM_DATA.Data)+4+4)
 	resyncInt := 0
 	if m.REL_CLI_DOWNSTREAM_DATA.FlagResync {
 		resyncInt = 1
@@ -227,11 +208,12 @@ func (m *REL_CLI_DOWNSTREAM_DATA_UDP) ToBytes() ([]byte, error) {
 		openclosedInt = 1
 	}
 
-	// [0:4 roundID] [4:end-8 data] [end-8:end-4 resyncFlag] [end-4:end openClosedFlag]
+	// [0:4 roundID] [4:8 roundID] [8:end-8 data] [end-8:end-4 resyncFlag] [end-4:end openClosedFlag]
 	binary.BigEndian.PutUint32(buf[0:4], uint32(m.REL_CLI_DOWNSTREAM_DATA.RoundID))
+	binary.BigEndian.PutUint32(buf[4:8], uint32(m.REL_CLI_DOWNSTREAM_DATA.OwnershipID))
 	binary.BigEndian.PutUint32(buf[len(buf)-8:len(buf)-4], uint32(resyncInt)) //todo : to be coded on one byte
 	binary.BigEndian.PutUint32(buf[len(buf)-4:], uint32(openclosedInt))       //todo : to be coded on one byte
-	copy(buf[4:len(buf)-8], m.REL_CLI_DOWNSTREAM_DATA.Data)
+	copy(buf[8:len(buf)-8], m.REL_CLI_DOWNSTREAM_DATA.Data)
 
 	return buf, nil
 
@@ -248,9 +230,10 @@ func (m *REL_CLI_DOWNSTREAM_DATA_UDP) FromBytes(buffer []byte) (interface{}, err
 
 	// [0:4 roundID] [4:end-8 data] [end-8:end-4 resyncFlag] [end-4:end openClosedFlag]
 	roundID := int32(binary.BigEndian.Uint32(buffer[0:4]))
+	ownerShipID := int(binary.BigEndian.Uint32(buffer[4:8]))
 	flagResyncInt := int(binary.BigEndian.Uint32(buffer[len(buffer)-8 : len(buffer)-4]))
 	flagOpenClosedInt := int(binary.BigEndian.Uint32(buffer[len(buffer)-4:]))
-	data := buffer[4 : len(buffer)-8]
+	data := buffer[8 : len(buffer)-8]
 
 	flagResync := false
 	if flagResyncInt == 1 {
@@ -261,8 +244,56 @@ func (m *REL_CLI_DOWNSTREAM_DATA_UDP) FromBytes(buffer []byte) (interface{}, err
 		flagOpenClosed = true
 	}
 
-	innerMessage := REL_CLI_DOWNSTREAM_DATA{roundID, data, flagResync, flagOpenClosed}
+	innerMessage := REL_CLI_DOWNSTREAM_DATA{roundID, ownerShipID, data, flagResync, flagOpenClosed}
 	resultMessage := REL_CLI_DOWNSTREAM_DATA_UDP{innerMessage}
 
 	return resultMessage, nil
+}
+
+// REL_CLI_DISRUPTED_ROUND is when the relay detects a disruption, and sends it back to the client
+type REL_CLI_DISRUPTED_ROUND struct {
+	RoundID int32
+	Data    []byte
+}
+
+// CLI_REL_DISRUPTION_BLAME contains a disrupted roundID and the position where a bit was flipped, and is sent to the relay
+type CLI_REL_DISRUPTION_BLAME struct {
+	RoundID int32
+	NIZK    []byte
+	BitPos  int
+}
+
+// REL_ALL_DISRUPTION_REVEAL contains a disrupted roundID and the position where a bit was flipped, and is sent by the relay
+type REL_ALL_DISRUPTION_REVEAL struct {
+	RoundID int32
+	BitPos  int
+}
+
+// CLI_REL_DISRUPTION_REVEAL contains a map with individual bits to find a disruptor, and is sent to the relay
+type CLI_REL_DISRUPTION_REVEAL struct {
+	ClientID int
+	Bits     map[int]int
+}
+
+// TRU_REL_DISRUPTION_REVEAL contains a map with individual bits to find a disruptor, and is sent to the relay
+type TRU_REL_DISRUPTION_REVEAL struct {
+	TrusteeID int
+	Bits      map[int]int
+}
+
+// REL_ALL_DISRUPTION_SECRET contains request ro reveal the shared secret with the specified recipient, and is sent by the relay
+type REL_ALL_DISRUPTION_SECRET struct {
+	UserID int
+}
+
+// CLI_REL_DISRUPTION_SECRET contains the shared secret requested by the relay, with a proof we computed it correctly
+type CLI_REL_DISRUPTION_SECRET struct {
+	Secret abstract.Point
+	NIZK   []byte
+}
+
+// TRU_REL_DISRUPTION_SECRET contains the shared secret requested by the relay, with a proof we computed it correctly
+type TRU_REL_DISRUPTION_SECRET struct {
+	Secret abstract.Point
+	NIZK   []byte
 }

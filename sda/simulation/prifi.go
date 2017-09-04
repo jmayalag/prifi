@@ -7,7 +7,6 @@ import (
 	"github.com/BurntSushi/toml"
 	prifi_protocol "github.com/lbarman/prifi/sda/protocols"
 	prifi_service "github.com/lbarman/prifi/sda/services"
-	"github.com/lbarman/prifi/utils/output"
 	"gopkg.in/dedis/onet.v1"
 	"gopkg.in/dedis/onet.v1/app"
 	"gopkg.in/dedis/onet.v1/log"
@@ -25,7 +24,7 @@ import (
 const FILE_SIMULATION_ID = ".simID"
 
 // SIMULATION_ROUND_TIMEOUT_SECONDS is define the max duration of one round of the simulation
-const SIMULATION_ROUND_TIMEOUT_SECONDS = 360
+var SIMULATION_ROUND_TIMEOUT_SECONDS = 360
 
 /*
  * Defines the simulation for the service-template
@@ -144,11 +143,17 @@ func (s *SimulationService) Node(config *onet.SimulationConfig) error {
 	} else if index > 0 && index <= s.NTrustees {
 		log.Lvl1("Initiating this node (index ", index, ") as trustee")
 		time.Sleep(5 * time.Second)
-		err = service.StartTrustee(group)
+		err = service.StartTrustee(group) //let the relay boot
 	} else {
-		log.Lvl1("Initiating this node (index ", index, ") as client")
-		time.Sleep(5 * time.Second)
-		err = service.StartClient(group)
+		time.Sleep(5 * time.Second) //let the relay boot
+		if s.PrifiTomlConfig.SimulDelayBetweenClients > 0 {
+			clientIndex := index - 1 - s.NTrustees
+			timeToSleep := 5 + s.PrifiTomlConfig.SimulDelayBetweenClients*clientIndex
+
+			err = service.StartClient(group, time.Duration(timeToSleep))
+		} else {
+			err = service.StartClient(group, time.Duration(0))
+		}
 	}
 
 	if err != nil {
@@ -200,12 +205,21 @@ func (s *SimulationService) Run(config *onet.SimulationConfig) error {
 	//block and get the result from the channel
 	var resStringArray []string
 
-	log.Info("Giving the experiment", SIMULATION_ROUND_TIMEOUT_SECONDS, " seconds to finish before aborting...")
+	if s.PrifiTomlConfig.SimulDelayBetweenClients > 0 {
+		nClients := s.Hosts - 1 - s.NTrustees
+		timeForAllClientsPlusOne := 5 + s.PrifiTomlConfig.SimulDelayBetweenClients*(nClients+1)
+
+		if SIMULATION_ROUND_TIMEOUT_SECONDS < timeForAllClientsPlusOne {
+			SIMULATION_ROUND_TIMEOUT_SECONDS = timeForAllClientsPlusOne
+		}
+	}
+
+	log.Lvl1("Giving the experiment", SIMULATION_ROUND_TIMEOUT_SECONDS, "seconds to finish before aborting...")
 	select {
 	case res := <-service.PriFiSDAProtocol.ResultChannel:
 		resStringArray = res.([]string)
 
-	case <-time.After(SIMULATION_ROUND_TIMEOUT_SECONDS * time.Second):
+	case <-time.After(time.Duration(SIMULATION_ROUND_TIMEOUT_SECONDS) * time.Second):
 		resStringArray = make([]string, 1)
 		resStringArray[0] = "!!simulation timed out."
 	}
@@ -246,12 +260,12 @@ func writeExperimentResult(data []string, simulationID string, config *onet.Simu
 	}
 
 	//write to file
-	o := new(output.FileOutput)
 	filePath := path.Join(folderName, "output.json")
-	o.Filename = filePath
-	log.Info("Simulation results stored in", o.Filename)
+	log.Info("Simulation results stored in", filePath)
+	fo, _ := os.Create(filePath)
+	defer fo.Close()
 	for _, s := range data {
-		o.Print(s)
+		fo.WriteString(s)
 	}
 }
 func hashString(data string) string {

@@ -23,19 +23,13 @@ type Struct_CLI_REL_TELL_PK_AND_EPH_PK struct {
 	net.CLI_REL_TELL_PK_AND_EPH_PK
 }
 
-//Struct_SERVICE_REL_TELL_PK_AND_EPH_PK is a wrapper for SERVICE_REL_TELL_PK_AND_EPH_PK (but also contains a *onet.TreeNode)
-type Struct_SERVICE_REL_TELL_PK_AND_EPH_PK struct {
-	*onet.TreeNode
-	net.SERVICE_REL_TELL_PK_AND_EPH_PK
-}
-
 //Struct_CLI_REL_UPSTREAM_DATA is a wrapper for CLI_REL_UPSTREAM_DATA (but also contains a *onet.TreeNode)
 type Struct_CLI_REL_UPSTREAM_DATA struct {
 	*onet.TreeNode
 	net.CLI_REL_UPSTREAM_DATA
 }
 
-//Struct_CLI_REL_OPENCLOSED_DATA is a wrapper for CLI_REL_OPENCLOSED_DATA (but also contains a *onet.TreeNode)
+//Struct_CLI_REL_UPSTREAM_DATA is a wrapper for CLI_REL_OPENCLOSED_DATA (but also contains a *onet.TreeNode)
 type Struct_CLI_REL_OPENCLOSED_DATA struct {
 	*onet.TreeNode
 	net.CLI_REL_OPENCLOSED_DATA
@@ -83,12 +77,6 @@ type Struct_TRU_REL_SHUFFLE_SIG struct {
 	net.TRU_REL_SHUFFLE_SIG
 }
 
-//Struct_SERVICE_REL_SHUFFLE_SIG is a wrapper for SERVICE_REL_SHUFFLE_SIG (but also contains a *onet.TreeNode)
-type Struct_SERVICE_REL_SHUFFLE_SIG struct {
-	*onet.TreeNode
-	net.SERVICE_REL_SHUFFLE_SIG
-}
-
 //Struct_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS is a wrapper for TRU_REL_TELL_NEW_BASE_AND_EPH_PKS (but also contains a *onet.TreeNode)
 type Struct_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS struct {
 	*onet.TreeNode
@@ -101,14 +89,56 @@ type Struct_TRU_REL_TELL_PK struct {
 	net.TRU_REL_TELL_PK
 }
 
-//Struct_REL_TRU_TELL_READY is a wrapper for REL_TRU_TELL_READY (but also contains a *onet.TreeNode)
-type Struct_REL_TRU_TELL_READY struct {
-	*onet.TreeNode
-	net.REL_TRU_TELL_READY
-}
-
 //Struct_REL_TRU_TELL_RATE_CHANGE is a wrapper for REL_TRU_TELL_RATE_CHANGE (but also contains a *onet.TreeNode)
 type Struct_REL_TRU_TELL_RATE_CHANGE struct {
 	*onet.TreeNode
 	net.REL_TRU_TELL_RATE_CHANGE
+}
+
+//Struct_REL_CLI_DISRUPTED_ROUND is a wrapper for REL_CLI_DISRUPTED_ROUND (but also contains a *onet.TreeNode)
+type Struct_REL_CLI_DISRUPTED_ROUND struct {
+	*onet.TreeNode
+	net.REL_CLI_DISRUPTED_ROUND
+}
+
+//Struct_CLI_REL_DISRUPTION_BLAME is a wrapper for CLI_REL_DISRUPTION_BLAME (but also contains a *onet.TreeNode)
+type Struct_CLI_REL_DISRUPTION_BLAME struct {
+	*onet.TreeNode
+	net.CLI_REL_DISRUPTION_BLAME
+}
+
+//Struct_REL_ALL_DISRUPTION_REVEAL is a wrapper for REL_ALL_DISRUPTION_REVEAL (but also contains a *onet.TreeNode)
+type Struct_REL_ALL_DISRUPTION_REVEAL struct {
+	*onet.TreeNode
+	net.REL_ALL_DISRUPTION_REVEAL
+}
+
+//Struct_CLI_REL_DISRUPTION_REVEAL is a wrapper for CLI_REL_DISRUPTION_REVEAL (but also contains a *onet.TreeNode)
+type Struct_CLI_REL_DISRUPTION_REVEAL struct {
+	*onet.TreeNode
+	net.CLI_REL_DISRUPTION_REVEAL
+}
+
+//Struct_TRU_REL_DISRUPTION_REVEAL is a wrapper for TRU_REL_DISRUPTION_REVEAL (but also contains a *onet.TreeNode)
+type Struct_TRU_REL_DISRUPTION_REVEAL struct {
+	*onet.TreeNode
+	net.TRU_REL_DISRUPTION_REVEAL
+}
+
+//Struct_REL_ALL_DISRUPTION_SECRET is a wrapper for REL_ALL_DISRUPTION_SECRET (but also contains a *onet.TreeNode)
+type Struct_REL_ALL_DISRUPTION_SECRET struct {
+	*onet.TreeNode
+	net.REL_ALL_DISRUPTION_SECRET
+}
+
+//Struct_CLI_REL_DISRUPTION_SECRET is a wrapper for CLI_REL_DISRUPTION_SECRET (but also contains a *onet.TreeNode)
+type Struct_CLI_REL_DISRUPTION_SECRET struct {
+	*onet.TreeNode
+	net.CLI_REL_DISRUPTION_SECRET
+}
+
+//Struct_TRU_REL_DISRUPTION_SECRET is a wrapper for TRU_REL_DISRUPTION_SECRET (but also contains a *onet.TreeNode)
+type Struct_TRU_REL_DISRUPTION_SECRET struct {
+	*onet.TreeNode
+	net.TRU_REL_DISRUPTION_SECRET
 }

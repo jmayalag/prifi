@@ -36,32 +36,33 @@ import (
 
 // ClientState contains the mutable state of the client.
 type ClientState struct {
-	DCNet_FF                  *DCNet_FastForwarder
-	currentState              int16
-	DataForDCNet              chan []byte //Data to the relay : VPN / SOCKS should put data there !
-	NextDataForDCNet          *[]byte     //if not nil, send this before polling DataForDCNet
-	DataFromDCNet             chan []byte //Data from the relay : VPN / SOCKS should read data from there !
-	DataOutputEnabled         bool        //if FALSE, nothing will be written to DataFromDCNet
-	ephemeralPrivateKey       abstract.Scalar
-	EphemeralPublicKey        abstract.Point
-	ID                        int
-	LatencyTest               *prifilog.LatencyTests
-	MySlot                    int
-	Name                      string
-	nClients                  int
-	nTrustees                 int
-	PayloadLength             int
-	privateKey                abstract.Scalar
-	PublicKey                 abstract.Point
-	sharedSecrets             []abstract.Point
-	TrusteePublicKey          []abstract.Point
-	UsablePayloadLength       int
-	UseSocksProxy             bool
-	UseUDP                    bool
-	MessageHistory            abstract.Cipher
-	StartStopReceiveBroadcast chan bool
-	timeStatistics            map[string]*prifilog.TimeStatistics
-	pcapReplay                *PCAPReplayer
+	DCNet_RoundManager          *DCNet_RoundManager
+	currentState                int16
+	DataForDCNet                chan []byte //Data to the relay : VPN / SOCKS should put data there !
+	NextDataForDCNet            *[]byte     //if not nil, send this before polling DataForDCNet
+	DataFromDCNet               chan []byte //Data from the relay : VPN / SOCKS should read data from there !
+	DataOutputEnabled           bool        //if FALSE, nothing will be written to DataFromDCNet
+	ephemeralPrivateKey         abstract.Scalar
+	EphemeralPublicKey          abstract.Point
+	ID                          int
+	LatencyTest                 *prifilog.LatencyTests
+	MySlot                      int
+	Name                        string
+	nClients                    int
+	nTrustees                   int
+	PayloadLength               int
+	privateKey                  abstract.Scalar
+	PublicKey                   abstract.Point
+	sharedSecrets               []abstract.Point
+	TrusteePublicKey            []abstract.Point
+	UsablePayloadLength         int
+	UseSocksProxy               bool
+	UseUDP                      bool
+	MessageHistory              abstract.Cipher
+	StartStopReceiveBroadcast   chan bool
+	timeStatistics              map[string]*prifilog.TimeStatistics
+	pcapReplay                  *PCAPReplayer
+	DisruptionProtectionEnabled bool
 
 	//concurrent stuff
 	RoundNo           int32
@@ -70,10 +71,12 @@ type ClientState struct {
 
 // PCAPReplayer handles the data needed to replay some .pcap file
 type PCAPReplayer struct {
-	Enabled    bool
-	PCAPFolder string
-	PCAPFile   string
-	Packets    []utils.Packet
+	Enabled       bool
+	PCAPFolder    string
+	PCAPFile      string
+	Packets       []utils.Packet
+	currentPacket int
+	time0         uint64
 }
 
 // PriFiLibInstance contains the mutable state of a PriFi entity.
@@ -93,7 +96,7 @@ func NewClient(doLatencyTest bool, dataOutputEnabled bool, dataForDCNet chan []b
 	//clientState.StartStopReceiveBroadcast = make(chan bool) //this should stay nil, !=nil -> we have a listener goroutine active
 	clientState.LatencyTest = &prifilog.LatencyTests{
 		DoLatencyTests:       doLatencyTest,
-		LatencyTestsInterval: 5 * time.Second,
+		LatencyTestsInterval: 2 * time.Second,
 		NextLatencyTest:      time.Now(),
 		LatencyTestsToSend:   make([]*prifilog.LatencyTestToSend, 0),
 	}
@@ -105,14 +108,15 @@ func NewClient(doLatencyTest bool, dataOutputEnabled bool, dataForDCNet chan []b
 	clientState.NextDataForDCNet = nil
 	clientState.DataFromDCNet = dataFromDCNet
 	clientState.DataOutputEnabled = dataOutputEnabled
-	clientState.DCNet_FF = new(DCNet_FastForwarder)
+	clientState.DCNet_RoundManager = new(DCNet_RoundManager)
 	clientState.pcapReplay = &PCAPReplayer{
 		Enabled:    doReplayPcap,
 		PCAPFolder: pcapFolder,
+		time0:      uint64(MsTimeStampNow()),
 	}
 
 	//init the state machine
-	states := []string{"BEFORE_INIT", "INITIALIZING", "EPH_KEYS_SENT", "READY", "SHUTDOWN"}
+	states := []string{"BEFORE_INIT", "EPH_KEYS_SENT", "READY", "BLAMING", "SHUTDOWN"}
 	sm := new(utils.StateMachine)
 	logFn := func(s interface{}) {
 		log.Lvl2(s)
@@ -121,7 +125,7 @@ func NewClient(doLatencyTest bool, dataOutputEnabled bool, dataForDCNet chan []b
 		if strings.Contains(s.(string), ", but in state SHUTDOWN") { //it's an "acceptable error"
 			log.Lvl2(s)
 		} else {
-			log.Error(s)
+			log.Fatal(s)
 		}
 	}
 	sm.Init(states, logFn, errFn)
@@ -137,54 +141,32 @@ func NewClient(doLatencyTest bool, dataOutputEnabled bool, dataForDCNet chan []b
 
 // ReceivedMessage must be called when a PriFi host receives a message.
 // It takes care to call the correct message handler function.
-func (p *PriFiLibClientInstance) ReceivedMessage(msg interface{}) (bool, interface{}, error) {
+func (p *PriFiLibClientInstance) ReceivedMessage(msg interface{}) error {
 
 	var err error
-	var endStep bool
-	var state interface{}
 
 	switch typedMsg := msg.(type) {
 	case net.ALL_ALL_PARAMETERS_NEW:
 		if typedMsg.ForceParams || p.stateMachine.AssertState("BEFORE_INIT") {
-			endStep, state, err = p.Received_ALL_ALL_PARAMETERS(typedMsg)
+			err = p.Received_ALL_ALL_PARAMETERS(typedMsg)
 		}
 	case net.ALL_ALL_SHUTDOWN:
-		endStep, state, err = p.Received_ALL_ALL_SHUTDOWN(typedMsg)
+		err = p.Received_ALL_ALL_SHUTDOWN(typedMsg)
 	case net.REL_CLI_DOWNSTREAM_DATA:
 		if p.stateMachine.AssertState("READY") {
-			endStep, state, err = p.Received_REL_CLI_DOWNSTREAM_DATA(typedMsg)
+			err = p.Received_REL_CLI_DOWNSTREAM_DATA(typedMsg)
 		}
 	case net.REL_CLI_DOWNSTREAM_DATA_UDP:
 		if p.stateMachine.AssertState("READY") {
-			endStep, state, err = p.Received_REL_CLI_UDP_DOWNSTREAM_DATA(typedMsg)
-		}
-	case net.REL_CLI_TELL_TRUSTEES_PK:
-		if p.stateMachine.AssertState("INITIALIZING") {
-			endStep, state, err = p.Received_REL_CLI_TELL_TRUSTEES_PK(typedMsg)
+			err = p.Received_REL_CLI_UDP_DOWNSTREAM_DATA(typedMsg)
 		}
 	case net.REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG:
 		if p.stateMachine.AssertState("EPH_KEYS_SENT") {
-			endStep, state, err = p.Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(typedMsg)
+			err = p.Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(typedMsg)
 		}
 	default:
 		err = errors.New("Unrecognized message, type" + reflect.TypeOf(msg).String())
-		endStep = false
-		state = nil
 	}
 
-	return endStep, state, err
-}
-
-// SetMessageSender is used by the service to configure the message sender of the current Client Instance
-func (p *PriFiLibClientInstance) SetMessageSender(msgSender net.MessageSender) error {
-	errHandling := func(e error) { /* do nothing yet, we are alerted of errors via the SDA */ }
-	loggingSuccessFunction := func(e interface{}) { log.Lvl3(e) }
-	loggingErrorFunction := func(e interface{}) { log.Error(e) }
-
-	msw, err := net.NewMessageSenderWrapper(true, loggingSuccessFunction, loggingErrorFunction, errHandling, msgSender)
-	if err != nil {
-		log.Fatal("Could not create a MessageSenderWrapper, error is", err)
-	}
-	p.messageSender = msw
-	return nil
+	return err
 }
