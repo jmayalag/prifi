@@ -1,4 +1,4 @@
-package utils
+package crypto
 
 import (
 	"github.com/lbarman/prifi/prifi-lib/config"
@@ -13,14 +13,16 @@ import (
 
 func TestEquivocation(t *testing.T) {
 
-	//ntrustee := 1
-	//nclients := 2
-	cellSize := 64
+	equivocationModulusBitLength := 16
 
-	//history := Hash(make([]byte, 10))
+	equivocationTestForModulusLength(t, 100, equivocationModulusBitLength)
+}
+
+func equivocationTestForModulusLength(t *testing.T, cellSize int, equivocationModulusBitLength int) {
+
 	history := config.CryptoSuite.Cipher([]byte("init"))
 
-	//set up the DC-nets
+	// set up the Shared secrets
 	tpub, _ := crypto.NewKeyPair()
 	_, c1priv := crypto.NewKeyPair()
 	_, c2priv := crypto.NewKeyPair()
@@ -45,6 +47,7 @@ func TestEquivocation(t *testing.T) {
 	sharedPRNGs_c2[0] = config.CryptoSuite.Cipher(bytes)
 	sharedPRNGs_t[1] = config.CryptoSuite.Cipher(bytes)
 
+	// set up the CellCoders
 	cellCodert := dcnet.SimpleCoderFactory()
 	cellCodert.TrusteeSetup(config.CryptoSuite, sharedPRNGs_t)
 
@@ -54,7 +57,9 @@ func TestEquivocation(t *testing.T) {
 	cellCoderc2 := dcnet.SimpleCoderFactory()
 	cellCoderc2.ClientSetup(config.CryptoSuite, sharedPRNGs_c2)
 
-	data := make([]byte, 0)
+	data := make([]byte, 0) // data is zero for both, none transmitting
+
+	// get the pads
 	padRound1_c1 := cellCoderc1.ClientEncode(data, cellSize, history)
 	padRound1_c2 := cellCoderc2.ClientEncode(data, cellSize, history)
 	padRound2_t := cellCodert.TrusteeEncode(cellSize)
@@ -66,34 +71,57 @@ func TestEquivocation(t *testing.T) {
 		res[i] = v
 	}
 
+	// assert that the pads works
+	for _, v := range res {
+		if v!=0 {
+			t.Fatal("Res is non zero, DC-nets did not cancel out! go test dcnet/")
+		}
+	}
+
+
+	// prepare for equivocation
+
 	payload := make([]byte, cellSize)
 	payload[0] = 0
 	payload[1] = 1
-	payload[2] = 2
+
+	e_client0 := NewEquivocation(equivocationModulusBitLength) // this defines the modulo, as the algo is deterministic
+	e_client1 := NewEquivocation(equivocationModulusBitLength)
+	e_trustee := NewEquivocation(equivocationModulusBitLength)
+	e_relay   := NewEquivocation(equivocationModulusBitLength)
+
+	// set some data as downstream history
 
 	historyBytes := make([]byte, 10)
 	historyBytes[1] = 1
 
-	e := new(Equivocation)
+	e_client0.UpdateHistory(historyBytes)
+	e_client1.UpdateHistory(historyBytes)
+	e_trustee.UpdateHistory(historyBytes)
+	e_relay.UpdateHistory(historyBytes)
+
+	// start the actual equivocation
+
+	log.Lvl1("-------- CLIENT 0--------")
 
 	pads1 := make([][]byte, 1)
 	pads1[0] = padRound1_c1
-	x_prim1, kappa1 := e.ClientEncryptPayload(payload, historyBytes, pads1)
+	x_prim1, kappa1 := e_client0.ClientEncryptPayload(payload, pads1)
 
-	log.Lvl1("----------------")
+	log.Lvl1("-------- CLIENT 1--------")
 	pads2 := make([][]byte, 1)
 	pads2[0] = padRound1_c2
-	_, kappa2 := e.ClientEncryptPayload(nil, historyBytes, pads2)
+	_, kappa2 := e_client1.ClientEncryptPayload(nil, pads2)
 
-	log.Lvl1("----------------")
+	log.Lvl1("------- TRUSTEE ---------")
 
 	pads3 := make([][]byte, 2)
 	pads3[0] = padRound1_c1
 	pads3[1] = padRound1_c2
-	sigma := e.TrusteeGetContribution(pads3)
+	sigma := e_trustee.TrusteeGetContribution(pads3)
 
-	log.Lvl1(sigma)
-	log.Lvl1("----------------")
+	log.Lvl1("sigma", sigma)
+	log.Lvl1("------- RELAY ---------")
 
 	// relay decodes
 	trusteesContrib := make([][]byte, 1)
@@ -103,7 +131,7 @@ func TestEquivocation(t *testing.T) {
 	clientContrib[0] = kappa1
 	clientContrib[1] = kappa2
 
-	payloadPlaintext := e.RelayDecode(x_prim1, historyBytes, trusteesContrib, clientContrib)
+	payloadPlaintext := e_relay.RelayDecode(x_prim1, trusteesContrib, clientContrib)
 
 	log.Lvl1(payloadPlaintext)
 }
