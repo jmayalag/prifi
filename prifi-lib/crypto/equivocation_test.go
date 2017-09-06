@@ -1,6 +1,7 @@
 package crypto
 
 import (
+	"bytes"
 	"github.com/lbarman/prifi/prifi-lib/config"
 	"github.com/lbarman/prifi/prifi-lib/crypto"
 	"github.com/lbarman/prifi/prifi-lib/dcnet"
@@ -13,9 +14,13 @@ import (
 
 func TestEquivocation(t *testing.T) {
 
-	equivocationModulusBitLength := 16
+	dataLen := 100
+	rangeTest := []int{8, 16, 17, 256, 1024}
 
-	equivocationTestForModulusLength(t, 100, equivocationModulusBitLength)
+	for _, equivocationModulusBitLength := range rangeTest {
+		log.Lvl1("Testing for modulus length", equivocationModulusBitLength)
+		equivocationTestForModulusLength(t, dataLen, equivocationModulusBitLength)
+	}
 }
 
 func equivocationTestForModulusLength(t *testing.T, cellSize int, equivocationModulusBitLength int) {
@@ -34,18 +39,18 @@ func equivocationTestForModulusLength(t *testing.T, cellSize int, equivocationMo
 	sharedPRNGs_c1 := make([]abstract.Cipher, 1)
 	sharedPRNGs_c2 := make([]abstract.Cipher, 1)
 
-	bytes, err := sharedSecret_c1.MarshalBinary()
+	ssBytes, err := sharedSecret_c1.MarshalBinary()
 	if err != nil {
 		t.Error("Could not marshal point !")
 	}
-	sharedPRNGs_c1[0] = config.CryptoSuite.Cipher(bytes)
-	sharedPRNGs_t[0] = config.CryptoSuite.Cipher(bytes)
-	bytes, err = sharedSecret_c2.MarshalBinary()
+	sharedPRNGs_c1[0] = config.CryptoSuite.Cipher(ssBytes)
+	sharedPRNGs_t[0] = config.CryptoSuite.Cipher(ssBytes)
+	ssBytes, err = sharedSecret_c2.MarshalBinary()
 	if err != nil {
 		t.Error("Could not marshal point !")
 	}
-	sharedPRNGs_c2[0] = config.CryptoSuite.Cipher(bytes)
-	sharedPRNGs_t[1] = config.CryptoSuite.Cipher(bytes)
+	sharedPRNGs_c2[0] = config.CryptoSuite.Cipher(ssBytes)
+	sharedPRNGs_t[1] = config.CryptoSuite.Cipher(ssBytes)
 
 	// set up the CellCoders
 	cellCodert := dcnet.SimpleCoderFactory()
@@ -73,11 +78,10 @@ func equivocationTestForModulusLength(t *testing.T, cellSize int, equivocationMo
 
 	// assert that the pads works
 	for _, v := range res {
-		if v!=0 {
+		if v != 0 {
 			t.Fatal("Res is non zero, DC-nets did not cancel out! go test dcnet/")
 		}
 	}
-
 
 	// prepare for equivocation
 
@@ -88,7 +92,7 @@ func equivocationTestForModulusLength(t *testing.T, cellSize int, equivocationMo
 	e_client0 := NewEquivocation(equivocationModulusBitLength) // this defines the modulo, as the algo is deterministic
 	e_client1 := NewEquivocation(equivocationModulusBitLength)
 	e_trustee := NewEquivocation(equivocationModulusBitLength)
-	e_relay   := NewEquivocation(equivocationModulusBitLength)
+	e_relay := NewEquivocation(equivocationModulusBitLength)
 
 	// set some data as downstream history
 
@@ -102,26 +106,18 @@ func equivocationTestForModulusLength(t *testing.T, cellSize int, equivocationMo
 
 	// start the actual equivocation
 
-	log.Lvl1("-------- CLIENT 0--------")
-
 	pads1 := make([][]byte, 1)
 	pads1[0] = padRound1_c1
 	x_prim1, kappa1 := e_client0.ClientEncryptPayload(payload, pads1)
 
-	log.Lvl1("-------- CLIENT 1--------")
 	pads2 := make([][]byte, 1)
 	pads2[0] = padRound1_c2
 	_, kappa2 := e_client1.ClientEncryptPayload(nil, pads2)
-
-	log.Lvl1("------- TRUSTEE ---------")
 
 	pads3 := make([][]byte, 2)
 	pads3[0] = padRound1_c1
 	pads3[1] = padRound1_c2
 	sigma := e_trustee.TrusteeGetContribution(pads3)
-
-	log.Lvl1("sigma", sigma)
-	log.Lvl1("------- RELAY ---------")
 
 	// relay decodes
 	trusteesContrib := make([][]byte, 1)
@@ -133,5 +129,9 @@ func equivocationTestForModulusLength(t *testing.T, cellSize int, equivocationMo
 
 	payloadPlaintext := e_relay.RelayDecode(x_prim1, trusteesContrib, clientContrib)
 
-	log.Lvl1(payloadPlaintext)
+	if bytes.Compare(payload, payloadPlaintext) != 0 {
+		log.Lvl1(payload)
+		log.Lvl1(payloadPlaintext)
+		t.Error("payloads don't match")
+	}
 }
