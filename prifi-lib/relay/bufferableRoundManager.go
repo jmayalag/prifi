@@ -246,19 +246,12 @@ func (b *BufferableRoundManager) CollectRoundData() ([][]byte, [][]byte, error) 
 	return clientsOut, trusteesOut, nil
 }
 
-// CloseRound finalizes this round, returning all ciphers stored, then increasing the round number. Should only be called when HasAllCiphersForCurrentRound() == true
-func (b *BufferableRoundManager) CloseRound() error {
-	b.Lock()
-	defer b.Unlock()
+func (b *BufferableRoundManager) closeRound() error {
 
 	anyRoundOpen, currentRoundID := b.currentRound()
 
 	if !anyRoundOpen {
 		return errors.New("Cannot close round, none opened !")
-	}
-
-	if !b.hasAllCiphersForCurrentRound() {
-		return errors.New("Cannot close round " + strconv.Itoa(int(currentRoundID)) + ", does not have all ciphers")
 	}
 
 	//close current round
@@ -301,6 +294,32 @@ func (b *BufferableRoundManager) CloseRound() error {
 	}
 
 	return nil
+}
+
+// CloseRound finalizes this round, returning all ciphers stored, then increasing the round number. Should only be called when HasAllCiphersForCurrentRound() == true
+func (b *BufferableRoundManager) CloseRound() error {
+	b.Lock()
+	defer b.Unlock()
+
+	anyRoundOpen, currentRoundID := b.currentRound()
+
+	if !anyRoundOpen {
+		return errors.New("Cannot close round, none opened !")
+	}
+
+	if !b.hasAllCiphersForCurrentRound() {
+		return errors.New("Cannot close round " + strconv.Itoa(int(currentRoundID)) + ", does not have all ciphers")
+	}
+
+	return b.closeRound()
+}
+
+// CloseRound finalizes this round, returning all ciphers stored, then increasing the round number. Should only be called when HasAllCiphersForCurrentRound() == true
+func (b *BufferableRoundManager) ForceCloseRound() error {
+	b.Lock()
+	defer b.Unlock()
+
+	return b.closeRound()
 }
 
 // isRoundOpen returns true IFF the round is in openRounds
