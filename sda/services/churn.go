@@ -211,13 +211,17 @@ func (c *churnHandler) handleConnection(msg *network.Envelope) {
 
 	ID := idFromMsg(msg)
 	isTrustee := c.isATrustee(msg.ServerIdentity)
+	node := "client"
+	if isTrustee {
+		node = "trustee"
+	}
 
 	if c.waitQueue.contains(ID, isTrustee) {
-		log.Lvl2("Ignored new connection request from", ID, " (isATrustee:", isTrustee, "), already in the list")
+		log.Lvl4("Ignored new connection request from", node, ID, "already in the list")
 		return
 	}
 
-	log.Lvl2("Received new connection request from", ID, " (isATrustee:", isTrustee, ")")
+	log.Lvl2("Received new connection request from", node, ID)
 
 	if isTrustee {
 		c.waitQueue.trustees[ID] = &waitQueueEntry{
@@ -263,7 +267,7 @@ func (c *churnHandler) handleDisconnection(msg *network.Envelope) {
 	isTrustee := c.isATrustee(msg.ServerIdentity)
 
 	if !c.waitQueue.contains(ID, isTrustee) {
-		log.Lvl3("Ignored new disconnection request from", ID, " (isATrustee:", isTrustee, "), not in the list")
+		log.Lvl4("Ignored new disconnection request from", ID, " (isATrustee:", isTrustee, "), not in the list")
 		return
 	}
 

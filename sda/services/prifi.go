@@ -238,9 +238,9 @@ func (s *ServiceState) sendConnectionRequest(relayID *network.ServerIdentity) {
 
 	if err != nil {
 		if s.role == prifi_protocol.Trustee {
-			log.Lvl3("Connection to relay failed. (I'm a client at address", s, ")")
-		} else {
 			log.Lvl3("Connection to relay failed. (I'm a trustee at address", s, ")")
+		} else {
+			log.Lvl3("Connection to relay failed. (I'm a client at address", s, ")")
 
 		}
 	}

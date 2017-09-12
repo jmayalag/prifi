@@ -556,6 +556,7 @@ func (p *PriFiLibRelayInstance) collectExperimentResult(str string) {
 func (p *PriFiLibRelayInstance) doneCollectingUpstreamData(roundID int32) error {
 
 	p.relayState.numberOfNonAckedDownstreamPackets--
+	p.relayState.numberOfConsecutiveFailedRounds = 0
 
 	if roundID == 0 {
 		log.Lvl2("Relay finished round " + strconv.Itoa(int(roundID)) + " .")

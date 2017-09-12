@@ -2,7 +2,6 @@ package relay
 
 import (
 	"gopkg.in/dedis/onet.v1/log"
-	"strconv"
 	"time"
 )
 
@@ -27,16 +26,21 @@ func (p *PriFiLibRelayInstance) checkIfRoundHasEndedAfterTimeOut_Phase1(roundID 
 	// new policy : just kill that round, do not retransmit, let SOCKS take care of the loss
 
 	p.relayState.roundManager.ForceCloseRound()
+	p.relayState.numberOfConsecutiveFailedRounds++
+	log.Lvl1("WARNING: consecutive missed round is", p.relayState.numberOfConsecutiveFailedRounds)
 
 	if p.relayState.roundManager.HasAllCiphersForCurrentRound() {
 		p.hasAllCiphersForUpstream(true)
-	} else {
-		log.Error("waitAndCheckIfClientsSentData : We seem to be stuck in round", roundID, ". Phase 2 timeout.")
+	}
+
+	if p.relayState.numberOfConsecutiveFailedRounds >= p.relayState.WindowSize ||
+		p.relayState.numberOfConsecutiveFailedRounds >= MAX_NUMBER_OF_CONSECUTIVE_FAILED_ROUNDS {
+		log.Error("MAX_NUMBER_OF_CONSECUTIVE_FAILED_ROUNDS reached, killing protocol.")
 
 		log.Lvl3("Stopping experiment, if any.")
-		output := p.relayState.ExperimentResultData
-		output = append(output, "!!aborted-round-"+strconv.Itoa(int(roundID)))
-		p.relayState.ExperimentResultChannel <- output
+		//output := p.relayState.ExperimentResultData
+		//output = append(output, "!!aborted-round-"+strconv.Itoa(int(roundID)))
+		//p.relayState.ExperimentResultChannel <- output
 
 		missingClientCiphers, missingTrusteesCiphers := p.relayState.roundManager.MissingCiphersForCurrentRound()
 		p.relayState.timeoutHandler(missingClientCiphers, missingTrusteesCiphers)
