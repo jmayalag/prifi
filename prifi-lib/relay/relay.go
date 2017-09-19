@@ -348,6 +348,8 @@ func (p *PriFiLibRelayInstance) finalizeUpstreamData() error {
 
 	//disruption-protection
 	if p.relayState.DisruptionProtectionEnabled {
+
+		log.Lvl3("Verifying HMAC for disruption protection")
 		hmac := upstreamPlaintext[0:32]
 		upstreamPlaintext = upstreamPlaintext[32:]
 
@@ -358,6 +360,8 @@ func (p *PriFiLibRelayInstance) finalizeUpstreamData() error {
 			// start blame
 		}
 	}
+
+	log.Lvl4("Decoded cell is", upstreamPlaintext)
 
 	// check if we have a latency test message, or a pcap meta message
 	if len(upstreamPlaintext) >= 2 {
