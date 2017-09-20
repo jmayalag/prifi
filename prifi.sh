@@ -590,6 +590,14 @@ case $1 in
 		test_go
 		test_cothority
 
+		#if running, kill the previous one
+		if [ -f .GPID_RELAY ]; then
+			gpid=$(cat .GPID_RELAY)
+			echo -e "PriFi relay already running, killing old instance with kill -TERM -- -$gpid"			
+			kill -TERM -- -"$gpid"
+			rm -f .GPID_RELAY
+		fi
+
 		thisScript="$0"
 
 		echo -n "Starting relay...			"
@@ -598,7 +606,10 @@ case $1 in
 		RELAYPGID=$(ps -o pgid= "$RELAYPID")
 		echo -e "$okMsg"
 
-		echo -e "PriFi relay deployed, PGID $RELAYPGID. Kill with \"kill -TERM -- -$RELAYPID\""
+		echo -e "PriFi relay deployed, PGID $RELAYPGID. Kill with \"kill -TERM -- -$RELAYPGID\""
+
+		rm -f .GPID_RELAY
+		echo $RELAYPGID > .GPID_RELAY
 		;;
 
 	trustee-d)
@@ -607,11 +618,19 @@ case $1 in
 		test_go
 		test_cothority
 
+		#if running, kill the previous one
+		if [ -f .GPID_TRUSTEE ]; then
+			gpid=$(cat .GPID_TRUSTEE)
+			echo -e "PriFi trustee already running, killing old instance with kill -TERM -- -$gpid"			
+			kill -TERM -- -"$gpid"
+			rm -f .GPID_TRUSTEE
+		fi
+
 		thisScript="$0"
 		trusteeId="$2"
 
 		if [ "$#" -lt 2 ]; then
-			echo -e "$errorMsg parameter 2 need to be the client id."
+			echo -e "$errorMsg parameter 2 need to be the trustee id."
 			exit 1
 		fi
 		test_digit "$trusteeId" 2
@@ -623,9 +642,20 @@ case $1 in
 		echo -e "$okMsg"
 
 		echo -e "PriFi trustee deployed, PGID $TRUSTEEGPID. Kill with \"kill -TERM -- -$TRUSTEEGPID\""
+
+		rm -f .GPID_TRUSTEE
+		echo $TRUSTEEGPID > .GPID_TRUSTEE
 		;;
 
 	socks-d)
+
+		#if running, kill the previous one
+		if [ -f .GPID_SOCKSEXIT ]; then
+			gpid=$(cat .GPID_SOCKSEXIT)
+			echo -e "PriFi socks exit already running, killing old instance with kill -TERM -- -$gpid"			
+			kill -TERM -- -"$gpid"
+			rm -f .GPID_SOCKSEXIT
+		fi
 
 		echo -n "Starting SOCKS Server...			"
 		cd socks && ./run-socks-proxy.sh "$socksServer2Port" > ../socks.log 2>&1 &
@@ -633,8 +663,43 @@ case $1 in
 		SOCKSPGID=$(ps -o pgid= "$SOCKSPID")
 		echo -e "$okMsg"
 
-		echo -e "PriFi trustee deployed, PGID $SOCKSPGID. Kill with \"kill -TERM -- -$SOCKSPGID\""
+		echo -e "PriFi socks exit deployed, PGID $SOCKSPGID. Kill with \"kill -TERM -- -$SOCKSPGID\""
+
+		rm -f .GPID_SOCKSEXIT
+		echo $SOCKSPGID > .GPID_SOCKSEXIT
 		;;
+
+	kill-d)
+
+		if [ -f .GPID_RELAY ]; then
+			gpid=$(cat .GPID_RELAY)
+			echo -e "PriFi relay running, killing old instance with kill -TERM -- -$gpid"			
+			kill -TERM -- -"$gpid"
+			rm -f .GPID_RELAY
+		else
+			echo -e "PriFi relay not running, ignoring"
+		fi
+
+		if [ -f .GPID_TRUSTEE ]; then
+			gpid=$(cat .GPID_TRUSTEE)
+			echo -e "PriFi trustee running, killing old instance with kill -TERM -- -$gpid"			
+			kill -TERM -- -"$gpid"
+			rm -f .GPID_TRUSTEE
+		else
+			echo -e "PriFi trustee not running, ignoring"
+		fi
+		
+		if [ -f .GPID_SOCKSEXIT ]; then
+			gpid=$(cat .GPID_SOCKSEXIT)
+			echo -e "PriFi socks exit running, killing old instance with kill -TERM -- -$gpid"			
+			kill -TERM -- -"$gpid"
+			rm -f .GPID_SOCKSEXIT
+		else
+			echo -e "PriFi socks-exit not running, ignoring"
+		fi
+		
+		;;
+
 
 	simul|Simul|SIMUL)
 
