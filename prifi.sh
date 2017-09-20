@@ -441,12 +441,16 @@ case $1 in
 		#generate identity.toml
 		DEBUG_COLOR="$colors" go run "$bin_file" --default_path "$pathReal" gen-id
 
-		#now group.toml
-		echo -n "Done ! now copying group.toml from identities_default/ to identity_real/..."
-		cp "${pathDefault}/group.toml" "${pathReal}group.toml"
-		echo -e "$okMsg"
+		if [ ! -f "${pathReal}group.toml" ]; then
+			#now group.toml
+			echo -n "Done ! now copying group.toml from identities_default/ to identity_real/..."
+			cp "${pathDefault}/group.toml" "${pathReal}group.toml"
+			echo -e "$okMsg"
 
-		echo -e "Please edit ${highlightOn}$pathReal/group.toml${highlightOff} to the correct values."
+			echo -e "Please edit ${highlightOn}$pathReal/group.toml${highlightOff} to the correct values."
+		else
+			echo -e "Group file ${highlightOn}$pathReal/group.toml${highlightOff} already exists, not overwriting! you might want to check that the contents are correct."
+		fi
 		;;
 
 	integration-test)
