@@ -309,6 +309,7 @@ func (p *PriFiLibClientInstance) WantsToTransmit() bool {
 		now := time.Now()
 		//if we transmitted in the last second, keep reserving slots
 		if now.Before(p.clientState.LastWantToSend.Add(time.Second)) {
+			log.Lvl3("WantToSend < 1 sec,  true")
 			return true
 		}
 	}
@@ -318,9 +319,11 @@ func (p *PriFiLibClientInstance) WantsToTransmit() bool {
 	case myData := <-p.clientState.DataForDCNet:
 		p.clientState.LastWantToSend = time.Now()
 		p.clientState.NextDataForDCNet = &myData
+		log.Lvl3("WantToSend has data, true")
 		return true
 
 	default:
+		log.Lvl3("WantToSend           false")
 		return false
 	}
 }

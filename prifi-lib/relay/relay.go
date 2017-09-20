@@ -314,6 +314,7 @@ func (p *PriFiLibRelayInstance) processOpenClosedSlotRequests(roundID int32) err
 	}
 
 	if !hasOpenSlot {
+		log.Lvl3("All slots closed, sleeping for", p.relayState.OpenClosedSlotsMinDelayBetweenRequests, "ms")
 		d := time.Duration(p.relayState.OpenClosedSlotsMinDelayBetweenRequests) * time.Millisecond
 		time.Sleep(d)
 	}
