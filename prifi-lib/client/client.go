@@ -305,11 +305,11 @@ func (p *PriFiLibClientInstance) WantsToTransmit() bool {
 	}
 
 	// if we transmitted in the last second, keep reserving (but don't do this with pcaps)
-	if p.clientState.pcapReplay.Enabled {
+	if !p.clientState.pcapReplay.Enabled {
 		now := time.Now()
 		//if we transmitted in the last second, keep reserving slots
-		if now.Before(p.clientState.LastWantToSend.Add(time.Second)) {
-			log.Lvl3("WantToSend < 1 sec,  true")
+		if now.Before(p.clientState.LastWantToSend.Add(5 * time.Second)) {
+			log.Lvl3("WantToSend < 5 sec,  true")
 			return true
 		}
 	}
