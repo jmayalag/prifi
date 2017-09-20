@@ -35,7 +35,6 @@ prifi.iml
 profile.cov
 config/PriFiService
 config/CoSi
-config/identities_real
 timing.txt
 sda/simulation/build/
 sda/simulation/deploy/
