@@ -697,9 +697,14 @@ case $1 in
 		else
 			echo -e "PriFi socks-exit not running, ignoring"
 		fi
-		
+
 		;;
 
+	web-server)
+
+		cd web
+		go run index.go &
+		;;
 
 	simul|Simul|SIMUL)
 

@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"os/exec"
 	"strings"
@@ -28,22 +27,22 @@ func index(w http.ResponseWriter, r *http.Request) {
 }
 
 func reboot(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, header)
-	fmt.Fprintf(w, "<h1>PriFi</h1>")
-	stdout, stderr := exec.Command("./rerun.sh").Output()
+    fmt.Fprintf(w, header)
+    fmt.Fprintf(w, "<h1>PriFi</h1>")
+    stdout, stderr := exec.Command("./rerun.sh").Output()
 
-	if stderr != nil {
-		fmt.Fprintf(w, "<p>%s</p>", string(stderr.Error()))
-	} else {
-		fmt.Fprintf(w, "<p>%s</p>", string(stdout))
-	}
+    if stderr != nil {
+        fmt.Fprintf(w, "<p>%s</p>", string(stderr.Error()))
+    } else {
+        fmt.Fprintf(w, "<p>%s</p>", string(stdout))
+    }
 
-	fmt.Fprintf(w, "<a href=\"/\">Back</a>")
-	fmt.Fprintf(w, footer)
+    fmt.Fprintf(w, "<a href=\"/\">Back</a>")
+    fmt.Fprintf(w, footer)
 }
 
 func main() {
 	http.HandleFunc("/", index)
-	http.HandleFunc("/reboot", reboot)
+        http.HandleFunc("/reboot", reboot)
 	http.ListenAndServe(":8080", nil)
 }
