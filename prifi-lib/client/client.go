@@ -202,7 +202,7 @@ func (p *PriFiLibClientInstance) ProcessDownStreamData(msg net.REL_CLI_DOWNSTREA
 		if p.clientState.LatencyTest.DoLatencyTests && len(msg.Data) > 2 {
 
 			actionFunction := func(roundRec int32, roundDiff int32, timeDiff int64) {
-				log.Info("Measured latency is", timeDiff, ", for client", p.clientState.ID, ", roundDiff", roundDiff, ", received on round", msg.RoundID)
+				log.Lvl3("Measured latency is", timeDiff, ", for client", p.clientState.ID, ", roundDiff", roundDiff, ", received on round", msg.RoundID)
 				p.clientState.timeStatistics["measured-latency"].AddTime(timeDiff)
 				p.clientState.timeStatistics["measured-latency"].ReportWithInfo("measured-latency")
 			}
