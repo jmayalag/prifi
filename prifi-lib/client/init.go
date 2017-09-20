@@ -63,6 +63,7 @@ type ClientState struct {
 	timeStatistics              map[string]*prifilog.TimeStatistics
 	pcapReplay                  *PCAPReplayer
 	DisruptionProtectionEnabled bool
+	LastWantToSend              time.Time
 
 	//concurrent stuff
 	RoundNo           int32
@@ -109,6 +110,7 @@ func NewClient(doLatencyTest bool, dataOutputEnabled bool, dataForDCNet chan []b
 	clientState.DataFromDCNet = dataFromDCNet
 	clientState.DataOutputEnabled = dataOutputEnabled
 	clientState.DCNet_RoundManager = new(DCNet_RoundManager)
+	clientState.LastWantToSend = time.Now()
 	clientState.pcapReplay = &PCAPReplayer{
 		Enabled:    doReplayPcap,
 		PCAPFolder: pcapFolder,

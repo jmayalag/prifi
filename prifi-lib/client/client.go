@@ -294,19 +294,29 @@ func (p *PriFiLibClientInstance) WantsToTransmit() bool {
 		}
 	}
 
-	//if we have a latency test message
+	// if we have a latency test message
 	if len(p.clientState.LatencyTest.LatencyTestsToSend) > 0 {
 		return true
 	}
 
-	//if we have already ready-to-send data
+	// if we have already ready-to-send data
 	if p.clientState.NextDataForDCNet != nil {
 		return true
 	}
 
-	//otherwise, poll the channel
+	// if we transmitted in the last second, keep reserving (but don't do this with pcaps)
+	if p.clientState.pcapReplay.Enabled {
+		now := time.Now()
+		//if we transmitted in the last second, keep reserving slots
+		if now.Before(p.clientState.LastWantToSend.Add(time.Second)) {
+			return true
+		}
+	}
+
+	// otherwise, poll the channel
 	select {
 	case myData := <-p.clientState.DataForDCNet:
+		p.clientState.LastWantToSend = time.Now()
 		p.clientState.NextDataForDCNet = &myData
 		return true
 
