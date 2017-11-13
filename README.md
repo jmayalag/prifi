@@ -50,4 +50,3 @@ To test a real PriFi deployement, first, re-generates your identity (so your pri
 ## API Documentation
 
 The PriFi API documentation can be found in  `doc/doc.html`. 
-
