@@ -51,3 +51,7 @@ To test a real PriFi deployement, first, re-generates your identity (so your pri
 
 The PriFi API documentation can be found in  `doc/doc.html`. 
 
+## Contributing
+
+- [https://github.com/lbarman/prifi/issues?utf8=%E2%9C%93&q=is%3Aissue%20is%3Aopen%20label%3Acode-related](Code-related issues (non-fundamental or design-related))
+- [https://github.com/lbarman/prifi/issues?utf8=%E2%9C%93&q=is%3Aissue%20is%3Aopen%20-label%3Alow-priority%20%20-label%3Adistant-future%20](Immediate, important issues)
