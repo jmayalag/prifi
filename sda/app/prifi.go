@@ -164,7 +164,7 @@ func readConfigAndStartCothority(c *cli.Context) (*onet.Server, *app.Group, *pri
 	}
 
 	//finds the PriFi service
-	service := host.GetService(prifi_service.ServiceName).(*prifi_service.ServiceState)
+	service := host.Service(prifi_service.ServiceName).(*prifi_service.ServiceState)
 
 	//set the config from the .toml file
 	service.SetConfigFromToml(prifiTomlConfig)
