@@ -30,6 +30,7 @@ SIMULATION_TIMEOUT="400"                   # note: in simul-vary-xxx, this is th
 
 # default file names :
 
+MAIN_SCRIPT="./prifi.sh"
 THIS_SCRIPT="$0"
 
 prifi_file="prifi.toml"                     # default name for the prifi config file (contains prifi-specific settings)

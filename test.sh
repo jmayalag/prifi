@@ -13,17 +13,18 @@
 # variables that you might change often
 
 dbg_lvl=3                       # 1=less verbose, 3=more verbose. goes up to 5, but then prints the SDA's message (network framework)
-try_use_real_identities="true"  # if "true", will try to use "self-generated" public/private key as a replacement for the dummy keys
-                                # we generated for you. It asks you if it does not find real keys. If false, will always use the dummy keys.
 colors="true"                   # if  "false", the output of PriFi (and this script) will be in black-n-white
 
 socksServer1Port=8080           # the port for the SOCKS-Server-1 (part of the PriFi client)
 socksServer2Port=8090           # the port to attempt connect to (from the PriFi relay) for the SOCKS-Server-2
                                 # notes : see <https://github.com/lbarman/prifi/blob/master/README_architecture.md>
 
-all_localhost_n_clients=3      # number of clients to start in the "all-localhost" script
+socks_test_n_clients=3      # number of clients to start in the "all-localhost" script
 
 # default file names :
+
+MAIN_SCRIPT="./prifi.sh"
+THIS_SCRIPT="$0"
 
 prifi_file="prifi.toml"                     # default name for the prifi config file (contains prifi-specific settings)
 identity_file="identity.toml"               # default name for the identity file (contains public + private key)
@@ -114,6 +115,43 @@ test_digit() {
     esac
 }
 
+run_relay() {
+    #specialize the config file (we use the dummy folder, and maybe we replace with the real folder after)
+    prifi_file2="$configdir/$prifi_file"
+    identity_file2="$configdir/$defaultIdentitiesDir/relay/$identity_file"
+    group_file2="$configdir/$defaultIdentitiesDir/relay/$group_file"
+    test_files
+
+    #run PriFi in relay mode
+    DEBUG_COLOR="$colors" go run "$bin_file" --cothority_config "$identity_file2" --group "$group_file2" -d "$dbg_lvl" --prifi_config "$prifi_file2" --port "$socksServer1Port" --port_client "$socksServer2Port" relay
+}
+
+run_trustee() {
+    trusteeId="$1"
+
+    #specialize the config file (we use the dummy folder, and maybe we replace with the real folder after)
+    prifi_file2="$configdir/$prifi_file"
+    identity_file2="$configdir/$defaultIdentitiesDir/trustee$trusteeId/$identity_file"
+    group_file2="$configdir/$defaultIdentitiesDir/trustee$trusteeId/$group_file"
+    test_files
+
+    #run PriFi in relay mode
+    DEBUG_COLOR="$colors" go run "$bin_file" --cothority_config "$identity_file2" --group "$group_file2" -d "$dbg_lvl" --prifi_config "$prifi_file2" --port "$socksServer1Port" --port_client "$socksServer2Port" trustee
+}
+
+run_client() {
+    clientId="$1"
+    socksServer1Port="$2"
+
+    #specialize the config file (we use the dummy folder, and maybe we replace with the real folder after)
+    prifi_file2="$configdir/$prifi_file"
+    identity_file2="$configdir/$defaultIdentitiesDir/client$clientId/$identity_file"
+    group_file2="$configdir/$defaultIdentitiesDir/client$clientId/$group_file"
+    test_files
+
+    DEBUG_COLOR="$colors" go run "$bin_file" --cothority_config "$identity_file2" --group "$group_file2" -d "$dbg_lvl" --prifi_config "$prifi_file2" --port "$socksServer1Port" --port_client "$socksServer2Port" client
+}
+
 #test if all the files we need are there.
 test_files() {
 
@@ -175,52 +213,46 @@ case $1 in
 
     integration-test)
 
-        # override those, we never test with "real" keys
-        dbg_lvl="3"
-        try_use_real_identities="false"
-
         # clean before start
         pkill prifi 2>/dev/null
         kill -TERM $(pidof "go run run-server.go") 2>/dev/null
 
-        thisScript="$0"
-        "$thisScript" clean
-
+        rm *.log
         rm -f relay.log 2>/dev/null # just to be sure...
 
         # start all entities
 
         echo -n "Starting relay...          "
-        "$thisScript" relay > relay.log 2>&1 &
+        run_relay > relay.log 2>&1 &
         echo -e "$okMsg"
         sleep "$sleeptime_between_spawns"
 
         echo -n "Starting trustee 0...          "
-        "$thisScript" trustee 0 > trustee0.log 2>&1 &
+        run_trustee 0 > trustee0.log 2>&1 &
         echo -e "$okMsg"
         sleep "$sleeptime_between_spawns"
 
         echo -n "Starting client 0... (SOCKS on :8081)  "
-        "$thisScript" client 0 8081 > client0.log 2>&1 &
+        run_client 0 8081 > client0.log 2>&1 &
         echo -e "$okMsg"
 
-        if [ "$all_localhost_n_clients" -gt 1 ]; then
+        if [ "$socks_test_n_clients" -gt 1 ]; then
             sleep "$sleeptime_between_spawns"
 
             echo -n "Starting client 1... (SOCKS on :8082)  "
-            "$thisScript" client 1 8082 > client1.log 2>&1 &
+            run_client 1 8082 > client1.log 2>&1 &
             echo -e "$okMsg"
         fi
 
-        if [ "$all_localhost_n_clients" -gt 2 ]; then
+        if [ "$socks_test_n_clients" -gt 2 ]; then
             sleep "$sleeptime_between_spawns"
 
             echo -n "Starting client 2... (SOCKS on :8083)  "
-            "$thisScript" client 2 8083 > client2.log 2>&1 &
+            run_client 2 8083 > client2.log 2>&1 &
             echo -e "$okMsg"
         fi
 
-        if [ "$all_localhost_n_clients" -gt 3 ]; then
+        if [ "$socks_test_n_clients" -gt 3 ]; then
             echo -n "Max supported clients: 3, not booting any extra client."
         fi
 
@@ -251,8 +283,7 @@ case $1 in
         pkill prifi 2>/dev/null
         kill -TERM $(pidof "go run run-server.go") 2>/dev/null
 
-        thisScript="$0"
-        "$thisScript" clean
+        "$MAIN_SCRIPT" clean
 
         rm -f relay.log 2>/dev/null # just to be sure...
 
@@ -267,34 +298,34 @@ case $1 in
         fi
 
         echo -n "Starting relay...          "
-        "$thisScript" relay > relay.log 2>&1 &
+        "$MAIN_SCRIPT" relay > relay.log 2>&1 &
         echo -e "$okMsg"
 
         sleep "$sleeptime_between_spawns"
 
         echo -n "Starting trustee 0...          "
-        "$thisScript" trustee 0 > trustee0.log 2>&1 &
+        "$MAIN_SCRIPT" trustee 0 > trustee0.log 2>&1 &
         echo -e "$okMsg"
 
         sleep "$sleeptime_between_spawns"
 
         echo -n "Starting client 0... (SOCKS on :8081)  "
-        "$thisScript" client 0 8081 > client0.log 2>&1 &
+        "$MAIN_SCRIPT" client 0 8081 > client0.log 2>&1 &
         echo -e "$okMsg"
 
-        if [ "$all_localhost_n_clients" -gt 1 ]; then
+        if [ "$socks_test_n_clients" -gt 1 ]; then
             sleep "$sleeptime_between_spawns"
 
             echo -n "Starting client 1... (SOCKS on :8082)  "
-            "$thisScript" client 1 8082 > client1.log 2>&1 &
+            "$MAIN_SCRIPT" client 1 8082 > client1.log 2>&1 &
             echo -e "$okMsg"
         fi
 
-        if [ "$all_localhost_n_clients" -gt 2 ]; then
+        if [ "$socks_test_n_clients" -gt 2 ]; then
             sleep "$sleeptime_between_spawns"
 
             echo -n "Starting client 2... (SOCKS on :8083)  "
-            "$thisScript" client 2 8083 > client2.log 2>&1 &
+            "$MAIN_SCRIPT" client 2 8083 > client2.log 2>&1 &
             echo -e "$okMsg"
         fi
 
