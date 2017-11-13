@@ -211,7 +211,9 @@ case $1 in
         DEBUG_COLOR="$colors" go run "$bin_file" --cothority_config "$identity_file2" --group "$group_file2" -d "$dbg_lvl" --prifi_config "$prifi_file2" --port "$socksServer1Port" --port_client "$socksServer2Port" sockstest
         ;;
 
-    integration-test)
+    integration)
+
+        echo "This test check that PriFi's clients, trustees and relay connect and start performing communication rounds with no real data."
 
         # clean before start
         pkill prifi 2>/dev/null
@@ -278,7 +280,9 @@ case $1 in
         fi
         ;;
 
-    integration-test2)
+    integration2)
+
+        echo "This test check that PriFi's clients, trustees and relay connect and start performing communication rounds, and that a Ping request can go through (back and forth)."
 
         pkill prifi 2>/dev/null
         kill -TERM $(pidof "go run run-server.go") 2>/dev/null
@@ -298,26 +302,26 @@ case $1 in
         fi
 
         echo -n "Starting relay...          "
-        "$MAIN_SCRIPT" relay > relay.log 2>&1 &
+        run_relay > relay.log 2>&1 &
         echo -e "$okMsg"
 
         sleep "$sleeptime_between_spawns"
 
         echo -n "Starting trustee 0...          "
-        "$MAIN_SCRIPT" trustee 0 > trustee0.log 2>&1 &
+        run_trustee 0 > trustee0.log 2>&1 &
         echo -e "$okMsg"
 
         sleep "$sleeptime_between_spawns"
 
         echo -n "Starting client 0... (SOCKS on :8081)  "
-        "$MAIN_SCRIPT" client 0 8081 > client0.log 2>&1 &
+        run_client 0 8081 > client0.log 2>&1 &
         echo -e "$okMsg"
 
         if [ "$socks_test_n_clients" -gt 1 ]; then
             sleep "$sleeptime_between_spawns"
 
             echo -n "Starting client 1... (SOCKS on :8082)  "
-            "$MAIN_SCRIPT" client 1 8082 > client1.log 2>&1 &
+            run_client 1 8082 > client1.log 2>&1 &
             echo -e "$okMsg"
         fi
 
@@ -325,12 +329,14 @@ case $1 in
             sleep "$sleeptime_between_spawns"
 
             echo -n "Starting client 2... (SOCKS on :8083)  "
-            "$MAIN_SCRIPT" client 2 8083 > client2.log 2>&1 &
+            run_client 2 8083 > client2.log 2>&1 &
             echo -e "$okMsg"
         fi
 
         #let it boot
-        sleep 20
+        waitTime=20
+        echo "Waiting $waitTime seconds..."
+        sleep "$waitTime"
 
         echo "Doing SOCKS HTTP request..."
         curl google.com --socks5 127.0.0.1:8081 --max-time 10 1>/dev/null 2>&1
