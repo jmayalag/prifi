@@ -42,10 +42,10 @@ test_verbose:
 	go test -v -race -short ./...
 
 it:
-	./prifi.sh integration-test || cat relay.log
+	./test.sh integration || cat relay.log
 
 it2:
-	./prifi.sh integration-test2
+	./test.sh integration2 || cat relay.log
 
 clean:
 	rm -f profile.cov *.log timing.txt prifi-lib/relay/timing.txt
