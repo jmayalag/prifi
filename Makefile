@@ -1,6 +1,9 @@
 .PHONY: all
 all: test coveralls it it2
 
+.PHONY: test
+test: build test_fmt test_govet test_lint
+
 .PHONY: test_fmt
 test_fmt:
 	@echo Checking correct formatting of files...
@@ -48,16 +51,13 @@ it2:
 clean:
 	rm -f profile.cov *.log timing.txt prifi-lib/relay/timing.txt
 
-.PHONY: test
-test: build test_fmt test_govet
-
 .PHONY: test_lint
 test_lint:
 	@echo Checking linting of files ...
 	@{ \
 		go get -u github.com/golang/lint/golint; \
 		exclude="_test.go|ALL_CAPS|underscore|should be of the form|.deprecated|and that stutters|error strings should not be capitalized"; \
-		lintfiles=$$( golint ./... | egrep -v '($$exclude)' ); \
+		lintfiles=$$( golint ./... | egrep -v "($$exclude)" ); \
 		if [ -n "$$lintfiles" ]; then \
 		echo "Lint errors:"; \
 		echo "$$lintfiles"; \
