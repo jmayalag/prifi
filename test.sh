@@ -12,7 +12,7 @@
 
 # variables that you might change often
 
-dbg_lvl=3                       # 1=less verbose, 3=more verbose. goes up to 5, but then prints the SDA's message (network framework)
+dbg_lvl=4                       # 1=less verbose, 3=more verbose. goes up to 5, but then prints the SDA's message (network framework)
 colors="true"                   # if  "false", the output of PriFi (and this script) will be in black-n-white
 
 socksServer1Port=8080           # the port for the SOCKS-Server-1 (part of the PriFi client)
@@ -176,6 +176,71 @@ test_files() {
     fi
 }
 
+run_integration_test_no_data() {
+    # clean before start
+    pkill prifi 2>/dev/null
+    kill -TERM $(pidof "go run run-server.go") 2>/dev/null
+
+    rm *.log
+    rm -f relay.log 2>/dev/null # just to be sure...
+
+    # start all entities
+
+    echo -n "Starting relay...                      "
+    run_relay > relay.log 2>&1 &
+    echo -e "$okMsg"
+    sleep "$sleeptime_between_spawns"
+
+    echo -n "Starting trustee 0...                  "
+    run_trustee 0 > trustee0.log 2>&1 &
+    echo -e "$okMsg"
+    sleep "$sleeptime_between_spawns"
+
+    echo -n "Starting client 0... (SOCKS on :8081)  "
+    run_client 0 8081 > client0.log 2>&1 &
+    echo -e "$okMsg"
+
+    if [ "$socks_test_n_clients" -gt 1 ]; then
+        sleep "$sleeptime_between_spawns"
+
+        echo -n "Starting client 1... (SOCKS on :8082)  "
+        run_client 1 8082 > client1.log 2>&1 &
+        echo -e "$okMsg"
+    fi
+
+    if [ "$socks_test_n_clients" -gt 2 ]; then
+        sleep "$sleeptime_between_spawns"
+
+        echo -n "Starting client 2... (SOCKS on :8083)  "
+        run_client 2 8083 > client2.log 2>&1 &
+        echo -e "$okMsg"
+    fi
+
+    if [ "$socks_test_n_clients" -gt 3 ]; then
+        echo -n "Max supported clients: 3, not booting any extra client."
+    fi
+
+    #let it boot
+    waitTime=10
+    echo "Waiting $waitTime seconds..."
+    sleep "$waitTime"
+
+    #reporting is every 5 second by default. if we wait 30, we should have 6 of those
+    lines=$(cat relay.log | grep -E "([0-9\.]+) round/sec, ([0-9\.]+) kB/s up, ([0-9\.]+) kB/s down, ([0-9\.]+) kB/s down\(udp\)" | wc -l)
+
+    echo "Number of reportings : $lines"
+
+    pkill prifi 2>/dev/null
+    kill -TERM $(pidof "go run run-server.go")  2>/dev/null
+
+    if [ "$lines" -gt 1 ]; then
+        echo "Test succeeded"
+    else
+        echo "Test failed"
+        exit 1
+    fi
+}
+
 # ------------------------
 #     MAIN SWITCH
 # ------------------------
@@ -215,69 +280,16 @@ case $1 in
 
         echo "This test check that PriFi's clients, trustees and relay connect and start performing communication rounds with no real data."
 
-        # clean before start
-        pkill prifi 2>/dev/null
-        kill -TERM $(pidof "go run run-server.go") 2>/dev/null
+        for f in "$configdir/"*-test.toml;
+        do
+            echo -e "Gonna test with ${highlightOn}$f${highlightOff}";
+            prifi_file=$(basename "$f")
+            run_integration_test_no_data
+        done
 
-        rm *.log
-        rm -f relay.log 2>/dev/null # just to be sure...
+        echo -e "All tests passed."
+        exit 0
 
-        # start all entities
-
-        echo -n "Starting relay...          "
-        run_relay > relay.log 2>&1 &
-        echo -e "$okMsg"
-        sleep "$sleeptime_between_spawns"
-
-        echo -n "Starting trustee 0...          "
-        run_trustee 0 > trustee0.log 2>&1 &
-        echo -e "$okMsg"
-        sleep "$sleeptime_between_spawns"
-
-        echo -n "Starting client 0... (SOCKS on :8081)  "
-        run_client 0 8081 > client0.log 2>&1 &
-        echo -e "$okMsg"
-
-        if [ "$socks_test_n_clients" -gt 1 ]; then
-            sleep "$sleeptime_between_spawns"
-
-            echo -n "Starting client 1... (SOCKS on :8082)  "
-            run_client 1 8082 > client1.log 2>&1 &
-            echo -e "$okMsg"
-        fi
-
-        if [ "$socks_test_n_clients" -gt 2 ]; then
-            sleep "$sleeptime_between_spawns"
-
-            echo -n "Starting client 2... (SOCKS on :8083)  "
-            run_client 2 8083 > client2.log 2>&1 &
-            echo -e "$okMsg"
-        fi
-
-        if [ "$socks_test_n_clients" -gt 3 ]; then
-            echo -n "Max supported clients: 3, not booting any extra client."
-        fi
-
-        #let it boot
-        waitTime=10
-        echo "Waiting $waitTime seconds..."
-        sleep "$waitTime"
-
-        #reporting is every 5 second by default. if we wait 30, we should have 6 of those
-        lines=$(cat relay.log | grep -E "([0-9\.]+) round/sec, ([0-9\.]+) kB/s up, ([0-9\.]+) kB/s down, ([0-9\.]+) kB/s down\(udp\)" | wc -l)
-
-        echo "Number of reportings : $lines"
-
-        pkill prifi 2>/dev/null
-        kill -TERM $(pidof "go run run-server.go")  2>/dev/null
-
-        if [ "$lines" -gt 1 ]; then
-            echo "Test succeeded"
-            exit 0
-        else
-            echo "Test failed"
-            exit 1
-        fi
         ;;
 
     integration2)

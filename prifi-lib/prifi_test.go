@@ -44,9 +44,11 @@ func TestPrifi(t *testing.T) {
 
 	relay := NewPriFiRelay(true, in, out, resultChan, ocSleep, timeoutHandler, msgSender)
 
+	alwaysSlowDown := true
 	neverSlowDown := false
-	trustee0 := NewPriFiTrustee(neverSlowDown, msgSender)
-	trustee1 := NewPriFiTrustee(neverSlowDown, msgSender)
+	baseSleepTime := 1000
+	trustee0 := NewPriFiTrustee(neverSlowDown, alwaysSlowDown, baseSleepTime, msgSender)
+	trustee1 := NewPriFiTrustee(neverSlowDown, alwaysSlowDown, baseSleepTime, msgSender)
 
 	//TODO : emulate network connectivity, and run for a few rounds
 

@@ -51,9 +51,9 @@ func NewPriFiClient(doLatencyTest bool, dataOutputEnabled bool, dataForDCNet cha
 }
 
 // NewPriFiRelay creates a new PriFi relay
-func NewPriFiRelay(dataOutputEnabled bool, dataForClients chan []byte, dataFromDCNet chan []byte, experimentResultChan chan interface{}, openClosedSlotsMinDelayBetweenRequests int, timeoutHandler func([]int, []int), msgSender net.MessageSender) *PriFiLibInstance {
+func NewPriFiRelay(dataOutputEnabled bool, dataForClients chan []byte, dataFromDCNet chan []byte, experimentResultChan chan interface{}, openClosedSlotsMinDelayBetweenRequests int, maxNumberOfConsecuriveFailedRounds int, processingLoopSleepTime int, roundTimeOut int, trusteeCacheLowBound int, trusteeCacheHighBound int, timeoutHandler func([]int, []int), msgSender net.MessageSender) *PriFiLibInstance {
 	msw := newMessageSenderWrapper(msgSender)
-	r := relay.NewRelay(dataOutputEnabled, dataForClients, dataFromDCNet, experimentResultChan, openClosedSlotsMinDelayBetweenRequests, timeoutHandler, msw)
+	r := relay.NewRelay(dataOutputEnabled, dataForClients, dataFromDCNet, experimentResultChan, openClosedSlotsMinDelayBetweenRequests, maxNumberOfConsecuriveFailedRounds, processingLoopSleepTime, roundTimeOut, trusteeCacheLowBound, trusteeCacheHighBound, timeoutHandler, msw)
 	p := &PriFiLibInstance{
 		role: PRIFI_ROLE_RELAY,
 		specializedLibInstance: r,
@@ -63,7 +63,7 @@ func NewPriFiRelay(dataOutputEnabled bool, dataForClients chan []byte, dataFromD
 }
 
 // NewPriFiTrustee creates a new PriFi trustee
-func NewPriFiTrustee(neverSlowDown bool, msgSender net.MessageSender) *PriFiLibInstance {
+func NewPriFiTrustee(neverSlowDown bool, alwaysSlowDown bool, baseSleepTime int, msgSender net.MessageSender) *PriFiLibInstance {
 	//msw := newMessageSenderWrapper(msgSender)
 
 	errHandling := func(e error) { /* do nothing yet, we are alerted of errors via the SDA */ }
@@ -75,7 +75,7 @@ func NewPriFiTrustee(neverSlowDown bool, msgSender net.MessageSender) *PriFiLibI
 		log.Fatal("Could not create a MessageSenderWrapper, error is", err)
 	}
 
-	t := trustee.NewTrustee(neverSlowDown, msw)
+	t := trustee.NewTrustee(neverSlowDown, alwaysSlowDown, baseSleepTime, msw)
 	p := &PriFiLibInstance{
 		role: PRIFI_ROLE_TRUSTEE,
 		specializedLibInstance: t,

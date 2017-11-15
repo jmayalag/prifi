@@ -10,7 +10,6 @@ import (
 	"gopkg.in/dedis/onet.v1/log"
 	"reflect"
 	"strings"
-	"time"
 )
 
 // Possible sending rates for the trustees.
@@ -20,9 +19,6 @@ const (
 	TRUSTEE_RATE_HALVED
 )
 
-// TRUSTEE_BASE_SLEEP_TIME is the base unit for how much time the trustee sleeps between sending ciphers to the relay.
-const TRUSTEE_BASE_SLEEP_TIME = 100 * time.Millisecond
-
 // PriFiLibTrusteeInstance contains the mutable state of a PriFi entity.
 type PriFiLibTrusteeInstance struct {
 	messageSender *net.MessageSenderWrapper
@@ -31,7 +27,7 @@ type PriFiLibTrusteeInstance struct {
 }
 
 // NewPriFiClientWithState creates a new PriFi client entity state.
-func NewTrustee(neverSlowDown bool, msgSender *net.MessageSenderWrapper) *PriFiLibTrusteeInstance {
+func NewTrustee(neverSlowDown bool, alwaysSlowDown bool, baseSleepTime int, msgSender *net.MessageSenderWrapper) *PriFiLibTrusteeInstance {
 
 	trusteeState := new(TrusteeState)
 
@@ -43,6 +39,13 @@ func NewTrustee(neverSlowDown bool, msgSender *net.MessageSenderWrapper) *PriFiL
 	neffShuffle.Init()
 	trusteeState.neffShuffle = neffShuffle.TrusteeView
 	trusteeState.NeverSlowDown = neverSlowDown
+	trusteeState.AlwaysSlowDown = alwaysSlowDown
+
+	if neverSlowDown && alwaysSlowDown {
+		log.Fatal("Cannot have alwaysSlowDown=true && neverSlowDown=true")
+	}
+
+	trusteeState.BaseSleepTime = baseSleepTime
 
 	//init the state machine
 	states := []string{"BEFORE_INIT", "INITIALIZING", "SHUFFLE_DONE", "READY", "BLAMING", "SHUTDOWN"}
@@ -83,6 +86,8 @@ type TrusteeState struct {
 	sendingRate        chan int16
 	sharedSecrets      []abstract.Point
 	TrusteeID          int
+	BaseSleepTime      int
+	AlwaysSlowDown     bool //enforce the sleep in the sending function even if rate is FULL
 	NeverSlowDown      bool //ignore the sleep in the sending function if rate is STOPPED
 }
 

@@ -59,7 +59,7 @@ type PriFiLibRelayInstance struct {
 // Note: the returned state is not sufficient for the PrFi protocol
 // to start; this entity will expect a ALL_ALL_PARAMETERS message as
 // first received message to complete it's state.
-func NewRelay(dataOutputEnabled bool, dataForClients chan []byte, dataFromDCNet chan []byte, experimentResultChan chan interface{}, openClosedSlotsMinDelayBetweenRequests int, timeoutHandler func([]int, []int), msgSender *net.MessageSenderWrapper) *PriFiLibRelayInstance {
+func NewRelay(dataOutputEnabled bool, dataForClients chan []byte, dataFromDCNet chan []byte, experimentResultChan chan interface{}, openClosedSlotsMinDelayBetweenRequests int, maxNumberOfConsecuriveFailedRounds int, processingLoopSleepTime int, roundTimeOut int, trusteeCacheLowBound int, trusteeCacheHighBound int, timeoutHandler func([]int, []int), msgSender *net.MessageSenderWrapper) *PriFiLibRelayInstance {
 	relayState := new(RelayState)
 
 	//init the static stuff
@@ -71,6 +71,11 @@ func NewRelay(dataOutputEnabled bool, dataForClients chan []byte, dataFromDCNet 
 	relayState.ExperimentResultData = make([]string, 0)
 	relayState.PriorityDataForClients = make(chan []byte, 10) // This is used for relay's control message (like latency-tests)
 	relayState.OpenClosedSlotsMinDelayBetweenRequests = openClosedSlotsMinDelayBetweenRequests
+	relayState.MaxNumberOfConsecutiveFailedRounds = maxNumberOfConsecuriveFailedRounds
+	relayState.ProcessingLoopSleepTime = time.Duration(processingLoopSleepTime) * time.Millisecond
+	relayState.RoundTimeOut = time.Duration(roundTimeOut) * time.Millisecond
+	relayState.TrusteeCacheLowBound = trusteeCacheLowBound
+	relayState.TrusteeCacheHighBound = trusteeCacheHighBound
 	relayState.ScheduleLengthRepartitions = make(map[int]int)
 	relayState.bitrateStatistics = prifilog.NewBitRateStatistics()
 	relayState.timeStatistics = make(map[string]*prifilog.TimeStatistics)
@@ -109,21 +114,6 @@ func NewRelay(dataOutputEnabled bool, dataForClients chan []byte, dataFromDCNet 
 	}
 	return &prifi
 }
-
-// Kill the protocol if that many rounds fail consecutively
-const MAX_NUMBER_OF_CONSECUTIVE_FAILED_ROUNDS = 3 // (if greater than Window, the Window will be used instead)
-
-//The time slept between each round
-const PROCESSING_LOOP_SLEEP_TIME = 0 * time.Millisecond
-
-//The timeout before retransmission (UDP)
-const TIMEOUT_PHASE_1 = 2 * time.Second
-
-// Number of ciphertexts buffered by trustees. When <= TRUSTEE_CACHE_LOWBOUND, resume sending
-const TRUSTEE_CACHE_LOWBOUND = 10
-
-// Number of ciphertexts buffered by trustees. When >= TRUSTEE_CACHE_HIGHBOUND, stop sending
-const TRUSTEE_CACHE_HIGHBOUND = 1000
 
 // NodeRepresentation regroups the information about one client or trustee.
 type NodeRepresentation struct {
@@ -175,6 +165,11 @@ type RelayState struct {
 	ScheduleLengthRepartitions             map[int]int
 	OpenClosedSlotsRequestsRoundID         map[int32]bool // contains roundID -> true if that round should be a OC slot request
 	numberOfConsecutiveFailedRounds        int
+	MaxNumberOfConsecutiveFailedRounds     int // Kill the protocol if that many rounds fail consecutively
+	ProcessingLoopSleepTime                time.Duration
+	RoundTimeOut                           time.Duration //The timeout before retransmission (UDP) and/or considering the round failed
+	TrusteeCacheLowBound                   int           // Number of ciphertexts buffered by trustees. When <= TRUSTEE_CACHE_LOWBOUND, resume sending
+	TrusteeCacheHighBound                  int           // Number of ciphertexts buffered by trustees. When >= TRUSTEE_CACHE_HIGHBOUND, stop sending
 
 	//disruption protection
 	clientBitMap  map[int]map[int]int

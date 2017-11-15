@@ -33,29 +33,36 @@ type SOCKSConfig struct {
 
 //The configuration read in prifi.toml
 type PrifiTomlConfig struct {
-	ForceConsoleColor                      bool
-	OverrideLogLevel                       int
-	ClientDataOutputEnabled                bool
-	RelayDataOutputEnabled                 bool
-	CellSizeUp                             int
-	CellSizeDown                           int
-	RelayWindowSize                        int
-	RelayUseOpenClosedSlots                bool
-	RelayUseDummyDataDown                  bool
-	RelayReportingLimit                    int
-	UseUDP                                 bool
-	DoLatencyTests                         bool
-	SocksServerPort                        int
-	SocksClientPort                        int
-	ProtocolVersion                        string
-	DCNetType                              string
-	ReplayPCAP                             bool
-	PCAPFolder                             string
-	TrusteeNeverSlowDown                   bool
-	SimulDelayBetweenClients               int
-	DisruptionProtectionEnabled            bool
-	EquivocationProtectionEnabled          bool // not linked in the back
-	OpenClosedSlotsMinDelayBetweenRequests int
+	ForceConsoleColor                       bool
+	OverrideLogLevel                        int
+	ClientDataOutputEnabled                 bool
+	RelayDataOutputEnabled                  bool
+	CellSizeUp                              int
+	CellSizeDown                            int
+	RelayWindowSize                         int
+	RelayUseOpenClosedSlots                 bool
+	RelayUseDummyDataDown                   bool
+	RelayReportingLimit                     int
+	UseUDP                                  bool
+	DoLatencyTests                          bool
+	SocksServerPort                         int
+	SocksClientPort                         int
+	ProtocolVersion                         string
+	DCNetType                               string
+	ReplayPCAP                              bool
+	PCAPFolder                              string
+	TrusteeSleepTimeBetweenMessages         int
+	TrusteeAlwaysSlowDown                   bool
+	TrusteeNeverSlowDown                    bool
+	SimulDelayBetweenClients                int
+	DisruptionProtectionEnabled             bool
+	EquivocationProtectionEnabled           bool // not linked in the back
+	OpenClosedSlotsMinDelayBetweenRequests  int
+	RelayMaxNumberOfConsecutiveFailedRounds int
+	RelayProcessingLoopSleepTime            int
+	RelayRoundTimeOut                       int
+	RelayTrusteeCacheLowBound               int
+	RelayTrusteeCacheHighBound              int
 }
 
 //PriFiSDAWrapperConfig is all the information the SDA-Protocols needs. It contains the network map of identities, our role, and the socks parameters if we are the corresponding role
@@ -102,17 +109,33 @@ func (p *PriFiSDAProtocol) SetConfigFromPriFiService(config *PriFiSDAWrapperConf
 	case Relay:
 		relayOutputEnabled := config.Toml.RelayDataOutputEnabled
 		p.prifiLibInstance = prifi_lib.NewPriFiRelay(relayOutputEnabled,
-			config.RelaySideSocksConfig.DownstreamChannel, config.RelaySideSocksConfig.UpstreamChannel,
-			experimentResultChan, config.Toml.OpenClosedSlotsMinDelayBetweenRequests, p.handleTimeout, ms)
+			config.RelaySideSocksConfig.DownstreamChannel,
+			config.RelaySideSocksConfig.UpstreamChannel,
+			experimentResultChan,
+			config.Toml.OpenClosedSlotsMinDelayBetweenRequests,
+			config.Toml.RelayMaxNumberOfConsecutiveFailedRounds,
+			config.Toml.RelayProcessingLoopSleepTime,
+			config.Toml.RelayRoundTimeOut,
+			config.Toml.RelayTrusteeCacheLowBound,
+			config.Toml.RelayTrusteeCacheHighBound,
+			p.handleTimeout,
+			ms)
 	case Trustee:
-		p.prifiLibInstance = prifi_lib.NewPriFiTrustee(config.Toml.TrusteeNeverSlowDown, ms)
+		p.prifiLibInstance = prifi_lib.NewPriFiTrustee(config.Toml.TrusteeNeverSlowDown,
+			config.Toml.TrusteeAlwaysSlowDown,
+			config.Toml.TrusteeSleepTimeBetweenMessages,
+			ms)
 
 	case Client:
 		doLatencyTests := config.Toml.DoLatencyTests
 		clientDataOutputEnabled := config.Toml.ClientDataOutputEnabled
-		p.prifiLibInstance = prifi_lib.NewPriFiClient(doLatencyTests, clientDataOutputEnabled,
-			config.ClientSideSocksConfig.UpstreamChannel, config.ClientSideSocksConfig.DownstreamChannel,
-			config.Toml.ReplayPCAP, config.Toml.PCAPFolder, ms)
+		p.prifiLibInstance = prifi_lib.NewPriFiClient(doLatencyTests,
+			clientDataOutputEnabled,
+			config.ClientSideSocksConfig.UpstreamChannel,
+			config.ClientSideSocksConfig.DownstreamChannel,
+			config.Toml.ReplayPCAP,
+			config.Toml.PCAPFolder,
+			ms)
 	}
 
 	p.registerHandlers()

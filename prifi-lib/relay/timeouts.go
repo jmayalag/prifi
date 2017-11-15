@@ -13,7 +13,7 @@ online if they didn't answer by that time.
 */
 func (p *PriFiLibRelayInstance) checkIfRoundHasEndedAfterTimeOut_Phase1(roundID int32) {
 
-	time.Sleep(TIMEOUT_PHASE_1)
+	time.Sleep(p.relayState.RoundTimeOut)
 
 	if !p.relayState.roundManager.IsRoundOpenend(roundID) {
 		return //everything went well, it's great !
@@ -27,14 +27,17 @@ func (p *PriFiLibRelayInstance) checkIfRoundHasEndedAfterTimeOut_Phase1(roundID 
 
 	p.relayState.roundManager.ForceCloseRound()
 	p.relayState.numberOfConsecutiveFailedRounds++
-	log.Lvl1("WARNING: consecutive missed round is", p.relayState.numberOfConsecutiveFailedRounds)
+	log.Lvl1("WARNING: Timeout for round", roundID, "already", p.relayState.numberOfConsecutiveFailedRounds, "consecutive missed rounds")
 
 	if p.relayState.roundManager.HasAllCiphersForCurrentRound() {
 		p.hasAllCiphersForUpstream(true)
 	}
 
+	missingClientCiphers, missingTrusteeCiphers := p.relayState.roundManager.MissingCiphersForCurrentRound()
+	log.Lvl1("WARNING: missing clients", missingClientCiphers, "and trustees", missingTrusteeCiphers)
+
 	if p.relayState.numberOfConsecutiveFailedRounds >= p.relayState.WindowSize ||
-		p.relayState.numberOfConsecutiveFailedRounds >= MAX_NUMBER_OF_CONSECUTIVE_FAILED_ROUNDS {
+		p.relayState.numberOfConsecutiveFailedRounds >= p.relayState.MaxNumberOfConsecutiveFailedRounds {
 		log.Error("MAX_NUMBER_OF_CONSECUTIVE_FAILED_ROUNDS reached, killing protocol.")
 
 		log.Lvl3("Stopping experiment, if any.")

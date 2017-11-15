@@ -146,7 +146,7 @@ func (p *PriFiLibRelayInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARA
 			toSend := &net.REL_TRU_TELL_RATE_CHANGE{WindowCapacity: 1}
 			p.messageSender.SendToTrusteeWithLog(trusteeID, toSend, "(trustee "+strconv.Itoa(trusteeID)+")")
 		}
-		p.relayState.roundManager.AddRateLimiter(TRUSTEE_CACHE_LOWBOUND, TRUSTEE_CACHE_HIGHBOUND, stopFn, resumeFn)
+		p.relayState.roundManager.AddRateLimiter(p.relayState.TrusteeCacheLowBound, p.relayState.TrusteeCacheHighBound, stopFn, resumeFn)
 	}
 
 	log.Lvlf3("%+v\n", p.relayState)
@@ -261,7 +261,7 @@ func (p *PriFiLibRelayInstance) hasAllCiphersForUpstream(finishedByTrustee bool)
 
 	//one round has just passed !
 	// sleep so it does not go too fast for debug
-	time.Sleep(PROCESSING_LOOP_SLEEP_TIME)
+	time.Sleep(p.relayState.ProcessingLoopSleepTime)
 
 	// send the data down
 	for i := p.relayState.numberOfNonAckedDownstreamPackets; i < p.relayState.WindowSize; i++ {

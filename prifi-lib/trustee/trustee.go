@@ -49,7 +49,7 @@ func (p *PriFiLibTrusteeInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PA
 	trusteeID := msg.IntValueOrElse("NextFreeTrusteeID", -1)
 	nTrustees := msg.IntValueOrElse("NTrustees", p.trusteeState.nTrustees)
 	nClients := msg.IntValueOrElse("NClients", p.trusteeState.nClients)
-	cellSize := msg.IntValueOrElse("UpstreamCellSize", p.trusteeState.PayloadLength) //todo: change this name
+	cellSize := msg.IntValueOrElse("UpstreamCellSize", p.trusteeState.PayloadLength)
 	dcNetType := msg.StringValueOrElse("DCNetType", "not initilaized")
 
 	//sanity checks
@@ -135,6 +135,10 @@ func (p *PriFiLibTrusteeInstance) Send_TRU_REL_DC_CIPHER(rateChan chan int16) {
 
 		default:
 			if currentRate == TRUSTEE_RATE_ACTIVE {
+				if p.trusteeState.AlwaysSlowDown {
+					log.Lvl4("Trustee " + strconv.Itoa(p.trusteeState.ID) + " rate FULL, sleeping for " + strconv.Itoa(p.trusteeState.BaseSleepTime))
+					time.Sleep(time.Duration(p.trusteeState.BaseSleepTime) * time.Millisecond)
+				}
 				newRoundID, err := sendData(p, roundID)
 				if err != nil {
 					stop = true
@@ -143,7 +147,8 @@ func (p *PriFiLibTrusteeInstance) Send_TRU_REL_DC_CIPHER(rateChan chan int16) {
 
 			} else if currentRate == TRUSTEE_RATE_HALVED {
 				if !p.trusteeState.NeverSlowDown { //sorry double neg. If NeverSlowDown = true, we skip this sleep
-					time.Sleep(TRUSTEE_BASE_SLEEP_TIME)
+					log.Lvl4("Trustee " + strconv.Itoa(p.trusteeState.ID) + " rate HALVED, sleeping for " + strconv.Itoa(p.trusteeState.BaseSleepTime))
+					time.Sleep(time.Duration(p.trusteeState.BaseSleepTime) * time.Millisecond)
 				}
 				newRoundID, err := sendData(p, roundID)
 				if err != nil {
