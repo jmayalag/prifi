@@ -33,7 +33,6 @@ considered disconnected
 
 import (
 	"errors"
-	"time"
 
 	"github.com/lbarman/prifi/prifi-lib/dcnet"
 	prifilog "github.com/lbarman/prifi/prifi-lib/log"
@@ -59,7 +58,7 @@ type PriFiLibRelayInstance struct {
 // Note: the returned state is not sufficient for the PrFi protocol
 // to start; this entity will expect a ALL_ALL_PARAMETERS message as
 // first received message to complete it's state.
-func NewRelay(dataOutputEnabled bool, dataForClients chan []byte, dataFromDCNet chan []byte, experimentResultChan chan interface{}, openClosedSlotsMinDelayBetweenRequests int, maxNumberOfConsecuriveFailedRounds int, processingLoopSleepTime int, roundTimeOut int, trusteeCacheLowBound int, trusteeCacheHighBound int, timeoutHandler func([]int, []int), msgSender *net.MessageSenderWrapper) *PriFiLibRelayInstance {
+func NewRelay(dataOutputEnabled bool, dataForClients chan []byte, dataFromDCNet chan []byte, experimentResultChan chan interface{}, timeoutHandler func([]int, []int), msgSender *net.MessageSenderWrapper) *PriFiLibRelayInstance {
 	relayState := new(RelayState)
 
 	//init the static stuff
@@ -69,13 +68,7 @@ func NewRelay(dataOutputEnabled bool, dataForClients chan []byte, dataFromDCNet 
 	relayState.timeoutHandler = timeoutHandler
 	relayState.ExperimentResultChannel = experimentResultChan
 	relayState.ExperimentResultData = make([]string, 0)
-	relayState.PriorityDataForClients = make(chan []byte, 10) // This is used for relay's control message (like latency-tests)
-	relayState.OpenClosedSlotsMinDelayBetweenRequests = openClosedSlotsMinDelayBetweenRequests
-	relayState.MaxNumberOfConsecutiveFailedRounds = maxNumberOfConsecuriveFailedRounds
-	relayState.ProcessingLoopSleepTime = time.Duration(processingLoopSleepTime) * time.Millisecond
-	relayState.RoundTimeOut = time.Duration(roundTimeOut) * time.Millisecond
-	relayState.TrusteeCacheLowBound = trusteeCacheLowBound
-	relayState.TrusteeCacheHighBound = trusteeCacheHighBound
+	relayState.PriorityDataForClients = make(chan []byte, 10) // This is used for relay's control message (like latency-tests) d
 	relayState.ScheduleLengthRepartitions = make(map[int]int)
 	relayState.bitrateStatistics = prifilog.NewBitRateStatistics()
 	relayState.timeStatistics = make(map[string]*prifilog.TimeStatistics)
@@ -166,10 +159,10 @@ type RelayState struct {
 	OpenClosedSlotsRequestsRoundID         map[int32]bool // contains roundID -> true if that round should be a OC slot request
 	numberOfConsecutiveFailedRounds        int
 	MaxNumberOfConsecutiveFailedRounds     int // Kill the protocol if that many rounds fail consecutively
-	ProcessingLoopSleepTime                time.Duration
-	RoundTimeOut                           time.Duration //The timeout before retransmission (UDP) and/or considering the round failed
-	TrusteeCacheLowBound                   int           // Number of ciphertexts buffered by trustees. When <= TRUSTEE_CACHE_LOWBOUND, resume sending
-	TrusteeCacheHighBound                  int           // Number of ciphertexts buffered by trustees. When >= TRUSTEE_CACHE_HIGHBOUND, stop sending
+	ProcessingLoopSleepTime                int
+	RoundTimeOut                           int //The timeout before retransmission (UDP) and/or considering the round failed
+	TrusteeCacheLowBound                   int // Number of ciphertexts buffered by trustees. When <= TRUSTEE_CACHE_LOWBOUND, resume sending
+	TrusteeCacheHighBound                  int // Number of ciphertexts buffered by trustees. When >= TRUSTEE_CACHE_HIGHBOUND, stop sending
 
 	//disruption protection
 	clientBitMap  map[int]map[int]int

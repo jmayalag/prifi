@@ -97,6 +97,12 @@ func (p *PriFiLibRelayInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARA
 	useUDP := msg.BoolValueOrElse("UseUDP", p.relayState.UseUDP)
 	dcNetType := msg.StringValueOrElse("DCNetType", p.relayState.dcNetType)
 	disruptionProtection := msg.BoolValueOrElse("DisruptionProtectionEnabled", false)
+	openClosedSlotsMinDelayBetweenRequests := msg.IntValueOrElse("OpenClosedSlotsMinDelayBetweenRequests", p.relayState.OpenClosedSlotsMinDelayBetweenRequests)
+	maxNumberOfConsecutiveFailedRounds := msg.IntValueOrElse("RelayMaxNumberOfConsecutiveFailedRounds", p.relayState.MaxNumberOfConsecutiveFailedRounds)
+	processingLoopSleepTime := msg.IntValueOrElse("RelayProcessingLoopSleepTime", p.relayState.ProcessingLoopSleepTime)
+	roundTimeOut := msg.IntValueOrElse("RelayRoundTimeOut", p.relayState.RoundTimeOut)
+	trusteeCacheLowBound := msg.IntValueOrElse("RelayTrusteeCacheLowBound", p.relayState.TrusteeCacheLowBound)
+	trusteeCacheHighBound := msg.IntValueOrElse("RelayTrusteeCacheHighBound", p.relayState.TrusteeCacheHighBound)
 
 	p.relayState.clients = make([]NodeRepresentation, nClients)
 	p.relayState.trustees = make([]NodeRepresentation, nTrustees)
@@ -112,6 +118,12 @@ func (p *PriFiLibRelayInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARA
 	p.relayState.UseUDP = useUDP
 	p.relayState.WindowSize = windowSize
 	p.relayState.numberOfNonAckedDownstreamPackets = 0
+	p.relayState.OpenClosedSlotsMinDelayBetweenRequests = openClosedSlotsMinDelayBetweenRequests
+	p.relayState.MaxNumberOfConsecutiveFailedRounds = maxNumberOfConsecutiveFailedRounds
+	p.relayState.ProcessingLoopSleepTime = processingLoopSleepTime
+	p.relayState.RoundTimeOut = roundTimeOut
+	p.relayState.TrusteeCacheLowBound = trusteeCacheLowBound
+	p.relayState.TrusteeCacheHighBound = trusteeCacheHighBound
 	p.relayState.MessageHistory = config.CryptoSuite.Cipher([]byte("init")) //any non-nil, non-empty, constant array
 	p.relayState.VerifiableDCNetKeys = make([][]byte, nTrustees)
 	p.relayState.nVkeysCollected = 0
@@ -149,7 +161,7 @@ func (p *PriFiLibRelayInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARA
 		p.relayState.roundManager.AddRateLimiter(p.relayState.TrusteeCacheLowBound, p.relayState.TrusteeCacheHighBound, stopFn, resumeFn)
 	}
 
-	log.Lvlf3("%+v\n", p.relayState)
+	log.Lvlf3("Relay new state: %+v\n", p.relayState)
 	log.Lvl1("Relay has been initialized by message; StartNow is", startNow)
 
 	// Broadcast those parameters to the other nodes, then tell the trustees which ID they are.
@@ -261,7 +273,9 @@ func (p *PriFiLibRelayInstance) hasAllCiphersForUpstream(finishedByTrustee bool)
 
 	//one round has just passed !
 	// sleep so it does not go too fast for debug
-	time.Sleep(p.relayState.ProcessingLoopSleepTime)
+	if p.relayState.ProcessingLoopSleepTime > 0 {
+		time.Sleep(time.Duration(p.relayState.ProcessingLoopSleepTime) * time.Millisecond)
+	}
 
 	// send the data down
 	for i := p.relayState.numberOfNonAckedDownstreamPackets; i < p.relayState.WindowSize; i++ {
@@ -359,6 +373,7 @@ func (p *PriFiLibRelayInstance) finalizeUpstreamData() error {
 
 		if !valid {
 			// start blame
+			log.Error("Warning: Disruption Protection check failed")
 		}
 	}
 
@@ -418,7 +433,12 @@ func (p *PriFiLibRelayInstance) finalizeUpstreamData() error {
 		return nil
 	}
 
-	if len(upstreamPlaintext) != p.relayState.UpstreamCellSize {
+	// verify that the decoded payload has the correct size
+	expectedSize := p.relayState.UpstreamCellSize
+	if p.relayState.DisruptionProtectionEnabled {
+		expectedSize -= 32
+	}
+	if len(upstreamPlaintext) != expectedSize {
 		e := "Relay : DecodeCell produced wrong-size payload, " + strconv.Itoa(len(upstreamPlaintext)) + "!=" + strconv.Itoa(p.relayState.UpstreamCellSize)
 		log.Error(e)
 		return errors.New(e)

@@ -99,13 +99,12 @@ func TestRelayRun1(t *testing.T) {
 
 	msgSender := new(TestMessageSender)
 	msw := newTestMessageSenderWrapper(msgSender)
-	ocSleep := 1000
 	sentToClient = make([]interface{}, 0)
 	sentToTrustee = make([]interface{}, 0)
 	dataForClients := make(chan []byte, 6)
 	dataFromDCNet := make(chan []byte, 3)
 
-	relay := NewRelay(true, dataForClients, dataFromDCNet, resultChan, ocSleep, timeoutHandler, msw)
+	relay := NewRelay(true, dataForClients, dataFromDCNet, resultChan, timeoutHandler, msw)
 
 	//when receiving no message, client should have some parameters ready
 	rs := relay.relayState
@@ -154,6 +153,16 @@ func TestRelayRun1(t *testing.T) {
 	msg.Add("UseDummyDataDown", true)
 	msg.Add("ExperimentRoundLimit", 2)
 	msg.Add("DCNetType", dcNetType)
+	msg.Add("UseOpenClosedSlots", true)
+	msg.Add("UseDummyDataDown", true)
+	msg.Add("DisruptionProtectionEnabled", true)
+	msg.Add("OpenClosedSlotsMinDelayBetweenRequests", 101)
+	msg.Add("RelayMaxNumberOfConsecutiveFailedRounds", 3)
+	msg.Add("RelayProcessingLoopSleepTime", 102)
+	msg.Add("RelayRoundTimeOut", 1003)
+	msg.Add("RelayTrusteeCacheLowBound", 10)
+	msg.Add("RelayTrusteeCacheHighBound", 15)
+
 
 	if err := relay.ReceivedMessage(*msg); err != nil {
 		t.Error("Relay should be able to receive this message, but", err)
@@ -197,6 +206,33 @@ func TestRelayRun1(t *testing.T) {
 	if rs.dcNetType != "Simple" {
 		t.Error("DCNetType was not set correctly")
 	}
+	if rs.UseOpenClosedSlots != true {
+		t.Error("UseOpenClosedSlots should be true")
+	}
+	if rs.UseDummyDataDown != true {
+		t.Error("UseDummyDataDown should be true")
+	}
+	if rs.DisruptionProtectionEnabled != true {
+		t.Error("DisruptionProtectionEnabled should be true")
+	}
+	if rs.OpenClosedSlotsMinDelayBetweenRequests != 101 {
+		t.Error("OpenClosedSlotsMinDelayBetweenRequests should be 101")
+	}
+	if rs.MaxNumberOfConsecutiveFailedRounds != 3 {
+		t.Error("MaxNumberOfConsecutiveFailedRounds should be 3")
+	}
+	if rs.ProcessingLoopSleepTime != 102 {
+		t.Error("ProcessingLoopSleepTime should be 102")
+	}
+	if rs.RoundTimeOut != 1003 {
+		t.Error("RoundTimeOut should be 1003")
+	}
+	if rs.TrusteeCacheLowBound != 10 {
+		t.Error("TrusteeCacheLowBound should be 10")
+	}
+	if rs.TrusteeCacheHighBound != 15 {
+		t.Error("TrusteeCacheHighBound should be 15")
+	}
 	if rs.roundManager.resumeFunction == nil {
 		t.Error("bufferManager.resumeFunction was not set correctly")
 	}
@@ -206,6 +242,7 @@ func TestRelayRun1(t *testing.T) {
 	if relay.stateMachine.State() != "COLLECTING_TRUSTEES_PKS" {
 		t.Error("In wrong state ! we should be in COLLECTING_TRUSTEES_PKS, but are in ", relay.stateMachine.State())
 	}
+
 
 	// should send ALL_ALL_PARAMETERS to clients
 	msg2, err := getTrusteeMessage("ALL_ALL_PARAMETERS")
@@ -332,6 +369,8 @@ func TestRelayRun1(t *testing.T) {
 		Sig:       make([]byte, 0)}
 	if err := relay.ReceivedMessage(msg14); err == nil {
 		t.Error("Relay should not continue if the signature is not valid !")
+	} else {
+		log.Lvl1("Error above is normal")
 	}
 	rs.neffShuffle.SignatureCount = 0
 
@@ -418,9 +457,8 @@ func TestRelayRun2(t *testing.T) {
 	sentToTrustee = make([]interface{}, 0)
 	dataForClients := make(chan []byte, 6)
 	dataFromDCNet := make(chan []byte, 3)
-	ocSleep := 1000
 
-	relay := NewRelay(true, dataForClients, dataFromDCNet, resultChan, ocSleep, timeoutHandler, msw)
+	relay := NewRelay(true, dataForClients, dataFromDCNet, resultChan, timeoutHandler, msw)
 	rs := relay.relayState
 
 	//we start by receiving a ALL_ALL_PARAMETERS from relay
@@ -440,6 +478,15 @@ func TestRelayRun2(t *testing.T) {
 	msg.Add("UseDummyDataDown", true)
 	msg.Add("ExperimentRoundLimit", 2)
 	msg.Add("DCNetType", dcNetType)
+	msg.Add("UseOpenClosedSlots", true)
+	msg.Add("UseDummyDataDown", true)
+	msg.Add("DisruptionProtectionEnabled", true)
+	msg.Add("OpenClosedSlotsMinDelayBetweenRequests", 101)
+	msg.Add("RelayMaxNumberOfConsecutiveFailedRounds", 3)
+	msg.Add("RelayProcessingLoopSleepTime", 102)
+	msg.Add("RelayRoundTimeOut", 1003)
+	msg.Add("RelayTrusteeCacheLowBound", 10)
+	msg.Add("RelayTrusteeCacheHighBound", 15)
 
 	if err := relay.ReceivedMessage(*msg); err != nil {
 		t.Error("Relay should be able to receive this message, but", err)
@@ -530,6 +577,7 @@ func TestRelayRun2(t *testing.T) {
 	msg15 := net.TRU_REL_SHUFFLE_SIG{
 		TrusteeID: 0,
 		Sig:       signature}
+
 	if err := relay.ReceivedMessage(msg15); err != nil {
 		t.Error("Relay should be able to receive this message, but", err)
 	}
@@ -603,9 +651,8 @@ func TestRelayRun3(t *testing.T) {
 	sentToTrustee = make([]interface{}, 0)
 	dataForClients := make(chan []byte, 6)
 	dataFromDCNet := make(chan []byte, 3)
-	ocSleep := 1000
 
-	relay := NewRelay(true, dataForClients, dataFromDCNet, resultChan, ocSleep, timeoutHandler, msw)
+	relay := NewRelay(true, dataForClients, dataFromDCNet, resultChan, timeoutHandler, msw)
 
 	//we start by receiving a ALL_ALL_PARAMETERS from relay
 	msg := new(net.ALL_ALL_PARAMETERS)
@@ -624,6 +671,15 @@ func TestRelayRun3(t *testing.T) {
 	msg.Add("UseDummyDataDown", false)
 	msg.Add("ExperimentRoundLimit", -1)
 	msg.Add("DCNetType", dcNetType)
+	msg.Add("UseOpenClosedSlots", true)
+	msg.Add("UseDummyDataDown", true)
+	msg.Add("DisruptionProtectionEnabled", false)
+	msg.Add("OpenClosedSlotsMinDelayBetweenRequests", 101)
+	msg.Add("RelayMaxNumberOfConsecutiveFailedRounds", 3)
+	msg.Add("RelayProcessingLoopSleepTime", 102)
+	msg.Add("RelayRoundTimeOut", 1003)
+	msg.Add("RelayTrusteeCacheLowBound", 10)
+	msg.Add("RelayTrusteeCacheHighBound", 15)
 
 	if err := relay.ReceivedMessage(*msg); err != nil {
 		t.Error("Relay should be able to receive this message, but", err)
@@ -826,9 +882,8 @@ func TestRelayRun4(t *testing.T) {
 	sentToTrustee = make([]interface{}, 0)
 	dataForClients := make(chan []byte, 6)
 	dataFromDCNet := make(chan []byte, 3)
-	ocSleep := 1000
 
-	relay := NewRelay(true, dataForClients, dataFromDCNet, resultChan, ocSleep, timeoutHandler, msw)
+	relay := NewRelay(true, dataForClients, dataFromDCNet, resultChan, timeoutHandler, msw)
 
 	//we start by receiving a ALL_ALL_PARAMETERS from relay
 	msg := new(net.ALL_ALL_PARAMETERS)
@@ -847,6 +902,15 @@ func TestRelayRun4(t *testing.T) {
 	msg.Add("UseDummyDataDown", false)
 	msg.Add("ExperimentRoundLimit", -1)
 	msg.Add("DCNetType", dcNetType)
+	msg.Add("UseOpenClosedSlots", true)
+	msg.Add("UseDummyDataDown", true)
+	msg.Add("DisruptionProtectionEnabled", true)
+	msg.Add("OpenClosedSlotsMinDelayBetweenRequests", 101)
+	msg.Add("RelayMaxNumberOfConsecutiveFailedRounds", 3)
+	msg.Add("RelayProcessingLoopSleepTime", 102)
+	msg.Add("RelayRoundTimeOut", 1003)
+	msg.Add("RelayTrusteeCacheLowBound", 10)
+	msg.Add("RelayTrusteeCacheHighBound", 15)
 
 	if err := relay.ReceivedMessage(*msg); err != nil {
 		t.Error("Relay should be able to receive this message, but", err)
@@ -896,7 +960,7 @@ func TestRelayRun4(t *testing.T) {
 		t.Error("DCNetType not passed correctly to Client")
 	}
 
-	relay2 := NewRelay(true, dataForClients, dataFromDCNet, resultChan, ocSleep, timeoutHandler, msw)
+	relay2 := NewRelay(true, dataForClients, dataFromDCNet, resultChan, timeoutHandler, msw)
 
 	//we start by receiving a ALL_ALL_PARAMETERS from relay
 	msg21 := new(net.ALL_ALL_PARAMETERS)
