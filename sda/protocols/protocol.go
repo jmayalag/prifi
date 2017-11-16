@@ -75,6 +75,12 @@ func (p *PriFiSDAProtocol) Start() error {
 	msg.Add("UseUDP", p.config.Toml.UseUDP)
 	msg.Add("DCNetType", p.config.Toml.DCNetType)
 	msg.Add("DisruptionProtectionEnabled", p.config.Toml.DisruptionProtectionEnabled)
+	msg.Add("OpenClosedSlotsMinDelayBetweenRequests", p.config.Toml.OpenClosedSlotsMinDelayBetweenRequests)
+	msg.Add("RelayMaxNumberOfConsecutiveFailedRounds", p.config.Toml.RelayMaxNumberOfConsecutiveFailedRounds)
+	msg.Add("RelayProcessingLoopSleepTime", p.config.Toml.RelayProcessingLoopSleepTime)
+	msg.Add("RelayRoundTimeOut", p.config.Toml.RelayRoundTimeOut)
+	msg.Add("RelayTrusteeCacheLowBound", p.config.Toml.RelayTrusteeCacheLowBound)
+	msg.Add("RelayTrusteeCacheHighBound", p.config.Toml.RelayTrusteeCacheHighBound)
 	msg.ForceParams = true
 
 	p.SendTo(p.TreeNode(), msg)

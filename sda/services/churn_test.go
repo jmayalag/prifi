@@ -16,8 +16,8 @@ func genSI(addrPort string) *network.ServerIdentity {
 	return network.NewServerIdentity(pub, addr)
 }
 
-func genPacketFromSource(source *network.ServerIdentity) *network.Packet {
-	return &network.Packet{
+func genPacketFromSource(source *network.ServerIdentity) *network.Envelope {
+	return &network.Envelope{
 		ServerIdentity: source,
 	}
 }

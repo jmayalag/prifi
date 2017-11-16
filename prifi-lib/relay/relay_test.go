@@ -163,7 +163,6 @@ func TestRelayRun1(t *testing.T) {
 	msg.Add("RelayTrusteeCacheLowBound", 10)
 	msg.Add("RelayTrusteeCacheHighBound", 15)
 
-
 	if err := relay.ReceivedMessage(*msg); err != nil {
 		t.Error("Relay should be able to receive this message, but", err)
 	}
@@ -242,7 +241,6 @@ func TestRelayRun1(t *testing.T) {
 	if relay.stateMachine.State() != "COLLECTING_TRUSTEES_PKS" {
 		t.Error("In wrong state ! we should be in COLLECTING_TRUSTEES_PKS, but are in ", relay.stateMachine.State())
 	}
-
 
 	// should send ALL_ALL_PARAMETERS to clients
 	msg2, err := getTrusteeMessage("ALL_ALL_PARAMETERS")

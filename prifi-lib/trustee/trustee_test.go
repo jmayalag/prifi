@@ -61,7 +61,9 @@ func TestTrustee(t *testing.T) {
 	msgSender.sentToRelay = make(chan interface{}, 15)
 	msw := newTestMessageSenderWrapper(msgSender)
 	neverSlowDown := false
-	trustee := NewTrustee(neverSlowDown, msw)
+	alwaysSlowDown := false
+	baseSleepTime := 1000
+	trustee := NewTrustee(neverSlowDown, alwaysSlowDown, baseSleepTime, msw)
 
 	ts := trustee.trusteeState
 	if ts.sendingRate == nil {
@@ -238,7 +240,7 @@ func TestTrustee(t *testing.T) {
 		WindowCapacity: 0,
 	}
 
-	time.Sleep(TRUSTEE_BASE_SLEEP_TIME / 2) //just time for one message
+	time.Sleep(time.Duration(baseSleepTime/2) * time.Millisecond) //just time for one message
 
 	if err := trustee.ReceivedMessage(*stopMsg); err != nil {
 		t.Error("Should handle this stop message, but", err)
@@ -260,10 +262,10 @@ func TestTrustee(t *testing.T) {
 		}
 
 	default:
-		t.Error("Trustee should have sent a TRU_REL_DC_CIPHER to the relay")
+		t.Fatal("Trustee should have sent a TRU_REL_DC_CIPHER to the relay")
 	}
 
-	time.Sleep(TRUSTEE_BASE_SLEEP_TIME * 2)
+	time.Sleep(time.Duration(baseSleepTime*2) * time.Millisecond)
 
 	//empty the chan
 	empty := false
@@ -276,7 +278,7 @@ func TestTrustee(t *testing.T) {
 		}
 	}
 
-	time.Sleep(3 * TRUSTEE_BASE_SLEEP_TIME)
+	time.Sleep(time.Duration(baseSleepTime*2) * time.Millisecond)
 
 	select {
 	case _ = <-msgSender.sentToRelay:
@@ -288,13 +290,13 @@ func TestTrustee(t *testing.T) {
 		WindowCapacity: 1,
 	}
 
-	time.Sleep(TRUSTEE_BASE_SLEEP_TIME) //just time for one message
+	time.Sleep(time.Duration(baseSleepTime) * time.Millisecond) //just time for one message
 
 	if err := trustee.ReceivedMessage(*startMsg); err != nil {
 		t.Error("Should handle this start message, but", err)
 	}
 
-	time.Sleep(3 * TRUSTEE_BASE_SLEEP_TIME)
+	time.Sleep(time.Duration(baseSleepTime*2) * time.Millisecond)
 
 	select {
 	case msg8 := <-msgSender.sentToRelay:

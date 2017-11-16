@@ -3,6 +3,7 @@ all: test coveralls it it2
 
 .PHONY: test
 test: build test_fmt test_govet test_lint
+	DEBUG_COLOR="True" DEBUG_LVL=1 go test -short ./...
 
 .PHONY: test_fmt
 test_fmt:
@@ -37,7 +38,7 @@ coveralls:
 
 .PHONY: test_verbose
 test_verbose:
-	go test -v -race -short ./...
+	DEBUG_COLOR="True" DEBUG_LVL=3 go test -v -race ./...
 
 .PHONY: it
 it:

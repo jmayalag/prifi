@@ -112,12 +112,6 @@ func (p *PriFiSDAProtocol) SetConfigFromPriFiService(config *PriFiSDAWrapperConf
 			config.RelaySideSocksConfig.DownstreamChannel,
 			config.RelaySideSocksConfig.UpstreamChannel,
 			experimentResultChan,
-			config.Toml.OpenClosedSlotsMinDelayBetweenRequests,
-			config.Toml.RelayMaxNumberOfConsecutiveFailedRounds,
-			config.Toml.RelayProcessingLoopSleepTime,
-			config.Toml.RelayRoundTimeOut,
-			config.Toml.RelayTrusteeCacheLowBound,
-			config.Toml.RelayTrusteeCacheHighBound,
 			p.handleTimeout,
 			ms)
 	case Trustee:

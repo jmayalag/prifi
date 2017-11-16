@@ -23,8 +23,6 @@ func TestTiming(t *testing.T) {
 		t,
 	}
 
-	SetOutputInterface(&to)
-
 	StartMeasure("test")
 	StartMeasure("test")
 
