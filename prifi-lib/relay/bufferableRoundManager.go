@@ -445,7 +445,7 @@ func (b *BufferableRoundManager) AddTrusteeCipher(roundID int32, trusteeID int, 
 func (b *BufferableRoundManager) AddClientCipher(roundID int32, clientID int, data []byte) error {
 	b.Lock()
 	defer b.Unlock()
-	
+
 	anyRoundOpenend, currendRound := b.currentRound()
 	if !anyRoundOpenend {
 		log.Fatal("Can't add client cipher, no round opened")
