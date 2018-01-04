@@ -1,8 +1,13 @@
 RelayUseOpenClosedSlots = false
-DoLatencyTests = false
+DoLatencyTests = true
 ReplayPCAP = false
 DisruptionProtectionEnabled = false
 RelayUseDummyDataDown = false
+RelayMaxNumberOfConsecutiveFailedRounds = 3
+RelayProcessingLoopSleepTime = 0
+RelayRoundTimeOut = 1000
+RelayTrusteeCacheLowBound = 100
+RelayTrusteeCacheHighBound = 1000
 Hosts = 92
 CellSizeUp = 500
 RelayWindowSize = 4

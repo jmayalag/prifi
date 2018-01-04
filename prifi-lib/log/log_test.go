@@ -5,7 +5,7 @@ import (
 )
 
 func TestBWStatistics(t *testing.T) {
-	b := NewBitRateStatistics()
+	b := NewBitRateStatistics(1500)
 	b.AddDownstreamCell(int64(1000))
 	b.AddDownstreamUDPCell(int64(2000), 2)
 	b.AddDownstreamRetransmitCell(int64(1000))

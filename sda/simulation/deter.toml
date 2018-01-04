@@ -10,3 +10,4 @@ Simulation = "PriFi"
 Hosts = 92
 Debug = 0
 RunWait = 10000000
+PreScript = ""
