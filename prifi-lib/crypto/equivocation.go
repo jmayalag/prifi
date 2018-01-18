@@ -1,8 +1,8 @@
 package crypto
 
 import (
-	"crypto/sha256"
 	"crypto/rand"
+	"crypto/sha256"
 	"github.com/lbarman/prifi/prifi-lib/config"
 	"gopkg.in/dedis/crypto.v0/abstract"
 	//"gopkg.in/dedis/onet.v1/log"
@@ -52,7 +52,7 @@ func (e *Equivocation) hashInGroup(data []byte) abstract.Scalar {
 // Update History adds those bits to the history hash chain
 func (e *Equivocation) UpdateHistory(data []byte) {
 	historyB := e.history.Bytes()
-	toBeHashed := make([]byte, len(historyB) + len(data))
+	toBeHashed := make([]byte, len(historyB)+len(data))
 	newPayload := sha256.Sum256(toBeHashed)
 	e.history.SetBytes(newPayload[:])
 }
@@ -85,7 +85,7 @@ func (e *Equivocation) ClientEncryptPayload(x []byte, p_j [][]byte) ([]byte, []b
 
 	// encrypt payload
 	for i := range x {
-		x[i] ^= k_i_bytes[i % len(k_i_bytes)]
+		x[i] ^= k_i_bytes[i%len(k_i_bytes)]
 	}
 
 	// compute kappa
@@ -93,6 +93,7 @@ func (e *Equivocation) ClientEncryptPayload(x []byte, p_j [][]byte) ([]byte, []b
 	return x, kappa_i.Bytes()
 }
 
+// a function that takes returns the byte[] version of sigma_j
 func (e *Equivocation) TrusteeGetContribution(s_i [][]byte) []byte {
 
 	// hash the pads p_i into q_i

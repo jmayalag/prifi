@@ -162,6 +162,7 @@ type RelayState struct {
 	RoundTimeOut                           int //The timeout before retransmission (UDP) and/or considering the round failed
 	TrusteeCacheLowBound                   int // Number of ciphertexts buffered by trustees. When <= TRUSTEE_CACHE_LOWBOUND, resume sending
 	TrusteeCacheHighBound                  int // Number of ciphertexts buffered by trustees. When >= TRUSTEE_CACHE_HIGHBOUND, stop sending
+	EquivocationProtectionEnabled          bool
 
 	//disruption protection
 	clientBitMap  map[int]map[int]int

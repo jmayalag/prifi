@@ -103,6 +103,7 @@ func (p *PriFiLibRelayInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARA
 	roundTimeOut := msg.IntValueOrElse("RelayRoundTimeOut", p.relayState.RoundTimeOut)
 	trusteeCacheLowBound := msg.IntValueOrElse("RelayTrusteeCacheLowBound", p.relayState.TrusteeCacheLowBound)
 	trusteeCacheHighBound := msg.IntValueOrElse("RelayTrusteeCacheHighBound", p.relayState.TrusteeCacheHighBound)
+	equivocationProtectionEnabled := msg.BoolValueOrElse("EquivocationProtectionEnabled", p.relayState.EquivocationProtectionEnabled)
 
 	p.relayState.clients = make([]NodeRepresentation, nClients)
 	p.relayState.trustees = make([]NodeRepresentation, nTrustees)
@@ -125,6 +126,7 @@ func (p *PriFiLibRelayInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARA
 	p.relayState.RoundTimeOut = roundTimeOut
 	p.relayState.TrusteeCacheLowBound = trusteeCacheLowBound
 	p.relayState.TrusteeCacheHighBound = trusteeCacheHighBound
+	p.relayState.EquivocationProtectionEnabled = equivocationProtectionEnabled
 	p.relayState.MessageHistory = config.CryptoSuite.Cipher([]byte("init")) //any non-nil, non-empty, constant array
 	p.relayState.VerifiableDCNetKeys = make([][]byte, nTrustees)
 	p.relayState.nVkeysCollected = 0
@@ -136,6 +138,8 @@ func (p *PriFiLibRelayInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARA
 	p.relayState.trusteeBitMap = make(map[int]map[int]int)
 	p.relayState.blamingData = make([]int, 6)
 	p.relayState.OpenClosedSlotsRequestsRoundID = make(map[int32]bool)
+
+	log.Fatal("equiv", p.relayState.EquivocationProtectionEnabled)
 
 	switch dcNetType {
 	case "Simple":
