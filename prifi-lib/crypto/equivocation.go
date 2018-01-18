@@ -2,161 +2,146 @@ package crypto
 
 import (
 	"crypto/sha256"
-	"math/big"
-	"math/rand"
+	"crypto/rand"
+	"github.com/lbarman/prifi/prifi-lib/config"
+	"gopkg.in/dedis/crypto.v0/abstract"
+	//"gopkg.in/dedis/onet.v1/log"
 )
+
+// Clients compute:
+// kappa_i = k_i + h * SUM_j(q_ij), where q_ij = H(p_ij) in group
+// c' = k_i + c
+//
+// Trustees compute:
+// sigma_i = SUM_i(q_ij), where q_ij = H(s_ij) in group
+//
+// Relay compute:
+// k_i = SUM_i(kappa_i) - h * (SUM_j(sigma_i))
+//     = SUM_i(h * SUM_j(q_ij)) + k_i - h * SUM_j(SUM_i(q_ij))
+// c = k_i + c'
+//
 
 // Equivocation holds the functions needed for equivocation protection
 type Equivocation struct {
-	p          *big.Int
-	q          *big.Int
-	phi        *big.Int
-	modulus    *big.Int
-	history    *big.Int
-	randomness *rand.Rand
+	history    abstract.Scalar
+	randomness abstract.Cipher
+	suite      abstract.Suite
 }
 
 // NewEquivocation creates the structure that handle equivocation protection
-// Usually, make sure that bitLength is greater than the data payload bit size. Otherwise, the blinding key
-// will repeat, making it a non-one-time-pad
-func NewEquivocation(bitLength int) *Equivocation {
+func NewEquivocation() *Equivocation {
 	e := new(Equivocation)
-	e.randomness = rand.New(rand.NewSource(0)) // TODO do not use this in production, deterministic !
+	e.suite = config.CryptoSuite
+	e.history = e.suite.Scalar()
 
-	e.modulus = big.NewInt(0)
-	e.history = big.NewInt(1)
-
-	upperBound := big.NewInt(1)
-	lowerBound := big.NewInt(1)
-	upperBound.Lsh(upperBound, uint(bitLength))
-	lowerBound.Lsh(lowerBound, uint(bitLength-1))
-
-	for lowerBound.Cmp(e.modulus) > -1 || !e.modulus.ProbablyPrime(10) {
-		e.modulus.Rand(e.randomness, upperBound)
-	}
+	randomKey := make([]byte, e.suite.Cipher(nil).KeySize())
+	rand.Read(randomKey)
+	e.randomness = e.suite.Cipher(randomKey)
 
 	return e
 }
 
+func (e *Equivocation) randomScalar() abstract.Scalar {
+	return e.suite.Scalar().Pick(e.randomness)
+}
+
+func (e *Equivocation) hashInGroup(data []byte) abstract.Scalar {
+	return e.suite.Scalar().SetBytes(data)
+}
+
 // Update History adds those bits to the history hash chain
 func (e *Equivocation) UpdateHistory(data []byte) {
-
-	oldHistory := make([]byte, 0)
-	if e.history != nil {
-		oldHistory = e.history.Bytes()
-	}
-	newHistoryBytes := hash(append(oldHistory, data...))
-
-	e.history.SetBytes(newHistoryBytes[0:2])
+	historyB := e.history.Bytes()
+	toBeHashed := make([]byte, len(historyB) + len(data))
+	newPayload := sha256.Sum256(toBeHashed)
+	e.history.SetBytes(newPayload[:])
 }
 
-func hash(b []byte) []byte {
-	t := sha256.Sum256(b)
-	return t[:]
-}
+// a function that takes a payload x, encrypt it as x' = x + k, and returns x' and kappa = k + history * (sum of the (hashes of pads))
+func (e *Equivocation) ClientEncryptPayload(x []byte, p_j [][]byte) ([]byte, []byte) {
 
-// a function that takes a payload x, encrypt it as x' = x + k, and returns x' and kappa = k * history ^ (sum of the (hashes of pads))
-func (e *Equivocation) ClientEncryptPayload(payload []byte, pads [][]byte) ([]byte, []byte) {
-
-	// hash the pads
-	hashOfPads := make([][]byte, len(pads))
-	for k := range hashOfPads {
-		hashOfPads[k] = hash(pads[k])
+	// hash the pads p_i into q_i
+	q_j := make([]abstract.Scalar, len(p_j))
+	for trustee_j := range q_j {
+		q_j[trustee_j] = e.hashInGroup(p_j[trustee_j])
 	}
 
-	// sum the hash
-	sum := new(big.Int)
-	for _, v := range hashOfPads {
-		v2 := new(big.Int)
-		v2.SetBytes(v)
-		sum = sum.Add(sum, v2)
+	// sum of q_i
+	sum := e.suite.Scalar().Zero()
+	for _, p := range q_j {
+		sum = sum.Add(sum, p)
 	}
 
-	blindingFactor := new(big.Int)
-	blindingFactor.Exp(e.history, sum, e.modulus)
+	product := sum.Mul(sum, e.history)
 
 	//we're not the slot owner
-	if payload == nil {
-		// compute kappa
-		blindingFactor_bytes := blindingFactor.Bytes()
-		return nil, blindingFactor_bytes
+	if x == nil {
+		kappa_i := product
+		return nil, kappa_i.Bytes()
 	}
 
-	// pick random key k
-	k := new(big.Int)
-	k.Rand(e.randomness, e.modulus)
-	k_bytes := k.Bytes()
+	k_i := e.randomScalar()
+	k_i_bytes := k_i.Bytes()
 
 	// encrypt payload
-	for i := range payload {
-		payload[i] ^= k_bytes[i%len(k_bytes)]
+	for i := range x {
+		x[i] ^= k_i_bytes[i % len(k_i_bytes)]
 	}
 
 	// compute kappa
-	kappa := new(big.Int)
-	kappa = k.Mul(k, blindingFactor)
-
-	kappa_bytes := kappa.Bytes()
-
-	return payload, kappa_bytes
+	kappa_i := k_i.Add(k_i, product)
+	return x, kappa_i.Bytes()
 }
 
-// a function that takes a payload x, encrypt it as x' = x + k, and returns x' and kappa = k * history ^ (sum of the (hashes of pads))
-func (e *Equivocation) TrusteeGetContribution(pads [][]byte) []byte {
+func (e *Equivocation) TrusteeGetContribution(s_i [][]byte) []byte {
 
-	// hash the pads
-	hashOfPads := make([][]byte, len(pads))
-	for k := range hashOfPads {
-		hashOfPads[k] = hash(pads[k])
+	// hash the pads p_i into q_i
+	q_i := make([]abstract.Scalar, len(s_i))
+	for client_i := range q_i {
+		q_i[client_i] = e.hashInGroup(s_i[client_i])
 	}
 
-	// sum the hash
-	sum := new(big.Int)
-	for _, v := range hashOfPads {
-		v2 := new(big.Int)
-		v2.SetBytes(v)
-		sum.Add(sum, v2)
+	// sum of q_i
+	sum := e.suite.Scalar().Zero()
+	for _, p := range q_i {
+		sum = sum.Add(sum, p)
 	}
 
-	return sum.Bytes()
+	kappa_j := sum
+
+	return kappa_j.Bytes()
 }
 
 // given all contributions, decodes the payload
 func (e *Equivocation) RelayDecode(encryptedPayload []byte, trusteesContributions [][]byte, clientsContributions [][]byte) []byte {
 
-	//reconstitute the bigInt values
-	trusteesContrib := make([]*big.Int, len(trusteesContributions))
+	//reconstitute the abstract.Point values
+	trustee_kappa_j := make([]abstract.Scalar, len(trusteesContributions))
 	for k, v := range trusteesContributions {
-		trusteesContrib[k] = new(big.Int)
-		trusteesContrib[k].SetBytes(v)
+		trustee_kappa_j[k] = e.suite.Scalar().SetBytes(v)
 	}
-	clientsContrib := make([]*big.Int, len(clientsContributions))
+	client_kappa_i := make([]abstract.Scalar, len(clientsContributions))
 	for k, v := range clientsContributions {
-		clientsContrib[k] = new(big.Int)
-		clientsContrib[k].SetBytes(v)
+		client_kappa_i[k] = e.suite.Scalar().SetBytes(v)
 	}
 
 	// compute sum of trustees contribs
-	sum := new(big.Int)
-	for _, v := range trusteesContrib {
-		sum.Add(sum, v)
+	sumTrustees := e.suite.Scalar().Zero()
+	for _, v := range trustee_kappa_j {
+		sumTrustees = sumTrustees.Add(sumTrustees, v)
 	}
 
-	inverse := big.NewInt(0)
-	inverse.ModInverse(e.history, e.modulus)
-
-	firstPart := inverse
-	firstPart.Exp(firstPart, sum, e.modulus)
-
-	k := firstPart
-	for _, v := range clientsContrib {
-		k.Mul(k, v)
-		k.Mod(k, e.modulus)
+	// compute sum of clients contribs
+	sumClients := e.suite.Scalar().Zero()
+	for _, v := range client_kappa_i {
+		sumClients = sumClients.Add(sumClients, v)
 	}
-	k.Mod(k, e.modulus)
+
+	prod := sumTrustees.Mul(sumTrustees, e.history)
+	k_i := sumClients.Sub(sumClients, prod)
 
 	//now use k to decrypt the payload
-	k_bytes := k.Bytes()
+	k_bytes := k_i.Bytes()
 
 	// decrypt the data
 	for i := range encryptedPayload {

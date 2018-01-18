@@ -13,16 +13,15 @@ import (
 
 func TestEquivocation(t *testing.T) {
 
-	dataLen := 100
-	rangeTest := []int{8, 16, 17, 256, 1024}
+	rangeTest := []int{100, 1000, 10000}
 
-	for _, equivocationModulusBitLength := range rangeTest {
-		log.Lvl1("Testing for modulus length", equivocationModulusBitLength)
-		equivocationTestForModulusLength(t, dataLen, equivocationModulusBitLength)
+	for _, dataLen := range rangeTest {
+		log.Lvl1("Testing for data length", dataLen)
+		equivocationTestForDataLength(t, dataLen)
 	}
 }
 
-func equivocationTestForModulusLength(t *testing.T, cellSize int, equivocationModulusBitLength int) {
+func equivocationTestForDataLength(t *testing.T, cellSize int) {
 
 	history := config.CryptoSuite.Cipher([]byte("init"))
 
@@ -88,10 +87,10 @@ func equivocationTestForModulusLength(t *testing.T, cellSize int, equivocationMo
 	payload[0] = 0
 	payload[1] = 1
 
-	e_client0 := NewEquivocation(equivocationModulusBitLength) // this defines the modulo, as the algo is deterministic
-	e_client1 := NewEquivocation(equivocationModulusBitLength)
-	e_trustee := NewEquivocation(equivocationModulusBitLength)
-	e_relay := NewEquivocation(equivocationModulusBitLength)
+	e_client0 := NewEquivocation()
+	e_client1 := NewEquivocation()
+	e_trustee := NewEquivocation()
+	e_relay := NewEquivocation()
 
 	// set some data as downstream history
 
