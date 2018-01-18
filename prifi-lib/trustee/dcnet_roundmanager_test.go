@@ -10,7 +10,7 @@ import (
 
 func TestDCNetRoundManager(test *testing.T) {
 	dc := new(DCNet_RoundManager)
-	dc.DCNet = dcnet.SimpleCoderFactory()
+	dc.DCNet = dcnet.NewSimpleDCNet(false)
 
 	//set up the DC-nets
 	_, clientp := crypto.NewKeyPair()

@@ -141,9 +141,9 @@ func (p *PriFiLibRelayInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARA
 
 	switch dcNetType {
 	case "Simple":
-		p.relayState.DCNet = dcnet.SimpleCoderFactory()
+		p.relayState.DCNet = dcnet.NewSimpleDCNet(equivocationProtectionEnabled)
 	case "Verifiable":
-		p.relayState.DCNet = dcnet.OwnedCoderFactory()
+		p.relayState.DCNet = dcnet.NewVerifiableDCNet(equivocationProtectionEnabled)
 	default:
 		e := "DCNetType must be Simple or Verifiable"
 		log.Error(e)

@@ -7,7 +7,7 @@ import (
 	"gopkg.in/dedis/crypto.v0/abstract"
 )
 
-type ownedCoder struct {
+type verifiableDCNet struct {
 	suite abstract.Suite
 
 	// Length of Key and MAC part of verifiable DC-net point
@@ -42,21 +42,12 @@ type ownedCoder struct {
 // For larger payloads, we use one verifiable DC-net point
 // to transmit a key and a MAC for the associated variable-length,
 // symmetric-key crypto based part of the cell.
-func OwnedCoderFactory() DCNet {
-	return new(ownedCoder)
+func NewVerifiableDCNet(equivocationProtectionEnabled bool) DCNet {
+	return new(verifiableDCNet)
 }
 
-// For now just hard-code a single choice of trap-encoding word size
-// for maximum simplicity and efficiency.
-// We'll evaluate later whether we need to make it dynamic.
-const wordBits = 32
-
-type word uint32
-
-///// Common methods /////
-
 // Compute the size of the symmetric AES-encoded part of an encoded ciphertext.
-func (c *ownedCoder) symmCellSize(payloadLength int) int {
+func (c *verifiableDCNet) symmCellSize(payloadLength int) int {
 
 	// If data fits in the space reserved for the key
 	// in the verifiable DC-net point,
@@ -70,24 +61,9 @@ func (c *ownedCoder) symmCellSize(payloadLength int) int {
 	// and the payload is symmetric-key encrypted.
 	// XXX trap encoding
 	return payloadLength
-
-	// Compute number of payload words we will need for trap-encoding.
-	// words := (payloadlen*8 + wordbits-1) / wordbits
-
-	// Number of bytes worth of trap-encoded payload words,
-	// after padding the payload up to the next word boundary.
-	// wordbytes := (words*wordbits+7)/8
-
-	// We'll need to follow the payload with an inversion bitmask,
-	// one bit per trap-encoded word.
-	// invbytes := (words+7)/8
-
-	// Total cell is the verifiable DC-nets point, plus payload,
-	// plus inversion bitmask.  (XXX plus ZKP/signature.)
-	// return c.suite.PointLen() + wordbytes + invbytes
 }
 
-func (c *ownedCoder) commonSetup(suite abstract.Suite) {
+func (c *verifiableDCNet) commonSetup(suite abstract.Suite) {
 	c.suite = suite
 
 	// Divide the embeddable data in the verifiable point
@@ -103,16 +79,12 @@ func (c *ownedCoder) commonSetup(suite abstract.Suite) {
 	c.random = suite.Cipher(randomKey)
 }
 
-///// Client methods /////
-
-func (c *ownedCoder) GetClientCipherSize(payloadLength int) int {
-
+func (c *verifiableDCNet) GetClientCipherSize(payloadLength int) int {
 	// Clients must produce a point plus the symmetric ciphertext
 	return 32 + c.symmCellSize(payloadLength)
 }
 
-func (c *ownedCoder) ClientSetup(suite abstract.Suite,
-	sharedSecrets []abstract.Cipher) {
+func (c *verifiableDCNet) ClientSetup(suite abstract.Suite, sharedSecrets []abstract.Cipher) {
 	c.commonSetup(suite)
 	keySize := suite.Cipher(nil).KeySize()
 
@@ -132,8 +104,7 @@ func (c *ownedCoder) ClientSetup(suite abstract.Suite,
 	}
 }
 
-func (c *ownedCoder) ClientEncode(payload []byte, payloadLength int,
-	history abstract.Cipher) []byte {
+func (c *verifiableDCNet) ClientEncode(payload []byte, payloadLength int, history abstract.Cipher) []byte {
 
 	// Compute the verifiable blinding point for this cell.
 	// To protect clients from equivocation by relays,
@@ -171,7 +142,7 @@ func (c *ownedCoder) ClientEncode(payload []byte, payloadLength int,
 	return out
 }
 
-func (c *ownedCoder) inlineEncode(payload []byte, p abstract.Point) {
+func (c *verifiableDCNet) inlineEncode(payload []byte, p abstract.Point) {
 
 	// Hash the cleartext payload to produce the MAC
 	hash := c.suite.Hash()
@@ -186,7 +157,7 @@ func (c *ownedCoder) inlineEncode(payload []byte, p abstract.Point) {
 	p.Add(p, mp)
 }
 
-func (c *ownedCoder) ownerEncode(payload, payOut []byte, p abstract.Point) {
+func (c *verifiableDCNet) ownerEncode(payload, payOut []byte, p abstract.Point) {
 
 	// XXX trap-encode
 
@@ -213,10 +184,7 @@ func (c *ownedCoder) ownerEncode(payload, payOut []byte, p abstract.Point) {
 	p.Add(p, mp)
 }
 
-///// Trustee methods /////
-
-func (c *ownedCoder) GetTrusteeCipherSize(payloadLength int) int {
-
+func (c *verifiableDCNet) GetTrusteeCipherSize(payloadLength int) int {
 	// Trustees produce only the symmetric ciphertext, if any
 	return c.symmCellSize(payloadLength)
 }
@@ -224,8 +192,7 @@ func (c *ownedCoder) GetTrusteeCipherSize(payloadLength int) int {
 // Setup the trustee side.
 // May produce coder configuration info to be passed to the relay,
 // which will become available to the RelaySetup() method below.
-func (c *ownedCoder) TrusteeSetup(suite abstract.Suite,
-	clientStreams []abstract.Cipher) []byte {
+func (c *verifiableDCNet) TrusteeSetup(suite abstract.Suite, clientStreams []abstract.Cipher) []byte {
 
 	// Compute shared secrets
 	c.ClientSetup(suite, clientStreams)
@@ -237,10 +204,8 @@ func (c *ownedCoder) TrusteeSetup(suite abstract.Suite,
 	return rv
 }
 
-func (c *ownedCoder) TrusteeEncode(payloadLength int) []byte {
-
-	// Trustees produce only symmetric DC-nets streams
-	// for the payload portion of each cell.
+func (c *verifiableDCNet) TrusteeEncode(payloadLength int) []byte {
+	// Trustees produce only symmetric DC-nets streams for the payload portion of each cell.
 	payOut := make([]byte, payloadLength) // XXX trap expansion
 	for i := range c.dcCiphers {
 		c.dcCiphers[i].XORKeyStream(payOut, payOut)
@@ -248,9 +213,7 @@ func (c *ownedCoder) TrusteeEncode(payloadLength int) []byte {
 	return payOut
 }
 
-///// Relay methods /////
-
-func (c *ownedCoder) RelaySetup(suite abstract.Suite, trusteeInfo [][]byte) {
+func (c *verifiableDCNet) RelaySetup(suite abstract.Suite, trusteeInfo [][]byte) {
 
 	c.commonSetup(suite)
 
@@ -267,7 +230,7 @@ func (c *ownedCoder) RelaySetup(suite abstract.Suite, trusteeInfo [][]byte) {
 	c.pnull = c.suite.Point().Null()
 }
 
-func (c *ownedCoder) DecodeStart(payloadLength int, history abstract.Cipher) {
+func (c *verifiableDCNet) DecodeStart(payloadLength int, history abstract.Cipher) {
 
 	// Compute the composite trustees-side verifiable DC-net unblinder
 	// based on the appropriate message history.
@@ -282,7 +245,7 @@ func (c *ownedCoder) DecodeStart(payloadLength int, history abstract.Cipher) {
 	}
 }
 
-func (c *ownedCoder) DecodeClient(slice []byte) {
+func (c *verifiableDCNet) DecodeClient(slice []byte) {
 	// Decode and add in the point in the slice header
 	pLength := c.suite.PointLen()
 	p := c.suite.Point()
@@ -300,7 +263,7 @@ func (c *ownedCoder) DecodeClient(slice []byte) {
 	}
 }
 
-func (c *ownedCoder) DecodeTrustee(slice []byte) {
+func (c *verifiableDCNet) DecodeTrustee(slice []byte) {
 
 	// Combine in the trustees' symmetric ciphertext streams
 	if c.xorBuffer != nil {
@@ -310,7 +273,7 @@ func (c *ownedCoder) DecodeTrustee(slice []byte) {
 	}
 }
 
-func (c *ownedCoder) DecodeCell() []byte {
+func (c *verifiableDCNet) DecodeCell() []byte {
 
 	if c.point.Equal(c.pnull) {
 		//println("no transmission in cell")
@@ -331,8 +294,7 @@ func (c *ownedCoder) DecodeCell() []byte {
 	return c.ownerDecode(hdr)
 }
 
-// not used
-func (c *ownedCoder) inlineDecode(hdr []byte) []byte {
+func (c *verifiableDCNet) inlineDecode(hdr []byte) []byte {
 
 	// Split the inline payload from the MAC
 	dataLength := len(hdr) - c.macLength
@@ -351,7 +313,7 @@ func (c *ownedCoder) inlineDecode(hdr []byte) []byte {
 	return data
 }
 
-func (c *ownedCoder) ownerDecode(hdr []byte) []byte {
+func (c *verifiableDCNet) ownerDecode(hdr []byte) []byte {
 
 	// Split the payload encryption key from the MAC
 	keyLength := len(hdr) - c.macLength

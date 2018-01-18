@@ -45,5 +45,5 @@ type DCNet interface {
 	DecodeCell() []byte
 }
 
-// CellFactory is the type of methods providing a CellCoder.
-type CellFactory func() DCNet
+// DCNetFactory is the type of methods providing a CellCoder.
+type DCNetFactory func(bool) DCNet

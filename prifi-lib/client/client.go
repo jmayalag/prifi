@@ -82,9 +82,9 @@ func (p *PriFiLibClientInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PAR
 
 	switch dcNetType {
 	case "Simple":
-		p.clientState.DCNet_RoundManager.DCNet = dcnet.SimpleCoderFactory()
+		p.clientState.DCNet_RoundManager.DCNet = dcnet.NewSimpleDCNet(equivProtection)
 	case "Verifiable":
-		p.clientState.DCNet_RoundManager.DCNet = dcnet.OwnedCoderFactory()
+		p.clientState.DCNet_RoundManager.DCNet = dcnet.NewVerifiableDCNet(equivProtection)
 	default:
 		log.Fatal("DCNetType must be Simple or Verifiable")
 	}

@@ -9,11 +9,12 @@ import (
 )
 
 func TestDCNetRoundManager(test *testing.T) {
+	equivProtection := false
 	dc := new(DCNet_RoundManager)
-	dc.DCNet = dcnet.SimpleCoderFactory()
+	dc.DCNet = dcnet.NewSimpleDCNet(equivProtection)
 
 	dc2 := new(DCNet_RoundManager)
-	dc2.DCNet = dcnet.SimpleCoderFactory()
+	dc2.DCNet = dcnet.NewSimpleDCNet(equivProtection)
 
 	//set up the DC-nets
 	_, clientp := crypto.NewKeyPair()

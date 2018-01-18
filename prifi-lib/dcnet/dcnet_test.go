@@ -14,11 +14,15 @@ import (
 )
 
 func TestSimple(t *testing.T) {
-	CellCoderTest(t, nist.NewAES128SHA256P256(), SimpleCoderFactory)
+	DCNetTest(t, nist.NewAES128SHA256P256(), NewSimpleDCNet, false)
+}
+
+func TestSimpleWithEquiv(t *testing.T) {
+	DCNetTest(t, nist.NewAES128SHA256P256(), NewSimpleDCNet, true)
 }
 
 func TestOwned(t *testing.T) {
-	CellCoderTest(t, nist.NewAES128SHA256P256(), OwnedCoderFactory)
+	DCNetTest(t, nist.NewAES128SHA256P256(), NewVerifiableDCNet, false)
 }
 
 type TestNode struct {
@@ -72,8 +76,8 @@ func (n *TestNode) nodeSetup(name string, peerkeys []abstract.Point) {
 	}
 }
 
-func SetupTest(t *testing.T, suite abstract.Suite, factory CellFactory,
-	nclients, ntrustees int) *TestGroup {
+func SetupTest(t *testing.T, suite abstract.Suite, factory DCNetFactory,
+	nclients, ntrustees int, equivocationEnabled bool) *TestGroup {
 
 	// Use a pseudorandom stream from a well-known seed
 	// for all our setup randomness,
@@ -93,7 +97,7 @@ func SetupTest(t *testing.T, suite abstract.Suite, factory CellFactory,
 			t.Logf("node %d key %s\n", i, nodes[i].pri.String())
 		}
 
-		nodes[i].Coder = factory()
+		nodes[i].Coder = factory(equivocationEnabled)
 	}
 
 	clients := nodes[:nclients]
@@ -101,7 +105,7 @@ func SetupTest(t *testing.T, suite abstract.Suite, factory CellFactory,
 
 	relay := new(TestNode)
 	relay.name = "Relay"
-	relay.Coder = factory()
+	relay.Coder = factory(equivocationEnabled)
 
 	// Create tables of the clients' and the trustees' public session keys
 	ckeys := make([]abstract.Point, nclients)
@@ -128,7 +132,7 @@ func SetupTest(t *testing.T, suite abstract.Suite, factory CellFactory,
 	for i := range clients {
 		n := clients[i]
 		n.nodeSetup(fmt.Sprintf("Client%d", i), tkeys)
-		n.Coder = factory()
+		n.Coder = factory(equivocationEnabled)
 		n.Coder.ClientSetup(suite, n.sharedsecrets)
 	}
 
@@ -136,7 +140,7 @@ func SetupTest(t *testing.T, suite abstract.Suite, factory CellFactory,
 	for i := range trustees {
 		n := trustees[i]
 		n.nodeSetup(fmt.Sprintf("Trustee%d", i), ckeys)
-		n.Coder = factory()
+		n.Coder = factory(equivocationEnabled)
 		tinfo[i] = n.Coder.TrusteeSetup(suite, n.sharedsecrets)
 	}
 	relay.Coder.RelaySetup(suite, tinfo)
@@ -155,12 +159,12 @@ func SetupTest(t *testing.T, suite abstract.Suite, factory CellFactory,
 	return tg
 }
 
-func CellCoderTest(t *testing.T, suite abstract.Suite, factory CellFactory) {
+func DCNetTest(t *testing.T, suite abstract.Suite, factory DCNetFactory, equivocationEnabled bool) {
 
 	nclients := 1
 	ntrustees := 3
 
-	tg := SetupTest(t, suite, factory, nclients, ntrustees)
+	tg := SetupTest(t, suite, factory, nclients, ntrustees, equivocationEnabled)
 	relay := tg.Relay
 	clients := tg.Clients
 	trustees := tg.Trustees
@@ -227,7 +231,7 @@ func CellCoderTest(t *testing.T, suite abstract.Suite, factory CellFactory) {
 }
 
 func TestOthers(t *testing.T) {
-	cellCoder := new(ownedCoder)
+	cellCoder := new(verifiableDCNet)
 	cellCoder.suite = nist.NewAES128SHA256P256()
 	cellCoder.random = cellCoder.suite.Cipher([]byte{0, 1, 2})
 
@@ -259,7 +263,8 @@ func TestOthers(t *testing.T) {
 	nclients := 1
 	ntrustees := 3
 
-	tg := SetupTest(t, nist.NewAES128SHA256P256(), OwnedCoderFactory, nclients, ntrustees)
+	equivocationEnabled := false
+	tg := SetupTest(t, nist.NewAES128SHA256P256(), NewVerifiableDCNet, nclients, ntrustees, equivocationEnabled)
 	relay := tg.Relay
 	clients := tg.Clients
 	trustees := tg.Trustees
