@@ -54,9 +54,4 @@ func TestUtils(t *testing.T) {
 	if RoundWithPrecision(delta, 2) != 2.66 {
 		t.Error("ConfidenceInterval95 is wrong", delta, "!= 2.66")
 	}
-
-	err := performGETRequest("https://prifi.net")
-	if err != nil {
-		t.Error("Couldn't perform a GET request, err is", err.Error())
-	}
 }

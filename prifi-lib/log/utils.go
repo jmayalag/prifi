@@ -2,7 +2,6 @@ package log
 
 import (
 	"math"
-	"net/http"
 	"time"
 )
 
@@ -60,12 +59,6 @@ func ConfidenceInterval95(data []int64) float64 {
 	confidenceDelta := z_value_95 * sigma
 
 	return confidenceDelta
-}
-
-//performGETRequest performs a GET request and ignores all errors
-func performGETRequest(url string) error {
-	_, err := http.Get(url)
-	return err
 }
 
 // MsTimeStampNow returns the current timestamp, in milliseconds.
