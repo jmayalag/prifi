@@ -51,6 +51,7 @@ func (p *PriFiLibTrusteeInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PA
 	nClients := msg.IntValueOrElse("NClients", p.trusteeState.nClients)
 	cellSize := msg.IntValueOrElse("UpstreamCellSize", p.trusteeState.PayloadLength)
 	dcNetType := msg.StringValueOrElse("DCNetType", "not initilaized")
+	equivProtection := msg.BoolValueOrElse("EquivocationProtectionEnabled", false)
 
 	//sanity checks
 	if trusteeID < -1 {
@@ -81,6 +82,7 @@ func (p *PriFiLibTrusteeInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PA
 	p.trusteeState.nTrustees = nTrustees
 	p.trusteeState.PayloadLength = cellSize
 	p.trusteeState.TrusteeID = trusteeID
+	p.trusteeState.EquivocationProtectionEnabled = equivProtection
 	p.trusteeState.neffShuffle.Init(trusteeID, p.trusteeState.privateKey, p.trusteeState.PublicKey)
 
 	//placeholders for pubkeys and secrets

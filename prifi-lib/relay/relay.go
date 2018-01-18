@@ -139,8 +139,6 @@ func (p *PriFiLibRelayInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARA
 	p.relayState.blamingData = make([]int, 6)
 	p.relayState.OpenClosedSlotsRequestsRoundID = make(map[int32]bool)
 
-	log.Fatal("equiv", p.relayState.EquivocationProtectionEnabled)
-
 	switch dcNetType {
 	case "Simple":
 		p.relayState.CellCoder = dcnet.SimpleCoderFactory()
@@ -195,6 +193,7 @@ func (p *PriFiLibRelayInstance) BroadcastParameters() error {
 	msg.Add("UpstreamCellSize", p.relayState.UpstreamCellSize)
 	msg.Add("DCNetType", p.relayState.dcNetType)
 	msg.Add("DisruptionProtectionEnabled", p.relayState.DisruptionProtectionEnabled)
+	msg.Add("EquivocationProtectionEnabled", p.relayState.EquivocationProtectionEnabled)
 	msg.ForceParams = true
 
 	// Send those parameters to all trustees

@@ -64,6 +64,7 @@ func (p *PriFiLibClientInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PAR
 	useUDP := msg.BoolValueOrElse("UseUDP", p.clientState.UseUDP)
 	dcNetType := msg.StringValueOrElse("DCNetType", "not initialized")
 	disruptionProtection := msg.BoolValueOrElse("DisruptionProtectionEnabled", false)
+	equivProtection := msg.BoolValueOrElse("EquivocationProtectionEnabled", false)
 
 	//sanity checks
 	if clientID < -1 {
@@ -103,6 +104,7 @@ func (p *PriFiLibClientInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PAR
 	p.clientState.BufferedRoundData = make(map[int32]net.REL_CLI_DOWNSTREAM_DATA)
 	p.clientState.MessageHistory = config.CryptoSuite.Cipher([]byte("init")) //any non-nil, non-empty, constant array
 	p.clientState.DisruptionProtectionEnabled = disruptionProtection
+	p.clientState.EquivocationProtectionEnabled = equivProtection
 
 	//we know our client number, if needed, parse the pcap for replay
 	if p.clientState.pcapReplay.Enabled {
