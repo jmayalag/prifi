@@ -82,9 +82,9 @@ func (p *PriFiLibClientInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PAR
 
 	switch dcNetType {
 	case "Simple":
-		p.clientState.DCNet_RoundManager.CellCoder = dcnet.SimpleCoderFactory()
+		p.clientState.DCNet_RoundManager.DCNet = dcnet.SimpleCoderFactory()
 	case "Verifiable":
-		p.clientState.DCNet_RoundManager.CellCoder = dcnet.OwnedCoderFactory()
+		p.clientState.DCNet_RoundManager.DCNet = dcnet.OwnedCoderFactory()
 	default:
 		log.Fatal("DCNetType must be Simple or Verifiable")
 	}
@@ -96,7 +96,6 @@ func (p *PriFiLibClientInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PAR
 	p.clientState.nClients = nClients
 	p.clientState.nTrustees = nTrustees
 	p.clientState.PayloadLength = upCellSize
-	p.clientState.UsablePayloadLength = p.clientState.DCNet_RoundManager.CellCoder.ClientCellSize(upCellSize)
 	p.clientState.UseUDP = useUDP
 	p.clientState.TrusteePublicKey = make([]abstract.Point, nTrustees)
 	p.clientState.sharedSecrets = make([]abstract.Point, nTrustees)
@@ -483,7 +482,7 @@ func (p *PriFiLibClientInstance) Received_REL_CLI_TELL_TRUSTEES_PK(trusteesPks [
 		}
 		sharedPRNGs[i] = config.CryptoSuite.Cipher(bytes)
 	}
-	p.clientState.DCNet_RoundManager.CellCoder.ClientSetup(config.CryptoSuite, sharedPRNGs)
+	p.clientState.DCNet_RoundManager.DCNet.ClientSetup(config.CryptoSuite, sharedPRNGs)
 
 	//then, generate our ephemeral keys (used for shuffling)
 	p.clientState.EphemeralPublicKey, p.clientState.ephemeralPrivateKey = crypto.NewKeyPair()

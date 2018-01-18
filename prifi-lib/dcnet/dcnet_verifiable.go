@@ -42,7 +42,7 @@ type ownedCoder struct {
 // For larger payloads, we use one verifiable DC-net point
 // to transmit a key and a MAC for the associated variable-length,
 // symmetric-key crypto based part of the cell.
-func OwnedCoderFactory() CellCoder {
+func OwnedCoderFactory() DCNet {
 	return new(ownedCoder)
 }
 
@@ -105,7 +105,7 @@ func (c *ownedCoder) commonSetup(suite abstract.Suite) {
 
 ///// Client methods /////
 
-func (c *ownedCoder) ClientCellSize(payloadLength int) int {
+func (c *ownedCoder) GetClientCipherSize(payloadLength int) int {
 
 	// Clients must produce a point plus the symmetric ciphertext
 	return 32 + c.symmCellSize(payloadLength)
@@ -215,7 +215,7 @@ func (c *ownedCoder) ownerEncode(payload, payOut []byte, p abstract.Point) {
 
 ///// Trustee methods /////
 
-func (c *ownedCoder) TrusteeCellSize(payloadLength int) int {
+func (c *ownedCoder) GetTrusteeCipherSize(payloadLength int) int {
 
 	// Trustees produce only the symmetric ciphertext, if any
 	return c.symmCellSize(payloadLength)

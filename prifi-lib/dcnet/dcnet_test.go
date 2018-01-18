@@ -41,7 +41,7 @@ type TestNode struct {
 	opub abstract.Point
 	opri abstract.Scalar
 
-	Coder CellCoder
+	Coder DCNet
 
 	// Cipher representing history as seen by this node.
 	History abstract.Cipher
@@ -169,7 +169,7 @@ func CellCoderTest(t *testing.T, suite abstract.Suite, factory CellFactory) {
 	t.Log("Simulating DC-nets")
 	payloadlen := 1200
 	inb := make([]byte, payloadlen)
-	inf, err := os.Open("./simple.go")
+	inf, err := os.Open("./dcnet_simple.go")
 	if err != nil {
 		t.Error("Could not run test, unable to read file")
 	}
@@ -231,16 +231,16 @@ func TestOthers(t *testing.T) {
 	cellCoder.suite = nist.NewAES128SHA256P256()
 	cellCoder.random = cellCoder.suite.Cipher([]byte{0, 1, 2})
 
-	if size := cellCoder.ClientCellSize(1500); size != 1532 {
+	if size := cellCoder.GetClientCipherSize(1500); size != 1532 {
 		t.Error("Size should be", size)
 	}
-	if size := cellCoder.ClientCellSize(0); size != 32 {
+	if size := cellCoder.GetClientCipherSize(0); size != 32 {
 		t.Error("Size should be", size)
 	}
-	if size := cellCoder.TrusteeCellSize(1500); size != 1500 {
+	if size := cellCoder.GetTrusteeCipherSize(1500); size != 1500 {
 		t.Error("Size should be", 1500)
 	}
-	if size := cellCoder.TrusteeCellSize(0); size != 0 {
+	if size := cellCoder.GetTrusteeCipherSize(0); size != 0 {
 		t.Error("Size should be", 0)
 	}
 

@@ -12,7 +12,7 @@ import (
 // DCNet_RoundManager allows to request DC-net pads for a specific round
 type DCNet_RoundManager struct {
 	sync.Mutex
-	CellCoder     dcnet.CellCoder
+	DCNet         dcnet.DCNet
 	currentRound  int32
 	sharedSecrets []abstract.Point
 }
@@ -26,7 +26,7 @@ func (dc *DCNet_RoundManager) TrusteeSetup(sharedSecrets []abstract.Point) {
 func (dc *DCNet_RoundManager) TrusteeEncode(payloadLength int) []byte {
 	dc.Lock()
 	defer dc.Unlock()
-	data := dc.CellCoder.TrusteeEncode(payloadLength)
+	data := dc.DCNet.TrusteeEncode(payloadLength)
 	dc.currentRound++
 	return data
 }

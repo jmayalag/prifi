@@ -55,7 +55,6 @@ type ClientState struct {
 	PublicKey                     abstract.Point
 	sharedSecrets                 []abstract.Point
 	TrusteePublicKey              []abstract.Point
-	UsablePayloadLength           int
 	UseSocksProxy                 bool
 	UseUDP                        bool
 	MessageHistory                abstract.Cipher

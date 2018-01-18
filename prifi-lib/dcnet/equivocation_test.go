@@ -1,15 +1,14 @@
-package crypto
+package dcnet
 
 import (
 	"bytes"
 	"github.com/lbarman/prifi/prifi-lib/config"
+	"github.com/lbarman/prifi/prifi-lib/crypto"
 	"github.com/lbarman/prifi/prifi-lib/dcnet"
 	"gopkg.in/dedis/crypto.v0/abstract"
 	"gopkg.in/dedis/onet.v1/log"
 	"testing"
 )
-
-// LBARMAN: this does not work yet !! the math don't cancel out
 
 func TestEquivocation(t *testing.T) {
 
@@ -26,9 +25,9 @@ func equivocationTestForDataLength(t *testing.T, cellSize int) {
 	history := config.CryptoSuite.Cipher([]byte("init"))
 
 	// set up the Shared secrets
-	tpub, _ := NewKeyPair()
-	_, c1priv := NewKeyPair()
-	_, c2priv := NewKeyPair()
+	tpub, _ := crypto.NewKeyPair()
+	_, c1priv := crypto.NewKeyPair()
+	_, c2priv := crypto.NewKeyPair()
 
 	sharedSecret_c1 := config.CryptoSuite.Point().Mul(tpub, c1priv)
 	sharedSecret_c2 := config.CryptoSuite.Point().Mul(tpub, c2priv)

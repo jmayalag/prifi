@@ -117,7 +117,7 @@ type NodeRepresentation struct {
 
 // RelayState contains the mutable state of the relay.
 type RelayState struct {
-	CellCoder                              dcnet.CellCoder
+	DCNet                                  dcnet.DCNet
 	clients                                []NodeRepresentation
 	roundManager                           *BufferableRoundManager
 	neffShuffle                            *scheduler.NeffShuffleRelay

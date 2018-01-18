@@ -141,9 +141,9 @@ func (p *PriFiLibRelayInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARA
 
 	switch dcNetType {
 	case "Simple":
-		p.relayState.CellCoder = dcnet.SimpleCoderFactory()
+		p.relayState.DCNet = dcnet.SimpleCoderFactory()
 	case "Verifiable":
-		p.relayState.CellCoder = dcnet.OwnedCoderFactory()
+		p.relayState.DCNet = dcnet.OwnedCoderFactory()
 	default:
 		e := "DCNetType must be Simple or Verifiable"
 		log.Error(e)
@@ -295,14 +295,14 @@ func (p *PriFiLibRelayInstance) processOpenClosedSlotRequests(roundID int32) err
 		return err
 	}
 	for _, s := range clientSlices {
-		p.relayState.CellCoder.DecodeClient(s)
+		p.relayState.DCNet.DecodeClient(s)
 	}
 	for _, s := range trusteesSlices {
-		p.relayState.CellCoder.DecodeTrustee(s)
+		p.relayState.DCNet.DecodeTrustee(s)
 	}
 
 	//here we have the plaintext map
-	openClosedData := p.relayState.CellCoder.DecodeCell()
+	openClosedData := p.relayState.DCNet.DecodeCell()
 
 	//compute the map
 	sched := p.relayState.slotScheduler.Relay_ComputeFinalSchedule(openClosedData, p.relayState.nClients)
@@ -356,12 +356,12 @@ func (p *PriFiLibRelayInstance) finalizeUpstreamData() error {
 
 	//decode all clients and trustees
 	for _, s := range clientSlices {
-		p.relayState.CellCoder.DecodeClient(s)
+		p.relayState.DCNet.DecodeClient(s)
 	}
 	for _, s := range trusteesSlices {
-		p.relayState.CellCoder.DecodeTrustee(s)
+		p.relayState.DCNet.DecodeTrustee(s)
 	}
-	upstreamPlaintext := p.relayState.CellCoder.DecodeCell()
+	upstreamPlaintext := p.relayState.DCNet.DecodeCell()
 
 	p.relayState.bitrateStatistics.AddUpstreamCell(int64(len(upstreamPlaintext)))
 
@@ -611,7 +611,7 @@ func (p *PriFiLibRelayInstance) doneCollectingUpstreamData(roundID int32) error 
 	}
 	//prepare for the next round
 	p.relayState.roundManager.CloseRound()
-	p.relayState.CellCoder.DecodeStart(p.relayState.UpstreamCellSize, p.relayState.MessageHistory) //this empties the buffer, making them ready for a new round
+	p.relayState.DCNet.DecodeStart(p.relayState.UpstreamCellSize, p.relayState.MessageHistory) //this empties the buffer, making them ready for a new round
 
 	return nil
 }
@@ -767,10 +767,10 @@ func (p *PriFiLibRelayInstance) Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS(msg n
 			p.messageSender.SendToTrusteeWithLog(j, toSend, "(trustee "+strconv.Itoa(j+1)+")")
 		}
 
-		p.relayState.CellCoder.RelaySetup(config.CryptoSuite, p.relayState.VerifiableDCNetKeys)
+		p.relayState.DCNet.RelaySetup(config.CryptoSuite, p.relayState.VerifiableDCNetKeys)
 
 		// prepare to collect the ciphers
-		p.relayState.CellCoder.DecodeStart(p.relayState.UpstreamCellSize, p.relayState.MessageHistory)
+		p.relayState.DCNet.DecodeStart(p.relayState.UpstreamCellSize, p.relayState.MessageHistory)
 
 		p.stateMachine.ChangeState("COLLECTING_SHUFFLE_SIGNATURES")
 

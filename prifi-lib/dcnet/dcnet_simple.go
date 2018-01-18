@@ -17,13 +17,11 @@ type simpleCoder struct {
 
 // SimpleCoderFactory is a simple DC-net encoder providing no disruption or equivocation protection,
 // for experimentation and baseline performance evaluations.
-func SimpleCoderFactory() CellCoder {
+func SimpleCoderFactory() DCNet {
 	return new(simpleCoder)
 }
 
-///// Client methods /////
-
-func (c *simpleCoder) ClientCellSize(payloadLength int) int {
+func (c *simpleCoder) GetClientCipherSize(payloadLength int) int {
 	return payloadLength // no expansion
 }
 
@@ -62,7 +60,7 @@ func (c *simpleCoder) ClientEncode(payload []byte, payloadLength int,
 
 ///// Trustee methods /////
 
-func (c *simpleCoder) TrusteeCellSize(payloadLength int) int {
+func (c *simpleCoder) GetTrusteeCipherSize(payloadLength int) int {
 	return payloadLength // no expansion
 }
 

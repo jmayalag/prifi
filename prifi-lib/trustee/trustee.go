@@ -69,9 +69,9 @@ func (p *PriFiLibTrusteeInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PA
 
 	switch dcNetType {
 	case "Simple":
-		p.trusteeState.DCNet_RoundManager.CellCoder = dcnet.SimpleCoderFactory()
+		p.trusteeState.DCNet_RoundManager.DCNet = dcnet.SimpleCoderFactory()
 	case "Verifiable":
-		p.trusteeState.DCNet_RoundManager.CellCoder = dcnet.OwnedCoderFactory()
+		p.trusteeState.DCNet_RoundManager.DCNet = dcnet.OwnedCoderFactory()
 	default:
 		log.Fatal("DCNetType must be Simple or Verifiable")
 	}
@@ -256,7 +256,7 @@ func (p *PriFiLibTrusteeInstance) Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_
 	}
 
 	p.trusteeState.DCNet_RoundManager.TrusteeSetup(p.trusteeState.sharedSecrets)
-	vkey := p.trusteeState.DCNet_RoundManager.CellCoder.TrusteeSetup(config.CryptoSuite, sharedPRNGs)
+	vkey := p.trusteeState.DCNet_RoundManager.DCNet.TrusteeSetup(config.CryptoSuite, sharedPRNGs)
 	//In case we use the simple dcnet, vkey isn't needed
 	if vkey == nil {
 		vkey = make([]byte, 1)

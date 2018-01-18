@@ -1,4 +1,4 @@
-package crypto
+package dcnet
 
 import (
 	"crypto/rand"
@@ -22,15 +22,15 @@ import (
 //
 
 // Equivocation holds the functions needed for equivocation protection
-type Equivocation struct {
+type EquivocationProtection struct {
 	history    abstract.Scalar
 	randomness abstract.Cipher
 	suite      abstract.Suite
 }
 
 // NewEquivocation creates the structure that handle equivocation protection
-func NewEquivocation() *Equivocation {
-	e := new(Equivocation)
+func NewEquivocation() *EquivocationProtection {
+	e := new(EquivocationProtection)
 	e.suite = config.CryptoSuite
 	e.history = e.suite.Scalar()
 
@@ -41,16 +41,16 @@ func NewEquivocation() *Equivocation {
 	return e
 }
 
-func (e *Equivocation) randomScalar() abstract.Scalar {
+func (e *EquivocationProtection) randomScalar() abstract.Scalar {
 	return e.suite.Scalar().Pick(e.randomness)
 }
 
-func (e *Equivocation) hashInGroup(data []byte) abstract.Scalar {
+func (e *EquivocationProtection) hashInGroup(data []byte) abstract.Scalar {
 	return e.suite.Scalar().SetBytes(data)
 }
 
 // Update History adds those bits to the history hash chain
-func (e *Equivocation) UpdateHistory(data []byte) {
+func (e *EquivocationProtection) UpdateHistory(data []byte) {
 	historyB := e.history.Bytes()
 	toBeHashed := make([]byte, len(historyB)+len(data))
 	newPayload := sha256.Sum256(toBeHashed)
@@ -58,7 +58,7 @@ func (e *Equivocation) UpdateHistory(data []byte) {
 }
 
 // a function that takes a payload x, encrypt it as x' = x + k, and returns x' and kappa = k + history * (sum of the (hashes of pads))
-func (e *Equivocation) ClientEncryptPayload(x []byte, p_j [][]byte) ([]byte, []byte) {
+func (e *EquivocationProtection) ClientEncryptPayload(x []byte, p_j [][]byte) ([]byte, []byte) {
 
 	// hash the pads p_i into q_i
 	q_j := make([]abstract.Scalar, len(p_j))
@@ -94,7 +94,7 @@ func (e *Equivocation) ClientEncryptPayload(x []byte, p_j [][]byte) ([]byte, []b
 }
 
 // a function that takes returns the byte[] version of sigma_j
-func (e *Equivocation) TrusteeGetContribution(s_i [][]byte) []byte {
+func (e *EquivocationProtection) TrusteeGetContribution(s_i [][]byte) []byte {
 
 	// hash the pads p_i into q_i
 	q_i := make([]abstract.Scalar, len(s_i))
@@ -114,7 +114,7 @@ func (e *Equivocation) TrusteeGetContribution(s_i [][]byte) []byte {
 }
 
 // given all contributions, decodes the payload
-func (e *Equivocation) RelayDecode(encryptedPayload []byte, trusteesContributions [][]byte, clientsContributions [][]byte) []byte {
+func (e *EquivocationProtection) RelayDecode(encryptedPayload []byte, trusteesContributions [][]byte, clientsContributions [][]byte) []byte {
 
 	//reconstitute the abstract.Point values
 	trustee_kappa_j := make([]abstract.Scalar, len(trusteesContributions))

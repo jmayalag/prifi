@@ -181,7 +181,7 @@ func TestRelayRun1(t *testing.T) {
 	if rs.ExperimentRoundLimit != 2 {
 		t.Error("ExperimentRoundLimit was not set correctly")
 	}
-	if rs.CellCoder == nil {
+	if rs.DCNet == nil {
 		t.Error("CellCoder should have been created")
 	}
 	if rs.UpstreamCellSize != upCellSize {
