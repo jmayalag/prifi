@@ -20,6 +20,8 @@ type DCNet interface {
 	// accounting for whatever expansion the cell encoding imposes.
 	GetTrusteeCipherSize(payloadSize int) int
 
+	UpdateHistory(data []byte)
+
 	ClientSetup(suite abstract.Suite, trusteeciphers []abstract.Cipher)
 
 	RelaySetup(suite abstract.Suite, trusteeinfo [][]byte)

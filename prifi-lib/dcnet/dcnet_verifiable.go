@@ -46,6 +46,10 @@ func NewVerifiableDCNet(equivocationProtectionEnabled bool) DCNet {
 	return new(verifiableDCNet)
 }
 
+func (c *verifiableDCNet) UpdateHistory(data []byte) {
+	panic("not supported")
+}
+
 // Compute the size of the symmetric AES-encoded part of an encoded ciphertext.
 func (c *verifiableDCNet) symmCellSize(payloadLength int) int {
 

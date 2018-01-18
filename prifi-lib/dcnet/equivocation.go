@@ -77,7 +77,7 @@ func (e *EquivocationProtection) ClientEncryptPayload(x []byte, p_j [][]byte) ([
 	//we're not the slot owner
 	if x == nil {
 		kappa_i := product
-		return nil, kappa_i.Bytes()
+		return x, kappa_i.Bytes()
 	}
 
 	k_i := e.randomScalar()
