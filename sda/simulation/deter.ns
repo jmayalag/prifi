@@ -11,8 +11,8 @@ set n_clients 5
 
 set trustee_bandwidth 100Mb
 set client_bandwidth 1000Mb
-set trustee_delay 90ms
-set client_delay 9ms
+set trustee_delay 100ms
+set client_delay 10ms
 
 set lanstr_trustees ""
 set lanstr_clients ""
@@ -54,6 +54,10 @@ set lantrustees [$ns make-lan "$lanstr_trustees" $trustee_bandwidth $trustee_del
 tb-set-ip-lan $relay $lantrustees 10.1.0.254
 tb-set-ip-lan $relay $lanclients 10.0.1.254
 
+# tell deterlab not to use delays node, but to shape the delays in the hosts (save some nodes)
+tb-set-endnodeshaping $lanclients 1
+tb-set-endnodeshaping $lantrustees 1
+
 # set the trustee's lan
 for {set i 0} {$i < $n_trustees} {incr i} {
     set ip 10.1.0.[expr {$i + 1}]
@@ -76,5 +80,3 @@ for {set i 0} {$i < $n_clients} {incr i} {
 
 $ns rtproto Static
 $ns run
-
-
