@@ -377,7 +377,7 @@ func (p *PriFiLibRelayInstance) finalizeUpstreamData() error {
 
 		if !valid {
 			// start blame
-			log.Error("Warning: Disruption Protection check failed")
+			//log.Error("Warning: Disruption Protection check failed")
 		}
 	}
 

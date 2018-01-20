@@ -20,7 +20,7 @@ set lanstr_clients ""
 # create the Relay
 set relay [$ns node]
 tb-set-node-os $relay Ubuntu1404-64-STD
-tb-set-hardware $relay bpc3060
+tb-set-hardware $relay pc3060
 tb-set-node-startcmd $relay /share/t1t2/set_route
 tb-set-node-failure-action $relay "nonfatal"
 append lanstr_clients "$relay "
@@ -30,7 +30,7 @@ append lanstr_trustees "$relay "
 for {set i 0} {$i < $n_trustees} {incr i} {
    set trustee($i) [$ns node]
    tb-set-node-os $trustee($i) Ubuntu1404-64-STD
-   tb-set-hardware $trustee($i) bpc3060
+   tb-set-hardware $trustee($i) pc3060
    tb-set-node-startcmd $trustee($i) /share/t1t2/set_route
    tb-set-node-failure-action $trustee($i) "nonfatal"
    append lanstr_trustees "$trustee($i) "
@@ -40,7 +40,7 @@ for {set i 0} {$i < $n_trustees} {incr i} {
 for {set i 0} {$i < $n_clients} {incr i} {
    set client($i) [$ns node]
    tb-set-node-os $client($i) Ubuntu1404-64-STD
-   tb-set-hardware $client($i) bpc3060
+   tb-set-hardware $client($i) pc3060
    tb-set-node-startcmd $client($i)  /share/t1t2/set_route
    tb-set-node-failure-action $client($i) "nonfatal"
    append lanstr_clients "$client($i) "

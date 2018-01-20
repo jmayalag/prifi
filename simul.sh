@@ -375,9 +375,49 @@ case $1 in
         nano sda/simulation/prifi_simul.toml
         ;;
 
+
+
+    simul-vary-dcnet)
+
+        NTRUSTEES=3
+        NRELAY=1
+
+        "$THIS_SCRIPT" simul-cl
+
+        for repeat in {1..5}
+        do
+            for i in {0..3}
+            do
+                dis="false"
+                equiv="false"
+
+                if [ $i == 1 ]; then
+                    dis="true"
+                fi
+                if [ $i == 2 ]; then
+                    equiv="true"
+                fi
+                if [ $i == 3 ]; then
+                    dis="true"
+                    equiv="true"
+                fi
+
+                echo "Simulating for DCNET disruption=$dis, equivocation=$equiv, repeat $repeat"
+
+                #fix the config
+                rm -f "$CONFIG_FILE"
+                sed -e "s/DisruptionProtectionEnabled = x/DisruptionProtectionEnabled = $dis/g" -e "s/EquivocationProtectionEnabled = x/EquivocationProtectionEnabled = $equiv/g" "$TEMPLATE_FILE" > "$CONFIG_FILE"
+
+                timeout "$SIMULATION_TIMEOUT" "$THIS_SCRIPT" simul | tee experiment_${i}_${repeat}.txt
+            done
+        done
+
+        ;;
+
     *)
         test_go
         test_cothority
         print_usage
         ;;
+
 esac
