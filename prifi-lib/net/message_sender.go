@@ -33,6 +33,7 @@ type MessageSender interface {
  */
 type MessageSenderWrapper struct {
 	MessageSender
+	entity               string
 	loggingEnabled       bool
 	logSuccessFunction   func(interface{})
 	logErrorFunction     func(interface{})
@@ -59,6 +60,7 @@ func NewMessageSenderWrapper(logging bool, logSuccessFunction func(interface{}),
 
 	msw := &MessageSenderWrapper{
 		loggingEnabled:       logging,
+		entity:               "UnknownSource",
 		logSuccessFunction:   logSuccessFunction,
 		logErrorFunction:     logErrorFunction,
 		networkErrorHappened: networkErrorHappened,
@@ -66,6 +68,13 @@ func NewMessageSenderWrapper(logging bool, logSuccessFunction func(interface{}),
 	}
 
 	return msw, nil
+}
+
+/**
+ * Sets the sending entity, for debugging purposes
+ */
+func (m *MessageSenderWrapper) SetEntity(e string) {
+	m.entity = e
 }
 
 /**
@@ -101,13 +110,13 @@ func (m *MessageSenderWrapper) SendToRelayWithLog(msg interface{}, extraInfos st
 }
 
 /**
- * Helper function for both SendToClientWithLog and SendToTrusteeWithLog
+ * Helper function for both SendToRelay
  */
 func (m *MessageSenderWrapper) sendToWithLog(sendingFunc func(interface{}) error, msg interface{}, extraInfos string) bool {
 	err := sendingFunc(msg)
 	msgName := reflect.TypeOf(msg).String()
 	if err != nil {
-		e := "Tried to send a " + msgName + ", but some network error occurred. Err is: " + err.Error()
+		e := m.entity + ": Tried to send a " + msgName + ", but some network error occurred. Err is: " + err.Error()
 		if m.networkErrorHappened != nil {
 			m.networkErrorHappened(errors.New(e))
 		}
@@ -130,7 +139,7 @@ func (m *MessageSenderWrapper) sendToWithLog2(sendingFunc func(int, interface{})
 	err := sendingFunc(i, msg)
 	msgName := reflect.TypeOf(msg).String()
 	if err != nil {
-		e := "Tried to send a " + msgName + ", but some network error occurred. Err is: " + err.Error()
+		e := "Relay: Tried to send a " + msgName + ", but some network error occurred. Err is: " + err.Error()
 		if m.networkErrorHappened != nil {
 			m.networkErrorHappened(errors.New(e))
 		}

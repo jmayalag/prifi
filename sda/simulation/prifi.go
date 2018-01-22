@@ -221,7 +221,7 @@ func (s *SimulationService) Run(config *onet.SimulationConfig) error {
 
 	case <-time.After(time.Duration(SIMULATION_ROUND_TIMEOUT_SECONDS) * time.Second):
 		resStringArray = make([]string, 1)
-		resStringArray[0] = "!!simulation timed out."
+		resStringArray[0] = "<shutdown from simul> simulation timed out"
 	}
 
 	//finish the round, kill the protocol, and writes log
@@ -235,12 +235,13 @@ func (s *SimulationService) Run(config *onet.SimulationConfig) error {
 	service.GlobalShutDownSocks()
 
 	lastItem := resStringArray[len(resStringArray)-1]
-	outBit := "0"
-	if strings.HasPrefix(lastItem, "!!") {
-		outBit = "1"
+	outBit := 0
+	if strings.HasPrefix(lastItem, "<shutdown from simul>") {
+		outBit = 1
 	}
 	log.Error("Last log was", lastItem, ", writing status ", outBit, " in .lastsimul")
-	err = ioutil.WriteFile(".lastsimul", []byte(outBit), 0777)
+	err = ioutil.WriteFile(".lastsimul", []byte(strconv.Itoa(outBit)), 0777)
+	os.Exit(outBit)
 
 	return nil
 }

@@ -98,6 +98,7 @@ func NewRelay(dataOutputEnabled bool, dataForClients chan []byte, dataFromDCNet 
 		}
 	}
 	sm.Init(states, logFn, errFn)
+	sm.SetEntity("Relay")
 
 	prifi := PriFiLibRelayInstance{
 		messageSender: msgSender,
