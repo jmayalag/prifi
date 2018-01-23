@@ -218,7 +218,7 @@ Either we send something from the SOCKS/VPN buffer, or we answer the latency-tes
 func (p *PriFiLibRelayInstance) Received_CLI_REL_UPSTREAM_DATA(msg net.CLI_REL_UPSTREAM_DATA) error {
 	p.relayState.roundManager.AddClientCipher(msg.RoundID, msg.ClientID, msg.Data)
 	if p.relayState.roundManager.HasAllCiphersForCurrentRound() {
-		p.hasAllCiphersForUpstream(true)
+		p.upstreamPhase1_processCiphers(true)
 	}
 
 	return nil
@@ -232,7 +232,7 @@ If for a future round we need to Buffer it.
 func (p *PriFiLibRelayInstance) Received_TRU_REL_DC_CIPHER(msg net.TRU_REL_DC_CIPHER) error {
 	p.relayState.roundManager.AddTrusteeCipher(msg.RoundID, msg.TrusteeID, msg.Data)
 	if p.relayState.roundManager.HasAllCiphersForCurrentRound() {
-		p.hasAllCiphersForUpstream(true)
+		p.upstreamPhase1_processCiphers(true)
 	}
 
 	return nil
@@ -243,20 +243,18 @@ func (p *PriFiLibRelayInstance) Received_TRU_REL_DC_CIPHER(msg net.TRU_REL_DC_CI
 func (p *PriFiLibRelayInstance) Received_CLI_REL_OPENCLOSED_DATA(msg net.CLI_REL_OPENCLOSED_DATA) error {
 	p.relayState.roundManager.AddClientCipher(msg.RoundID, msg.ClientID, msg.OpenClosedData)
 	if p.relayState.roundManager.HasAllCiphersForCurrentRound() {
-		p.hasAllCiphersForUpstream(false)
+		p.upstreamPhase1_processCiphers(false)
 	}
 
 	return nil
 }
 
-// hasAllCiphersForUpstream combines the DC-net shares, decide what to do with them, and send the next downstream message, starting the next round
-func (p *PriFiLibRelayInstance) hasAllCiphersForUpstream(finishedByTrustee bool) {
+// upstreamPhase1_processCiphers collects all DC-net ciphers, and decides what to do with them (is it a OCMap message ?
+// a data message ?)
+// it then proceed accordingly, finalizes the round, and calls downstreamPhase_sendMany()
+func (p *PriFiLibRelayInstance) upstreamPhase1_processCiphers(finishedByTrustee bool) {
 
-	roundID := p.relayState.roundManager.CurrentRound()
-	_, isOCRound := p.relayState.OpenClosedSlotsRequestsRoundID[roundID]
-
-	log.Lvl3("Relay has collected all ciphers for round", roundID, "(isOCRound", isOCRound, "), decoding...")
-
+	// keep statistics on who finished the round, to check on who the system is waiting
 	if finishedByTrustee {
 		timeMs := timing.StopMeasure("waiting-on-someone").Nanoseconds() / 1e6
 		p.relayState.timeStatistics["waiting-on-trustees"].AddTime(timeMs)
@@ -265,30 +263,54 @@ func (p *PriFiLibRelayInstance) hasAllCiphersForUpstream(finishedByTrustee bool)
 		p.relayState.timeStatistics["waiting-on-clients"].AddTime(timeMs)
 	}
 
+	roundID := p.relayState.roundManager.CurrentRound()
+	_, isOCRound := p.relayState.OpenClosedSlotsRequestsRoundID[roundID]
+
+	log.Lvl3("Relay has collected all ciphers for round", roundID, "(isOCRound", isOCRound, "), decoding...")
+
+	// most important switch of this method
 	if isOCRound {
-		p.processOpenClosedSlotRequests(roundID)
+		err := p.upstreamPhase2a_extractOCMap(roundID)
+		if err != nil {
+			log.Lvl3("upstreamPhase2a_extractOCMap: error", err.Error())
+		}
 	} else {
-		p.finalizeUpstreamData()
+		err := p.upstreamPhase2b_extractPayload()
+		if err != nil {
+			log.Lvl3("upstreamPhase2b_extractPayload: error", err.Error())
+		}
 	}
 
+	// used if we're replaying a pcap. The first message we decode is "time0"
 	if roundID == 0 {
 		p.relayState.time0 = uint64(prifilog.MsTimeStampNow())
 	}
 
-	//one round has just passed !
-	// sleep so it does not go too fast for debug
+	// one round has just passed ! Round start with downstream data, and end with upstream data, like here.
+	p.upstreamPhase3_finalizeRound(roundID)
+
+	// inter-round sleep
 	if p.relayState.ProcessingLoopSleepTime > 0 {
 		time.Sleep(time.Duration(p.relayState.ProcessingLoopSleepTime) * time.Millisecond)
 	}
 
+	// downstream phase
+	p.downstreamPhase_sendMany()
+}
+
+// downstreamPhase_sendMany starts as many rounds (by opening the round and sending downstream data) as specified
+// by the window
+func (p *PriFiLibRelayInstance) downstreamPhase_sendMany() {
 	// send the data down
 	for i := p.relayState.numberOfNonAckedDownstreamPackets; i < p.relayState.WindowSize; i++ {
 		log.Lvl3("Relay : Gonna send, non-acked packets is", p.relayState.numberOfNonAckedDownstreamPackets, "(window is", p.relayState.WindowSize, ")")
-		p.sendDownstreamData()
+		p.downstreamPhase1_openRoundAndSendData()
 	}
 }
 
-func (p *PriFiLibRelayInstance) processOpenClosedSlotRequests(roundID int32) error {
+// upstreamPhase2a_extractOCMap extracts the open-closed request map, updates the inner OCMap stored, potentially
+// sleeps if all slots are closed.
+func (p *PriFiLibRelayInstance) upstreamPhase2a_extractOCMap(roundID int32) error {
 	//classical DC-net decoding
 	clientSlices, trusteesSlices, err := p.relayState.roundManager.CollectRoundData()
 	if err != nil {
@@ -305,48 +327,33 @@ func (p *PriFiLibRelayInstance) processOpenClosedSlotRequests(roundID int32) err
 	openClosedData := p.relayState.DCNet.DecodeCell()
 
 	//compute the map
-	sched := p.relayState.slotScheduler.Relay_ComputeFinalSchedule(openClosedData, p.relayState.nClients)
-	p.relayState.roundManager.SetStoredRoundSchedule(sched)
-
-	// we finish the round
-	p.doneCollectingUpstreamData(roundID)
-
-	scheduleLength := 0
+	newSchedule := p.relayState.slotScheduler.Relay_ComputeFinalSchedule(openClosedData, p.relayState.nClients)
+	p.relayState.roundManager.SetStoredRoundSchedule(newSchedule)
+	p.updateAndPrintScheduleRepartitions(roundID, newSchedule)
 
 	// if all slots are closed, do not immediately send the next downstream data (which will be a OCSlots schedule)
 	hasOpenSlot := false
-	for _, v := range sched {
+	for _, v := range newSchedule {
 		if v {
 			hasOpenSlot = true
-			scheduleLength++
+			break
 		}
 	}
-
-	p.relayState.ScheduleLengthRepartitions[scheduleLength]++
-	str := ""
-	for k, v := range p.relayState.ScheduleLengthRepartitions {
-		str += strconv.Itoa(k) + "->" + strconv.Itoa(v) + ";"
-	}
-	if roundID%10 == 0 {
-		log.Lvl1("Schedules len/count", str)
-	}
-
 	if !hasOpenSlot {
 		log.Lvl3("All slots closed, sleeping for", p.relayState.OpenClosedSlotsMinDelayBetweenRequests, "ms")
 		d := time.Duration(p.relayState.OpenClosedSlotsMinDelayBetweenRequests) * time.Millisecond
 		time.Sleep(d)
 	}
+
 	return nil
 }
 
-/*
-finalizeUpstreamData is simply called when the Relay has received all ciphertexts (one per client, one per trustee),
-and is ready to finalize the
-DC-net round by XORing everything together.
-If it's a latency-test message, we send it back to the clients.
-If we use SOCKS/VPN, give them the data.
-*/
-func (p *PriFiLibRelayInstance) finalizeUpstreamData() error {
+// upstreamPhase2b_extractPayload is called when we know the payload is data (and not an OCMap message)
+// If enabled, it checks the Disruption protection, and perhaps starts a blame
+// If it's a latency-test message, we send it back to the clients.
+// If we use SOCKS/VPN, give them the data.
+// If it's a pcap message, update the statistics accordingly
+func (p *PriFiLibRelayInstance) upstreamPhase2b_extractPayload() error {
 
 	// we decode the DC-net cell
 	clientSlices, trusteesSlices, err := p.relayState.roundManager.CollectRoundData()
@@ -386,11 +393,13 @@ func (p *PriFiLibRelayInstance) finalizeUpstreamData() error {
 	// check if we have a latency test message, or a pcap meta message
 	if len(upstreamPlaintext) >= 2 {
 		pattern := int(binary.BigEndian.Uint16(upstreamPlaintext[0:2]))
-		if pattern == 43690 { // 1010101010101010
+		if pattern == 43690 {
+			// 1010101010101010
 			// then, we simply have to send it down
 			// log.Info("Relay noticed a latency-test message on round", p.relayState.dcnetRoundManager.CurrentRound())
 			p.relayState.PriorityDataForClients <- upstreamPlaintext
-		} else if pattern == 21845 { //0101010101010101
+		} else if pattern == 21845 {
+			//0101010101010101
 			ID := int32(binary.BigEndian.Uint32(upstreamPlaintext[2:6]))
 			timestamp := int64(binary.BigEndian.Uint64(upstreamPlaintext[6:14]))
 			frag := false
@@ -431,37 +440,71 @@ func (p *PriFiLibRelayInstance) finalizeUpstreamData() error {
 		}
 	}
 
-	if upstreamPlaintext == nil {
-		// empty upstream cell, need to finish round otherwise will enter next if clause
-		p.doneCollectingUpstreamData(p.relayState.roundManager.CurrentRound())
-		return nil
-	}
-
-	// verify that the decoded payload has the correct size
-	expectedSize := p.relayState.UpstreamCellSize
-	if p.relayState.DisruptionProtectionEnabled {
-		expectedSize -= 32
-	}
-	if len(upstreamPlaintext) != expectedSize {
-		e := "Relay : DecodeCell produced wrong-size payload, " + strconv.Itoa(len(upstreamPlaintext)) + "!=" + strconv.Itoa(p.relayState.UpstreamCellSize)
-		log.Error(e)
-		return errors.New(e)
-	}
-
-	if p.relayState.DataOutputEnabled {
-
-		packetType, _, _, _ := socks.ParseSocksHeaderFromBytes(upstreamPlaintext)
-
-		switch packetType {
-		case socks.SocksData, socks.SocksConnect, socks.StallCommunication, socks.ResumeCommunication:
-			p.relayState.DataFromDCNet <- upstreamPlaintext
-
-		default:
-			break
+	if upstreamPlaintext != nil {
+		// verify that the decoded payload has the correct size
+		expectedSize := p.relayState.UpstreamCellSize
+		if p.relayState.DisruptionProtectionEnabled {
+			expectedSize -= 32
+		}
+		if len(upstreamPlaintext) != expectedSize {
+			e := "Relay : DecodeCell produced wrong-size payload, " + strconv.Itoa(len(upstreamPlaintext)) + "!=" + strconv.Itoa(p.relayState.UpstreamCellSize)
+			log.Error(e)
+			return errors.New(e)
 		}
 
+		if p.relayState.DataOutputEnabled {
+
+			packetType, _, _, _ := socks.ParseSocksHeaderFromBytes(upstreamPlaintext)
+
+			switch packetType {
+			case socks.SocksData, socks.SocksConnect, socks.StallCommunication, socks.ResumeCommunication:
+				p.relayState.DataFromDCNet <- upstreamPlaintext
+
+			default:
+				break
+			}
+
+		}
 	}
-	p.doneCollectingUpstreamData(p.relayState.roundManager.CurrentRound())
+
+	return nil
+}
+
+// upstreamPhase3_FinalizeRound happens when the data for the upstream round has been collected, and essentially
+// close the current round
+func (p *PriFiLibRelayInstance) upstreamPhase3_finalizeRound(roundID int32) error {
+
+	p.relayState.numberOfNonAckedDownstreamPackets--
+	p.relayState.numberOfConsecutiveFailedRounds = 0
+
+	// collects timing experiments
+	if roundID == 0 {
+		log.Lvl2("Relay finished round " + strconv.Itoa(int(roundID)) + " .")
+	} else {
+		log.Lvl2("Relay finished round "+strconv.Itoa(int(roundID))+" (after", p.relayState.roundManager.TimeSpentInRound(roundID), ").")
+		p.collectExperimentResult(p.relayState.bitrateStatistics.Report())
+		timeSpent := p.relayState.roundManager.TimeSpentInRound(roundID)
+		p.relayState.timeStatistics["round-duration"].AddTime(timeSpent.Nanoseconds() / 1e6) //ms
+		for k, v := range p.relayState.timeStatistics {
+			p.collectExperimentResult(v.ReportWithInfo(k))
+		}
+	}
+
+	// Test if we are doing an experiment, and if we need to stop at some point.
+	newRound := p.relayState.roundManager.CurrentRound()
+	if newRound == int32(p.relayState.ExperimentRoundLimit) {
+		log.Lvl1("Relay : Experiment round limit (", newRound, ") reached")
+		p.relayState.ExperimentResultChannel <- p.relayState.ExperimentResultData
+
+		// shut down everybody
+		msg := net.ALL_ALL_SHUTDOWN{}
+		p.Received_ALL_ALL_SHUTDOWN(msg)
+	}
+
+	p.relayState.roundManager.CloseRound()
+
+	//prepare for the next round (this empties the dc-net buffer, making them ready for a new round)
+	p.relayState.DCNet.DecodeStart(p.relayState.UpstreamCellSize, p.relayState.MessageHistory)
 
 	return nil
 }
@@ -473,7 +516,7 @@ If we use SOCKS/VPN, give them the data.
 Since after this function, we'll start receiving data for the next round, if we have buffered data for this next round, tell the state that we
 have the data already (and we're not waiting on it). Clean the old data.
 */
-func (p *PriFiLibRelayInstance) sendDownstreamData() error {
+func (p *PriFiLibRelayInstance) downstreamPhase1_openRoundAndSendData() error {
 
 	var downstreamCellContent []byte
 
@@ -565,53 +608,6 @@ func (p *PriFiLibRelayInstance) sendDownstreamData() error {
 	timing.StartMeasure("waiting-on-someone")
 
 	p.relayState.numberOfNonAckedDownstreamPackets++
-
-	return nil
-}
-
-func (p *PriFiLibRelayInstance) collectExperimentResult(str string) {
-	if str == "" {
-		return
-	}
-
-	// if this is not an experiment, simply return
-	if p.relayState.ExperimentRoundLimit == -1 {
-		return
-	}
-
-	p.relayState.ExperimentResultData = append(p.relayState.ExperimentResultData, str)
-}
-
-func (p *PriFiLibRelayInstance) doneCollectingUpstreamData(roundID int32) error {
-
-	p.relayState.numberOfNonAckedDownstreamPackets--
-	p.relayState.numberOfConsecutiveFailedRounds = 0
-
-	if roundID == 0 {
-		log.Lvl2("Relay finished round " + strconv.Itoa(int(roundID)) + " .")
-	} else {
-		log.Lvl2("Relay finished round "+strconv.Itoa(int(roundID))+" (after", p.relayState.roundManager.TimeSpentInRound(roundID), ").")
-		p.collectExperimentResult(p.relayState.bitrateStatistics.Report())
-		timeSpent := p.relayState.roundManager.TimeSpentInRound(roundID)
-		p.relayState.timeStatistics["round-duration"].AddTime(timeSpent.Nanoseconds() / 1e6) //ms
-		for k, v := range p.relayState.timeStatistics {
-			p.collectExperimentResult(v.ReportWithInfo(k))
-		}
-	}
-
-	// Test if we are doing an experiment, and if we need to stop at some point.
-	newRound := p.relayState.roundManager.CurrentRound()
-	if newRound == int32(p.relayState.ExperimentRoundLimit) {
-		log.Lvl1("Relay : Experiment round limit (", newRound, ") reached")
-		p.relayState.ExperimentResultChannel <- p.relayState.ExperimentResultData
-
-		// shut down everybody
-		msg := net.ALL_ALL_SHUTDOWN{}
-		p.Received_ALL_ALL_SHUTDOWN(msg)
-	}
-	//prepare for the next round
-	p.relayState.roundManager.CloseRound()
-	p.relayState.DCNet.DecodeStart(p.relayState.UpstreamCellSize, p.relayState.MessageHistory) //this empties the buffer, making them ready for a new round
 
 	return nil
 }
@@ -840,4 +836,43 @@ func ValidateHmac256(message, inputHmac []byte, clientID int) bool {
 	h.Write(message)
 	computedHmac := h.Sum(nil)
 	return bytes.Equal(inputHmac, computedHmac)
+}
+
+// updates p.relayState.ExperimentResultData
+func (p *PriFiLibRelayInstance) collectExperimentResult(str string) {
+	if str == "" {
+		return
+	}
+
+	// if this is not an experiment, simply return
+	if p.relayState.ExperimentRoundLimit == -1 {
+		return
+	}
+
+	p.relayState.ExperimentResultData = append(p.relayState.ExperimentResultData, str)
+}
+
+// prints the number of time a schedule of length X occured, e.g. 0->999; 1->10; etc
+func (p *PriFiLibRelayInstance) updateAndPrintScheduleRepartitions(currentRoundID int32, newSchedule map[int]bool) {
+
+	// updates distribution
+	scheduleLength := 0
+
+	for _, v := range newSchedule {
+		if v {
+			scheduleLength++
+		}
+	}
+
+	p.relayState.ScheduleLengthRepartitions[scheduleLength]++
+
+	// prints the distribution
+
+	str := ""
+	for k, v := range p.relayState.ScheduleLengthRepartitions {
+		str += strconv.Itoa(k) + "->" + strconv.Itoa(v) + ";"
+	}
+	if currentRoundID%10 == 0 {
+		log.Lvl1("Schedules len/count", str)
+	}
 }

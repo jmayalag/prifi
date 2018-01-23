@@ -4,6 +4,8 @@ import (
 	"errors"
 	"github.com/lbarman/prifi/prifi-lib/net"
 	"gopkg.in/dedis/onet.v1/log"
+	"runtime/debug"
+	"sort"
 	"strconv"
 	"sync"
 	"time"
@@ -54,6 +56,51 @@ type BufferableRoundManager struct {
 	resumeSent               bool
 }
 
+func sortedIntMapOfIntMapDump(m map[int]map[int32][]byte) {
+	nodes := make([]int, 0, len(m))
+	for i := range m {
+		nodes = append(nodes, i)
+	}
+	sort.Ints(nodes)
+	for _, i := range nodes {
+		log.Lvlf1("%2d: %+v", i, m[i])
+	}
+}
+
+func sortedIntMapDump(m map[int]bool) {
+	si := make([]int, 0, len(m))
+	for i := range m {
+		si = append(si, i)
+	}
+	sort.Ints(si)
+	for _, i := range si {
+		log.Lvlf1("%2d: %v", i, m[i])
+	}
+}
+
+// Dump prints the contents of this BufferableRoundManager
+func (b *BufferableRoundManager) Dump() {
+	b.Lock()
+	defer b.Unlock()
+
+	log.Lvl1("------------------------")
+	log.Lvl1("BufferableRoundManager with ", b.nClients, "clients", b.nTrustees, "trustees, window =", b.maxNumberOfConcurrentRounds)
+	open, r := b.currentRound()
+	log.Lvl1("Current round:", r, "open=", open, "Has all ciphers ? ", b.hasAllCiphersForCurrentRound())
+	for k, v := range b.openRounds {
+		log.Lvl1("Open rounds:", k, v)
+	}
+	log.Lvl1("ACK MAP Clients")
+	sortedIntMapDump(b.clientAckMap)
+	log.Lvl1("ACK MAP Trustees")
+	sortedIntMapDump(b.trusteeAckMap)
+	//log.Lvl1("Buffered MAP Clients")
+	//sortedIntMapOfIntMapDump(b.bufferedClientCiphers)
+	//log.Lvl1("Buffered MAP Trustees")
+	//sortedIntMapOfIntMapDump(b.bufferedTrusteeCiphers)
+	log.Lvl1("------------------------")
+}
+
 // NewBufferableRoundManager creates a Round Manager that handles the buffering of cipher, the rounds and their transitions, and the rate-limiting
 func NewBufferableRoundManager(nClients, nTrustees, maxNumberOfConcurrentRounds int) *BufferableRoundManager {
 	if nClients+nTrustees == 0 {
@@ -88,6 +135,7 @@ func (b *BufferableRoundManager) CurrentRound() int32 {
 
 	anyRoundOpen, round := b.currentRound()
 	if !anyRoundOpen {
+		debug.PrintStack()
 		log.Fatal("Tried to get CurrentRound(), but no round opened !")
 	}
 
@@ -184,6 +232,7 @@ func (b *BufferableRoundManager) OpenNextRound() int32 {
 
 	//make sure not to open more rounds than allowed
 	if len(b.openRounds) >= b.maxNumberOfConcurrentRounds {
+		debug.PrintStack()
 		log.Fatal("Tried to OpenNextRound(), but we have already", len(b.openRounds), "rounds opened.")
 	}
 
@@ -336,8 +385,8 @@ func (b *BufferableRoundManager) TimeSpentInRound(roundID int32) time.Duration {
 	if startTime, found := b.openRounds[roundID]; found {
 		return time.Since(startTime)
 	}
-	log.Fatal("Requested duration for round", roundID, ", but round has been closed already (or was not found).")
-	return time.Hour
+	log.Error("Requested duration for round", roundID, ", but round has been closed already (or was not found).")
+	return time.Duration(0)
 }
 
 // resetACKmaps resets to 0 (all false) the two acks maps
@@ -396,6 +445,7 @@ func (b *BufferableRoundManager) SetDataAlreadySent(roundID int32, data *net.REL
 	defer b.Unlock()
 
 	if !b.isRoundOpen(roundID) {
+		debug.PrintStack()
 		log.Fatal("Called SetDataAlreadySent(", roundID, "), but round is already closed.")
 	}
 
@@ -410,6 +460,7 @@ func (b *BufferableRoundManager) GetDataAlreadySent(roundID int32) *net.REL_CLI_
 		return data
 	}
 	o, r := b.currentRound()
+	debug.PrintStack()
 	log.Fatal("Requested data already sent for round", roundID, ", but round has been closed already (or was not found). Current round is", o, r)
 	return nil
 }
@@ -448,6 +499,7 @@ func (b *BufferableRoundManager) AddClientCipher(roundID int32, clientID int, da
 
 	anyRoundOpenend, currendRound := b.currentRound()
 	if !anyRoundOpenend {
+		debug.PrintStack()
 		log.Fatal("Can't add client cipher, no round opened")
 	}
 
