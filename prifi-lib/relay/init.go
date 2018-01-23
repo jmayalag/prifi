@@ -45,6 +45,7 @@ import (
 	"github.com/lbarman/prifi/prifi-lib/crypto"
 	"reflect"
 	"strings"
+	"sync"
 )
 
 // PriFiLibInstance contains the mutable state of a PriFi entity.
@@ -79,6 +80,7 @@ func NewRelay(dataOutputEnabled bool, dataForClients chan []byte, dataFromDCNet 
 	relayState.PublicKey, relayState.privateKey = crypto.NewKeyPair()
 	relayState.slotScheduler = new(scheduler.BitMaskSlotScheduler_Relay)
 	relayState.roundManager = new(BufferableRoundManager)
+	relayState.timeoutMutex = *new(sync.Mutex)
 	neffShuffle := new(scheduler.NeffShuffle)
 	neffShuffle.Init()
 	relayState.neffShuffle = neffShuffle.RelayView
@@ -164,6 +166,9 @@ type RelayState struct {
 	TrusteeCacheLowBound                   int // Number of ciphertexts buffered by trustees. When <= TRUSTEE_CACHE_LOWBOUND, resume sending
 	TrusteeCacheHighBound                  int // Number of ciphertexts buffered by trustees. When >= TRUSTEE_CACHE_HIGHBOUND, stop sending
 	EquivocationProtectionEnabled          bool
+
+	// sync
+	timeoutMutex sync.Mutex
 
 	//disruption protection
 	clientBitMap  map[int]map[int]int
