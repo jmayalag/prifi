@@ -329,7 +329,7 @@ func (p *PriFiLibRelayInstance) upstreamPhase2a_extractOCMap(roundID int32) erro
 	//compute the map
 	newSchedule := p.relayState.slotScheduler.Relay_ComputeFinalSchedule(openClosedData, p.relayState.nClients)
 	p.relayState.roundManager.SetStoredRoundSchedule(newSchedule)
-	p.updateAndPrintScheduleRepartitions(roundID, newSchedule)
+	p.relayState.schedulesStatistics.AddSchedule(newSchedule)
 
 	// if all slots are closed, do not immediately send the next downstream data (which will be a OCSlots schedule)
 	hasOpenSlot := false
@@ -483,6 +483,7 @@ func (p *PriFiLibRelayInstance) upstreamPhase3_finalizeRound(roundID int32) erro
 	} else {
 		log.Lvl2("Relay finished round "+strconv.Itoa(int(roundID))+" (after", p.relayState.roundManager.TimeSpentInRound(roundID), ").")
 		p.collectExperimentResult(p.relayState.bitrateStatistics.Report())
+		p.collectExperimentResult(p.relayState.schedulesStatistics.Report())
 		timeSpent := p.relayState.roundManager.TimeSpentInRound(roundID)
 		p.relayState.timeStatistics["round-duration"].AddTime(timeSpent.Nanoseconds() / 1e6) //ms
 		for k, v := range p.relayState.timeStatistics {
@@ -850,29 +851,4 @@ func (p *PriFiLibRelayInstance) collectExperimentResult(str string) {
 	}
 
 	p.relayState.ExperimentResultData = append(p.relayState.ExperimentResultData, str)
-}
-
-// prints the number of time a schedule of length X occured, e.g. 0->999; 1->10; etc
-func (p *PriFiLibRelayInstance) updateAndPrintScheduleRepartitions(currentRoundID int32, newSchedule map[int]bool) {
-
-	// updates distribution
-	scheduleLength := 0
-
-	for _, v := range newSchedule {
-		if v {
-			scheduleLength++
-		}
-	}
-
-	p.relayState.ScheduleLengthRepartitions[scheduleLength]++
-
-	// prints the distribution
-
-	str := ""
-	for k, v := range p.relayState.ScheduleLengthRepartitions {
-		str += strconv.Itoa(k) + "->" + strconv.Itoa(v) + ";"
-	}
-	if currentRoundID%10 == 0 {
-		log.Lvl1("Schedules len/count", str)
-	}
 }

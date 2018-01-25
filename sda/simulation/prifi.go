@@ -132,6 +132,11 @@ func (s *SimulationService) Node(config *onet.SimulationConfig) error {
 		log.SetUseColors(true)
 	}
 
+	if s.PrifiTomlConfig.ReplayPCAP && s.PrifiTomlConfig.DisruptionProtectionEnabled ||
+		s.PrifiTomlConfig.ReplayPCAP && s.PrifiTomlConfig.EquivocationProtectionEnabled {
+		log.Fatal("There is a bug that needs to be fixed, you can't replay pcaps with disruption and equivocation!")
+	}
+
 	//set the config from the .toml file
 	service.SetConfigFromToml(&s.PrifiTomlConfig)
 

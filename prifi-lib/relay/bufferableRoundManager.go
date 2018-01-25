@@ -233,7 +233,7 @@ func (b *BufferableRoundManager) OpenNextRound() int32 {
 	//make sure not to open more rounds than allowed
 	if len(b.openRounds) >= b.maxNumberOfConcurrentRounds {
 		debug.PrintStack()
-		log.Fatal("Tried to OpenNextRound(), but we have already", len(b.openRounds), "rounds opened.")
+		log.Fatal("Tried to OpenNextRound(), but we have already", len(b.openRounds), "rounds opened (max", b.maxNumberOfConcurrentRounds, ").")
 	}
 
 	anyRoundOpen := false

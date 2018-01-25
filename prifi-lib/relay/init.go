@@ -70,7 +70,7 @@ func NewRelay(dataOutputEnabled bool, dataForClients chan []byte, dataFromDCNet 
 	relayState.ExperimentResultChannel = experimentResultChan
 	relayState.ExperimentResultData = make([]string, 0)
 	relayState.PriorityDataForClients = make(chan []byte, 10) // This is used for relay's control message (like latency-tests) d
-	relayState.ScheduleLengthRepartitions = make(map[int]int)
+	relayState.schedulesStatistics = prifilog.NewSchedulesStatistics()
 	relayState.timeStatistics = make(map[string]*prifilog.TimeStatistics)
 	relayState.timeStatistics["round-duration"] = prifilog.NewTimeStatistics()
 	relayState.timeStatistics["waiting-on-clients"] = prifilog.NewTimeStatistics()
@@ -150,6 +150,7 @@ type RelayState struct {
 	ExperimentResultData                   []string
 	timeoutHandler                         func([]int, []int)
 	bitrateStatistics                      *prifilog.BitrateStatistics
+	schedulesStatistics                    *prifilog.SchedulesStatistics
 	timeStatistics                         map[string]*prifilog.TimeStatistics
 	slotScheduler                          *scheduler.BitMaskSlotScheduler_Relay
 	dcNetType                              string
@@ -157,7 +158,6 @@ type RelayState struct {
 	pcapLogger                             *utils.PCAPLog
 	DisruptionProtectionEnabled            bool
 	OpenClosedSlotsMinDelayBetweenRequests int
-	ScheduleLengthRepartitions             map[int]int
 	OpenClosedSlotsRequestsRoundID         map[int32]bool // contains roundID -> true if that round should be a OC slot request
 	numberOfConsecutiveFailedRounds        int
 	MaxNumberOfConsecutiveFailedRounds     int // Kill the protocol if that many rounds fail consecutively
