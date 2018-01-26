@@ -123,7 +123,7 @@ case $1 in
 
 
 
-        EXPERIMENT_ID_VALUE=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
+        EXPERIMENT_ID_VALUE=$(LC_ALL=C cat /dev/urandom | LC_ALL=C tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
         dbg_lvl=1 # do not change this. Many other functions of this script call this script recursively. If this is >1, the log will blow up ;)
 
         rm -f last-simul.log
@@ -275,7 +275,7 @@ case $1 in
 
         for repeat in {1..4}
         do
-            for i in {10..90..10}
+            for i in 10 20 30 40 50 60 70 80 90
             do
                 hosts=$(($NTRUSTEES + $NRELAY + $i))
                 echo "Simulating for HOSTS=$hosts..."
@@ -375,9 +375,92 @@ case $1 in
         nano sda/simulation/prifi_simul.toml
         ;;
 
+
+
+    simul-vary-dcnet)
+
+        NTRUSTEES=3
+        NRELAY=1
+
+        "$THIS_SCRIPT" simul-cl
+
+        for repeat in {1..5}
+        do
+            for i in {0..3}
+            do
+                dis="false"
+                equiv="false"
+
+                if [ $i == 1 ]; then
+                    dis="true"
+                fi
+                if [ $i == 2 ]; then
+                    equiv="true"
+                fi
+                if [ $i == 3 ]; then
+                    dis="true"
+                    equiv="true"
+                fi
+
+                echo "Simulating for DCNET disruption=$dis, equivocation=$equiv, repeat $repeat"
+
+                #fix the config
+                rm -f "$CONFIG_FILE"
+                sed -e "s/DisruptionProtectionEnabled = x/DisruptionProtectionEnabled = $dis/g" -e "s/EquivocationProtectionEnabled = x/EquivocationProtectionEnabled = $equiv/g" "$TEMPLATE_FILE" > "$CONFIG_FILE"
+
+                timeout "$SIMULATION_TIMEOUT" "$THIS_SCRIPT" simul | tee experiment_${i}_${repeat}.txt
+            done
+        done
+
+        ;;
+
+    simul-vary-workloads)
+    
+        DETERLAB_PCAP_LOCATION='/users/lbarman/remote/pcap/'
+        NTRUSTEES=3
+        NRELAY=1
+
+        #"$THIS_SCRIPT" simul-cl
+
+        for traffic in hangouts.pcap others.pcap skype.pcap youtube.pcap
+        do
+            for repeat in {1..5}
+            do
+                for clients in 10 30 50 70 90
+                do
+                    for percentage_clients in 1 5
+                    do
+                        hosts=$(($NTRUSTEES + $NRELAY + $clients))
+                        active_hosts=`echo "scale=2; 0.5+$percentage_clients/100*$hosts" | bc`
+                        active_hosts=`printf %.0f $active_hosts`
+
+                        echo "Simulating for TRAFFIC $traffic, CLIENTS=$clients, ACTIVE_CLIENTS=$active_hosts, REPEAT ${repeat}..."
+
+                        echo "Removing old symlinks"
+                        ssh $DETERLAB_USER@users.deterlab.net "rm -f ${DETERLAB_PCAP_LOCATION}client*.pcap"
+
+                        for (( i=0; i<$active_hosts; i++ ))
+                        do
+                            echo "Linking $traffic to client$i.pcap"
+                            ssh $DETERLAB_USER@users.deterlab.net "ln -s ${DETERLAB_PCAP_LOCATION}${traffic} ${DETERLAB_PCAP_LOCATION}client$i.pcap"
+                        done
+
+                        #fix the config
+                        rm -f "$CONFIG_FILE"
+                        sed "s/Hosts = x/Hosts = $hosts/g" "$TEMPLATE_FILE" > "$CONFIG_FILE"
+
+                        timeout "$SIMULATION_TIMEOUT" "$THIS_SCRIPT" simul | tee experiment_${traffic}_${clients}_${active_hosts}_${repeat}.txt
+                    done
+                done
+            done
+
+        done
+        ;;
+
     *)
         test_go
         test_cothority
         print_usage
         ;;
+
 esac

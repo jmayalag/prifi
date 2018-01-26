@@ -72,23 +72,24 @@ func NewTrustee(neverSlowDown bool, alwaysSlowDown bool, baseSleepTime int, msgS
 
 // TrusteeState contains the mutable state of the trustee.
 type TrusteeState struct {
-	DCNet_RoundManager *DCNet_RoundManager
-	ClientPublicKeys   []abstract.Point
-	ID                 int
-	MessageHistory     abstract.Cipher
-	Name               string
-	nClients           int
-	neffShuffle        *scheduler.NeffShuffleTrustee
-	nTrustees          int
-	PayloadLength      int
-	privateKey         abstract.Scalar
-	PublicKey          abstract.Point
-	sendingRate        chan int16
-	sharedSecrets      []abstract.Point
-	TrusteeID          int
-	BaseSleepTime      int
-	AlwaysSlowDown     bool //enforce the sleep in the sending function even if rate is FULL
-	NeverSlowDown      bool //ignore the sleep in the sending function if rate is STOPPED
+	DCNet_RoundManager            *DCNet_RoundManager
+	ClientPublicKeys              []abstract.Point
+	ID                            int
+	MessageHistory                abstract.Cipher
+	Name                          string
+	nClients                      int
+	neffShuffle                   *scheduler.NeffShuffleTrustee
+	nTrustees                     int
+	PayloadLength                 int
+	privateKey                    abstract.Scalar
+	PublicKey                     abstract.Point
+	sendingRate                   chan int16
+	sharedSecrets                 []abstract.Point
+	TrusteeID                     int
+	BaseSleepTime                 int
+	AlwaysSlowDown                bool //enforce the sleep in the sending function even if rate is FULL
+	NeverSlowDown                 bool //ignore the sleep in the sending function if rate is STOPPED
+	EquivocationProtectionEnabled bool
 }
 
 // NeffShuffleResult holds the result of the NeffShuffle,

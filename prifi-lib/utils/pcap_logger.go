@@ -4,6 +4,7 @@ import (
 	prifilog "github.com/lbarman/prifi/prifi-lib/log"
 	"gopkg.in/dedis/onet.v1/log"
 	"math"
+	"strconv"
 	"time"
 )
 
@@ -56,8 +57,6 @@ func (pl *PCAPLog) ReceivedPcap(ID uint32, frag bool, tsSent uint64, tsExperimen
 		IsFinalFragment: frag,
 	}
 
-	log.Lvl1("Received pcap", p.ID, p.Delay, p.DataLen)
-
 	pl.receivedPackets = append(pl.receivedPackets, p)
 
 	now := time.Now()
@@ -107,4 +106,12 @@ func (pl *PCAPLog) Print() {
 
 	log.Lvl1("PCAPLog : ", totalFragments, "fragments,", totalUniquePackets, "final,", totalPackets, "fragments+final; mean",
 		math.Ceil(delayMean*100)/100, "ms, stddev", math.Ceil(stddev*100)/100, "max", math.Ceil(float64(delayMax)*100)/100, "ms")
+
+	str := ""
+	for _, v := range pl.receivedPackets {
+		str += strconv.Itoa(int(v.Delay)) + ";"
+	}
+
+	log.Lvl1("PCAPLog-individuals: ", str)
+	pl.receivedPackets = make([]*PCAPReceivedPacket, 0)
 }

@@ -12,7 +12,7 @@ import (
 // DCNet_RoundManager allows to request DC-net pads for a specific round
 type DCNet_RoundManager struct {
 	sync.Mutex
-	CellCoder     dcnet.CellCoder
+	DCNet         dcnet.DCNet
 	currentRound  int32
 	sharedSecrets []abstract.Point
 }
@@ -30,13 +30,13 @@ func (dc *DCNet_RoundManager) ClientEncodeForRound(roundID int32, payload []byte
 	for dc.currentRound < roundID {
 		//discard crypto material
 		log.Lvl4("Discarding round", dc.currentRound)
-		_ = dc.CellCoder.ClientEncode(nil, payloadSize, history)
+		_ = dc.DCNet.ClientEncode(nil, payloadSize, history)
 		dc.currentRound++
 	}
 
 	log.Lvl4("Producing round", dc.currentRound)
 	//produce the real round
-	data := dc.CellCoder.ClientEncode(payload, payloadSize, history)
+	data := dc.DCNet.ClientEncode(payload, payloadSize, history)
 	dc.currentRound++
 	return data
 }

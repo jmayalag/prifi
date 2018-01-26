@@ -45,6 +45,7 @@ import (
 	"github.com/lbarman/prifi/prifi-lib/crypto"
 	"reflect"
 	"strings"
+	"sync"
 )
 
 // PriFiLibInstance contains the mutable state of a PriFi entity.
@@ -69,7 +70,7 @@ func NewRelay(dataOutputEnabled bool, dataForClients chan []byte, dataFromDCNet 
 	relayState.ExperimentResultChannel = experimentResultChan
 	relayState.ExperimentResultData = make([]string, 0)
 	relayState.PriorityDataForClients = make(chan []byte, 10) // This is used for relay's control message (like latency-tests) d
-	relayState.ScheduleLengthRepartitions = make(map[int]int)
+	relayState.schedulesStatistics = prifilog.NewSchedulesStatistics()
 	relayState.timeStatistics = make(map[string]*prifilog.TimeStatistics)
 	relayState.timeStatistics["round-duration"] = prifilog.NewTimeStatistics()
 	relayState.timeStatistics["waiting-on-clients"] = prifilog.NewTimeStatistics()
@@ -79,6 +80,7 @@ func NewRelay(dataOutputEnabled bool, dataForClients chan []byte, dataFromDCNet 
 	relayState.PublicKey, relayState.privateKey = crypto.NewKeyPair()
 	relayState.slotScheduler = new(scheduler.BitMaskSlotScheduler_Relay)
 	relayState.roundManager = new(BufferableRoundManager)
+	relayState.timeoutMutex = *new(sync.Mutex)
 	neffShuffle := new(scheduler.NeffShuffle)
 	neffShuffle.Init()
 	relayState.neffShuffle = neffShuffle.RelayView
@@ -98,6 +100,7 @@ func NewRelay(dataOutputEnabled bool, dataForClients chan []byte, dataFromDCNet 
 		}
 	}
 	sm.Init(states, logFn, errFn)
+	sm.SetEntity("Relay")
 
 	prifi := PriFiLibRelayInstance{
 		messageSender: msgSender,
@@ -117,7 +120,7 @@ type NodeRepresentation struct {
 
 // RelayState contains the mutable state of the relay.
 type RelayState struct {
-	CellCoder                              dcnet.CellCoder
+	DCNet                                  dcnet.DCNet
 	clients                                []NodeRepresentation
 	roundManager                           *BufferableRoundManager
 	neffShuffle                            *scheduler.NeffShuffleRelay
@@ -147,6 +150,7 @@ type RelayState struct {
 	ExperimentResultData                   []string
 	timeoutHandler                         func([]int, []int)
 	bitrateStatistics                      *prifilog.BitrateStatistics
+	schedulesStatistics                    *prifilog.SchedulesStatistics
 	timeStatistics                         map[string]*prifilog.TimeStatistics
 	slotScheduler                          *scheduler.BitMaskSlotScheduler_Relay
 	dcNetType                              string
@@ -154,7 +158,6 @@ type RelayState struct {
 	pcapLogger                             *utils.PCAPLog
 	DisruptionProtectionEnabled            bool
 	OpenClosedSlotsMinDelayBetweenRequests int
-	ScheduleLengthRepartitions             map[int]int
 	OpenClosedSlotsRequestsRoundID         map[int32]bool // contains roundID -> true if that round should be a OC slot request
 	numberOfConsecutiveFailedRounds        int
 	MaxNumberOfConsecutiveFailedRounds     int // Kill the protocol if that many rounds fail consecutively
@@ -162,6 +165,10 @@ type RelayState struct {
 	RoundTimeOut                           int //The timeout before retransmission (UDP) and/or considering the round failed
 	TrusteeCacheLowBound                   int // Number of ciphertexts buffered by trustees. When <= TRUSTEE_CACHE_LOWBOUND, resume sending
 	TrusteeCacheHighBound                  int // Number of ciphertexts buffered by trustees. When >= TRUSTEE_CACHE_HIGHBOUND, stop sending
+	EquivocationProtectionEnabled          bool
+
+	// sync
+	timeoutMutex sync.Mutex
 
 	//disruption protection
 	clientBitMap  map[int]map[int]int

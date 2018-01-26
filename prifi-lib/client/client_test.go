@@ -691,9 +691,9 @@ func TestDisruptionClient(t *testing.T) {
 		t.Error("Could not marshal point !")
 	}
 	sharedPRNGs_t2[0] = config.CryptoSuite.Cipher(bytes)
-	cellCoder1 := dcnet.SimpleCoderFactory()
+	cellCoder1 := dcnet.NewSimpleDCNet(false)
 	cellCoder1.TrusteeSetup(config.CryptoSuite, sharedPRNGs_t1)
-	cellCoder2 := dcnet.SimpleCoderFactory()
+	cellCoder2 := dcnet.NewSimpleDCNet(false)
 	cellCoder2.TrusteeSetup(config.CryptoSuite, sharedPRNGs_t2)
 
 	pad1 := cellCoder1.TrusteeEncode(upCellSize)

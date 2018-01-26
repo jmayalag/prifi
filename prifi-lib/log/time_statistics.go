@@ -78,19 +78,13 @@ func (stats *TimeStatistics) ReportWithInfo(info string) string {
 		log.Lvl1(str)
 
 		//json output
-		strJSON := fmt.Sprintf("{ \"type\"=\"relay_timings\", \"report_id\"=\"%v\", \"duration_mean_ms\"=\"%s\", \"duration_dev_ms\"=\"%s\", \"mean_over\"=\"%s\", \"total_pop\"=\"%v\", \"info\"=\"%s\" }\n",
-			stats.reportNo, mean, variance, n, stats.totalValuesAdded, info)
-
-		//report to website
-		data := fmt.Sprintf("no=%v&mean=%s&var=%s&n=%s&happened=%v&info=%s", stats.reportNo, mean, variance, n, stats.totalValuesAdded, info)
-
-		_ = data
-		//go performGETRequest("http://prifi.net/reporting/?" + data)
+		//strJSON := fmt.Sprintf("{ \"type\"=\"relay_timings\", \"report_id\"=\"%v\", \"duration_mean_ms\"=\"%s\", \"duration_dev_ms\"=\"%s\", \"mean_over\"=\"%s\", \"total_pop\"=\"%v\", \"info\"=\"%s\" }\n",
+		//	stats.reportNo, mean, variance, n, stats.totalValuesAdded, info)
 
 		stats.nextReport = now.Add(stats.period)
 		stats.reportNo++
 
-		return strJSON
+		return str
 	}
 	return ""
 }

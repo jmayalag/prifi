@@ -10,7 +10,7 @@ import (
 
 func TestDCNetRoundManager(test *testing.T) {
 	dc := new(DCNet_RoundManager)
-	dc.CellCoder = dcnet.SimpleCoderFactory()
+	dc.DCNet = dcnet.NewSimpleDCNet(false)
 
 	//set up the DC-nets
 	_, clientp := crypto.NewKeyPair()
@@ -28,7 +28,7 @@ func TestDCNetRoundManager(test *testing.T) {
 	sharedSecrets := make([]abstract.Point, 1)
 	sharedSecrets[0] = sharedSecret
 	dc.TrusteeSetup(sharedSecrets)
-	dc.CellCoder.TrusteeSetup(config.CryptoSuite, sharedPRNGs)
+	dc.DCNet.TrusteeSetup(config.CryptoSuite, sharedPRNGs)
 
 	cellSize := 8
 

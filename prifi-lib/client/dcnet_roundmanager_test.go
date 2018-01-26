@@ -9,11 +9,12 @@ import (
 )
 
 func TestDCNetRoundManager(test *testing.T) {
+	equivProtection := false
 	dc := new(DCNet_RoundManager)
-	dc.CellCoder = dcnet.SimpleCoderFactory()
+	dc.DCNet = dcnet.NewSimpleDCNet(equivProtection)
 
 	dc2 := new(DCNet_RoundManager)
-	dc2.CellCoder = dcnet.SimpleCoderFactory()
+	dc2.DCNet = dcnet.NewSimpleDCNet(equivProtection)
 
 	//set up the DC-nets
 	_, clientp := crypto.NewKeyPair()
@@ -31,19 +32,19 @@ func TestDCNetRoundManager(test *testing.T) {
 	sharedSecrets := make([]abstract.Point, 1)
 	sharedSecrets[0] = sharedSecret
 	dc2.ClientSetup(sharedSecrets)
-	dc.CellCoder.ClientSetup(config.CryptoSuite, sharedPRNGs)
-	dc2.CellCoder.ClientSetup(config.CryptoSuite, sharedPRNGs2)
+	dc.DCNet.ClientSetup(config.CryptoSuite, sharedPRNGs)
+	dc2.DCNet.ClientSetup(config.CryptoSuite, sharedPRNGs2)
 
 	cellSize := 8
 	//var history abstract.Cipher
 	history := config.CryptoSuite.Cipher([]byte("init"))
 
 	//the "real" rounds
-	round0 := dc.CellCoder.ClientEncode(nil, cellSize, history)
-	_ = dc.CellCoder.ClientEncode(nil, cellSize, history)
-	round2 := dc.CellCoder.ClientEncode(nil, cellSize, history)
-	_ = dc.CellCoder.ClientEncode(nil, cellSize, history)
-	round4 := dc.CellCoder.ClientEncode(nil, cellSize, history)
+	round0 := dc.DCNet.ClientEncode(nil, cellSize, history)
+	_ = dc.DCNet.ClientEncode(nil, cellSize, history)
+	round2 := dc.DCNet.ClientEncode(nil, cellSize, history)
+	_ = dc.DCNet.ClientEncode(nil, cellSize, history)
+	round4 := dc.DCNet.ClientEncode(nil, cellSize, history)
 
 	//the skipped rounds
 	round02 := dc2.ClientEncodeForRound(0, nil, cellSize, history)

@@ -45,7 +45,7 @@ func NewBitRateStatistics(cellSize int) *BitrateStatistics {
 		nextReport: now,
 		reportNo:   0,
 		period:     fiveSec,
-		cellSize: cellSize}
+		cellSize:   cellSize}
 	return &stats
 }
 
@@ -102,7 +102,7 @@ func (stats *BitrateStatistics) ReportWithInfo(info string) string {
 			float64(stats.instantDownstreamUDPBytes)/1024/stats.period.Seconds(),
 			float64(stats.instantDownstreamRetransmitBytes)/1024/stats.period.Seconds(),
 			stats.totalUpstreamCells,
-			int64(stats.totalUpstreamCells) * int64(stats.cellSize))
+			int64(stats.totalUpstreamCells)*int64(stats.cellSize))
 
 		log.Lvlf1(str)
 

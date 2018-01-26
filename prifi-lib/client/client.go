@@ -58,12 +58,16 @@ func (p *PriFiLibClientInstance) Received_ALL_ALL_SHUTDOWN(msg net.ALL_ALL_SHUTD
 // It uses the message's parameters to initialize the client.
 func (p *PriFiLibClientInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARAMETERS) error {
 	clientID := msg.IntValueOrElse("NextFreeClientID", -1)
+	e := "Client " + strconv.Itoa(clientID)
+	p.stateMachine.SetEntity(e)
+	p.messageSender.SetEntity(e)
 	nTrustees := msg.IntValueOrElse("NTrustees", p.clientState.nTrustees)
 	nClients := msg.IntValueOrElse("NClients", p.clientState.nClients)
 	upCellSize := msg.IntValueOrElse("UpstreamCellSize", p.clientState.PayloadLength) //todo: change this name
 	useUDP := msg.BoolValueOrElse("UseUDP", p.clientState.UseUDP)
 	dcNetType := msg.StringValueOrElse("DCNetType", "not initialized")
 	disruptionProtection := msg.BoolValueOrElse("DisruptionProtectionEnabled", false)
+	equivProtection := msg.BoolValueOrElse("EquivocationProtectionEnabled", false)
 
 	//sanity checks
 	if clientID < -1 {
@@ -81,9 +85,9 @@ func (p *PriFiLibClientInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PAR
 
 	switch dcNetType {
 	case "Simple":
-		p.clientState.DCNet_RoundManager.CellCoder = dcnet.SimpleCoderFactory()
+		p.clientState.DCNet_RoundManager.DCNet = dcnet.NewSimpleDCNet(equivProtection)
 	case "Verifiable":
-		p.clientState.DCNet_RoundManager.CellCoder = dcnet.OwnedCoderFactory()
+		p.clientState.DCNet_RoundManager.DCNet = dcnet.NewVerifiableDCNet(equivProtection)
 	default:
 		log.Fatal("DCNetType must be Simple or Verifiable")
 	}
@@ -95,7 +99,6 @@ func (p *PriFiLibClientInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PAR
 	p.clientState.nClients = nClients
 	p.clientState.nTrustees = nTrustees
 	p.clientState.PayloadLength = upCellSize
-	p.clientState.UsablePayloadLength = p.clientState.DCNet_RoundManager.CellCoder.ClientCellSize(upCellSize)
 	p.clientState.UseUDP = useUDP
 	p.clientState.TrusteePublicKey = make([]abstract.Point, nTrustees)
 	p.clientState.sharedSecrets = make([]abstract.Point, nTrustees)
@@ -103,16 +106,23 @@ func (p *PriFiLibClientInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PAR
 	p.clientState.BufferedRoundData = make(map[int32]net.REL_CLI_DOWNSTREAM_DATA)
 	p.clientState.MessageHistory = config.CryptoSuite.Cipher([]byte("init")) //any non-nil, non-empty, constant array
 	p.clientState.DisruptionProtectionEnabled = disruptionProtection
+	p.clientState.EquivocationProtectionEnabled = equivProtection
 
 	//we know our client number, if needed, parse the pcap for replay
 	if p.clientState.pcapReplay.Enabled {
 		p.clientState.pcapReplay.PCAPFile = p.clientState.pcapReplay.PCAPFolder + "client" + strconv.Itoa(clientID) + ".pcap"
 		packets, err := utils.ParsePCAP(p.clientState.pcapReplay.PCAPFile, p.clientState.PayloadLength)
 		if err != nil {
-			log.Lvl2("Requested PCAP Replay, but could not parse;", err)
+			log.Lvl2("Client", clientID, "Requested PCAP Replay, but could not parse;", err)
 		}
 		p.clientState.pcapReplay.Packets = packets
-		log.Lvl1("Client", clientID, "loaded corresponding PCAP with", len(packets), "packets.")
+
+		if len(packets) > 0 {
+			offset := packets[0].MsSinceBeginningOfCapture
+			log.Lvl1("Client", clientID, "loaded corresponding PCAP with", len(packets), "packets, offset", offset, "ms.")
+		} else {
+			log.Lvl1("Client", clientID, "loaded corresponding PCAP with 0packets.")
+		}
 	}
 
 	//if by chance we had a broadcast-listener goroutine, kill it
@@ -225,7 +235,7 @@ func (p *PriFiLibClientInstance) ProcessDownStreamData(msg net.REL_CLI_DOWNSTREA
 	//if the flag "Resync" is on, we cannot write data up, but need to resend the keys instead
 	if msg.FlagResync == true {
 
-		log.Lvl1("Client " + strconv.Itoa(p.clientState.ID) + " : Relay wants to resync, going to state BEFORE_INIT ")
+		log.Lvl1("Client ", p.clientState.ID, "Relay wants to resync, going to state BEFORE_INIT ")
 		p.stateMachine.ChangeState("BEFORE_INIT")
 
 		//TODO : regenerate ephemeral keys ?
@@ -235,7 +245,7 @@ func (p *PriFiLibClientInstance) ProcessDownStreamData(msg net.REL_CLI_DOWNSTREA
 		//if the flag FlagOpenClosedRequest
 	} else if msg.FlagOpenClosedRequest == true {
 
-		log.Lvl3("Client " + strconv.Itoa(p.clientState.ID) + " : Relay wants to open/closed schedule slots ")
+		log.Lvl3("Client", p.clientState.ID, "Relay wants to open/closed schedule slots ")
 
 		//do the schedule
 		bmc := new(scheduler.BitMaskSlotScheduler_Client)
@@ -244,7 +254,7 @@ func (p *PriFiLibClientInstance) ProcessDownStreamData(msg net.REL_CLI_DOWNSTREA
 		//check if we want to transmit
 		if p.WantsToTransmit() {
 			bmc.Client_ReserveRound(p.clientState.MySlot)
-			log.Lvl3("Client "+strconv.Itoa(p.clientState.ID)+" : Gonna reserve slot", p.clientState.MySlot, "(we are in round", msg.RoundID, ")")
+			log.Lvl3("Client ", p.clientState.ID, "Gonna reserve slot", p.clientState.MySlot, "(we are in round", msg.RoundID, ")")
 		}
 		contribution := bmc.Client_GetOpenScheduleContribution()
 
@@ -341,7 +351,7 @@ func (p *PriFiLibClientInstance) SendUpstreamData(ownerSlotID int) error {
 	if p.clientState.DisruptionProtectionEnabled {
 		payloadLength -= 32
 		if payloadLength <= 0 {
-			log.Fatal("Cannot have disruption protection with less than 32 bytes payload")
+			log.Fatal("Client", p.clientState.ID, "Cannot have disruption protection with less than 32 bytes payload")
 		}
 	}
 
@@ -359,7 +369,7 @@ func (p *PriFiLibClientInstance) SendUpstreamData(ownerSlotID int) error {
 			if p.clientState.pcapReplay.Enabled && p.clientState.pcapReplay.currentPacket < len(p.clientState.pcapReplay.Packets) {
 
 				if p.clientState.pcapReplay.currentPacket >= len(p.clientState.pcapReplay.Packets)-2 {
-					log.Fatal("End of experiment, client sent all packets!")
+					log.Fatal("Client", p.clientState.ID, "End of experiment, client sent all packets!")
 				}
 				//if it is time to send some packet
 				relativeNow := uint64(MsTimeStampNow()) - p.clientState.pcapReplay.time0
@@ -381,9 +391,9 @@ func (p *PriFiLibClientInstance) SendUpstreamData(ownerSlotID int) error {
 					lastPacketID = p.clientState.pcapReplay.currentPacket
 				}
 				totalPackets := len(p.clientState.pcapReplay.Packets)
-				log.Lvl2("Adding pcap packets", basePacketID, "-", lastPacketID, "/", totalPackets)
+				log.Lvl2("Client", p.clientState.ID, "Adding pcap packets", basePacketID, "-", lastPacketID, "/", totalPackets)
 				if basePacketID%100 == 0 || basePacketID+10 > totalPackets {
-					log.Lvl2("PCAP: added pcap packets", basePacketID, "-", lastPacketID, "/", totalPackets)
+					log.Lvl2("Client", p.clientState.ID, "PCAP: added pcap packets", basePacketID, "-", lastPacketID, "/", totalPackets)
 				}
 
 				upstreamCellContent = payload
@@ -481,7 +491,7 @@ func (p *PriFiLibClientInstance) Received_REL_CLI_TELL_TRUSTEES_PK(trusteesPks [
 		}
 		sharedPRNGs[i] = config.CryptoSuite.Cipher(bytes)
 	}
-	p.clientState.DCNet_RoundManager.CellCoder.ClientSetup(config.CryptoSuite, sharedPRNGs)
+	p.clientState.DCNet_RoundManager.DCNet.ClientSetup(config.CryptoSuite, sharedPRNGs)
 
 	//then, generate our ephemeral keys (used for shuffling)
 	p.clientState.EphemeralPublicKey, p.clientState.ephemeralPrivateKey = crypto.NewKeyPair()
@@ -534,12 +544,12 @@ func (p *PriFiLibClientInstance) Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(
 			return errors.New(e)
 		}
 		p.clientState.StartStopReceiveBroadcast <- true
-		log.Lvl3("Client " + strconv.Itoa(p.clientState.ID) + " indicated the udp-helper to start listening.")
+		log.Lvl3("Client", p.clientState.ID, "indicated the udp-helper to start listening.")
 	}
 
 	//change state
 	p.stateMachine.ChangeState("READY")
-	log.Lvl3("Client " + strconv.Itoa(p.clientState.ID) + " is ready to communicate.")
+	log.Lvl3("Client", p.clientState.ID, "ready to communicate.")
 
 	//produce a blank cell (we could embed data, but let's keep the code simple, one wasted message is not much)
 	data := make([]byte, p.clientState.PayloadLength)

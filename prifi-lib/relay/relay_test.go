@@ -132,9 +132,6 @@ func TestRelayRun1(t *testing.T) {
 	if rs.privateKey == nil || rs.PublicKey == nil {
 		t.Error("Private/Public key not set")
 	}
-	if rs.bitrateStatistics == nil {
-		t.Error("Statistics should have been set")
-	}
 
 	//we start by receiving a ALL_ALL_PARAMETERS from relay
 	msg := new(net.ALL_ALL_PARAMETERS)
@@ -166,6 +163,9 @@ func TestRelayRun1(t *testing.T) {
 	if err := relay.ReceivedMessage(*msg); err != nil {
 		t.Error("Relay should be able to receive this message, but", err)
 	}
+	if rs.bitrateStatistics == nil {
+		t.Error("Statistics should have been set")
+	}
 	if rs.nClients != nClients {
 		t.Error("nClients was not set correctly")
 	}
@@ -181,7 +181,7 @@ func TestRelayRun1(t *testing.T) {
 	if rs.ExperimentRoundLimit != 2 {
 		t.Error("ExperimentRoundLimit was not set correctly")
 	}
-	if rs.CellCoder == nil {
+	if rs.DCNet == nil {
 		t.Error("CellCoder should have been created")
 	}
 	if rs.UpstreamCellSize != upCellSize {

@@ -47,10 +47,14 @@ func (p *PriFiLibTrusteeInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PA
 
 	startNow := msg.BoolValueOrElse("StartNow", false)
 	trusteeID := msg.IntValueOrElse("NextFreeTrusteeID", -1)
+	e := "Trustee " + strconv.Itoa(trusteeID)
+	p.stateMachine.SetEntity(e)
+	p.messageSender.SetEntity(e)
 	nTrustees := msg.IntValueOrElse("NTrustees", p.trusteeState.nTrustees)
 	nClients := msg.IntValueOrElse("NClients", p.trusteeState.nClients)
 	cellSize := msg.IntValueOrElse("UpstreamCellSize", p.trusteeState.PayloadLength)
 	dcNetType := msg.StringValueOrElse("DCNetType", "not initilaized")
+	equivProtection := msg.BoolValueOrElse("EquivocationProtectionEnabled", false)
 
 	//sanity checks
 	if trusteeID < -1 {
@@ -68,9 +72,9 @@ func (p *PriFiLibTrusteeInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PA
 
 	switch dcNetType {
 	case "Simple":
-		p.trusteeState.DCNet_RoundManager.CellCoder = dcnet.SimpleCoderFactory()
+		p.trusteeState.DCNet_RoundManager.DCNet = dcnet.NewSimpleDCNet(equivProtection)
 	case "Verifiable":
-		p.trusteeState.DCNet_RoundManager.CellCoder = dcnet.OwnedCoderFactory()
+		p.trusteeState.DCNet_RoundManager.DCNet = dcnet.NewVerifiableDCNet(equivProtection)
 	default:
 		log.Fatal("DCNetType must be Simple or Verifiable")
 	}
@@ -81,6 +85,7 @@ func (p *PriFiLibTrusteeInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PA
 	p.trusteeState.nTrustees = nTrustees
 	p.trusteeState.PayloadLength = cellSize
 	p.trusteeState.TrusteeID = trusteeID
+	p.trusteeState.EquivocationProtectionEnabled = equivProtection
 	p.trusteeState.neffShuffle.Init(trusteeID, p.trusteeState.privateKey, p.trusteeState.PublicKey)
 
 	//placeholders for pubkeys and secrets
@@ -125,9 +130,9 @@ func (p *PriFiLibTrusteeInstance) Send_TRU_REL_DC_CIPHER(rateChan chan int16) {
 		case newRate := <-rateChan:
 
 			if currentRate != newRate {
-				if (newRate == TRUSTEE_RATE_ACTIVE && !p.trusteeState.AlwaysSlowDown) {
+				if newRate == TRUSTEE_RATE_ACTIVE && !p.trusteeState.AlwaysSlowDown {
 					log.Lvl1("Trustee " + strconv.Itoa(p.trusteeState.ID) + " : rate changed from " + strconv.Itoa(int(currentRate)) + " to FULL")
-				} else if (newRate == TRUSTEE_RATE_HALVED && !p.trusteeState.NeverSlowDown) {
+				} else if newRate == TRUSTEE_RATE_HALVED && !p.trusteeState.NeverSlowDown {
 					log.Lvl1("Trustee " + strconv.Itoa(p.trusteeState.ID) + " : rate changed from " + strconv.Itoa(int(currentRate)) + " to HALVED")
 				}
 				currentRate = newRate
@@ -199,7 +204,7 @@ func sendData(p *PriFiLibTrusteeInstance, roundID int32) (int32, error) {
 		RoundID:   roundID,
 		TrusteeID: p.trusteeState.ID,
 		Data:      data}
-	if !p.messageSender.SendToRelayWithLog(toSend, "(round " + strconv.Itoa(int(roundID)) + ")") {
+	if !p.messageSender.SendToRelayWithLog(toSend, "(round "+strconv.Itoa(int(roundID))+")") {
 		return -1, errors.New("Could not send")
 	}
 
@@ -254,7 +259,7 @@ func (p *PriFiLibTrusteeInstance) Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_
 	}
 
 	p.trusteeState.DCNet_RoundManager.TrusteeSetup(p.trusteeState.sharedSecrets)
-	vkey := p.trusteeState.DCNet_RoundManager.CellCoder.TrusteeSetup(config.CryptoSuite, sharedPRNGs)
+	vkey := p.trusteeState.DCNet_RoundManager.DCNet.TrusteeSetup(config.CryptoSuite, sharedPRNGs)
 	//In case we use the simple dcnet, vkey isn't needed
 	if vkey == nil {
 		vkey = make([]byte, 1)
