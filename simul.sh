@@ -414,6 +414,49 @@ case $1 in
 
         ;;
 
+    simul-vary-workloads)
+    
+        DETERLAB_PCAP_LOCATION='/users/lbarman/remote/pcap/'
+        NTRUSTEES=3
+        NRELAY=1
+
+        #"$THIS_SCRIPT" simul-cl
+
+        for traffic in hangouts.pcap others.pcap skype.pcap youtube.pcap
+        do
+            for repeat in {1..5}
+            do
+                for clients in {10..90..20}
+                do
+                    for percentage_clients in 1 5
+                    do
+                        hosts=$(($NTRUSTEES + $NRELAY + $clients))
+                        active_hosts=`echo "scale=2; 0.5+$percentage_clients/100*$hosts" | bc`
+                        active_hosts=`printf %.0f $active_hosts`
+
+                        echo "Simulating for TRAFFIC $traffic, CLIENTS=$clients, ACTIVE_CLIENTS=$active_hosts, REPEAT ${repeat}..."
+
+                        echo "Removing old symlinks"
+                        ssh $DETERLAB_USER@users.deterlab.net "rm -f ${DETERLAB_PCAP_LOCATION}client*.pcap"
+
+                        for (( i=0; i<$active_hosts; i++ ))
+                        do
+                            echo "Linking $traffic to client$i.pcap"
+                            ssh $DETERLAB_USER@users.deterlab.net "ln -s ${DETERLAB_PCAP_LOCATION}${traffic} ${DETERLAB_PCAP_LOCATION}client$i.pcap"
+                        done
+
+                        #fix the config
+                        rm -f "$CONFIG_FILE"
+                        sed "s/Hosts = x/Hosts = $hosts/g" "$TEMPLATE_FILE" > "$CONFIG_FILE"
+
+                        timeout "$SIMULATION_TIMEOUT" "$THIS_SCRIPT" simul | tee experiment_${traffic}_${clients}_${active_hosts}_${repeat}.txt
+                    done
+                done
+            done
+
+        done
+        ;;
+
     *)
         test_go
         test_cothority

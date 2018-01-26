@@ -116,7 +116,13 @@ func (p *PriFiLibClientInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PAR
 			log.Lvl2("Client", clientID, "Requested PCAP Replay, but could not parse;", err)
 		}
 		p.clientState.pcapReplay.Packets = packets
-		log.Lvl1("Client", clientID, "loaded corresponding PCAP with", len(packets), "packets.")
+
+		if len(packets) > 0 {
+			offset := packets[0].MsSinceBeginningOfCapture
+			log.Lvl1("Client", clientID, "loaded corresponding PCAP with", len(packets), "packets, offset", offset, "ms.")
+		} else {
+			log.Lvl1("Client", clientID, "loaded corresponding PCAP with 0packets.")
+		}
 	}
 
 	//if by chance we had a broadcast-listener goroutine, kill it

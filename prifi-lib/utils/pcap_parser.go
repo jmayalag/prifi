@@ -7,6 +7,7 @@ import (
 	"gopkg.in/dedis/onet.v1/log"
 	"math/rand"
 	"os"
+	"time"
 )
 
 const pattern uint16 = uint16(21845) //0101010101010101
@@ -37,10 +38,15 @@ func ParsePCAP(path string, maxPayloadLength int) ([]Packet, error) {
 		return out, nil
 	}
 
-	timeDelta := parsed.Packets[0].Timestamp.Nanoseconds()
+	time0 := parsed.Packets[0].Timestamp.Nanoseconds()
+
+	// Adds a random number \in [0, 10] sec to all times
+	rand.Seed(time.Now().UTC().UnixNano())
+	random_offset := uint64(rand.Intn(10000)) // r is in ms
+
 	for id, pkt := range parsed.Packets {
 
-		t := uint64((pkt.Timestamp.Nanoseconds() - timeDelta) / 1000000)
+		t := uint64((pkt.Timestamp.Nanoseconds()-time0)/1000000) + random_offset
 		remainingLen := int(pkt.IncludedLen)
 
 		//maybe this packet is bigger than the payloadlength. Then, generate many packets
