@@ -123,7 +123,7 @@ case $1 in
 
 
 
-        EXPERIMENT_ID_VALUE=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
+        EXPERIMENT_ID_VALUE=$(LC_ALL=C cat /dev/urandom | LC_ALL=C tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
         dbg_lvl=1 # do not change this. Many other functions of this script call this script recursively. If this is >1, the log will blow up ;)
 
         rm -f last-simul.log
