@@ -275,7 +275,7 @@ case $1 in
 
         for repeat in {1..4}
         do
-            for i in {10..90..10}
+            for i in 10 20 30 40 50 60 70 80 90
             do
                 hosts=$(($NTRUSTEES + $NRELAY + $i))
                 echo "Simulating for HOSTS=$hosts..."
@@ -426,7 +426,7 @@ case $1 in
         do
             for repeat in {1..5}
             do
-                for clients in {10..90..20}
+                for clients in 10 30 50 70 90
                 do
                     for percentage_clients in 1 5
                     do
