@@ -20,6 +20,7 @@ type PCAPReceivedPacket struct {
 
 // PCAPLog is a collection of PCAPReceivedPackets
 type PCAPLog struct {
+	reportID        int
 	receivedPackets []*PCAPReceivedPacket
 	nextReport      time.Time
 	period          time.Duration
@@ -28,6 +29,7 @@ type PCAPLog struct {
 // Returns an instantiated PCAPLog
 func NewPCAPLog() *PCAPLog {
 	p := &PCAPLog{
+		reportID:        0,
 		receivedPackets: make([]*PCAPReceivedPacket, 0),
 		period:          time.Duration(5) * time.Second,
 		nextReport:      time.Now(),
@@ -104,7 +106,7 @@ func (pl *PCAPLog) Print() {
 	//compute stddev
 	stddev := math.Sqrt(variance)
 
-	log.Lvl1("PCAPLog : ", totalFragments, "fragments,", totalUniquePackets, "final,", totalPackets, "fragments+final; mean",
+	log.Lvl1("PCAPLog (", pl.reportID, "): ", totalFragments, "fragments,", totalUniquePackets, "final,", totalPackets, "fragments+final; mean",
 		math.Ceil(delayMean*100)/100, "ms, stddev", math.Ceil(stddev*100)/100, "max", math.Ceil(float64(delayMax)*100)/100, "ms")
 
 	str := ""
@@ -112,6 +114,7 @@ func (pl *PCAPLog) Print() {
 		str += strconv.Itoa(int(v.Delay)) + ";"
 	}
 
-	log.Lvl1("PCAPLog-individuals: ", str)
+	log.Lvl1("PCAPLog-individuals (", pl.reportID, "): ", str)
+	pl.reportID++
 	pl.receivedPackets = make([]*PCAPReceivedPacket, 0)
 }
