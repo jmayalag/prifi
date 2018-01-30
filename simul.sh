@@ -422,7 +422,7 @@ case $1 in
 
         #"$THIS_SCRIPT" simul-cl
 
-        for traffic in hangouts.pcap others.pcap skype.pcap youtube.pcap
+        for traffic in skype.pcap hangouts.pcap others.pcap youtube.pcap
         do
             for repeat in {1..5}
             do
