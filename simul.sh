@@ -495,9 +495,7 @@ case $1 in
                                 #fix the config
                                 $(cd ./sda/simulation && ./setparam.py "Hosts=$hosts" "RelayWindowSize=$window" "CellSizeUp=$upCellSize")
 
-                                read -p "Continue ?"
-
-                                timeout "$SIMULATION_TIMEOUT" "$THIS_SCRIPT" simul | tee experiment_${traffic}_${clients}_${active_hosts}_${repeat}.txt
+                                timeout "$SIMULATION_TIMEOUT" "$THIS_SCRIPT" simul | tee experiment_${traffic}_${clients}_${active_hosts}_${upCellSize}_${window}_${repeat}.txt
                             done
                         done
                     done
