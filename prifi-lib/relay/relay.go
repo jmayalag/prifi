@@ -153,6 +153,7 @@ func (p *PriFiLibRelayInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARA
 	//this should be in NewRelayState, but we need p
 	if !p.relayState.roundManager.DoSendStopResumeMessages {
 		//Add rate-limiting component to buffer manager
+
 		stopFn := func(trusteeID int) {
 			toSend := &net.REL_TRU_TELL_RATE_CHANGE{WindowCapacity: 0}
 			p.messageSender.SendToTrusteeWithLog(trusteeID, toSend, "(trustee "+strconv.Itoa(trusteeID)+")")

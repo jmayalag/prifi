@@ -127,7 +127,7 @@ func (m *MessageSenderWrapper) sendToWithLog(sendingFunc func(interface{}) error
 	}
 
 	if m.loggingEnabled {
-		m.logSuccessFunction("Sent a " + msgName + "." + extraInfos)
+		m.logSuccessFunction(m.entity + ": Sent a " + msgName + "." + extraInfos)
 	}
 	return true
 }

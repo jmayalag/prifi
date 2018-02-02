@@ -20,7 +20,7 @@ type SlotScheduler interface {
 	//Called with each client's contribution
 	Relay_CombineContributions(contributions ...[]byte) []byte
 
-	//returns all contributions in forms of a map of open slots
+	// returns all contributions in forms of a map of open slots
 	Relay_ComputeFinalSchedule() map[int]bool
 }
 

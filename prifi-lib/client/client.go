@@ -276,17 +276,20 @@ func (p *PriFiLibClientInstance) ProcessDownStreamData(msg net.REL_CLI_DOWNSTREA
 	//clean old buffered messages
 	delete(p.clientState.BufferedRoundData, int32(p.clientState.RoundNo-1))
 
+	t := timing.StopMeasure("round-processing")
+	timeMs := t.Nanoseconds() / 1e6
+	//log.Lvl1("Client", p.clientState.ID, "Round", p.clientState.RoundNo, "duration", t)
+
 	//one round just passed
 	p.clientState.RoundNo++
+
+	p.clientState.timeStatistics["round-processing"].AddTime(timeMs)
+	p.clientState.timeStatistics["round-processing"].ReportWithInfo("round-processing")
 
 	//now we will be expecting next message. Except if we already received and buffered it !
 	if msg, hasAMessage := p.clientState.BufferedRoundData[int32(p.clientState.RoundNo)]; hasAMessage {
 		p.Received_REL_CLI_DOWNSTREAM_DATA(msg)
 	}
-
-	//timeMs := timing.StopMeasure("round-processing").Nanoseconds() / 1e6
-	//p.clientState.timeStatistics["round-processing"].AddTime(timeMs)
-	//p.clientState.timeStatistics["round-processing"].ReportWithInfo("round-processing")
 
 	return nil
 }

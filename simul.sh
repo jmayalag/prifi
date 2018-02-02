@@ -422,13 +422,13 @@ case $1 in
 
         #"$THIS_SCRIPT" simul-cl
 
-        for traffic in skype.pcap hangouts.pcap others.pcap youtube.pcap
+        for traffic in skype.pcap # hangouts.pcap others.pcap youtube.pcap
         do
-            for repeat in {1..5}
+            for repeat in {1..20}
             do
-                for clients in 10 30 50 70 90
+                for clients in 10 20 30 # 30 50 70 90
                 do
-                    for percentage_clients in 1 5
+                    for percentage_clients in 1 # 5
                     do
                         hosts=$(($NTRUSTEES + $NRELAY + $clients))
                         active_hosts=`echo "scale=2; 0.5+$percentage_clients/100*$hosts" | bc`
@@ -450,6 +450,56 @@ case $1 in
                         sed "s/Hosts = x/Hosts = $hosts/g" "$TEMPLATE_FILE" > "$CONFIG_FILE"
 
                         timeout "$SIMULATION_TIMEOUT" "$THIS_SCRIPT" simul | tee experiment_${traffic}_${clients}_${active_hosts}_${repeat}.txt
+                    done
+                done
+            done
+
+        done
+        ;;
+
+    simul-vary-workloads-deep)
+    
+        DETERLAB_PCAP_LOCATION='/users/lbarman/remote/pcap/'
+        NTRUSTEES=3
+        NRELAY=1
+
+        #"$THIS_SCRIPT" simul-cl
+
+        for repeat in {1..5}
+        do
+            for traffic in skype.pcap hangouts.pcap others.pcap youtube.pcap
+            do
+                for clients in 10 30 30 50 70 90
+                do
+                    for percentage_clients in 5
+                    do
+                        for window in 3 5 7
+                        do
+                            for upCellSize in 4000 5000 6000 7000 8000
+                            do
+                                hosts=$(($NTRUSTEES + $NRELAY + $clients))
+                                active_hosts=`echo "scale=2; 0.5+$percentage_clients/100*$hosts" | bc`
+                                active_hosts=`printf %.0f $active_hosts`
+
+                                echo "Simulating for TRAFFIC $traffic, CLIENTS=$clients, ACTIVE_CLIENTS=$active_hosts, window=$window, UCS=$upCellSize, REPEAT ${repeat}..."
+
+                                echo "Removing old symlinks"
+                                ssh $DETERLAB_USER@users.deterlab.net "rm -f ${DETERLAB_PCAP_LOCATION}client*.pcap"
+
+                                for (( i=0; i<$active_hosts; i++ ))
+                                do
+                                    echo "Linking $traffic to client$i.pcap"
+                                    ssh $DETERLAB_USER@users.deterlab.net "ln -s ${DETERLAB_PCAP_LOCATION}${traffic} ${DETERLAB_PCAP_LOCATION}client$i.pcap"
+                                done
+
+                                #fix the config
+                                $(cd ./sda/simulation && ./setparam.py "Hosts=$hosts" "RelayWindowSize=$window" "CellSizeUp=$upCellSize")
+
+                                read -p "Continue ?"
+
+                                timeout "$SIMULATION_TIMEOUT" "$THIS_SCRIPT" simul | tee experiment_${traffic}_${clients}_${active_hosts}_${repeat}.txt
+                            done
+                        done
                     done
                 done
             done
