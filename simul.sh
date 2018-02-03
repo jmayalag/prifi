@@ -55,6 +55,9 @@ min_go_version=17                           # min required go version, without t
 sleeptime_between_spawns=1                  # time in second between entities launch in all-localhost part
 cothorityBranchRequired="v1.0"              # the branch required for the cothority (SDA) framework
 
+    
+DETERLAB_PCAP_LOCATION='/users/lbarman/remote/pcap/'
+
 #pretty colored message
 highlightOn="\033[33m"
 highlightOff="\033[0m"
@@ -110,6 +113,43 @@ test_cothority() {
         echo -e "$errorMsg Make sure \"$GOPATH/src/gopkg.in/dedis/onet.v1\" is a git repo, on branch \"$cothorityBranchRequired\". Try running \"./prifi.sh install\""
         exit 1
     fi
+}
+
+setPCAPOnServer() {
+
+    traffic=$1
+    active_hosts=$2
+
+    echo "Removing old symlinks"
+    ssh $DETERLAB_USER@users.deterlab.net "rm -f ${DETERLAB_PCAP_LOCATION}client*.pcap"
+
+    echo "Setting $active_hosts to replay $traffic"
+    for (( i=0; i<$active_hosts; i++ ))
+    do
+        echo "Linking $traffic to client$i.pcap"
+        ssh $DETERLAB_USER@users.deterlab.net "ln -s ${DETERLAB_PCAP_LOCATION}${traffic} ${DETERLAB_PCAP_LOCATION}client$i.pcap"
+    done
+}
+
+simul-helper() {
+    window=$1
+    upCellSize=$2
+    clients=$3
+    repeat=$4
+    traffic=$5
+
+    NTRUSTEES=3
+    NRELAY=1
+    percentage_clients="5"
+
+    active_hosts=`echo "scale=2; 0.5+$percentage_clients/100*$clients" | bc`
+    active_hosts=`printf %.0f $active_hosts`
+    hosts=$(($NTRUSTEES + $NRELAY + $clients))
+
+    echo "Simulating for TRAFFIC $traffic, CLIENTS=$clients, ACTIVE_CLIENTS=$active_hosts, UCS $upCellSize, win $window REPEAT ${repeat}..."
+    setPCAPOnServer "$traffic" "$active_hosts"
+    $(cd ./sda/simulation && ./setparam.py "Hosts=$hosts" "RelayWindowSize=$window" "CellSizeUp=$upCellSize")
+    timeout "$SIMULATION_TIMEOUT" "$THIS_SCRIPT" simul | tee experiment_${traffic}_${clients}_${active_hosts}_${repeat}.txt
 }
 
 # ------------------------
@@ -415,8 +455,7 @@ case $1 in
         ;;
 
     simul-vary-workloads)
-    
-        DETERLAB_PCAP_LOCATION='/users/lbarman/remote/pcap/'
+
         NTRUSTEES=3
         NRELAY=1
 
@@ -436,14 +475,7 @@ case $1 in
 
                         echo "Simulating for TRAFFIC $traffic, CLIENTS=$clients, ACTIVE_CLIENTS=$active_hosts, REPEAT ${repeat}..."
 
-                        echo "Removing old symlinks"
-                        ssh $DETERLAB_USER@users.deterlab.net "rm -f ${DETERLAB_PCAP_LOCATION}client*.pcap"
-
-                        for (( i=0; i<$active_hosts; i++ ))
-                        do
-                            echo "Linking $traffic to client$i.pcap"
-                            ssh $DETERLAB_USER@users.deterlab.net "ln -s ${DETERLAB_PCAP_LOCATION}${traffic} ${DETERLAB_PCAP_LOCATION}client$i.pcap"
-                        done
+                        setPCAPOnServer "$traffic" "$active_hosts"
 
                         #fix the config
                         rm -f "$CONFIG_FILE"
@@ -459,7 +491,6 @@ case $1 in
 
     simul-vary-workloads-deep)
     
-        DETERLAB_PCAP_LOCATION='/users/lbarman/remote/pcap/'
         NTRUSTEES=3
         NRELAY=1
 
@@ -483,14 +514,7 @@ case $1 in
 
                                 echo "Simulating for TRAFFIC $traffic, CLIENTS=$clients, ACTIVE_CLIENTS=$active_hosts, window=$window, UCS=$upCellSize, REPEAT ${repeat}..."
 
-                                echo "Removing old symlinks"
-                                ssh $DETERLAB_USER@users.deterlab.net "rm -f ${DETERLAB_PCAP_LOCATION}client*.pcap"
-
-                                for (( i=0; i<$active_hosts; i++ ))
-                                do
-                                    echo "Linking $traffic to client$i.pcap"
-                                    ssh $DETERLAB_USER@users.deterlab.net "ln -s ${DETERLAB_PCAP_LOCATION}${traffic} ${DETERLAB_PCAP_LOCATION}client$i.pcap"
-                                done
+                                setPCAPOnServer "$traffic" "$active_hosts"
 
                                 #fix the config
                                 $(cd ./sda/simulation && ./setparam.py "Hosts=$hosts" "RelayWindowSize=$window" "CellSizeUp=$upCellSize")
@@ -501,6 +525,58 @@ case $1 in
                     done
                 done
             done
+
+        done
+        ;;
+
+    simul-skype)
+
+        for repeat in {1..5}
+        do
+            # 10 clients, ucs 8000, win 5
+            simul-helper 5 8000 10 $repeat "skype.pcap"
+            simul-helper 5 8000 20 $repeat "skype.pcap"
+
+            # 30 clients, ucs 8000, win 5
+            simul-helper 5 8000 30 $repeat "skype.pcap"
+            simul-helper 4 8000 40 $repeat "skype.pcap"
+
+            # 50 clients, ucs 7000, win 3
+            simul-helper 3 7000 50 $repeat "skype.pcap"
+            simul-helper 4 6000 60 $repeat "skype.pcap"
+            
+            # 70 clients, ucs 7000, win 3
+            simul-helper 3 5000 70 $repeat "skype.pcap"
+            simul-helper 4 6000 80 $repeat "skype.pcap"
+
+            # 90 clients, ucs 7000, win 5
+            simul-helper 5 7000 90 $repeat "skype.pcap"
+
+        done
+        ;;
+
+    simul-hangout)
+
+        for repeat in {1..5}
+        do
+            # 10 clients, ucs 5000, win 7
+            simul-helper 7 5000 10 $repeat "hangouts.pcap"
+            simul-helper 7 5000 20 $repeat "hangouts.pcap"
+
+            # 30 clients, ucs 5000, win 5
+            simul-helper 5 5000 30 $repeat "hangouts.pcap"
+            simul-helper 5 5000 40 $repeat "hangouts.pcap"
+
+            # 50 clients, ucs 8000, win 3
+            simul-helper 5 8000 50 $repeat "hangouts.pcap"
+            simul-helper 5 8000 60 $repeat "hangouts.pcap"
+            
+            # 70 clients, ucs 7000, win 3
+            simul-helper 5 7000 70 $repeat "hangouts.pcap"
+            simul-helper 5 7000 80 $repeat "hangouts.pcap"
+
+            # 90 clients, ucs 7000, win 5
+            simul-helper 5 10000 90 $repeat "hangouts.pcap"
 
         done
         ;;

@@ -32,15 +32,10 @@ for line in fileinput.input():
         data = parts[1].strip().split(';')
         data = [try_parse_int(x) for x in data if x != ""]
         #fileData[key] = data
+        data = [x for x in data if x is not None];
         fileData.extend(data)
         
-plt.plot(reject_outliers(fileData))
 
-plt.ylabel('Latency');
-plt.xlabel('Packets');
-plt.legend(loc='best')
-t = 'mean ' + str(round(np.mean(fileData))), '; dev' + str(round(np.std(fileData)));
-plt.title(t);
-plt.show();
+fileData = reject_outliers(fileData)
 
 print('mean ' + str(round(np.mean(fileData))), '; dev' + str(round(np.std(fileData))));
