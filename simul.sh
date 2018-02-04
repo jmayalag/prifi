@@ -18,7 +18,7 @@ colors="true"                              # if  "false", the output of PriFi (a
 
 SIMUL_FILE="prifi_simul.toml"
 PLATFORM="deterlab"
-EXEC_NAME="prifi_simul"
+EXEC_NAME="prifi_simul"2
 SIMUL_DIR="sda/simulation"
 DETERLAB_USER="lbarman"
 MPORT="10002"
@@ -533,25 +533,31 @@ case $1 in
 
         for repeat in {1..5}
         do
-            # 10 clients, ucs 8000, win 5
             simul-helper 5 8000 10 $repeat "skype.pcap"
             simul-helper 5 8000 20 $repeat "skype.pcap"
-
-            # 30 clients, ucs 8000, win 5
             simul-helper 5 8000 30 $repeat "skype.pcap"
             simul-helper 4 8000 40 $repeat "skype.pcap"
-
-            # 50 clients, ucs 7000, win 3
             simul-helper 3 7000 50 $repeat "skype.pcap"
             simul-helper 4 6000 60 $repeat "skype.pcap"
-            
-            # 70 clients, ucs 7000, win 3
             simul-helper 3 5000 70 $repeat "skype.pcap"
             simul-helper 4 6000 80 $repeat "skype.pcap"
-
-            # 90 clients, ucs 7000, win 5
             simul-helper 5 7000 90 $repeat "skype.pcap"
+        done
+        ;;
 
+    simul-others)
+
+        for repeat in {1..5}
+        do
+            simul-helper 7 5000 10 $repeat "others.pcap"
+            simul-helper 7 5000 20 $repeat "others.pcap"
+            simul-helper 5 5000 30 $repeat "others.pcap"
+            simul-helper 5 5000 40 $repeat "others.pcap"
+            simul-helper 3 5000 50 $repeat "others.pcap"
+            simul-helper 3 5000 60 $repeat "others.pcap"
+            simul-helper 3 5000 70 $repeat "others.pcap"
+            simul-helper 3 5000 80 $repeat "others.pcap"
+            simul-helper 3 5000 90 $repeat "others.pcap"
         done
         ;;
 
@@ -559,25 +565,30 @@ case $1 in
 
         for repeat in {1..5}
         do
-            # 10 clients, ucs 5000, win 7
             simul-helper 7 5000 10 $repeat "hangouts.pcap"
             simul-helper 7 5000 20 $repeat "hangouts.pcap"
-
-            # 30 clients, ucs 5000, win 5
             simul-helper 5 5000 30 $repeat "hangouts.pcap"
             simul-helper 5 5000 40 $repeat "hangouts.pcap"
-
-            # 50 clients, ucs 8000, win 3
             simul-helper 5 8000 50 $repeat "hangouts.pcap"
             simul-helper 5 8000 60 $repeat "hangouts.pcap"
-            
-            # 70 clients, ucs 7000, win 3
             simul-helper 5 7000 70 $repeat "hangouts.pcap"
             simul-helper 5 7000 80 $repeat "hangouts.pcap"
-
-            # 90 clients, ucs 7000, win 5
             simul-helper 5 10000 90 $repeat "hangouts.pcap"
+        done
+        ;;
 
+    simul-youtube)
+        for repeat in {1..5}
+        do
+            simul-helper 7 5000 10 $repeat "youtube.pcap"
+            simul-helper 5 5000 20 $repeat "youtube.pcap"
+            simul-helper 5 5000 30 $repeat "youtube.pcap"
+            simul-helper 5 5000 40 $repeat "youtube.pcap"
+            simul-helper 3 5000 50 $repeat "youtube.pcap"
+            simul-helper 3 5000 60 $repeat "youtube.pcap"
+            simul-helper 3 5000 70 $repeat "youtube.pcap"
+            simul-helper 3 5000 80 $repeat "youtube.pcap"
+            simul-helper 3 5000 90 $repeat "youtube.pcap"
         done
         ;;
 
