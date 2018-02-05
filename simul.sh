@@ -18,7 +18,7 @@ colors="true"                              # if  "false", the output of PriFi (a
 
 SIMUL_FILE="prifi_simul.toml"
 PLATFORM="deterlab"
-EXEC_NAME="prifi_simul"2
+EXEC_NAME="prifi_simul"
 SIMUL_DIR="sda/simulation"
 DETERLAB_USER="lbarman"
 MPORT="10002"
@@ -444,9 +444,9 @@ case $1 in
 
                 echo "Simulating for DCNET disruption=$dis, equivocation=$equiv, repeat $repeat"
 
+
                 #fix the config
-                rm -f "$CONFIG_FILE"
-                sed -e "s/DisruptionProtectionEnabled = x/DisruptionProtectionEnabled = $dis/g" -e "s/EquivocationProtectionEnabled = x/EquivocationProtectionEnabled = $equiv/g" "$TEMPLATE_FILE" > "$CONFIG_FILE"
+                $(cd ./sda/simulation && ./setparam.py "DisruptionProtectionEnabled=$dis" "EquivocationProtectionEnabled=$equiv")
 
                 timeout "$SIMULATION_TIMEOUT" "$THIS_SCRIPT" simul | tee experiment_${i}_${repeat}.txt
             done
