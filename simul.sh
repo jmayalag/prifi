@@ -498,15 +498,15 @@ case $1 in
 
         for repeat in {1..5}
         do
-            for traffic in skype.pcap hangouts.pcap others.pcap youtube.pcap
+            for traffic in hangouts.pcap # skype.pcap others.pcap youtube.pcap
             do
-                for clients in 10 30 30 50 70 90
+                for clients in 60 70 80 90 #10 30 30 50 70 90
                 do
                     for percentage_clients in 5
                     do
-                        for window in 3 5 7
+                        for window in 5 6 7 8 9 10
                         do
-                            for upCellSize in 4000 5000 6000 7000 8000
+                            for upCellSize in 4000 5000 6000 7000 8000 9000 10000 11000 12000
                             do
                                 hosts=$(($NTRUSTEES + $NRELAY + $clients))
                                 active_hosts=`echo "scale=2; 0.5+$percentage_clients/100*$hosts" | bc`
