@@ -36,6 +36,8 @@ for line in fileinput.input():
         fileData.extend(data)
         
 
-fileData = reject_outliers(fileData)
-
-print('mean ' + str(round(np.mean(fileData))), '; dev' + str(round(np.std(fileData))));
+if len(fileData) > 0:
+    fileData = reject_outliers(fileData)
+    print('mean ' + str(round(np.mean(fileData))), '; dev' + str(round(np.std(fileData))));
+else:
+    print('no data')
