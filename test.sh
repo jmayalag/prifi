@@ -46,7 +46,7 @@ min_go_version=17                           # min required go version, without t
 # unimportant variable (but do not change, ofc)
 
 sleeptime_between_spawns=1                  # time in second between entities launch in all-localhost part
-cothorityBranchRequired="v1.0"              # the branch required for the cothority (SDA) framework
+cothorityBranchRequired="master"            # the branch required for the cothority (SDA) framework
 
 #pretty colored message
 highlightOn="\033[33m"
