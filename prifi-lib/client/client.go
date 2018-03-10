@@ -38,7 +38,6 @@ import (
 	"github.com/lbarman/prifi/prifi-lib/dcnet"
 	"github.com/lbarman/prifi/prifi-lib/scheduler"
 	"github.com/lbarman/prifi/prifi-lib/utils"
-	socks "github.com/lbarman/prifi/prifi-socks"
 	"github.com/lbarman/prifi/utils"
 	"math/rand"
 	"time"
@@ -410,8 +409,7 @@ func (p *PriFiLibClientInstance) SendUpstreamData(ownerSlotID int) error {
 
 				//or, if we have nothing to send, and we are doing Latency tests, embed a pre-crafted message that we will recognize later on
 				default:
-					emptyData := socks.NewSocksPacket(socks.DummyData, 0, 0, uint16(payloadLength), make([]byte, 0))
-					upstreamCellContent = emptyData.ToBytes()
+					upstreamCellContent = make([]byte, 0)
 
 					if len(p.clientState.LatencyTest.LatencyTestsToSend) > 0 {
 

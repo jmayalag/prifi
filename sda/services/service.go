@@ -12,8 +12,8 @@ import (
 	"io/ioutil"
 	"strconv"
 
-	stream_multiplexer "github.com/lbarman/prifi/stream-multiplexer"
 	prifi_protocol "github.com/lbarman/prifi/sda/protocols"
+	stream_multiplexer "github.com/lbarman/prifi/stream-multiplexer"
 	"gopkg.in/dedis/onet.v1"
 	"gopkg.in/dedis/onet.v1/app"
 	"gopkg.in/dedis/onet.v1/log"
@@ -149,7 +149,7 @@ func (s *ServiceState) StartRelay(group *app.Group) error {
 	s.churnHandler.stopProtocol = s.StopPriFiCommunicateProtocol
 
 	socksServerConfig = &prifi_protocol.SOCKSConfig{
-		ListeningAddr:              "127.0.0.1:" + strconv.Itoa(s.prifiTomlConfig.SocksClientPort),
+		ListeningAddr:     "127.0.0.1:" + strconv.Itoa(s.prifiTomlConfig.SocksClientPort),
 		PayloadLength:     s.prifiTomlConfig.CellSizeUp,
 		UpstreamChannel:   make(chan []byte),
 		DownstreamChannel: make(chan []byte),

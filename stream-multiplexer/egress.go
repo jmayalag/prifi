@@ -1,22 +1,24 @@
 package stream_multiplexer
 
 import (
-	"time"
-	"net"
 	"encoding/binary"
 	"github.com/dedis/onet/log"
+	"net"
+	"time"
 )
 
+// EgressServer takes data from a go channel and recreates the multiplexed TCP streams
 type EgressServer struct {
 	activeConnections map[string]*MultiplexedConnection
-	maxMessageLength int
-	maxPayloadLength int
-	upstreamChan chan []byte
-	downstreamChan chan []byte
-	stopChan chan bool
+	maxMessageLength  int
+	maxPayloadLength  int
+	upstreamChan      chan []byte
+	downstreamChan    chan []byte
+	stopChan          chan bool
 }
 
-func StartEgressHandler(serverAddress string, maxMessageLength int, upstreamChan chan []byte, downstreamChan chan []byte, stopChan chan bool) *EgressServer {
+// StartEgressHandler creates (and block) an Egress Server
+func StartEgressHandler(serverAddress string, maxMessageLength int, upstreamChan chan []byte, downstreamChan chan []byte, stopChan chan bool) {
 	eg := new(EgressServer)
 	eg.maxMessageLength = maxMessageLength
 	eg.maxPayloadLength = maxMessageLength - MULTIPLEXER_HEADER_SIZE //we use 8 bytes for the multiplexing
@@ -26,7 +28,7 @@ func StartEgressHandler(serverAddress string, maxMessageLength int, upstreamChan
 	eg.activeConnections = make(map[string]*MultiplexedConnection)
 
 	for {
-		dataRead := <- upstreamChan
+		dataRead := <-upstreamChan
 
 		if len(dataRead) < MULTIPLEXER_HEADER_SIZE {
 			// we cannot demultiplex, skip
@@ -74,15 +76,13 @@ func StartEgressHandler(serverAddress string, maxMessageLength int, upstreamChan
 			eg.activeConnections[ID] = nil
 		}
 	}
-
-	return eg
 }
 
 func (eg *EgressServer) egressConnectionReader(mc *MultiplexedConnection) {
 	for {
 		// Check if we need to stop
 		select {
-		case _ = <- mc.stopChan:
+		case _ = <-mc.stopChan:
 			mc.conn.Close()
 			return
 		default:

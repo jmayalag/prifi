@@ -1,13 +1,13 @@
 package stream_multiplexer
 
 import (
-	"testing"
-	"net"
-	"time"
 	"bytes"
-	"fmt"
-	"sync"
 	"encoding/binary"
+	"fmt"
+	"net"
+	"sync"
+	"testing"
+	"time"
 )
 
 func handleConnection(id int, conn net.Conn, expect []byte, t *testing.T, wg *sync.WaitGroup) {
@@ -30,15 +30,15 @@ func handleConnection(id int, conn net.Conn, expect []byte, t *testing.T, wg *sy
 			continue
 		}
 
-		for i :=0; i<n; i++ {
+		for i := 0; i < n; i++ {
 			buffer = append(buffer, buffer2[i])
 		}
 	}
 
 	if !bytes.Equal(buffer, expect) {
-		t.Error("StartServerAndExpect failed, handler",id,"expected", expect, "got", buffer)
+		t.Error("StartServerAndExpect failed, handler", id, "expected", expect, "got", buffer)
 	} else {
-		fmt.Println("StartServerAndExpect handler",id," indeed received", buffer)
+		fmt.Println("StartServerAndExpect handler", id, " indeed received", buffer)
 	}
 
 	conn.SetWriteDeadline(time.Now().Add(time.Second))
@@ -104,11 +104,11 @@ func TestEgress1(t *testing.T) {
 
 	// prepare a dummy message
 	payload := []byte("hello")
-	multiplexedMsg := make([]byte, MULTIPLEXER_HEADER_SIZE + len(payload))
+	multiplexedMsg := make([]byte, MULTIPLEXER_HEADER_SIZE+len(payload))
 	ID_str := generateRandomID()
 	ID := []byte(ID_str[0:4])
 	copy(multiplexedMsg[0:4], ID)
-	multiplexedMsg[7]=byte(len(payload))
+	multiplexedMsg[7] = byte(len(payload))
 	copy(multiplexedMsg[8:], payload)
 
 	doneChan := make(chan bool, 1)
@@ -119,9 +119,9 @@ func TestEgress1(t *testing.T) {
 
 	upstreamChan <- multiplexedMsg
 
-	<- doneChan
+	<-doneChan
 
-	echo := <- downstreamChan
+	echo := <-downstreamChan
 	echoID := echo[0:4]
 	size := int(binary.BigEndian.Uint32(echo[4:8]))
 	data := echo[8:]
@@ -150,11 +150,11 @@ func TestEgress2(t *testing.T) {
 	copy(doubleHello[0:5], payload)
 	copy(doubleHello[5:10], payload)
 
-	multiplexedMsg := make([]byte, MULTIPLEXER_HEADER_SIZE + len(payload))
+	multiplexedMsg := make([]byte, MULTIPLEXER_HEADER_SIZE+len(payload))
 	ID_str := generateRandomID()
 	ID := []byte(ID_str[0:4])
 	copy(multiplexedMsg[0:4], ID)
-	multiplexedMsg[7]=byte(len(payload))
+	multiplexedMsg[7] = byte(len(payload))
 	copy(multiplexedMsg[8:], payload)
 
 	doneChan := make(chan bool, 1)
@@ -166,9 +166,9 @@ func TestEgress2(t *testing.T) {
 	upstreamChan <- multiplexedMsg
 	upstreamChan <- multiplexedMsg
 
-	<- doneChan
+	<-doneChan
 
-	echo := <- downstreamChan
+	echo := <-downstreamChan
 	echoID := echo[0:4]
 	size := int(binary.BigEndian.Uint32(echo[4:8]))
 	data := echo[8:]
@@ -193,21 +193,20 @@ func TestEgressMultiplex(t *testing.T) {
 
 	// prepare a dummy message
 	payload := []byte("hello")
-	multiplexedMsg := make([]byte, MULTIPLEXER_HEADER_SIZE + len(payload))
+	multiplexedMsg := make([]byte, MULTIPLEXER_HEADER_SIZE+len(payload))
 	ID_str := generateRandomID()
 	ID := []byte(ID_str[0:4])
 	copy(multiplexedMsg[0:4], ID)
-	multiplexedMsg[7]=byte(len(payload))
+	multiplexedMsg[7] = byte(len(payload))
 	copy(multiplexedMsg[8:], payload)
-
 
 	// prepare a dummy message 2
 	payload2 := []byte("hello2")
-	multiplexedMsg2 := make([]byte, MULTIPLEXER_HEADER_SIZE + len(payload2))
+	multiplexedMsg2 := make([]byte, MULTIPLEXER_HEADER_SIZE+len(payload2))
 	ID2_str := generateRandomID()
 	ID2 := []byte(ID2_str[0:4])
 	copy(multiplexedMsg2[0:4], ID2)
-	multiplexedMsg2[7]=byte(len(payload2))
+	multiplexedMsg2[7] = byte(len(payload2))
 	copy(multiplexedMsg2[8:], payload2)
 
 	doneChan := make(chan bool, 1)
@@ -220,10 +219,10 @@ func TestEgressMultiplex(t *testing.T) {
 	upstreamChan <- multiplexedMsg
 	upstreamChan <- multiplexedMsg2
 
-	<- doneChan
+	<-doneChan
 
-	echo1 := <- downstreamChan
-	echo2 := <- downstreamChan
+	echo1 := <-downstreamChan
+	echo2 := <-downstreamChan
 
 	//swap messages if needed
 	if bytes.Equal(ID, echo2[0:4]) && bytes.Equal(ID2, echo1[0:4]) {
@@ -304,8 +303,8 @@ func TestEgressMultiplexLong(t *testing.T) {
 
 	<-doneChan
 
-	echo1 := <- downstreamChan
-	echo2 := <- downstreamChan
+	echo1 := <-downstreamChan
+	echo2 := <-downstreamChan
 
 	//swap messages if needed
 	if bytes.Equal(ID, echo2[0:4]) && bytes.Equal(ID2, echo1[0:4]) {

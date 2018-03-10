@@ -25,7 +25,7 @@ type PriFiIdentity struct {
 
 //SOCKSConfig contains the port, payload, and up/down channels for data
 type SOCKSConfig struct {
-	ListeningAddr	  string
+	ListeningAddr     string
 	Port              int
 	PayloadLength     int
 	UpstreamChannel   chan []byte

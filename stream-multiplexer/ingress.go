@@ -5,37 +5,43 @@ import (
 
 	"strconv"
 
-	"gopkg.in/dedis/onet.v1/log"
-	"encoding/binary"
-	"crypto/rand"
 	"bytes"
-	"time"
+	"crypto/rand"
+	"encoding/binary"
+	"gopkg.in/dedis/onet.v1/log"
 	"sync"
+	"time"
 )
 
+// MULTIPLEXER_HEADER_SIZE is the size of the header for the multiplexed data,
+// currently 4 byte for StreamID and 4 byte for length
 const MULTIPLEXER_HEADER_SIZE = 8
 
+// MultiplexedConnection represents a TCP connections to which we assigned
+// a stream ID
 type MultiplexedConnection struct {
-	ID string
-	ID_bytes []byte
-	conn net.Conn
-	stopChan chan bool
+	ID               string
+	ID_bytes         []byte
+	conn             net.Conn
+	stopChan         chan bool
 	maxMessageLength int
 }
 
+// IngressServer accepts TCPs connections and multiplexes them (read- and write-)
+// over go channels
 type IngressServer struct {
 	activeConnectionsLock sync.Locker
-	activeConnections []*MultiplexedConnection
-	socketListener *net.TCPListener
-	maxMessageLength int
-	maxPayloadLength int
-	upstreamChan chan []byte
-	downstreamChan chan []byte
-	stopChan chan bool
+	activeConnections     []*MultiplexedConnection
+	socketListener        *net.TCPListener
+	maxMessageLength      int
+	maxPayloadLength      int
+	upstreamChan          chan []byte
+	downstreamChan        chan []byte
+	stopChan              chan bool
 }
 
-
-func StartIngressServer(port int, maxMessageLength int, upstreamChan chan []byte, downstreamChan chan []byte, stopChan chan bool) *IngressServer {
+// StartIngressServer creates (and block) an Ingress Server
+func StartIngressServer(port int, maxMessageLength int, upstreamChan chan []byte, downstreamChan chan []byte, stopChan chan bool) {
 
 	ig := new(IngressServer)
 	ig.maxMessageLength = maxMessageLength
@@ -51,14 +57,12 @@ func StartIngressServer(port int, maxMessageLength int, upstreamChan chan []byte
 
 	if err != nil {
 		log.Error("Ingress server cannot start listening, shutting down :", err.Error())
-		return nil
-	} else {
-		log.Lvl2("Ingress server is listening for connections on port ", port)
+		return
 	}
+	log.Lvl2("Ingress server is listening for connections on port ", port)
 
 	// cast as TCPListener to get the SetDeadline method
 	ig.socketListener = s.(*net.TCPListener)
-
 
 	// starts a handler that dispatches the data from "downstreamChan" into the correct connection
 	go ig.multiplexedChannelReader()
@@ -76,7 +80,7 @@ func StartIngressServer(port int, maxMessageLength int, upstreamChan chan []byte
 				mc.stopChan <- true
 			}
 			ig.socketListener.Close()
-			return nil
+			return
 		default:
 		}
 
@@ -89,12 +93,12 @@ func StartIngressServer(port int, maxMessageLength int, upstreamChan chan []byte
 		}
 
 		id := generateRandomID()
-		log.Lvl2("Ingress server just accepted a connection, assigning ID",id)
+		log.Lvl2("Ingress server just accepted a connection, assigning ID", id)
 
 		if err != nil {
 			log.Error("Ingress server got an error with this new connection, shutting down :", err.Error())
 			ig.socketListener.Close()
-			return nil
+			return
 		}
 
 		mc := new(MultiplexedConnection)
@@ -113,15 +117,13 @@ func StartIngressServer(port int, maxMessageLength int, upstreamChan chan []byte
 		// starts a handler that pours "mc.connection" into upstreamChan
 		go ig.ingressConnectionReader(mc)
 	}
-
-	return ig
 }
 
 // multiplexedChannelReader reads the "downstreamChan" and dispatches the data to the correct connection
 func (ig *IngressServer) multiplexedChannelReader() {
 	for {
 		// poll the downstream chanel
-		slice := <- ig.downstreamChan
+		slice := <-ig.downstreamChan
 
 		if len(slice) < MULTIPLEXER_HEADER_SIZE {
 			// we cannot de-multiplex data without the header, just ignore
@@ -153,9 +155,9 @@ func (ig *IngressServer) ingressConnectionReader(mc *MultiplexedConnection) {
 	for {
 		// Check if we need to stop
 		select {
-			case _ = <- mc.stopChan:
-				mc.conn.Close()
-				return
+		case _ = <-mc.stopChan:
+			mc.conn.Close()
+			return
 		default:
 		}
 

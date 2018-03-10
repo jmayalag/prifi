@@ -1,15 +1,15 @@
 package stream_multiplexer
 
 import (
-	"testing"
-	"fmt"
-	"os"
-	"net"
-	"strconv"
-	"time"
 	"bytes"
-	"math"
 	"encoding/binary"
+	"fmt"
+	"math"
+	"net"
+	"os"
+	"strconv"
+	"testing"
+	"time"
 )
 
 // Tests that the multiplexer produces messages of at most "payloadLength"
@@ -23,7 +23,7 @@ func TestIngressSizes(t *testing.T) {
 
 	go StartIngressServer(port, payloadLength, upstreamChan, downstreamChan, stopChan)
 
-	time.Sleep(2*time.Second)
+	time.Sleep(2 * time.Second)
 
 	conn1, err := net.Dial("tcp", "127.0.0.1:"+strconv.Itoa(3000))
 	if err != nil {
@@ -35,16 +35,16 @@ func TestIngressSizes(t *testing.T) {
 	longData := make([]byte, 10005)
 	conn1.Write(longData)
 
-	expectedNumberOfMessages := int(math.Ceil(float64(len(longData)) / float64(payloadLength - MULTIPLEXER_HEADER_SIZE)))
-	lastPlaintextSize := int(math.Mod(float64(len(longData)), float64(payloadLength - MULTIPLEXER_HEADER_SIZE)))
+	expectedNumberOfMessages := int(math.Ceil(float64(len(longData)) / float64(payloadLength-MULTIPLEXER_HEADER_SIZE)))
+	lastPlaintextSize := int(math.Mod(float64(len(longData)), float64(payloadLength-MULTIPLEXER_HEADER_SIZE)))
 	lastMessageSize := lastPlaintextSize + MULTIPLEXER_HEADER_SIZE
 
-	for i:=0; i< expectedNumberOfMessages-1; i++ {
+	for i := 0; i < expectedNumberOfMessages-1; i++ {
 		select {
 		case data := <-upstreamChan:
 			if len(data) != payloadLength {
 				t.Error("Expected multiplexed data of length " + strconv.Itoa(payloadLength) +
-					" for message "+strconv.Itoa(i)+", but instead got " + strconv.Itoa(len(data)))
+					" for message " + strconv.Itoa(i) + ", but instead got " + strconv.Itoa(len(data)))
 			}
 
 		case <-time.After(1 * time.Second):
@@ -64,7 +64,7 @@ func TestIngressSizes(t *testing.T) {
 	}
 
 	stopChan <- true
-	time.Sleep(2*time.Second)
+	time.Sleep(2 * time.Second)
 }
 
 // First test: two different connections send interleaved messages.
@@ -167,10 +167,8 @@ func TestUpstreamIngressMultiplexer(t *testing.T) {
 	}
 
 	stopChan <- true
-	time.Sleep(2*time.Second)
+	time.Sleep(2 * time.Second)
 }
-
-
 
 // First test: two different connections receive interleaved messages.
 // Checks that all messages are multiplexed, with the correct IDs
@@ -184,7 +182,7 @@ func TestDownstreamIngressMultiplexer(t *testing.T) {
 
 	go StartIngressServer(port, payloadLength, upstreamChan, downstreamChan, stopChan)
 
-	time.Sleep(2*time.Second)
+	time.Sleep(2 * time.Second)
 
 	conn1, err := net.Dial("tcp", "127.0.0.1:"+strconv.Itoa(3000))
 	if err != nil {
@@ -229,7 +227,7 @@ func TestDownstreamIngressMultiplexer(t *testing.T) {
 	// now tests receiving messages (for c1)
 
 	payload := []byte("hello")
-	messageForC1 := make([]byte, MULTIPLEXER_HEADER_SIZE + len(payload))
+	messageForC1 := make([]byte, MULTIPLEXER_HEADER_SIZE+len(payload))
 	copy(messageForC1[:4], id_conn1_bytes[:])
 	binary.BigEndian.PutUint32(messageForC1[4:8], uint32(len(payload)))
 	copy(messageForC1[MULTIPLEXER_HEADER_SIZE:], payload)
@@ -243,11 +241,11 @@ func TestDownstreamIngressMultiplexer(t *testing.T) {
 		t.Error("Ingress could not forward downstream message to reader connection, ", err)
 	}
 	if n != len(payload) {
-		t.Error("Ingress read the wrong number of bytes, expected" + strconv.Itoa(len(payload))+", instead got "+
+		t.Error("Ingress read the wrong number of bytes, expected" + strconv.Itoa(len(payload)) + ", instead got " +
 			strconv.Itoa(n))
 	}
-	if !bytes.Equal(messageRead[:n], payload){
-		t.Error("Ingress read the wrong message, expected" + string(payload) + ", instead got "+
+	if !bytes.Equal(messageRead[:n], payload) {
+		t.Error("Ingress read the wrong message, expected" + string(payload) + ", instead got " +
 			string(messageRead[:n]))
 	}
 	//make sure Connection 2 did not receive anything !
@@ -268,21 +266,21 @@ func TestDownstreamIngressMultiplexer(t *testing.T) {
 
 	plaintextsForC2 := make([][]byte, nMessages)
 
-	for i:=0; i<nMessages; i++ {
+	for i := 0; i < nMessages; i++ {
 
-		startPos := i*maxPayloadLength
+		startPos := i * maxPayloadLength
 		endPos := startPos + maxPayloadLength
 		if endPos > len(payload) {
 			endPos = len(payload)
 		}
 
-		plaintextsForC2[i] = make([]byte, endPos - startPos)
+		plaintextsForC2[i] = make([]byte, endPos-startPos)
 		copy(plaintextsForC2[i][:], payload[startPos:endPos])
 		//fmt.Println("Produced plaintext message for round", i, "data", plaintextsForC2[i])
 	}
 	messagesForC2 := make([][]byte, nMessages)
 
-	for i:=0; i<nMessages; i++ {
+	for i := 0; i < nMessages; i++ {
 		messagesForC2[i] = make([]byte, payloadLength)
 		copy(messagesForC2[i][:4], id_conn2_bytes[:MULTIPLEXER_HEADER_SIZE])
 		binary.BigEndian.PutUint32(messagesForC2[i][4:8], uint32(len(plaintextsForC2[i])))
@@ -331,5 +329,5 @@ func TestDownstreamIngressMultiplexer(t *testing.T) {
 	}
 
 	stopChan <- true
-	time.Sleep(2*time.Second)
+	time.Sleep(2 * time.Second)
 }
