@@ -409,7 +409,7 @@ func (p *PriFiLibClientInstance) SendUpstreamData(ownerSlotID int) error {
 
 				//or, if we have nothing to send, and we are doing Latency tests, embed a pre-crafted message that we will recognize later on
 				default:
-					upstreamCellContent = make([]byte, 0)
+					upstreamCellContent = make([]byte, payloadLength)
 
 					if len(p.clientState.LatencyTest.LatencyTestsToSend) > 0 {
 
