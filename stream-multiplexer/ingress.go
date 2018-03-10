@@ -10,52 +10,73 @@ import (
 	"crypto/rand"
 	"bytes"
 	"time"
+	"sync"
 )
 
-const MULTIPLEXER_HEADER_SIZE = 4
+const MULTIPLEXER_HEADER_SIZE = 8
 
 type MultiplexedConnection struct {
 	ID string
 	ID_bytes []byte
 	conn net.Conn
 	stopChan chan bool
+	maxMessageLength int
+}
+
+type IngressServer struct {
+	activeConnectionsLock sync.Locker
+	activeConnections []*MultiplexedConnection
+	socketListener *net.TCPListener
+	maxMessageLength int
 	maxPayloadLength int
+	upstreamChan chan []byte
+	downstreamChan chan []byte
+	stopChan chan bool
 }
 
 
-func StartIngressServer(port int, payloadLength int, upstreamChan chan []byte, downstreamChan chan []byte, stopChan chan bool) {
+func StartIngressServer(port int, payloadLength int, upstreamChan chan []byte, downstreamChan chan []byte, stopChan chan bool) *IngressServer {
 
-	maxPayloadLength := payloadLength - MULTIPLEXER_HEADER_SIZE //we use 4 bytes for the multiplexing
-	activeConnections := make([]*MultiplexedConnection, 0)
+	ig := new(IngressServer)
+	ig.maxMessageLength = payloadLength
+	ig.upstreamChan = upstreamChan
+	ig.downstreamChan = downstreamChan
+	ig.stopChan = stopChan
+	ig.maxMessageLength = payloadLength - MULTIPLEXER_HEADER_SIZE //we use 8 bytes for the multiplexing
+	ig.activeConnectionsLock = new(sync.Mutex)
+	ig.activeConnections = make([]*MultiplexedConnection, 0)
 
-	var socket *net.TCPListener
 	var err error
 	s, err := net.Listen("tcp", ":"+strconv.Itoa(port))
 
 	if err != nil {
 		log.Error("Ingress server cannot start listening, shutting down :", err.Error())
-		return
+		return nil
 	} else {
 		log.Lvl2("Ingress server is listening for connections on port ", port)
 	}
 
 	// cast as TCPListener to get the SetDeadline method
-	socket =s.(*net.TCPListener)
+	ig.socketListener = s.(*net.TCPListener)
+
+
+	// starts a handler that dispatches the data from "downstreamChan" into the correct connection
+	go ig.multiplexedChannelReader()
 
 	for {
-		socket.SetDeadline(time.Now().Add(time.Second))
-		conn, err := socket.Accept()
+		ig.socketListener.SetDeadline(time.Now().Add(time.Second))
+		conn, err := ig.socketListener.Accept()
 
 		select {
 		case <-stopChan:
 			log.Lvl2("Ingress server stopped.")
 
 			//stops all subroutines
-			for _, mc := range activeConnections {
+			for _, mc := range ig.activeConnections {
 				mc.stopChan <- true
 			}
-			socket.Close()
-			return
+			ig.socketListener.Close()
+			return nil
 		default:
 		}
 
@@ -72,55 +93,66 @@ func StartIngressServer(port int, payloadLength int, upstreamChan chan []byte, d
 
 		if err != nil {
 			log.Error("Ingress server got an error with this new connection, shutting down :", err.Error())
-			socket.Close()
-			return
+			ig.socketListener.Close()
+			return nil
 		}
 
 		mc := new(MultiplexedConnection)
 		mc.conn = conn
 		mc.ID = id
 		ID_bytes := []byte(id)
-		mc.ID_bytes = ID_bytes[0:MULTIPLEXER_HEADER_SIZE]
+		mc.ID_bytes = ID_bytes[0:4]
 		mc.stopChan = make(chan bool, 1)
-		mc.maxPayloadLength = maxPayloadLength
+		mc.maxMessageLength = ig.maxMessageLength
 
-		activeConnections = append(activeConnections, mc)
-		go handleActiveConnection(mc, upstreamChan, downstreamChan)
+		// lock the list before editing it
+		ig.activeConnectionsLock.Lock()
+		ig.activeConnections = append(ig.activeConnections, mc)
+		ig.activeConnectionsLock.Unlock()
+
+		// starts a handler that pours "mc.connection" into upstreamChan
+		go ig.multiplexedConnectionReader(mc)
 	}
+
+	return ig
 }
 
-func handleActiveConnection(mc *MultiplexedConnection, upstreamChan chan []byte, downstreamChan chan []byte) {
-	// read the traffic from the connection, pipe it to the upstream channel
-	go multiplexedConnectionReader(mc, upstreamChan)
-	go multiplexedChannelReader(downstreamChan, mc)
-}
-
-func multiplexedChannelReader(dataChannel chan []byte, mc *MultiplexedConnection) {
+// multiplexedChannelReader reads the "downstreamChan" and dispatches the data to the correct connection
+func (ig *IngressServer) multiplexedChannelReader() {
 	for {
 		// poll the downstream chanel
-		slice := <- dataChannel
+		slice := <- ig.downstreamChan
 
 		if len(slice) < MULTIPLEXER_HEADER_SIZE {
-			// we cannot de-multiplex data without the ID, just ignore
+			// we cannot de-multiplex data without the header, just ignore
 			continue
 		}
 
-		ID := slice[0:MULTIPLEXER_HEADER_SIZE]
+		ID := slice[0:4]
+		length := int(binary.BigEndian.Uint32(slice[4:MULTIPLEXER_HEADER_SIZE]))
 		data := slice[MULTIPLEXER_HEADER_SIZE:]
 
-		if !bytes.Equal(ID, mc.ID_bytes) {
-			// data is not for us
-			continue
+		// trim the data if needed
+		if len(data) > length {
+			data = data[0:length]
 		}
 
-		mc.conn.Write(data)
+		ig.activeConnectionsLock.Lock()
+		for _, v := range ig.activeConnections {
+			if bytes.Equal(v.ID_bytes, ID) {
+				v.conn.Write(data)
+				break
+			}
+		}
+		ig.activeConnectionsLock.Unlock()
+
 	}
 }
 
-func multiplexedConnectionReader(mc *MultiplexedConnection, dataChannel chan []byte) {
+func (ig *IngressServer) multiplexedConnectionReader(mc *MultiplexedConnection) {
 	for {
 		// Read data from the connection
-		buffer := make([]byte, mc.maxPayloadLength)
+		buffer := make([]byte, ig.maxMessageLength)
 		n, err := mc.conn.Read(buffer)
 
 		if err != nil {
@@ -130,9 +162,10 @@ func multiplexedConnectionReader(mc *MultiplexedConnection, dataChannel chan []b
 
 		// Trim the data and send it through the data channel
 		slice := make([]byte, n+MULTIPLEXER_HEADER_SIZE)
-		copy(slice[0:MULTIPLEXER_HEADER_SIZE], mc.ID_bytes[0:MULTIPLEXER_HEADER_SIZE])
+		copy(slice[0:4], mc.ID_bytes[:])
+		binary.BigEndian.PutUint32(slice[4:8], uint32(n))
 		copy(slice[MULTIPLEXER_HEADER_SIZE:], buffer[:n])
-		dataChannel <- slice
+		ig.upstreamChan <- slice
 
 		// Connection Closed Indicator
 		if n == 0 {
