@@ -35,14 +35,14 @@ type IngressServer struct {
 }
 
 
-func StartIngressServer(port int, payloadLength int, upstreamChan chan []byte, downstreamChan chan []byte, stopChan chan bool) *IngressServer {
+func StartIngressServer(port int, maxMessageLength int, upstreamChan chan []byte, downstreamChan chan []byte, stopChan chan bool) *IngressServer {
 
 	ig := new(IngressServer)
-	ig.maxMessageLength = payloadLength
+	ig.maxMessageLength = maxMessageLength
 	ig.upstreamChan = upstreamChan
 	ig.downstreamChan = downstreamChan
 	ig.stopChan = stopChan
-	ig.maxMessageLength = payloadLength - MULTIPLEXER_HEADER_SIZE //we use 8 bytes for the multiplexing
+	ig.maxPayloadLength = maxMessageLength - MULTIPLEXER_HEADER_SIZE //we use 8 bytes for the multiplexing
 	ig.activeConnectionsLock = new(sync.Mutex)
 	ig.activeConnections = make([]*MultiplexedConnection, 0)
 
@@ -111,7 +111,7 @@ func StartIngressServer(port int, payloadLength int, upstreamChan chan []byte, d
 		ig.activeConnectionsLock.Unlock()
 
 		// starts a handler that pours "mc.connection" into upstreamChan
-		go ig.multiplexedConnectionReader(mc)
+		go ig.ingressConnectionReader(mc)
 	}
 
 	return ig
@@ -149,14 +149,27 @@ func (ig *IngressServer) multiplexedChannelReader() {
 	}
 }
 
-func (ig *IngressServer) multiplexedConnectionReader(mc *MultiplexedConnection) {
+func (ig *IngressServer) ingressConnectionReader(mc *MultiplexedConnection) {
 	for {
+		// Check if we need to stop
+		select {
+			case _ = <- mc.stopChan:
+				mc.conn.Close()
+				return
+		default:
+		}
+
 		// Read data from the connection
-		buffer := make([]byte, ig.maxMessageLength)
+		buffer := make([]byte, ig.maxPayloadLength)
+		mc.conn.SetReadDeadline(time.Now().Add(time.Second))
 		n, err := mc.conn.Read(buffer)
 
 		if err != nil {
-			log.Error("SOCKS connectionReader error,", err)
+			if err, ok := err.(*net.OpError); ok && err.Timeout() {
+				// it was a timeout
+				continue
+			}
+			log.Error("Ingress server: connectionReader error,", err)
 			return
 		}
 

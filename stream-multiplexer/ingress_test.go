@@ -13,7 +13,7 @@ import (
 )
 
 // Tests that the multiplexer produces messages of at most "payloadLength"
-func TestSizes(t *testing.T) {
+func TestIngressSizes(t *testing.T) {
 
 	port := 3000
 	payloadLength := 20
