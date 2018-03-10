@@ -9,7 +9,10 @@ import (
 	"encoding/binary"
 	"crypto/rand"
 	"bytes"
+	"time"
 )
+
+const MULTIPLEXER_HEADER_SIZE = 4
 
 type MultiplexedConnection struct {
 	ID string
@@ -22,10 +25,12 @@ type MultiplexedConnection struct {
 
 func StartIngressServer(port int, payloadLength int, upstreamChan chan []byte, downstreamChan chan []byte, stopChan chan bool) {
 
-	maxPayloadLength := payloadLength - 4 //we use 4 bytes for the multiplexing
+	maxPayloadLength := payloadLength - MULTIPLEXER_HEADER_SIZE //we use 4 bytes for the multiplexing
 	activeConnections := make([]*MultiplexedConnection, 0)
 
-	socket, err := net.Listen("tcp", ":"+strconv.Itoa(port))
+	var socket *net.TCPListener
+	var err error
+	s, err := net.Listen("tcp", ":"+strconv.Itoa(port))
 
 	if err != nil {
 		log.Error("Ingress server cannot start listening, shutting down :", err.Error())
@@ -34,7 +39,11 @@ func StartIngressServer(port int, payloadLength int, upstreamChan chan []byte, d
 		log.Lvl2("Ingress server is listening for connections on port ", port)
 	}
 
+	// cast as TCPListener to get the SetDeadline method
+	socket =s.(*net.TCPListener)
+
 	for {
+		socket.SetDeadline(time.Now().Add(time.Second))
 		conn, err := socket.Accept()
 
 		select {
@@ -50,6 +59,14 @@ func StartIngressServer(port int, payloadLength int, upstreamChan chan []byte, d
 		default:
 		}
 
+		if err != nil {
+			if err, ok := err.(*net.OpError); ok && err.Timeout() {
+				// it was a timeout
+				continue
+			}
+			log.Lvl3("Ingress server error:", err)
+		}
+
 		id := generateRandomID()
 		log.Lvl2("Ingress server just accepted a connection, assigning ID",id)
 
@@ -63,7 +80,7 @@ func StartIngressServer(port int, payloadLength int, upstreamChan chan []byte, d
 		mc.conn = conn
 		mc.ID = id
 		ID_bytes := []byte(id)
-		mc.ID_bytes = ID_bytes[0:4]
+		mc.ID_bytes = ID_bytes[0:MULTIPLEXER_HEADER_SIZE]
 		mc.stopChan = make(chan bool, 1)
 		mc.maxPayloadLength = maxPayloadLength
 
@@ -83,13 +100,13 @@ func multiplexedChannelReader(dataChannel chan []byte, mc *MultiplexedConnection
 		// poll the downstream chanel
 		slice := <- dataChannel
 
-		if len(slice) < 4 {
+		if len(slice) < MULTIPLEXER_HEADER_SIZE {
 			// we cannot de-multiplex data without the ID, just ignore
 			continue
 		}
 
-		ID := slice[0:4]
-		data := slice[4:]
+		ID := slice[0:MULTIPLEXER_HEADER_SIZE]
+		data := slice[MULTIPLEXER_HEADER_SIZE:]
 
 		if !bytes.Equal(ID, mc.ID_bytes) {
 			// data is not for us
@@ -112,9 +129,9 @@ func multiplexedConnectionReader(mc *MultiplexedConnection, dataChannel chan []b
 		}
 
 		// Trim the data and send it through the data channel
-		slice := make([]byte, n+4)
-		copy(slice[0:4], mc.ID_bytes[0:4])
-		copy(slice[4:], buffer[:n])
+		slice := make([]byte, n+MULTIPLEXER_HEADER_SIZE)
+		copy(slice[0:MULTIPLEXER_HEADER_SIZE], mc.ID_bytes[0:MULTIPLEXER_HEADER_SIZE])
+		copy(slice[MULTIPLEXER_HEADER_SIZE:], buffer[:n])
 		dataChannel <- slice
 
 		// Connection Closed Indicator
