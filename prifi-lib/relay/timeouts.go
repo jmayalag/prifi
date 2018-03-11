@@ -13,11 +13,11 @@ online if they didn't answer by that time.
 */
 func (p *PriFiLibRelayInstance) checkIfRoundHasEndedAfterTimeOut_Phase1(roundID int32) {
 
+	time.Sleep(time.Duration(p.relayState.RoundTimeOut) * time.Millisecond)
+
 	// never start treating two timeout concurrently
 	p.relayState.timeoutMutex.Lock()
 	defer p.relayState.timeoutMutex.Unlock()
-
-	time.Sleep(time.Duration(p.relayState.RoundTimeOut) * time.Millisecond)
 
 	if !p.relayState.roundManager.IsRoundOpenend(roundID) {
 		return //everything went dwell, it's great !
@@ -51,7 +51,9 @@ func (p *PriFiLibRelayInstance) checkIfRoundHasEndedAfterTimeOut_Phase1(roundID 
 		p.relayState.roundManager.ForceCloseRound()
 		p.relayState.roundManager.Dump()
 
+		p.relayState.numberOfNonAckedDownstreamPacketsLock.Lock()
 		p.relayState.numberOfNonAckedDownstreamPackets-- // packet is not "in-flight" because it is lost
+		p.relayState.numberOfNonAckedDownstreamPacketsLock.Unlock()
 
 		p.relayState.DCNet.DecodeStart(p.relayState.UpstreamCellSize, p.relayState.MessageHistory)
 
