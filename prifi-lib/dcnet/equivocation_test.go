@@ -49,13 +49,13 @@ func equivocationTestForDataLength(t *testing.T, cellSize int) {
 	sharedPRNGs_t[1] = config.CryptoSuite.Cipher(ssBytes)
 
 	// set up the CellCoders
-	cellCodert := dcnet.NewSimpleDCNet(false)
+	cellCodert := NewSimpleDCNet(false)
 	cellCodert.TrusteeSetup(config.CryptoSuite, sharedPRNGs_t)
 
-	cellCoderc1 := dcnet.NewSimpleDCNet(false)
+	cellCoderc1 := NewSimpleDCNet(false)
 	cellCoderc1.ClientSetup(config.CryptoSuite, sharedPRNGs_c1)
 
-	cellCoderc2 := dcnet.NewSimpleDCNet(false)
+	cellCoderc2 := NewSimpleDCNet(false)
 	cellCoderc2.ClientSetup(config.CryptoSuite, sharedPRNGs_c2)
 
 	data := make([]byte, 0) // data is zero for both, none transmitting
