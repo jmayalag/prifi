@@ -27,8 +27,11 @@ func assertEqual(a, b *DCNetCipher) bool {
 }
 
 func TestDCNetSerialization(t *testing.T) {
-
 	ChangeLength(10, t)
+	ChangeLength(20, t)
+	ChangeLength(50, t)
+	ChangeLength(100, t)
+	ChangeLength(1000, t)
 }
 
 func ChangeLength(length int, t *testing.T) {

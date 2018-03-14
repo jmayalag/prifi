@@ -46,6 +46,7 @@ type DCNetEntity struct {
 
 // DCNetRoundDecoder is used by the relay to decode the dcnet ciphers
 type DCNetRoundDecoder struct {
+	currentRoundBeingDecoded int32
 	xorBuffer            []byte
 	equivTrusteeContribs [][]byte
 	equivClientContribs  [][]byte
@@ -58,7 +59,7 @@ func NewDCNetEntity(
 	DCNetMessageSize int,
 	equivocationProtection bool,
 	disruptionProtection bool,
-		sharedKeys []abstract.Cipher) *DCNetEntity {
+	sharedKeys []abstract.Cipher) *DCNetEntity {
 
 	e := new(DCNetEntity)
 	e.EntityID = entityID
@@ -221,4 +222,61 @@ func (e *DCNetEntity) trusteeEncode() *DCNetCipher {
 	}
 
 	return c
+}
+
+// Used by the relay to start decoding a round
+func (e *DCNetEntity) DecodeStart(roundID int32) {
+	e.DCNetRoundDecoder = new(DCNetRoundDecoder)
+	e.DCNetRoundDecoder.currentRoundBeingDecoded = roundID
+	e.DCNetRoundDecoder.xorBuffer = make([]byte, e.payloadLength)
+	e.DCNetRoundDecoder.equivClientContribs = make([][]byte, 0)
+	e.DCNetRoundDecoder.equivTrusteeContribs = make([][]byte, 0)
+}
+
+// called by the relay to decode a client contribution
+func (e *DCNetEntity) DecodeClient(roundID int32, slice []byte) {
+
+	dcNetCipher := DCNetCipherFromBytes(slice)
+
+	if roundID != e.DCNetRoundDecoder.currentRoundBeingDecoded {
+		panic("Cannot DecodeClient for round" +
+			strconv.Itoa(int(roundID))+", we are in round "+strconv.Itoa(int(e.DCNetRoundDecoder.currentRoundBeingDecoded)))
+	}
+
+	for i := range dcNetCipher.payload {
+		e.DCNetRoundDecoder.xorBuffer[i] ^= slice[i]
+	}
+
+	if e.EquivocationProtectionEnabled {
+		e.DCNetRoundDecoder.equivClientContribs = append(e.DCNetRoundDecoder.equivClientContribs, dcNetCipher.equivocationProtectionTag)
+	}
+}
+
+// called by the relay to decode a client contribution
+func (e *DCNetEntity) DecodeTrustee(roundID int32, slice []byte) {
+
+	dcNetCipher := DCNetCipherFromBytes(slice)
+
+	if roundID != e.DCNetRoundDecoder.currentRoundBeingDecoded {
+		panic("Cannot DecodeClient for round" +
+			strconv.Itoa(int(roundID))+", we are in round "+strconv.Itoa(int(e.DCNetRoundDecoder.currentRoundBeingDecoded)))
+	}
+
+	for i := range dcNetCipher.payload {
+		e.DCNetRoundDecoder.xorBuffer[i] ^= slice[i]
+	}
+
+	if e.EquivocationProtectionEnabled {
+		e.DCNetRoundDecoder.equivClientContribs = append(e.DCNetRoundDecoder.equivClientContribs, dcNetCipher.equivocationProtectionTag)
+	}
+}
+
+func (e *DCNetEntity) DecodeCell() []byte {
+	//No Equivocation -> just XOR
+	d := e.DCNetRoundDecoder
+	if e.EquivocationProtectionEnabled {
+		return e.equivocationProtection.RelayDecode(d.xorBuffer, d.equivTrusteeContribs, d.equivClientContribs)
+	}
+
+	return d.xorBuffer
 }
