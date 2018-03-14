@@ -5,6 +5,8 @@ import (
 	"github.com/dedis/onet/log"
 	"net"
 	"time"
+	"fmt"
+	"encoding/hex"
 )
 
 // EgressServer takes data from a go channel and recreates the multiplexed TCP streams
@@ -64,6 +66,8 @@ func StartEgressHandler(serverAddress string, maxMessageLength int, upstreamChan
 		}
 
 		mc, _ := eg.activeConnections[ID]
+
+		fmt.Println(hex.Dump(data))
 
 		// Try to write to it; if it fails, clean it
 		mc.conn.SetWriteDeadline(time.Now().Add(time.Second))

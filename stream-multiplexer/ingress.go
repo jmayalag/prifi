@@ -11,6 +11,8 @@ import (
 	"gopkg.in/dedis/onet.v1/log"
 	"sync"
 	"time"
+	"fmt"
+	"encoding/hex"
 )
 
 // MULTIPLEXER_HEADER_SIZE is the size of the header for the multiplexed data,
@@ -180,6 +182,9 @@ func (ig *IngressServer) ingressConnectionReader(mc *MultiplexedConnection) {
 		copy(slice[0:4], mc.ID_bytes[:])
 		binary.BigEndian.PutUint32(slice[4:8], uint32(n))
 		copy(slice[MULTIPLEXER_HEADER_SIZE:], buffer[:n])
+
+		fmt.Println(hex.Dump(buffer))
+
 		ig.upstreamChan <- slice
 
 		// Connection Closed Indicator
