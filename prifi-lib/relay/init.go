@@ -34,7 +34,7 @@ considered disconnected
 import (
 	"errors"
 
-	"github.com/lbarman/prifi/prifi-lib/dcnet"
+	"github.com/lbarman/prifi/prifi-lib/dcnet.old"
 	prifilog "github.com/lbarman/prifi/prifi-lib/log"
 	"github.com/lbarman/prifi/prifi-lib/net"
 	"github.com/lbarman/prifi/prifi-lib/scheduler"
@@ -121,7 +121,7 @@ type NodeRepresentation struct {
 
 // RelayState contains the mutable state of the relay.
 type RelayState struct {
-	DCNet                                  dcnet.DCNet
+	DCNet                                  dcnet_old.DCNet
 	clients                                []NodeRepresentation
 	roundManager                           *BufferableRoundManager
 	neffShuffle                            *scheduler.NeffShuffleRelay
@@ -177,7 +177,7 @@ type RelayState struct {
 	trusteeBitMap map[int]map[int]int
 	blamingData   []int //[round#, bitPos, clientID, bitRevealed, trusteeID, bitRevealed]
 
-	//Used for verifiable DC-net, part of the dcnet/owned.go
+	//Used for verifiable DC-net, part of the dcnet.old/owned.go
 	VerifiableDCNetKeys [][]byte
 	nVkeysCollected     int
 }

@@ -41,7 +41,7 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"github.com/lbarman/prifi/prifi-lib/config"
-	"github.com/lbarman/prifi/prifi-lib/dcnet"
+	"github.com/lbarman/prifi/prifi-lib/dcnet.old"
 	prifilog "github.com/lbarman/prifi/prifi-lib/log"
 	"github.com/lbarman/prifi/prifi-lib/net"
 	"github.com/lbarman/prifi/prifi-lib/utils"
@@ -140,9 +140,9 @@ func (p *PriFiLibRelayInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARA
 
 	switch dcNetType {
 	case "Simple":
-		p.relayState.DCNet = dcnet.NewSimpleDCNet(equivocationProtectionEnabled)
+		p.relayState.DCNet = dcnet_old.NewSimpleDCNet(equivocationProtectionEnabled)
 	case "Verifiable":
-		p.relayState.DCNet = dcnet.NewVerifiableDCNet(equivocationProtectionEnabled)
+		p.relayState.DCNet = dcnet_old.NewVerifiableDCNet(equivocationProtectionEnabled)
 	default:
 		e := "DCNetType must be Simple or Verifiable"
 		log.Error(e)

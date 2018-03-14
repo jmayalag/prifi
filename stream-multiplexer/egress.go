@@ -1,13 +1,13 @@
 package stream_multiplexer
 
 import (
+	"bytes"
 	"encoding/binary"
+	"encoding/hex"
+	"fmt"
 	"github.com/dedis/onet/log"
 	"net"
 	"time"
-	"fmt"
-	"encoding/hex"
-	"bytes"
 )
 
 // EgressServer takes data from a go channel and recreates the multiplexed TCP streams
@@ -34,7 +34,7 @@ func StartEgressHandler(serverAddress string, maxMessageLength int, upstreamChan
 		dataRead := <-upstreamChan
 
 		// if too short or all bytes are zero, there was no data usptream, discard the frame
-		if len(dataRead) < 4 || bytes.Equal(dataRead[0:4], make([]byte,4)) {
+		if len(dataRead) < 4 || bytes.Equal(dataRead[0:4], make([]byte, 4)) {
 			log.Lvl3("Egress Server: no upstream Data, continuing")
 			continue
 		}

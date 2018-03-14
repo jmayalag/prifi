@@ -6,7 +6,7 @@ import (
 	"errors"
 	"github.com/lbarman/prifi/prifi-lib/config"
 	"github.com/lbarman/prifi/prifi-lib/crypto"
-	"github.com/lbarman/prifi/prifi-lib/dcnet"
+	"github.com/lbarman/prifi/prifi-lib/dcnet.old"
 	prifilog "github.com/lbarman/prifi/prifi-lib/log"
 	"github.com/lbarman/prifi/prifi-lib/net"
 	"github.com/lbarman/prifi/prifi-lib/relay"
@@ -691,9 +691,9 @@ func TestDisruptionClient(t *testing.T) {
 		t.Error("Could not marshal point !")
 	}
 	sharedPRNGs_t2[0] = config.CryptoSuite.Cipher(bytes)
-	cellCoder1 := dcnet.NewSimpleDCNet(false)
+	cellCoder1 := dcnet_old.NewSimpleDCNet(false)
 	cellCoder1.TrusteeSetup(config.CryptoSuite, sharedPRNGs_t1)
-	cellCoder2 := dcnet.NewSimpleDCNet(false)
+	cellCoder2 := dcnet_old.NewSimpleDCNet(false)
 	cellCoder2.TrusteeSetup(config.CryptoSuite, sharedPRNGs_t2)
 
 	pad1 := cellCoder1.TrusteeEncode(upCellSize)
@@ -728,7 +728,7 @@ func TestDisruptionClient(t *testing.T) {
 	msg8 := sentToRelay[0].(*net.CLI_REL_UPSTREAM_DATA)
 	sentToRelay = make([]interface{}, 0)
 
-	//dcnet decode
+	//dcnet.old decode
 	pad1 = cellCoder1.TrusteeEncode(upCellSize)
 	pad2 = cellCoder2.TrusteeEncode(upCellSize)
 	dcNetDecoded = make([]byte, upCellSize)
@@ -767,7 +767,7 @@ func TestDisruptionClient(t *testing.T) {
 		msg10.Data[upCellSize-1] = 0
 	}
 
-	//dcnet decode
+	//dcnet.old decode
 	pad1 = cellCoder1.TrusteeEncode(upCellSize)
 	pad2 = cellCoder2.TrusteeEncode(upCellSize)
 	dcNetDecoded = make([]byte, upCellSize)

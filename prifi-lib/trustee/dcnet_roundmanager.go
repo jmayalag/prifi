@@ -2,7 +2,7 @@ package trustee
 
 import (
 	"github.com/lbarman/prifi/prifi-lib/config"
-	"github.com/lbarman/prifi/prifi-lib/dcnet"
+	"github.com/lbarman/prifi/prifi-lib/dcnet.old"
 	"gopkg.in/dedis/crypto.v0/abstract"
 	"gopkg.in/dedis/onet.v1/log"
 	"math"
@@ -12,7 +12,7 @@ import (
 // DCNet_RoundManager allows to request DC-net pads for a specific round
 type DCNet_RoundManager struct {
 	sync.Mutex
-	DCNet         dcnet.DCNet
+	DCNet         dcnet_old.DCNet
 	currentRound  int32
 	sharedSecrets []abstract.Point
 }

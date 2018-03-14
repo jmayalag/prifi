@@ -3,14 +3,14 @@ package trustee
 import (
 	"github.com/lbarman/prifi/prifi-lib/config"
 	"github.com/lbarman/prifi/prifi-lib/crypto"
-	"github.com/lbarman/prifi/prifi-lib/dcnet"
+	"github.com/lbarman/prifi/prifi-lib/dcnet.old"
 	"gopkg.in/dedis/crypto.v0/abstract"
 	"testing"
 )
 
 func TestDCNetRoundManager(test *testing.T) {
 	dc := new(DCNet_RoundManager)
-	dc.DCNet = dcnet.NewSimpleDCNet(false)
+	dc.DCNet = dcnet_old.NewSimpleDCNet(false)
 
 	//set up the DC-nets
 	_, clientp := crypto.NewKeyPair()

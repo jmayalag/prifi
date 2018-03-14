@@ -1,20 +1,15 @@
 package dcnet
 
 import (
-	"bytes"
-	"github.com/lbarman/prifi/prifi-lib/config"
-	"github.com/lbarman/prifi/prifi-lib/crypto"
-	"gopkg.in/dedis/crypto.v0/abstract"
-	"gopkg.in/dedis/onet.v1/log"
-	"testing"
-)
 
+)
+/*
 func TestEquivocation(t *testing.T) {
 
 	rangeTest := []int{100, 1000, 10000}
 
 	for _, dataLen := range rangeTest {
-		log.Lvl1("Testing for data length", dataLen)
+		log.Lvl1("Testing for payload length", dataLen)
 		equivocationTestForDataLength(t, dataLen)
 	}
 }
@@ -58,7 +53,7 @@ func equivocationTestForDataLength(t *testing.T, cellSize int) {
 	cellCoderc2 := NewSimpleDCNet(false)
 	cellCoderc2.ClientSetup(config.CryptoSuite, sharedPRNGs_c2)
 
-	data := make([]byte, 0) // data is zero for both, none transmitting
+	data := make([]byte, 0) // payload is zero for both, none transmitting
 
 	// get the pads
 	padRound1_c1 := cellCoderc1.ClientEncode(data, cellSize, history)
@@ -75,7 +70,7 @@ func equivocationTestForDataLength(t *testing.T, cellSize int) {
 	// assert that the pads works
 	for _, v := range res {
 		if v != 0 {
-			t.Fatal("Res is non zero, DC-nets did not cancel out! go test dcnet/")
+			t.Fatal("Res is non zero, DC-nets did not cancel out! go test dcnet.old/")
 		}
 	}
 
@@ -90,7 +85,7 @@ func equivocationTestForDataLength(t *testing.T, cellSize int) {
 	e_trustee := NewEquivocation()
 	e_relay := NewEquivocation()
 
-	// set some data as downstream history
+	// set some payload as downstream history
 
 	historyBytes := make([]byte, 10)
 	historyBytes[1] = 1
@@ -131,3 +126,4 @@ func equivocationTestForDataLength(t *testing.T, cellSize int) {
 		t.Error("payloads don't match")
 	}
 }
+*/

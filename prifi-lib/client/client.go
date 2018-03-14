@@ -35,7 +35,7 @@ import (
 
 	"crypto/hmac"
 	"crypto/sha256"
-	"github.com/lbarman/prifi/prifi-lib/dcnet"
+	"github.com/lbarman/prifi/prifi-lib/dcnet.old"
 	"github.com/lbarman/prifi/prifi-lib/scheduler"
 	"github.com/lbarman/prifi/prifi-lib/utils"
 	"github.com/lbarman/prifi/utils"
@@ -84,9 +84,9 @@ func (p *PriFiLibClientInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PAR
 
 	switch dcNetType {
 	case "Simple":
-		p.clientState.DCNet_RoundManager.DCNet = dcnet.NewSimpleDCNet(equivProtection)
+		p.clientState.DCNet_RoundManager.DCNet = dcnet_old.NewSimpleDCNet(equivProtection)
 	case "Verifiable":
-		p.clientState.DCNet_RoundManager.DCNet = dcnet.NewVerifiableDCNet(equivProtection)
+		p.clientState.DCNet_RoundManager.DCNet = dcnet_old.NewVerifiableDCNet(equivProtection)
 	default:
 		log.Fatal("DCNetType must be Simple or Verifiable")
 	}

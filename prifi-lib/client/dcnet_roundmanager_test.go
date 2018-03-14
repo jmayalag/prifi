@@ -3,7 +3,7 @@ package client
 import (
 	"github.com/lbarman/prifi/prifi-lib/config"
 	"github.com/lbarman/prifi/prifi-lib/crypto"
-	"github.com/lbarman/prifi/prifi-lib/dcnet"
+	"github.com/lbarman/prifi/prifi-lib/dcnet.old"
 	"gopkg.in/dedis/crypto.v0/abstract"
 	"testing"
 )
@@ -11,10 +11,10 @@ import (
 func TestDCNetRoundManager(test *testing.T) {
 	equivProtection := false
 	dc := new(DCNet_RoundManager)
-	dc.DCNet = dcnet.NewSimpleDCNet(equivProtection)
+	dc.DCNet = dcnet_old.NewSimpleDCNet(equivProtection)
 
 	dc2 := new(DCNet_RoundManager)
-	dc2.DCNet = dcnet.NewSimpleDCNet(equivProtection)
+	dc2.DCNet = dcnet_old.NewSimpleDCNet(equivProtection)
 
 	//set up the DC-nets
 	_, clientp := crypto.NewKeyPair()

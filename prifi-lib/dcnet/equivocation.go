@@ -144,7 +144,7 @@ func (e *EquivocationProtection) RelayDecode(encryptedPayload []byte, trusteesCo
 	//now use k to decrypt the payload
 	k_bytes := k_i.Bytes()
 
-	// decrypt the data
+	// decrypt the payload
 	for i := range encryptedPayload {
 		encryptedPayload[i] ^= k_bytes[i%len(k_bytes)]
 	}

@@ -16,7 +16,7 @@ Then, this file simple handle the answer to the different message kind :
 import (
 	"errors"
 	"github.com/lbarman/prifi/prifi-lib/config"
-	"github.com/lbarman/prifi/prifi-lib/dcnet"
+	"github.com/lbarman/prifi/prifi-lib/dcnet.old"
 	"github.com/lbarman/prifi/prifi-lib/net"
 	"gopkg.in/dedis/crypto.v0/abstract"
 	"gopkg.in/dedis/onet.v1/log"
@@ -72,9 +72,9 @@ func (p *PriFiLibTrusteeInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PA
 
 	switch dcNetType {
 	case "Simple":
-		p.trusteeState.DCNet_RoundManager.DCNet = dcnet.NewSimpleDCNet(equivProtection)
+		p.trusteeState.DCNet_RoundManager.DCNet = dcnet_old.NewSimpleDCNet(equivProtection)
 	case "Verifiable":
-		p.trusteeState.DCNet_RoundManager.DCNet = dcnet.NewVerifiableDCNet(equivProtection)
+		p.trusteeState.DCNet_RoundManager.DCNet = dcnet_old.NewVerifiableDCNet(equivProtection)
 	default:
 		log.Fatal("DCNetType must be Simple or Verifiable")
 	}
@@ -260,7 +260,7 @@ func (p *PriFiLibTrusteeInstance) Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_
 
 	p.trusteeState.DCNet_RoundManager.TrusteeSetup(p.trusteeState.sharedSecrets)
 	vkey := p.trusteeState.DCNet_RoundManager.DCNet.TrusteeSetup(config.CryptoSuite, sharedPRNGs)
-	//In case we use the simple dcnet, vkey isn't needed
+	//In case we use the simple dcnet.old, vkey isn't needed
 	if vkey == nil {
 		vkey = make([]byte, 1)
 	}

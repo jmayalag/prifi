@@ -1,4 +1,4 @@
-package dcnet
+package dcnet_old
 
 import (
 	"gopkg.in/dedis/crypto.v0/abstract"

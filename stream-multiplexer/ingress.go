@@ -8,11 +8,11 @@ import (
 	"bytes"
 	"crypto/rand"
 	"encoding/binary"
+	"encoding/hex"
+	"fmt"
 	"gopkg.in/dedis/onet.v1/log"
 	"sync"
 	"time"
-	"fmt"
-	"encoding/hex"
 )
 
 // MULTIPLEXER_HEADER_SIZE is the size of the header for the multiplexed data,
