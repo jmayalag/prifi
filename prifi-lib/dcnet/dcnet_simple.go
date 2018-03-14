@@ -112,6 +112,7 @@ func (c *simpleDCNet) TrusteeSetup(suite abstract.Suite, sharedSecrets []abstrac
 }
 
 func (c *simpleDCNet) TrusteeEncode(payloadLength int) []byte {
+
 	payload := make([]byte, payloadLength)
 
 	//No Equivocation -> just XOR

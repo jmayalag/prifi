@@ -438,6 +438,7 @@ func (p *PriFiLibClientInstance) SendUpstreamData(ownerSlotID int) error {
 		hmac := p.computeHmac256(upstreamCellContent)
 		upstreamCellContent = append(hmac, upstreamCellContent...) // TODO ... might be slow !
 	}
+
 	upstreamCell := p.clientState.DCNet_RoundManager.ClientEncodeForRound(p.clientState.RoundNo, upstreamCellContent, p.clientState.PayloadLength, p.clientState.MessageHistory)
 
 	//send the data to the relay
@@ -559,6 +560,7 @@ func (p *PriFiLibClientInstance) Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(
 		hmac := p.computeHmac256(blank)
 		copy(data[0:32], hmac[0:32])
 	}
+
 	upstreamCell := p.clientState.DCNet_RoundManager.ClientEncodeForRound(0, data, p.clientState.PayloadLength, p.clientState.MessageHistory)
 
 	//send the data to the relay

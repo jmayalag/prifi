@@ -7,6 +7,7 @@ import (
 	"time"
 	"fmt"
 	"encoding/hex"
+	"bytes"
 )
 
 // EgressServer takes data from a go channel and recreates the multiplexed TCP streams
@@ -32,8 +33,15 @@ func StartEgressHandler(serverAddress string, maxMessageLength int, upstreamChan
 	for {
 		dataRead := <-upstreamChan
 
+		// if too short or all bytes are zero, there was no data usptream, discard the frame
+		if len(dataRead) < 4 || bytes.Equal(dataRead[0:4], make([]byte,4)) {
+			log.Lvl3("Egress Server: no upstream Data, continuing")
+			continue
+		}
+
 		if len(dataRead) < MULTIPLEXER_HEADER_SIZE {
 			// we cannot demultiplex, skip
+			log.Lvl3("Egress Server: frame too short, continuing")
 			continue
 		}
 
@@ -47,7 +55,7 @@ func StartEgressHandler(serverAddress string, maxMessageLength int, upstreamChan
 		}
 
 		// if this a new connection, dial it first
-		if _, ok := eg.activeConnections[ID]; !ok {
+		if mc, ok := eg.activeConnections[ID]; !ok || mc.conn == nil {
 			c, err := net.Dial("tcp", serverAddress)
 			if err != nil {
 				log.Error("Egress server: Could not connect to server, discarding data.", err)
