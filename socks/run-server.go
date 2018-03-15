@@ -2,16 +2,15 @@ package main
 
 import (
 	"flag"
-	"strconv"
-	"gopkg.in/dedis/onet.v1/log"
 	"github.com/ginuerzh/gost"
+	"gopkg.in/dedis/onet.v1/log"
+	"strconv"
 )
 
 const DEFAULT_DEBUG_LEVEL = 3
 const DEFAULT_PORT = 8090
 
 var DEBUG_LEVELS = []int{1, 2, 3, 4, 5}
-
 
 // Launch a SOCKS5 server that listens to PriFi traffic and forwards all connections
 func main() {

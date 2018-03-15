@@ -1,4 +1,4 @@
-package trustee
+package client
 
 import (
 	"github.com/lbarman/prifi/prifi-lib/config"
@@ -9,35 +9,13 @@ import (
 	"sync"
 )
 
-// DCNet_RoundManager allows to request DC-net pads for a specific round
-type DCNet_RoundManager struct {
-	sync.Mutex
-	DCNet         dcnet_old.DCNet
-	currentRound  int32
-	sharedSecrets []abstract.Point
-}
-
-// TrusteeSetup stores the sharedSecrets to be able to reveal bits in case of disruption
-func (dc *DCNet_RoundManager) TrusteeSetup(sharedSecrets []abstract.Point) {
-	dc.sharedSecrets = sharedSecrets
-}
-
-// TrusteeEncode to keep up with the roundID
-func (dc *DCNet_RoundManager) TrusteeEncode(payloadLength int) []byte {
-	dc.Lock()
-	defer dc.Unlock()
-	data := dc.DCNet.TrusteeEncode(payloadLength)
-	dc.currentRound++
-	return data
-}
-
+/*
 // RevealBits reveals the individual bits from each cipher in case of disruption
 func (dc *DCNet_RoundManager) RevealBits(roundID int32, bitPos int, payloadLength int) map[int]int {
 	dc.Lock()
 	defer dc.Unlock()
 	round_ID := roundID
-	curRound := dc.currentRound
-	if round_ID > curRound {
+	if round_ID > dc.currentRound {
 		log.Fatal("Trying to reveal a future round")
 	}
 	var bits map[int]int
@@ -83,3 +61,4 @@ func (dc *DCNet_RoundManager) RevealBits(roundID int32, bitPos int, payloadLengt
 	}
 	return bits
 }
+*/

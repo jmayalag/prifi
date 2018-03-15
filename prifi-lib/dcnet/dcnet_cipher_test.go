@@ -3,8 +3,8 @@ package dcnet
 import (
 	"bytes"
 	"crypto/rand"
-	"testing"
 	"fmt"
+	"testing"
 )
 
 func randomBytes(length int) []byte {
@@ -35,42 +35,42 @@ func ChangeLength(length int, t *testing.T) {
 
 	a := DCNetCipher{
 		equivocationProtectionTag: randomBytes(length),
-		payload: nil,
+		payload:                   nil,
 	}
 	if !assertEqual(&a, DCNetCipherFromBytes(a.ToBytes())) {
 		t.Error("DCNetCipher could not be marshalled-unmarshalled")
-		fmt.Printf("%+v\n",a)
-		fmt.Printf("%+v\n",a.ToBytes())
-		fmt.Printf("%+v\n",DCNetCipherFromBytes(a.ToBytes()))
+		fmt.Printf("%+v\n", a)
+		fmt.Printf("%+v\n", a.ToBytes())
+		fmt.Printf("%+v\n", DCNetCipherFromBytes(a.ToBytes()))
 	}
 
 	a = DCNetCipher{
 		equivocationProtectionTag: nil,
-		payload: nil,
+		payload:                   nil,
 	}
 	if !assertEqual(&a, DCNetCipherFromBytes(a.ToBytes())) {
 		t.Error("DCNetCipher could not be marshalled-unmarshalled")
-		fmt.Printf("%+v\n",a)
-		fmt.Printf("%+v\n",DCNetCipherFromBytes(a.ToBytes()))
+		fmt.Printf("%+v\n", a)
+		fmt.Printf("%+v\n", DCNetCipherFromBytes(a.ToBytes()))
 	}
 
 	a = DCNetCipher{
 		equivocationProtectionTag: nil,
-		payload: randomBytes(length),
+		payload:                   randomBytes(length),
 	}
 	if !assertEqual(&a, DCNetCipherFromBytes(a.ToBytes())) {
 		t.Error("DCNetCipher could not be marshalled-unmarshalled")
-		fmt.Printf("%+v\n",a)
-		fmt.Printf("%+v\n",DCNetCipherFromBytes(a.ToBytes()))
+		fmt.Printf("%+v\n", a)
+		fmt.Printf("%+v\n", DCNetCipherFromBytes(a.ToBytes()))
 	}
 
 	a = DCNetCipher{
 		equivocationProtectionTag: randomBytes(length),
-		payload: randomBytes(length),
+		payload:                   randomBytes(length),
 	}
 	if !assertEqual(&a, DCNetCipherFromBytes(a.ToBytes())) {
 		t.Error("DCNetCipher could not be marshalled-unmarshalled")
-		fmt.Printf("%+v\n",a)
-		fmt.Printf("%+v\n",DCNetCipherFromBytes(a.ToBytes()))
+		fmt.Printf("%+v\n", a)
+		fmt.Printf("%+v\n", DCNetCipherFromBytes(a.ToBytes()))
 	}
 }

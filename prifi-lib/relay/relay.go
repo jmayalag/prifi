@@ -41,7 +41,7 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"github.com/lbarman/prifi/prifi-lib/config"
-	"github.com/lbarman/prifi/prifi-lib/dcnet.old"
+	"github.com/lbarman/prifi/prifi-lib/dcnet"
 	prifilog "github.com/lbarman/prifi/prifi-lib/log"
 	"github.com/lbarman/prifi/prifi-lib/net"
 	"github.com/lbarman/prifi/prifi-lib/utils"
@@ -139,14 +139,8 @@ func (p *PriFiLibRelayInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARA
 	p.relayState.OpenClosedSlotsRequestsRoundID = make(map[int32]bool)
 
 	switch dcNetType {
-	case "Simple":
-		p.relayState.DCNet = dcnet_old.NewSimpleDCNet(equivocationProtectionEnabled)
 	case "Verifiable":
-		p.relayState.DCNet = dcnet_old.NewVerifiableDCNet(equivocationProtectionEnabled)
-	default:
-		e := "DCNetType must be Simple or Verifiable"
-		log.Error(e)
-		return errors.New(e)
+		panic("Verifiable DCNet not implemented yet")
 	}
 
 	//this should be in NewRelayState, but we need p
@@ -317,10 +311,10 @@ func (p *PriFiLibRelayInstance) upstreamPhase2a_extractOCMap(roundID int32) erro
 		return err
 	}
 	for _, s := range clientSlices {
-		p.relayState.DCNet.DecodeClient(s)
+		p.relayState.DCNet.DecodeClient(roundID, s)
 	}
 	for _, s := range trusteesSlices {
-		p.relayState.DCNet.DecodeTrustee(s)
+		p.relayState.DCNet.DecodeTrustee(roundID, s)
 	}
 
 	//here we have the plaintext map
@@ -356,6 +350,7 @@ func (p *PriFiLibRelayInstance) upstreamPhase2a_extractOCMap(roundID int32) erro
 func (p *PriFiLibRelayInstance) upstreamPhase2b_extractPayload() error {
 
 	// we decode the DC-net cell
+	roundID := p.relayState.roundManager.CurrentRound()
 	clientSlices, trusteesSlices, err := p.relayState.roundManager.CollectRoundData()
 	if err != nil {
 		return err
@@ -363,10 +358,10 @@ func (p *PriFiLibRelayInstance) upstreamPhase2b_extractPayload() error {
 
 	//decode all clients and trustees
 	for _, s := range clientSlices {
-		p.relayState.DCNet.DecodeClient(s)
+		p.relayState.DCNet.DecodeClient(roundID, s)
 	}
 	for _, s := range trusteesSlices {
-		p.relayState.DCNet.DecodeTrustee(s)
+		p.relayState.DCNet.DecodeTrustee(roundID, s)
 	}
 	upstreamPlaintext := p.relayState.DCNet.DecodeCell()
 
@@ -495,7 +490,7 @@ func (p *PriFiLibRelayInstance) upstreamPhase3_finalizeRound(roundID int32) erro
 	p.relayState.roundManager.CloseRound()
 
 	//prepare for the next round (this empties the dc-net buffer, making them ready for a new round)
-	p.relayState.DCNet.DecodeStart(p.relayState.UpstreamCellSize, p.relayState.MessageHistory)
+	p.relayState.DCNet.DecodeStart(p.relayState.roundManager.CurrentRound())
 
 	return nil
 }
@@ -756,10 +751,11 @@ func (p *PriFiLibRelayInstance) Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS(msg n
 			p.messageSender.SendToTrusteeWithLog(j, toSend, "(trustee "+strconv.Itoa(j+1)+")")
 		}
 
-		p.relayState.DCNet.RelaySetup(config.CryptoSuite, p.relayState.VerifiableDCNetKeys)
+		p.relayState.DCNet = dcnet.NewDCNetEntity(0, dcnet.DCNET_RELAY, p.relayState.UpstreamCellSize,
+			p.relayState.EquivocationProtectionEnabled, p.relayState.DisruptionProtectionEnabled, nil)
 
 		// prepare to collect the ciphers
-		p.relayState.DCNet.DecodeStart(p.relayState.UpstreamCellSize, p.relayState.MessageHistory)
+		p.relayState.DCNet.DecodeStart(p.relayState.roundManager.CurrentRound())
 
 		p.stateMachine.ChangeState("COLLECTING_SHUFFLE_SIGNATURES")
 

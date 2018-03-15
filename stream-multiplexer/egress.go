@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"encoding/binary"
 	"github.com/dedis/onet/log"
+	"io"
 	"net"
 	"time"
-	"io"
 )
 
 // EgressServer takes data from a go channel and recreates the multiplexed TCP streams

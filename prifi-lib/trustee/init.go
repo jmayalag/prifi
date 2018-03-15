@@ -3,6 +3,7 @@ package trustee
 import (
 	"errors"
 	"github.com/lbarman/prifi/prifi-lib/crypto"
+	"github.com/lbarman/prifi/prifi-lib/dcnet"
 	"github.com/lbarman/prifi/prifi-lib/net"
 	"github.com/lbarman/prifi/prifi-lib/scheduler"
 	"github.com/lbarman/prifi/prifi-lib/utils"
@@ -33,7 +34,6 @@ func NewTrustee(neverSlowDown bool, alwaysSlowDown bool, baseSleepTime int, msgS
 
 	//init the static stuff
 	trusteeState.sendingRate = make(chan int16, 10)
-	trusteeState.DCNet_RoundManager = new(DCNet_RoundManager)
 	trusteeState.PublicKey, trusteeState.privateKey = crypto.NewKeyPair()
 	neffShuffle := new(scheduler.NeffShuffle)
 	neffShuffle.Init()
@@ -72,7 +72,7 @@ func NewTrustee(neverSlowDown bool, alwaysSlowDown bool, baseSleepTime int, msgS
 
 // TrusteeState contains the mutable state of the trustee.
 type TrusteeState struct {
-	DCNet_RoundManager            *DCNet_RoundManager
+	DCNet                         *dcnet.DCNetEntity
 	ClientPublicKeys              []abstract.Point
 	ID                            int
 	MessageHistory                abstract.Cipher

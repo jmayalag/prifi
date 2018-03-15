@@ -1,20 +1,23 @@
 package dcnet
 
 import (
+	"github.com/lbarman/prifi/prifi-lib/config"
 	"gopkg.in/dedis/crypto.v0/abstract"
 	"gopkg.in/dedis/onet.v1/log"
-	"github.com/lbarman/prifi/prifi-lib/config"
 	"strconv"
-	"crypto/hmac"
-	"crypto/sha256"
 )
 
 // Relay, Trustee or Client
 type DCNET_ENTITY int
 
 const (
+	// Define this DCNET entity as a client
 	DCNET_CLIENT DCNET_ENTITY = iota
+
+	// Define this DCNET entity as a trustee
 	DCNET_TRUSTEE
+
+	// Define this DCNET entity as a relay
 	DCNET_RELAY
 )
 
@@ -31,25 +34,25 @@ type DCNetEntity struct {
 	DCNetMessageSize              int
 	DCNetContentSize              int
 
-	cryptoSuite	 abstract.Suite
+	cryptoSuite  abstract.Suite
 	sharedKeys   []abstract.Cipher // keys shared with other DC-net members
 	sharedPRNGs  []abstract.Cipher // PRNGs shared with other DC-net members (seeded with sharedKeys)
 	currentRound int32
 
 	//Used by the relay
-	DCNetRoundDecoder *DCNetRoundDecoder  //nil if unused
+	DCNetRoundDecoder *DCNetRoundDecoder //nil if unused
 
 	//Equivocation protection
-	equivocationProtection *EquivocationProtection //nil if unused
-	equivocationContribLength     int //0 if equivocation protection is disabled
+	equivocationProtection    *EquivocationProtection //nil if unused
+	equivocationContribLength int                     //0 if equivocation protection is disabled
 }
 
 // DCNetRoundDecoder is used by the relay to decode the dcnet ciphers
 type DCNetRoundDecoder struct {
 	currentRoundBeingDecoded int32
-	xorBuffer            []byte
-	equivTrusteeContribs [][]byte
-	equivClientContribs  [][]byte
+	xorBuffer                []byte
+	equivTrusteeContribs     [][]byte
+	equivClientContribs      [][]byte
 }
 
 // Used by clients, trustees
@@ -75,7 +78,7 @@ func NewDCNetEntity(
 	}
 
 	if disruptionProtection && DCNetMessageSize <= DISRUPTION_PROTECTION_CONTRIB_LENGTH {
-		panic("DCNetMessageSize too small ("+strconv.Itoa(DCNetMessageSize)+")")
+		panic("DCNetMessageSize too small (" + strconv.Itoa(DCNetMessageSize) + ")")
 	}
 
 	e.cryptoSuite = config.CryptoSuite
@@ -118,7 +121,7 @@ func NewDCNetEntity(
 }
 
 // Tells the owner of the slot how much he can embedded (=DCNetContentSize, -32 if disruption is enabled)
-func (e *DCNetEntity) GetPayloadSize() int{
+func (e *DCNetEntity) GetPayloadSize() int {
 	s := e.DCNetContentSize
 	if e.DisruptionProtectionEnabled {
 		s -= DISRUPTION_PROTECTION_CONTRIB_LENGTH
@@ -128,13 +131,19 @@ func (e *DCNetEntity) GetPayloadSize() int{
 
 // Encodes "payload" in the correct round. Will skip PRNG material if the round is in the future,
 // and crash if the round is in the past or the payload is too long
-func (e *DCNetEntity) EncodeForRound(roundID int32, slotOwner bool, payload []byte) []byte {
+func (e *DCNetEntity) TrusteeEncodeForRound(roundID int32) []byte {
+	return e.EncodeForRound(roundID, false, nil, nil)
+}
+
+// Encodes "payload" in the correct round. Will skip PRNG material if the round is in the future,
+// and crash if the round is in the past or the payload is too long
+func (e *DCNetEntity) EncodeForRound(roundID int32, slotOwner bool, payload []byte, disruptionProtectionTag []byte) []byte {
 	if len(payload) > e.DCNetContentSize {
-		panic("DCNet: cannot encode payload of length " + strconv.Itoa(int(len(payload))) + " max length is "+ strconv.Itoa(len(payload)))
+		panic("DCNet: cannot encode payload of length " + strconv.Itoa(int(len(payload))) + " max length is " + strconv.Itoa(len(payload)))
 	}
 
 	if roundID < e.currentRound {
-		panic("DCNet: asked to encode for round " + strconv.Itoa(int(roundID)) + " but we are at  round "+ strconv.Itoa(int(e.currentRound)))
+		panic("DCNet: asked to encode for round " + strconv.Itoa(int(roundID)) + " but we are at  round " + strconv.Itoa(int(e.currentRound)))
 	}
 
 	for e.currentRound < roundID {
@@ -152,7 +161,7 @@ func (e *DCNetEntity) EncodeForRound(roundID int32, slotOwner bool, payload []by
 
 	var c *DCNetCipher
 	if e.Entity == DCNET_CLIENT {
-		c = e.clientEncode(slotOwner, payload)
+		c = e.clientEncode(slotOwner, payload, disruptionProtectionTag)
 	} else {
 		c = e.trusteeEncode()
 	}
@@ -167,14 +176,7 @@ func (e *DCNetEntity) UpdateReceivedMessageHistory(newData []byte) {
 	}
 }
 
-func (e *DCNetEntity) computeHmac256(clientID int, message []byte) []byte {
-	key := []byte("secret-client-" + strconv.Itoa(clientID))
-	h := hmac.New(sha256.New, key)
-	h.Write(message)
-	return h.Sum(nil)
-}
-
-func (e *DCNetEntity) clientEncode(slotOwner bool, payload []byte) *DCNetCipher {
+func (e *DCNetEntity) clientEncode(slotOwner bool, payload []byte, disruptionProtectionTag []byte) *DCNetCipher {
 	c := new(DCNetCipher)
 
 	if payload == nil {
@@ -186,8 +188,11 @@ func (e *DCNetEntity) clientEncode(slotOwner bool, payload []byte) *DCNetCipher 
 		payload = payload2
 
 		// if the disruption protection is enabled, add a hmac
-		if slotOwner && e.DisruptionProtectionEnabled {
-			hmac := e.computeHmac256(e.EntityID, c.payload)
+		if slotOwner && e.DisruptionProtectionEnabled && disruptionProtectionTag != nil {
+			if len(disruptionProtectionTag) != DISRUPTION_PROTECTION_CONTRIB_LENGTH {
+				panic("Disruption protection tag (HMAC) must be 32 bytes")
+			}
+			hmac := disruptionProtectionTag
 			payload = append(hmac, payload...)
 		}
 	}
@@ -261,7 +266,7 @@ func (e *DCNetEntity) DecodeClient(roundID int32, slice []byte) {
 
 	if roundID != e.DCNetRoundDecoder.currentRoundBeingDecoded {
 		panic("Cannot DecodeClient for round" +
-			strconv.Itoa(int(roundID))+", we are in round "+strconv.Itoa(int(e.DCNetRoundDecoder.currentRoundBeingDecoded)))
+			strconv.Itoa(int(roundID)) + ", we are in round " + strconv.Itoa(int(e.DCNetRoundDecoder.currentRoundBeingDecoded)))
 	}
 
 	for i := range dcNetCipher.payload {
@@ -280,7 +285,7 @@ func (e *DCNetEntity) DecodeTrustee(roundID int32, slice []byte) {
 
 	if roundID != e.DCNetRoundDecoder.currentRoundBeingDecoded {
 		panic("Cannot DecodeClient for round" +
-			strconv.Itoa(int(roundID))+", we are in round "+strconv.Itoa(int(e.DCNetRoundDecoder.currentRoundBeingDecoded)))
+			strconv.Itoa(int(roundID)) + ", we are in round " + strconv.Itoa(int(e.DCNetRoundDecoder.currentRoundBeingDecoded)))
 	}
 
 	for i := range dcNetCipher.payload {
@@ -302,14 +307,5 @@ func (e *DCNetEntity) DecodeCell() []byte {
 		decoded = e.equivocationProtection.RelayDecode(d.xorBuffer, d.equivTrusteeContribs, d.equivClientContribs)
 	}
 
-	if e.DisruptionProtectionEnabled {
-		hmac := decoded[0:DISRUPTION_PROTECTION_CONTRIB_LENGTH]
-		payload := decoded[DISRUPTION_PROTECTION_CONTRIB_LENGTH:]
-
-		_ = hmac //TODO: do something with this
-
-		return payload
-	}
-
-	return d.xorBuffer
+	return decoded
 }

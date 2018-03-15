@@ -15,7 +15,6 @@ package client
  *
  * local functions :
  *
- *
  * ProcessDownStreamData() <- is called by Received_REL_CLI_DOWNSTREAM_DATA; it handles the raw data received
  * SendUpstreamData() <- it is called at the end of ProcessDownStreamData(). Hence, after getting some data down, we send some data up.
  *
@@ -35,7 +34,7 @@ import (
 
 	"crypto/hmac"
 	"crypto/sha256"
-	"github.com/lbarman/prifi/prifi-lib/dcnet.old"
+	"github.com/lbarman/prifi/prifi-lib/dcnet"
 	"github.com/lbarman/prifi/prifi-lib/scheduler"
 	"github.com/lbarman/prifi/prifi-lib/utils"
 	"github.com/lbarman/prifi/utils"
@@ -83,10 +82,8 @@ func (p *PriFiLibClientInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PAR
 	}
 
 	switch dcNetType {
-	case "Simple":
-		p.clientState.DCNet_RoundManager.DCNet = dcnet_old.NewSimpleDCNet(equivProtection)
 	case "Verifiable":
-		p.clientState.DCNet_RoundManager.DCNet = dcnet_old.NewVerifiableDCNet(equivProtection)
+		panic("verifiable not supported yet")
 	default:
 		log.Fatal("DCNetType must be Simple or Verifiable")
 	}
@@ -258,7 +255,8 @@ func (p *PriFiLibClientInstance) ProcessDownStreamData(msg net.REL_CLI_DOWNSTREA
 		contribution := bmc.Client_GetOpenScheduleContribution()
 
 		//produce the next upstream cell
-		upstreamCell := p.clientState.DCNet_RoundManager.ClientEncodeForRound(p.clientState.RoundNo, contribution, p.clientState.PayloadLength, p.clientState.MessageHistory)
+
+		upstreamCell := p.clientState.DCNet.EncodeForRound(p.clientState.RoundNo, false, contribution, nil)
 
 		//send the data to the relay
 		toSend := &net.CLI_REL_OPENCLOSED_DATA{
@@ -434,12 +432,12 @@ func (p *PriFiLibClientInstance) SendUpstreamData(ownerSlotID int) error {
 	}
 
 	//produce the next upstream cell
+	var hmac []byte
 	if p.clientState.DisruptionProtectionEnabled {
-		hmac := p.computeHmac256(upstreamCellContent)
-		upstreamCellContent = append(hmac, upstreamCellContent...) // TODO ... might be slow !
+		hmac = p.computeHmac256(upstreamCellContent)
 	}
 
-	upstreamCell := p.clientState.DCNet_RoundManager.ClientEncodeForRound(p.clientState.RoundNo, upstreamCellContent, p.clientState.PayloadLength, p.clientState.MessageHistory)
+	upstreamCell := p.clientState.DCNet.EncodeForRound(p.clientState.RoundNo, false, upstreamCellContent, hmac)
 
 	//send the data to the relay
 	toSend := &net.CLI_REL_UPSTREAM_DATA{
@@ -493,7 +491,10 @@ func (p *PriFiLibClientInstance) Received_REL_CLI_TELL_TRUSTEES_PK(trusteesPks [
 		}
 		sharedPRNGs[i] = config.CryptoSuite.Cipher(bytes)
 	}
-	p.clientState.DCNet_RoundManager.DCNet.ClientSetup(config.CryptoSuite, sharedPRNGs)
+
+	p.clientState.DCNet = dcnet.NewDCNetEntity(p.clientState.ID,
+		dcnet.DCNET_CLIENT, p.clientState.PayloadLength, p.clientState.EquivocationProtectionEnabled,
+		p.clientState.DisruptionProtectionEnabled, sharedPRNGs)
 
 	//then, generate our ephemeral keys (used for shuffling)
 	p.clientState.EphemeralPublicKey, p.clientState.ephemeralPrivateKey = crypto.NewKeyPair()
@@ -554,14 +555,13 @@ func (p *PriFiLibClientInstance) Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(
 	log.Lvl3("Client", p.clientState.ID, "ready to communicate.")
 
 	//produce a blank cell (we could embed data, but let's keep the code simple, one wasted message is not much)
-	data := make([]byte, p.clientState.PayloadLength)
+	data := make([]byte, p.clientState.DCNet.GetPayloadSize())
+	var hmac []byte
 	if p.clientState.DisruptionProtectionEnabled {
-		blank := make([]byte, p.clientState.PayloadLength-32)
-		hmac := p.computeHmac256(blank)
-		copy(data[0:32], hmac[0:32])
+		hmac = p.computeHmac256(data)
 	}
 
-	upstreamCell := p.clientState.DCNet_RoundManager.ClientEncodeForRound(0, data, p.clientState.PayloadLength, p.clientState.MessageHistory)
+	upstreamCell := p.clientState.DCNet.EncodeForRound(0, false, data, hmac)
 
 	//send the data to the relay
 	toSend := &net.CLI_REL_UPSTREAM_DATA{

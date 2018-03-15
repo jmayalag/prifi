@@ -1,11 +1,11 @@
 package dcnet
 
 import (
-	"testing"
+	"bytes"
+	"fmt"
 	"github.com/lbarman/prifi/prifi-lib/config"
 	"gopkg.in/dedis/crypto.v0/abstract"
-	"fmt"
-	"bytes"
+	"testing"
 )
 
 type TestGroup struct {
@@ -15,13 +15,13 @@ type TestGroup struct {
 }
 
 type TestNode struct {
-	name string
-	pubKey  abstract.Point
-	privKey abstract.Scalar
+	name          string
+	pubKey        abstract.Point
+	privKey       abstract.Scalar
 	peerKeys      []abstract.Point
 	sharedSecrets []abstract.Cipher
-	History abstract.Cipher
-	DCNetEntity *DCNetEntity
+	History       abstract.Cipher
+	DCNetEntity   *DCNetEntity
 }
 
 func TestDCNetCreation(t *testing.T) {
@@ -47,7 +47,7 @@ func VariousLevelsOfProtection(t *testing.T, nRounds int32, dcNetMessageSize, NC
 	SimulateRounds(t, tg, nRounds)
 }
 
-func NewTestGroup(t *testing.T, disruptionProtectionEnabled, equivocationProtectionEnabled bool, dcNetMessageSize, nclients, ntrustees int) *TestGroup  {
+func NewTestGroup(t *testing.T, disruptionProtectionEnabled, equivocationProtectionEnabled bool, dcNetMessageSize, nclients, ntrustees int) *TestGroup {
 
 	// Use a pseudorandom stream from a well-known seed
 	// for all our setup randomness,
@@ -68,7 +68,6 @@ func NewTestGroup(t *testing.T, disruptionProtectionEnabled, equivocationProtect
 	relay := new(TestNode)
 	relay.name = "Relay"
 	relay.DCNetEntity = NewDCNetEntity(0, DCNET_RELAY, dcNetMessageSize, equivocationProtectionEnabled, disruptionProtectionEnabled, nil)
-
 
 	// Create tables of the clients' and the trustees' public session keys
 	clientsKeys := make([]abstract.Point, nclients)
@@ -124,11 +123,17 @@ func NewTestGroup(t *testing.T, disruptionProtectionEnabled, equivocationProtect
 }
 
 func SimulateRounds(t *testing.T, tg *TestGroup, maxRounds int32) {
+
+	fakeHmac := make([]byte, 32)
+	for k := range fakeHmac {
+		fakeHmac[k] = byte(k) //make it recognizable
+	}
+
 	d := tg.Relay.DCNetEntity
 	fmt.Println("Testing for ", len(tg.Clients), "/", len(tg.Trustees),
-		"DC-net with protections: disruption=",d.DisruptionProtectionEnabled,"equiv=", d.EquivocationProtectionEnabled)
+		"DC-net with protections: disruption=", d.DisruptionProtectionEnabled, "equiv=", d.EquivocationProtectionEnabled)
 
-	for roundID := int32(0); roundID <= maxRounds; roundID+=2 {
+	for roundID := int32(0); roundID <= maxRounds; roundID += 2 {
 		clientMessages := make([][]byte, 0)
 		trusteesMessages := make([][]byte, 0)
 		first := true
@@ -145,17 +150,17 @@ func SimulateRounds(t *testing.T, tg *TestGroup, maxRounds int32) {
 			var m []byte
 			if first {
 				//fmt.Println("Embedding message:", message)
-				m = tg.Clients[i].DCNetEntity.EncodeForRound(roundID, true, message)
+				m = tg.Clients[i].DCNetEntity.EncodeForRound(roundID, true, message, fakeHmac)
 				first = false
 			} else {
-				m = tg.Clients[i].DCNetEntity.EncodeForRound(roundID, false, nil)
+				m = tg.Clients[i].DCNetEntity.EncodeForRound(roundID, false, nil, nil)
 			}
 			clientMessages = append(clientMessages, m)
 		}
 
 		// Generate the trustees dc-net cryptographic material
 		for i := range tg.Trustees {
-			m := tg.Trustees[i].DCNetEntity.EncodeForRound(roundID, false, nil)
+			m := tg.Trustees[i].DCNetEntity.TrusteeEncodeForRound(roundID)
 			trusteesMessages = append(trusteesMessages, m)
 		}
 
@@ -169,6 +174,10 @@ func SimulateRounds(t *testing.T, tg *TestGroup, maxRounds int32) {
 		}
 
 		output := tg.Relay.DCNetEntity.DecodeCell()
+
+		if tg.Relay.DCNetEntity.DisruptionProtectionEnabled {
+			output = output[DISRUPTION_PROTECTION_CONTRIB_LENGTH:]
+		}
 
 		//fmt.Println("-----------------")
 		//fmt.Println(output)

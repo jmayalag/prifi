@@ -16,7 +16,7 @@ Then, this file simple handle the answer to the different message kind :
 import (
 	"errors"
 	"github.com/lbarman/prifi/prifi-lib/config"
-	"github.com/lbarman/prifi/prifi-lib/dcnet.old"
+	"github.com/lbarman/prifi/prifi-lib/dcnet"
 	"github.com/lbarman/prifi/prifi-lib/net"
 	"gopkg.in/dedis/crypto.v0/abstract"
 	"gopkg.in/dedis/onet.v1/log"
@@ -71,10 +71,8 @@ func (p *PriFiLibTrusteeInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PA
 	}
 
 	switch dcNetType {
-	case "Simple":
-		p.trusteeState.DCNet_RoundManager.DCNet = dcnet_old.NewSimpleDCNet(equivProtection)
 	case "Verifiable":
-		p.trusteeState.DCNet_RoundManager.DCNet = dcnet_old.NewVerifiableDCNet(equivProtection)
+		panic("not supported yet")
 	default:
 		log.Fatal("DCNetType must be Simple or Verifiable")
 	}
@@ -197,7 +195,7 @@ sendData is an auxiliary function used by Send_TRU_REL_DC_CIPHER. It computes th
 It returns the new round number (previous + 1).
 */
 func sendData(p *PriFiLibTrusteeInstance, roundID int32) (int32, error) {
-	data := p.trusteeState.DCNet_RoundManager.TrusteeEncode(p.trusteeState.PayloadLength)
+	data := p.trusteeState.DCNet.TrusteeEncodeForRound(roundID)
 
 	//send the data
 	toSend := &net.TRU_REL_DC_CIPHER{
@@ -258,12 +256,12 @@ func (p *PriFiLibTrusteeInstance) Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_
 		sharedPRNGs[i] = config.CryptoSuite.Cipher(bytes)
 	}
 
-	p.trusteeState.DCNet_RoundManager.TrusteeSetup(p.trusteeState.sharedSecrets)
-	vkey := p.trusteeState.DCNet_RoundManager.DCNet.TrusteeSetup(config.CryptoSuite, sharedPRNGs)
-	//In case we use the simple dcnet.old, vkey isn't needed
-	if vkey == nil {
-		vkey = make([]byte, 1)
-	}
+	p.trusteeState.DCNet = dcnet.NewDCNetEntity(p.trusteeState.ID, dcnet.DCNET_TRUSTEE,
+		p.trusteeState.PayloadLength, p.trusteeState.EquivocationProtectionEnabled,
+		false, sharedPRNGs)
+
+	//In case we use the simple dcnet, vkey isn't needed
+	vkey := make([]byte, 1)
 
 	toSend, err := p.trusteeState.neffShuffle.ReceivedShuffleFromRelay(msg.Base, msg.EphPks, true, vkey)
 	if err != nil {
@@ -310,15 +308,17 @@ func (p *PriFiLibTrusteeInstance) Received_REL_TRU_TELL_TRANSCRIPT(msg net.REL_T
 Received_REL_ALL_REVEAL handles REL_ALL_REVEAL messages.
 We send back one bit per client, from the shared cipher, at bitPos
 */
+/*
 func (p *PriFiLibTrusteeInstance) Received_REL_ALL_REVEAL(msg net.REL_ALL_DISRUPTION_REVEAL) error {
 	p.stateMachine.ChangeState("BLAMING")
-	bits := p.trusteeState.DCNet_RoundManager.RevealBits(msg.RoundID, msg.BitPos, p.trusteeState.PayloadLength)
+	bits := p.trusteeState.DCNet.RevealBits(msg.RoundID, msg.BitPos, p.trusteeState.PayloadLength)
 	toSend := &net.TRU_REL_DISRUPTION_REVEAL{
 		TrusteeID: p.trusteeState.ID,
 		Bits:      bits}
 	p.messageSender.SendToRelayWithLog(toSend, "Revealed bits")
 	return nil
 }
+*/
 
 /*
 Received_REL_ALL_SECRET handles REL_ALL_SECRET messages.

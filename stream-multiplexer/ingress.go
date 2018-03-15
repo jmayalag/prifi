@@ -9,9 +9,9 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"gopkg.in/dedis/onet.v1/log"
+	"io"
 	"sync"
 	"time"
-	"io"
 )
 
 // MULTIPLEXER_HEADER_SIZE is the size of the header for the multiplexed data,
@@ -175,7 +175,7 @@ func (ig *IngressServer) ingressConnectionReader(mc *MultiplexedConnection) {
 
 			if err == io.EOF {
 				// Connection closed indicator
-				return 
+				return
 			}
 
 			log.Error("Ingress server: connectionReader error,", err)
