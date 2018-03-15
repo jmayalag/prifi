@@ -7,6 +7,7 @@ import (
 	"github.com/lbarman/prifi/prifi-lib/client"
 	"github.com/lbarman/prifi/prifi-lib/config"
 	"github.com/lbarman/prifi/prifi-lib/crypto"
+	"github.com/lbarman/prifi/prifi-lib/dcnet"
 	"github.com/lbarman/prifi/prifi-lib/net"
 	"gopkg.in/dedis/crypto.v0/random"
 	"gopkg.in/dedis/onet.v1/log"
@@ -14,7 +15,6 @@ import (
 	"sync"
 	"testing"
 	"time"
-	"github.com/lbarman/prifi/prifi-lib/dcnet"
 )
 
 /**
@@ -413,7 +413,7 @@ func TestRelayRun1(t *testing.T) {
 	msg17 := net.CLI_REL_UPSTREAM_DATA{
 		ClientID: 0,
 		RoundID:  0,
-		Data:      emptyData.ToBytes(),
+		Data:     emptyData.ToBytes(),
 	}
 	if err := relay.ReceivedMessage(msg17); err != nil {
 		t.Error("Relay should be able to receive this message, but", err)

@@ -239,7 +239,7 @@ func TestClient(t *testing.T) {
 	if msg6.RoundID != int32(0) {
 		t.Error("Client sent a wrong RoundID")
 	}
-	if len(msg6.Data) != upCellSize + 8 {
+	if len(msg6.Data) != upCellSize+8 {
 		t.Error("Client sent a payload with a wrong size")
 	}
 	if cs.RoundNo != int32(1) {
@@ -278,7 +278,7 @@ func TestClient(t *testing.T) {
 	if msg8.RoundID != int32(1) {
 		t.Error("Client sent a wrong RoundID")
 	}
-	if len(msg8.Data) != upCellSize + 8 {
+	if len(msg8.Data) != upCellSize+8 {
 		t.Error("Client sent a payload with a wrong size")
 	}
 	if cs.RoundNo != int32(2) {
@@ -356,7 +356,7 @@ func TestClient(t *testing.T) {
 	if msg10.RoundID != int32(4) {
 		t.Error("Client sent a wrong RoundID")
 	}
-	if len(msg10.Data) != upCellSize + 8 {
+	if len(msg10.Data) != upCellSize+8 {
 		t.Error("Client sent a payload with a wrong size")
 	}
 	if cs.RoundNo != int32(5) { //we did round 3 already
@@ -399,7 +399,7 @@ func TestClient(t *testing.T) {
 	if latencyMsg.RoundID != int32(5) {
 		t.Error("Client sent a wrong RoundID")
 	}
-	if len(latencyMsg.Data) != upCellSize + 8 {
+	if len(latencyMsg.Data) != upCellSize+8 {
 		t.Error("Client sent a payload with a wrong size")
 	}
 
@@ -531,7 +531,7 @@ func TestClient2(t *testing.T) {
 	if msg6.RoundID != int32(0) {
 		t.Error("Client sent a wrong RoundID")
 	}
-	if len(msg6.Data) != upCellSize + 8 {
+	if len(msg6.Data) != upCellSize+8 {
 		t.Error("Client sent a payload with a wrong size")
 	}
 	if cs.RoundNo != int32(1) {
@@ -671,7 +671,7 @@ func TestDisruptionClient(t *testing.T) {
 	if msg6.RoundID != int32(0) {
 		t.Error("Client sent a wrong RoundID")
 	}
-	if len(msg6.Data) != upCellSize + 8 {
+	if len(msg6.Data) != upCellSize+8 {
 		t.Error("Client sent a payload with a wrong size")
 	}
 	if cs.RoundNo != int32(1) {

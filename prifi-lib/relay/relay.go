@@ -490,7 +490,6 @@ func (p *PriFiLibRelayInstance) upstreamPhase3_finalizeRound(roundID int32) erro
 
 	p.relayState.roundManager.CloseRound()
 
-
 	return nil
 }
 

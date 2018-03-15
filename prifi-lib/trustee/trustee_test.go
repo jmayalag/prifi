@@ -254,7 +254,7 @@ func TestTrustee(t *testing.T) {
 		if msg8_parsed.RoundID != 0 {
 			t.Error("TRU_REL_DC_CIPHER has the wrong round ID")
 		}
-		if len(msg8_parsed.Data) != upCellSize + 8 {
+		if len(msg8_parsed.Data) != upCellSize+8 {
 			t.Error("TRU_REL_DC_CIPHER sent a payload with wrong size")
 		}
 
@@ -302,7 +302,7 @@ func TestTrustee(t *testing.T) {
 		if msg8_parsed.TrusteeID != trusteeID {
 			t.Error("TRU_REL_DC_CIPHER has the wrong trustee ID")
 		}
-		if len(msg8_parsed.Data) != upCellSize + 8 {
+		if len(msg8_parsed.Data) != upCellSize+8 {
 			t.Error("TRU_REL_DC_CIPHER sent a payload with wrong size")
 		}
 
