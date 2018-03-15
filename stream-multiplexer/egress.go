@@ -5,9 +5,8 @@ import (
 	"github.com/dedis/onet/log"
 	"net"
 	"time"
-	"fmt"
-	"encoding/hex"
 	"bytes"
+	"io"
 )
 
 // EgressServer takes data from a go channel and recreates the multiplexed TCP streams
@@ -75,8 +74,6 @@ func StartEgressHandler(serverAddress string, maxMessageLength int, upstreamChan
 
 		mc, _ := eg.activeConnections[ID]
 
-		fmt.Println(hex.Dump(data))
-
 		// Try to write to it; if it fails, clean it
 		mc.conn.SetWriteDeadline(time.Now().Add(time.Second))
 		n, err := mc.conn.Write(data)
@@ -109,6 +106,13 @@ func (eg *EgressServer) egressConnectionReader(mc *MultiplexedConnection) {
 				// it was a timeout
 				continue
 			}
+
+			//if err == io.EOF { // Connection closed indicator
+			//	// it was an EOF
+			//	// remove the last line "n == 0"
+			//	return
+			//}
+
 			log.Error("Egress server: connectionReader error,", err)
 			return
 		}
