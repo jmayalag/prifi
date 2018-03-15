@@ -132,9 +132,6 @@ func TestTrustee(t *testing.T) {
 	if ts.ID != trusteeID {
 		t.Error("ID should be 3")
 	}
-	if ts.DCNet_RoundManager == nil {
-		t.Error("DCNet_RoundManager should have been created")
-	}
 	if len(ts.ClientPublicKeys) != nClients {
 		t.Error("Len(TrusteePKs) should be equal to NTrustees")
 	}
@@ -257,7 +254,7 @@ func TestTrustee(t *testing.T) {
 		if msg8_parsed.RoundID != 0 {
 			t.Error("TRU_REL_DC_CIPHER has the wrong round ID")
 		}
-		if len(msg8_parsed.Data) != upCellSize {
+		if len(msg8_parsed.Data) != upCellSize + 8 {
 			t.Error("TRU_REL_DC_CIPHER sent a payload with wrong size")
 		}
 
@@ -305,7 +302,7 @@ func TestTrustee(t *testing.T) {
 		if msg8_parsed.TrusteeID != trusteeID {
 			t.Error("TRU_REL_DC_CIPHER has the wrong trustee ID")
 		}
-		if len(msg8_parsed.Data) != upCellSize {
+		if len(msg8_parsed.Data) != upCellSize + 8 {
 			t.Error("TRU_REL_DC_CIPHER sent a payload with wrong size")
 		}
 

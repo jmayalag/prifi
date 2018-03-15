@@ -73,8 +73,6 @@ func (p *PriFiLibTrusteeInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PA
 	switch dcNetType {
 	case "Verifiable":
 		panic("not supported yet")
-	default:
-		log.Fatal("DCNetType must be Simple or Verifiable")
 	}
 
 	p.trusteeState.ID = trusteeID
