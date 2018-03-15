@@ -84,8 +84,6 @@ func (p *PriFiLibClientInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PAR
 	switch dcNetType {
 	case "Verifiable":
 		panic("verifiable not supported yet")
-	default:
-		log.Fatal("DCNetType must be Simple or Verifiable")
 	}
 
 	//set the received parameters
@@ -356,7 +354,11 @@ func (p *PriFiLibClientInstance) SendUpstreamData(ownerSlotID int) error {
 	}
 
 	//if we can send data
+	slotOwner := false
 	if ownerSlotID == p.clientState.MySlot {
+		slotOwner = true
+	}
+	if slotOwner {
 
 		//this data has already been polled out of the DataForDCNet chan, so send it first
 		//this is non-nil when OpenClosedSlot is true, and that it had to poll data out
@@ -437,7 +439,7 @@ func (p *PriFiLibClientInstance) SendUpstreamData(ownerSlotID int) error {
 		hmac = p.computeHmac256(upstreamCellContent)
 	}
 
-	upstreamCell := p.clientState.DCNet.EncodeForRound(p.clientState.RoundNo, false, upstreamCellContent, hmac)
+	upstreamCell := p.clientState.DCNet.EncodeForRound(p.clientState.RoundNo, slotOwner, upstreamCellContent, hmac)
 
 	//send the data to the relay
 	toSend := &net.CLI_REL_UPSTREAM_DATA{
@@ -557,11 +559,15 @@ func (p *PriFiLibClientInstance) Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(
 	//produce a blank cell (we could embed data, but let's keep the code simple, one wasted message is not much)
 	data := make([]byte, p.clientState.DCNet.GetPayloadSize())
 	var hmac []byte
+	slotOwner := false
 	if p.clientState.DisruptionProtectionEnabled {
 		hmac = p.computeHmac256(data)
 	}
+	if p.clientState.ID == 0 {
+		slotOwner = true // we need one guy that takes the responsability for this first slot
+	}
 
-	upstreamCell := p.clientState.DCNet.EncodeForRound(0, false, data, hmac)
+	upstreamCell := p.clientState.DCNet.EncodeForRound(0, slotOwner, data, hmac)
 
 	//send the data to the relay
 	toSend := &net.CLI_REL_UPSTREAM_DATA{

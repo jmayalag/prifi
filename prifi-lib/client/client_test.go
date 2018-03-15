@@ -6,7 +6,7 @@ import (
 	"errors"
 	"github.com/lbarman/prifi/prifi-lib/config"
 	"github.com/lbarman/prifi/prifi-lib/crypto"
-	"github.com/lbarman/prifi/prifi-lib/dcnet.old"
+	"github.com/lbarman/prifi/prifi-lib/dcnet"
 	prifilog "github.com/lbarman/prifi/prifi-lib/log"
 	"github.com/lbarman/prifi/prifi-lib/net"
 	"github.com/lbarman/prifi/prifi-lib/relay"
@@ -136,7 +136,7 @@ func TestClient(t *testing.T) {
 	if cs.UseUDP != true {
 		t.Error("UseUDP should now have been set to true")
 	}
-	if cs.DCNet_RoundManager == nil {
+	if cs.DCNet == nil {
 		t.Error("DCNet_RoundManager should have been created")
 	}
 	if len(cs.TrusteePublicKey) != nTrustees {
@@ -231,6 +231,7 @@ func TestClient(t *testing.T) {
 		t.Error("Client should have sent a CLI_REL_UPSTREAM_DATA to the relay")
 	}
 	msg6 := sentToRelay[0].(*net.CLI_REL_UPSTREAM_DATA)
+
 	sentToRelay = make([]interface{}, 0)
 	if msg6.ClientID != clientID {
 		t.Error("Client sent a wrong ID")
@@ -238,7 +239,7 @@ func TestClient(t *testing.T) {
 	if msg6.RoundID != int32(0) {
 		t.Error("Client sent a wrong RoundID")
 	}
-	if len(msg6.Data) != upCellSize {
+	if len(msg6.Data) != upCellSize + 8 {
 		t.Error("Client sent a payload with a wrong size")
 	}
 	if cs.RoundNo != int32(1) {
@@ -277,7 +278,7 @@ func TestClient(t *testing.T) {
 	if msg8.RoundID != int32(1) {
 		t.Error("Client sent a wrong RoundID")
 	}
-	if len(msg8.Data) != upCellSize {
+	if len(msg8.Data) != upCellSize + 8 {
 		t.Error("Client sent a payload with a wrong size")
 	}
 	if cs.RoundNo != int32(2) {
@@ -355,7 +356,7 @@ func TestClient(t *testing.T) {
 	if msg10.RoundID != int32(4) {
 		t.Error("Client sent a wrong RoundID")
 	}
-	if len(msg10.Data) != upCellSize {
+	if len(msg10.Data) != upCellSize + 8 {
 		t.Error("Client sent a payload with a wrong size")
 	}
 	if cs.RoundNo != int32(5) { //we did round 3 already
@@ -398,7 +399,7 @@ func TestClient(t *testing.T) {
 	if latencyMsg.RoundID != int32(5) {
 		t.Error("Client sent a wrong RoundID")
 	}
-	if len(latencyMsg.Data) != upCellSize {
+	if len(latencyMsg.Data) != upCellSize + 8 {
 		t.Error("Client sent a payload with a wrong size")
 	}
 
@@ -530,7 +531,7 @@ func TestClient2(t *testing.T) {
 	if msg6.RoundID != int32(0) {
 		t.Error("Client sent a wrong RoundID")
 	}
-	if len(msg6.Data) != upCellSize {
+	if len(msg6.Data) != upCellSize + 8 {
 		t.Error("Client sent a payload with a wrong size")
 	}
 	if cs.RoundNo != int32(1) {
@@ -583,7 +584,7 @@ func TestDisruptionClient(t *testing.T) {
 	//we start by receiving a ALL_ALL_PARAMETERS from relay
 	msg := new(net.ALL_ALL_PARAMETERS)
 	msg.ForceParams = true
-	clientID := 3
+	clientID := 0
 	nTrustees := 2
 	upCellSize := 1500
 	dcNetType := "Simple"
@@ -670,7 +671,7 @@ func TestDisruptionClient(t *testing.T) {
 	if msg6.RoundID != int32(0) {
 		t.Error("Client sent a wrong RoundID")
 	}
-	if len(msg6.Data) != upCellSize {
+	if len(msg6.Data) != upCellSize + 8 {
 		t.Error("Client sent a payload with a wrong size")
 	}
 	if cs.RoundNo != int32(1) {
@@ -691,17 +692,18 @@ func TestDisruptionClient(t *testing.T) {
 		t.Error("Could not marshal point !")
 	}
 	sharedPRNGs_t2[0] = config.CryptoSuite.Cipher(bytes)
-	cellCoder1 := dcnet_old.NewSimpleDCNet(false)
-	cellCoder1.TrusteeSetup(config.CryptoSuite, sharedPRNGs_t1)
-	cellCoder2 := dcnet_old.NewSimpleDCNet(false)
-	cellCoder2.TrusteeSetup(config.CryptoSuite, sharedPRNGs_t2)
 
-	pad1 := cellCoder1.TrusteeEncode(upCellSize)
-	pad2 := cellCoder2.TrusteeEncode(upCellSize)
+	t1 := dcnet.NewDCNetEntity(1, dcnet.DCNET_TRUSTEE, upCellSize, false, true, sharedPRNGs_t1)
+	t2 := dcnet.NewDCNetEntity(2, dcnet.DCNET_TRUSTEE, upCellSize, false, true, sharedPRNGs_t2)
+
+	pad1 := dcnet.DCNetCipherFromBytes(t1.TrusteeEncodeForRound(0))
+	pad2 := dcnet.DCNetCipherFromBytes(t2.TrusteeEncodeForRound(0))
+	clientPad := dcnet.DCNetCipherFromBytes(msg6.Data)
+
 	dcNetDecoded := make([]byte, upCellSize)
 	i = 0
 	for i < len(dcNetDecoded) {
-		dcNetDecoded[i] = pad1[i] ^ pad2[i] ^ msg6.Data[i]
+		dcNetDecoded[i] = pad1.Payload[i] ^ pad2.Payload[i] ^ clientPad.Payload[i]
 		i++
 	}
 
@@ -729,12 +731,14 @@ func TestDisruptionClient(t *testing.T) {
 	sentToRelay = make([]interface{}, 0)
 
 	//dcnet.old decode
-	pad1 = cellCoder1.TrusteeEncode(upCellSize)
-	pad2 = cellCoder2.TrusteeEncode(upCellSize)
+	pad1 = dcnet.DCNetCipherFromBytes(t1.TrusteeEncodeForRound(1))
+	pad2 = dcnet.DCNetCipherFromBytes(t2.TrusteeEncodeForRound(1))
+	clientPad = dcnet.DCNetCipherFromBytes(msg8.Data)
+
 	dcNetDecoded = make([]byte, upCellSize)
 	i = 0
 	for i < len(dcNetDecoded) {
-		dcNetDecoded[i] = pad1[i] ^ pad2[i] ^ msg8.Data[i]
+		dcNetDecoded[i] = pad1.Payload[i] ^ pad2.Payload[i] ^ clientPad.Payload[i]
 		i++
 	}
 
@@ -767,13 +771,13 @@ func TestDisruptionClient(t *testing.T) {
 		msg10.Data[upCellSize-1] = 0
 	}
 
-	//dcnet.old decode
-	pad1 = cellCoder1.TrusteeEncode(upCellSize)
-	pad2 = cellCoder2.TrusteeEncode(upCellSize)
-	dcNetDecoded = make([]byte, upCellSize)
+	//dcnet decode
+	pad1 = dcnet.DCNetCipherFromBytes(t1.TrusteeEncodeForRound(3))
+	pad2 = dcnet.DCNetCipherFromBytes(t2.TrusteeEncodeForRound(3))
+	clientPad = dcnet.DCNetCipherFromBytes(msg10.Data)
 	i = 0
 	for i < len(dcNetDecoded) {
-		dcNetDecoded[i] = pad1[i] ^ pad2[i] ^ msg10.Data[i]
+		dcNetDecoded[i] = pad1.Payload[i] ^ pad2.Payload[i] ^ clientPad.Payload[i]
 		i++
 	}
 
