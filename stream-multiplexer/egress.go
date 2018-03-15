@@ -3,11 +3,10 @@ package stream_multiplexer
 import (
 	"bytes"
 	"encoding/binary"
-	"encoding/hex"
-	"fmt"
 	"github.com/dedis/onet/log"
 	"net"
 	"time"
+	"io"
 )
 
 // EgressServer takes data from a go channel and recreates the multiplexed TCP streams
@@ -75,8 +74,6 @@ func StartEgressHandler(serverAddress string, maxMessageLength int, upstreamChan
 
 		mc, _ := eg.activeConnections[ID]
 
-		fmt.Println(hex.Dump(data))
-
 		// Try to write to it; if it fails, clean it
 		mc.conn.SetWriteDeadline(time.Now().Add(time.Second))
 		n, err := mc.conn.Write(data)
@@ -109,6 +106,12 @@ func (eg *EgressServer) egressConnectionReader(mc *MultiplexedConnection) {
 				// it was a timeout
 				continue
 			}
+
+			if err == io.EOF {
+				// Connection closed indicator
+				return
+			}
+
 			log.Error("Egress server: connectionReader error,", err)
 			return
 		}
@@ -119,10 +122,5 @@ func (eg *EgressServer) egressConnectionReader(mc *MultiplexedConnection) {
 		binary.BigEndian.PutUint32(slice[4:8], uint32(n))
 		copy(slice[MULTIPLEXER_HEADER_SIZE:], buffer[:n])
 		eg.downstreamChan <- slice
-
-		// Connection Closed Indicator
-		if n == 0 {
-			return
-		}
 	}
 }

@@ -8,11 +8,10 @@ import (
 	"bytes"
 	"crypto/rand"
 	"encoding/binary"
-	"encoding/hex"
-	"fmt"
 	"gopkg.in/dedis/onet.v1/log"
 	"sync"
 	"time"
+	"io"
 )
 
 // MULTIPLEXER_HEADER_SIZE is the size of the header for the multiplexed data,
@@ -173,6 +172,12 @@ func (ig *IngressServer) ingressConnectionReader(mc *MultiplexedConnection) {
 				// it was a timeout
 				continue
 			}
+
+			if err == io.EOF {
+				// Connection closed indicator
+				return 
+			}
+
 			log.Error("Ingress server: connectionReader error,", err)
 			return
 		}
@@ -183,14 +188,7 @@ func (ig *IngressServer) ingressConnectionReader(mc *MultiplexedConnection) {
 		binary.BigEndian.PutUint32(slice[4:8], uint32(n))
 		copy(slice[MULTIPLEXER_HEADER_SIZE:], buffer[:n])
 
-		fmt.Println(hex.Dump(buffer))
-
 		ig.upstreamChan <- slice
-
-		// Connection Closed Indicator
-		if n == 0 {
-			return
-		}
 	}
 }
 
