@@ -358,6 +358,7 @@ func (p *PriFiLibRelayInstance) upstreamPhase2b_extractPayload() error {
 
 	//decode all clients and trustees
 	for _, s := range clientSlices {
+		log.Lvl1("Decoding", roundID, len(s))
 		p.relayState.DCNet.DecodeClient(roundID, s)
 	}
 	for _, s := range trusteesSlices {
@@ -489,8 +490,6 @@ func (p *PriFiLibRelayInstance) upstreamPhase3_finalizeRound(roundID int32) erro
 
 	p.relayState.roundManager.CloseRound()
 
-	//prepare for the next round (this empties the dc-net buffer, making them ready for a new round)
-	p.relayState.DCNet.DecodeStart(p.relayState.roundManager.CurrentRound())
 
 	return nil
 }
@@ -563,6 +562,11 @@ func (p *PriFiLibRelayInstance) downstreamPhase1_openRoundAndSendData() error {
 		Data:                  downstreamCellContent,
 		FlagResync:            flagResync,
 		FlagOpenClosedRequest: flagOpenClosedRequest}
+
+	if roundOpened, _ := p.relayState.roundManager.currentRound(); !roundOpened {
+		//prepare for the next round (this empties the dc-net buffer, making them ready for a new round)
+		p.relayState.DCNet.DecodeStart(nextDownstreamRoundID)
+	}
 
 	p.relayState.roundManager.OpenNextRound()
 	p.relayState.roundManager.SetDataAlreadySent(nextDownstreamRoundID, toSend)
@@ -755,7 +759,7 @@ func (p *PriFiLibRelayInstance) Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS(msg n
 			p.relayState.EquivocationProtectionEnabled, p.relayState.DisruptionProtectionEnabled, nil)
 
 		// prepare to collect the ciphers
-		p.relayState.DCNet.DecodeStart(p.relayState.roundManager.CurrentRound())
+		p.relayState.DCNet.DecodeStart(0)
 
 		p.stateMachine.ChangeState("COLLECTING_SHUFFLE_SIGNATURES")
 

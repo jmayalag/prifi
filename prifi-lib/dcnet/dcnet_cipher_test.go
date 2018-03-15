@@ -14,10 +14,10 @@ func randomBytes(length int) []byte {
 }
 
 func assertEqual(a, b *DCNetCipher) bool {
-	if !bytes.Equal(a.equivocationProtectionTag, b.equivocationProtectionTag) {
+	if !bytes.Equal(a.EquivocationProtectionTag, b.EquivocationProtectionTag) {
 		return false
 	}
-	if !bytes.Equal(a.payload, b.payload) {
+	if !bytes.Equal(a.Payload, b.Payload) {
 		return false
 	}
 	return true
@@ -34,8 +34,8 @@ func TestDCNetSerialization(t *testing.T) {
 func ChangeLength(length int, t *testing.T) {
 
 	a := DCNetCipher{
-		equivocationProtectionTag: randomBytes(length),
-		payload:                   nil,
+		EquivocationProtectionTag: randomBytes(length),
+		Payload:                   nil,
 	}
 	if !assertEqual(&a, DCNetCipherFromBytes(a.ToBytes())) {
 		t.Error("DCNetCipher could not be marshalled-unmarshalled")
@@ -45,8 +45,8 @@ func ChangeLength(length int, t *testing.T) {
 	}
 
 	a = DCNetCipher{
-		equivocationProtectionTag: nil,
-		payload:                   nil,
+		EquivocationProtectionTag: nil,
+		Payload:                   nil,
 	}
 	if !assertEqual(&a, DCNetCipherFromBytes(a.ToBytes())) {
 		t.Error("DCNetCipher could not be marshalled-unmarshalled")
@@ -55,8 +55,8 @@ func ChangeLength(length int, t *testing.T) {
 	}
 
 	a = DCNetCipher{
-		equivocationProtectionTag: nil,
-		payload:                   randomBytes(length),
+		EquivocationProtectionTag: nil,
+		Payload:                   randomBytes(length),
 	}
 	if !assertEqual(&a, DCNetCipherFromBytes(a.ToBytes())) {
 		t.Error("DCNetCipher could not be marshalled-unmarshalled")
@@ -65,8 +65,8 @@ func ChangeLength(length int, t *testing.T) {
 	}
 
 	a = DCNetCipher{
-		equivocationProtectionTag: randomBytes(length),
-		payload:                   randomBytes(length),
+		EquivocationProtectionTag: randomBytes(length),
+		Payload:                   randomBytes(length),
 	}
 	if !assertEqual(&a, DCNetCipherFromBytes(a.ToBytes())) {
 		t.Error("DCNetCipher could not be marshalled-unmarshalled")

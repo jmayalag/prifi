@@ -109,12 +109,12 @@ func NewDCNetEntity(
 		e.equivocationContribLength = len(minusOne.Bytes())
 	}
 
-	// compute the payload size
+	// compute the Payload size
 	e.DCNetContentSize = e.DCNetMessageSize - e.equivocationContribLength
 
 	// make sure we can still encode stuff !
 	if e.DCNetContentSize <= 0 {
-		panic("DCNet: with those options, the payload length is" + strconv.Itoa(e.DCNetContentSize))
+		panic("DCNet: with those options, the Payload length is" + strconv.Itoa(e.DCNetContentSize))
 	}
 
 	return e
@@ -129,17 +129,17 @@ func (e *DCNetEntity) GetPayloadSize() int {
 	return s
 }
 
-// Encodes "payload" in the correct round. Will skip PRNG material if the round is in the future,
-// and crash if the round is in the past or the payload is too long
+// Encodes "Payload" in the correct round. Will skip PRNG material if the round is in the future,
+// and crash if the round is in the past or the Payload is too long
 func (e *DCNetEntity) TrusteeEncodeForRound(roundID int32) []byte {
 	return e.EncodeForRound(roundID, false, nil, nil)
 }
 
-// Encodes "payload" in the correct round. Will skip PRNG material if the round is in the future,
-// and crash if the round is in the past or the payload is too long
+// Encodes "Payload" in the correct round. Will skip PRNG material if the round is in the future,
+// and crash if the round is in the past or the Payload is too long
 func (e *DCNetEntity) EncodeForRound(roundID int32, slotOwner bool, payload []byte, disruptionProtectionTag []byte) []byte {
 	if len(payload) > e.DCNetContentSize {
-		panic("DCNet: cannot encode payload of length " + strconv.Itoa(int(len(payload))) + " max length is " + strconv.Itoa(len(payload)))
+		panic("DCNet: cannot encode Payload of length " + strconv.Itoa(int(len(payload))) + " max length is " + strconv.Itoa(len(payload)))
 	}
 
 	if roundID < e.currentRound {
@@ -165,6 +165,7 @@ func (e *DCNetEntity) EncodeForRound(roundID int32, slotOwner bool, payload []by
 	} else {
 		c = e.trusteeEncode()
 	}
+	e.currentRound++
 
 	return c.ToBytes()
 }
@@ -196,7 +197,7 @@ func (e *DCNetEntity) clientEncode(slotOwner bool, payload []byte, disruptionPro
 			payload = append(hmac, payload...)
 		}
 	}
-	c.payload = payload
+	c.Payload = payload
 
 	// prepare the pads
 	p_ij := make([][]byte, len(e.sharedPRNGs))
@@ -205,17 +206,17 @@ func (e *DCNetEntity) clientEncode(slotOwner bool, payload []byte, disruptionPro
 		e.sharedPRNGs[i].XORKeyStream(p_ij[i], p_ij[i])
 	}
 
-	// if the equivocation protection is enabled, encrypt the payload, and add the tag
+	// if the equivocation protection is enabled, encrypt the Payload, and add the tag
 	if e.EquivocationProtectionEnabled {
 		payload, sigma_j := e.equivocationProtection.ClientEncryptPayload(slotOwner, payload, p_ij)
-		c.payload = payload // replace the payload with the encrypted version
-		c.equivocationProtectionTag = sigma_j
+		c.Payload = payload // replace the Payload with the encrypted version
+		c.EquivocationProtectionTag = sigma_j
 	}
 
-	// DC-net encrypt the payload
+	// DC-net encrypt the Payload
 	for i := range p_ij {
-		for k := range c.payload {
-			c.payload[k] ^= p_ij[i][k] // XORs in the pads
+		for k := range c.Payload {
+			c.Payload[k] ^= p_ij[i][k] // XORs in the pads
 		}
 	}
 
@@ -225,7 +226,7 @@ func (e *DCNetEntity) clientEncode(slotOwner bool, payload []byte, disruptionPro
 func (e *DCNetEntity) trusteeEncode() *DCNetCipher {
 	c := new(DCNetCipher)
 
-	c.payload = make([]byte, e.DCNetContentSize)
+	c.Payload = make([]byte, e.DCNetContentSize)
 
 	// prepare the pads
 	p_ij := make([][]byte, len(e.sharedPRNGs))
@@ -234,17 +235,17 @@ func (e *DCNetEntity) trusteeEncode() *DCNetCipher {
 		e.sharedPRNGs[i].XORKeyStream(p_ij[i], p_ij[i])
 	}
 
-	// DC-net encrypt the payload
+	// DC-net encrypt the Payload
 	for i := range p_ij {
-		for k := range c.payload {
-			c.payload[k] ^= p_ij[i][k] // XORs in the pads
+		for k := range c.Payload {
+			c.Payload[k] ^= p_ij[i][k] // XORs in the pads
 		}
 	}
 
-	// if the equivocation protection is enabled, encrypt the payload, and add the tag
+	// if the equivocation protection is enabled, encrypt the Payload, and add the tag
 	if e.EquivocationProtectionEnabled {
 		sigma_j := e.equivocationProtection.TrusteeGetContribution(p_ij)
-		c.equivocationProtectionTag = sigma_j
+		c.EquivocationProtectionTag = sigma_j
 	}
 
 	return c
@@ -269,12 +270,12 @@ func (e *DCNetEntity) DecodeClient(roundID int32, slice []byte) {
 			strconv.Itoa(int(roundID)) + ", we are in round " + strconv.Itoa(int(e.DCNetRoundDecoder.currentRoundBeingDecoded)))
 	}
 
-	for i := range dcNetCipher.payload {
-		e.DCNetRoundDecoder.xorBuffer[i] ^= dcNetCipher.payload[i]
+	for i := range dcNetCipher.Payload {
+		e.DCNetRoundDecoder.xorBuffer[i] ^= dcNetCipher.Payload[i]
 	}
 
 	if e.EquivocationProtectionEnabled {
-		e.DCNetRoundDecoder.equivClientContribs = append(e.DCNetRoundDecoder.equivClientContribs, dcNetCipher.equivocationProtectionTag)
+		e.DCNetRoundDecoder.equivClientContribs = append(e.DCNetRoundDecoder.equivClientContribs, dcNetCipher.EquivocationProtectionTag)
 	}
 }
 
@@ -288,12 +289,12 @@ func (e *DCNetEntity) DecodeTrustee(roundID int32, slice []byte) {
 			strconv.Itoa(int(roundID)) + ", we are in round " + strconv.Itoa(int(e.DCNetRoundDecoder.currentRoundBeingDecoded)))
 	}
 
-	for i := range dcNetCipher.payload {
-		e.DCNetRoundDecoder.xorBuffer[i] ^= dcNetCipher.payload[i]
+	for i := range dcNetCipher.Payload {
+		e.DCNetRoundDecoder.xorBuffer[i] ^= dcNetCipher.Payload[i]
 	}
 
 	if e.EquivocationProtectionEnabled {
-		e.DCNetRoundDecoder.equivTrusteeContribs = append(e.DCNetRoundDecoder.equivTrusteeContribs, dcNetCipher.equivocationProtectionTag)
+		e.DCNetRoundDecoder.equivTrusteeContribs = append(e.DCNetRoundDecoder.equivTrusteeContribs, dcNetCipher.EquivocationProtectionTag)
 	}
 }
 

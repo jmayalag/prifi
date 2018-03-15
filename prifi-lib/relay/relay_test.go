@@ -14,6 +14,7 @@ import (
 	"sync"
 	"testing"
 	"time"
+	"github.com/lbarman/prifi/prifi-lib/dcnet"
 )
 
 /**
@@ -180,9 +181,6 @@ func TestRelayRun1(t *testing.T) {
 	}
 	if rs.ExperimentRoundLimit != 2 {
 		t.Error("ExperimentRoundLimit was not set correctly")
-	}
-	if rs.DCNet == nil {
-		t.Error("CellCoder should have been created")
 	}
 	if rs.UpstreamCellSize != upCellSize {
 		t.Error("UpstreamCellSize was not set correctly")
@@ -407,11 +405,15 @@ func TestRelayRun1(t *testing.T) {
 	}
 	_ = msg16.(*net.REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG)
 
+	emptyData := dcnet.DCNetCipher{
+		Payload: make([]byte, upCellSize),
+	}
+
 	// should receive a CLI_REL_DATA_UPSTREAM
 	msg17 := net.CLI_REL_UPSTREAM_DATA{
 		ClientID: 0,
 		RoundID:  0,
-		Data:     make([]byte, upCellSize),
+		Data:      emptyData.ToBytes(),
 	}
 	if err := relay.ReceivedMessage(msg17); err != nil {
 		t.Error("Relay should be able to receive this message, but", err)
@@ -421,11 +423,10 @@ func TestRelayRun1(t *testing.T) {
 	if rs.roundManager.CurrentRound() != 0 {
 		t.Error("Should still be in round 0, no data from trustee")
 	}
-
 	msg18 := net.TRU_REL_DC_CIPHER{
 		TrusteeID: 0,
 		RoundID:   0,
-		Data:      make([]byte, upCellSize),
+		Data:      emptyData.ToBytes(),
 	}
 	if err := relay.ReceivedMessage(msg18); err != nil {
 		t.Error("Relay should be able to receive this message, but", err)
@@ -588,10 +589,14 @@ func TestRelayRun2(t *testing.T) {
 	_ = msg16.(*net.REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG)
 
 	// should receive a TRU_REL_DC_CIPHER
+	emptyData := dcnet.DCNetCipher{
+		Payload: make([]byte, upCellSize),
+	}
+
 	msg17 := net.TRU_REL_DC_CIPHER{
 		TrusteeID: 0,
 		RoundID:   0,
-		Data:      make([]byte, upCellSize),
+		Data:      emptyData.ToBytes(),
 	}
 	if err := relay.ReceivedMessage(msg17); err != nil {
 		t.Error("Relay should be able to receive this message, but", err)
@@ -605,7 +610,7 @@ func TestRelayRun2(t *testing.T) {
 	msg18 := net.CLI_REL_UPSTREAM_DATA{
 		ClientID: 0,
 		RoundID:  0,
-		Data:     make([]byte, upCellSize),
+		Data:     emptyData.ToBytes(),
 	}
 	if err := relay.ReceivedMessage(msg18); err != nil {
 		t.Error("Relay should be able to receive this message, but", err)
@@ -615,7 +620,7 @@ func TestRelayRun2(t *testing.T) {
 	msg19 := net.TRU_REL_DC_CIPHER{
 		TrusteeID: 0,
 		RoundID:   1,
-		Data:      make([]byte, upCellSize),
+		Data:      emptyData.ToBytes(),
 	}
 	if err := relay.ReceivedMessage(msg19); err != nil {
 		t.Error("Relay should be able to receive this message, but", err)
@@ -625,7 +630,7 @@ func TestRelayRun2(t *testing.T) {
 	msg20 := net.CLI_REL_UPSTREAM_DATA{
 		ClientID: 0,
 		RoundID:  1,
-		Data:     make([]byte, upCellSize),
+		Data:     emptyData.ToBytes(),
 	}
 	if err := relay.ReceivedMessage(msg20); err != nil {
 		t.Error("Relay should be able to receive this message, but", err)
@@ -814,11 +819,15 @@ func TestRelayRun3(t *testing.T) {
 	}
 	_ = msg16.(*net.REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG)
 
+	emptyMessage := dcnet.DCNetCipher{
+		Payload: make([]byte, upCellSize),
+	}
+
 	// should receive a TRU_REL_DC_CIPHER
 	msg17 := net.TRU_REL_DC_CIPHER{
 		TrusteeID: 0,
 		RoundID:   0,
-		Data:      make([]byte, upCellSize),
+		Data:      emptyMessage.ToBytes(),
 	}
 
 	if err := relay.ReceivedMessage(msg17); err != nil {
@@ -827,7 +836,7 @@ func TestRelayRun3(t *testing.T) {
 	msg17 = net.TRU_REL_DC_CIPHER{
 		TrusteeID: 1,
 		RoundID:   0,
-		Data:      make([]byte, upCellSize),
+		Data:      emptyMessage.ToBytes(),
 	}
 	if err := relay.ReceivedMessage(msg17); err != nil {
 		t.Error("Relay should be able to receive this message, but", err)
@@ -836,10 +845,15 @@ func TestRelayRun3(t *testing.T) {
 	currentTime := client.MsTimeStampNow()
 	latencyMessage := []byte{170, 170, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0}
 	binary.BigEndian.PutUint64(latencyMessage[4:12], uint64(currentTime))
+
+	latencyMessage2 := dcnet.DCNetCipher{
+		Payload: latencyMessage,
+	}
+
 	msg18 := net.CLI_REL_UPSTREAM_DATA{
 		ClientID: 0,
 		RoundID:  0,
-		Data:     latencyMessage,
+		Data:     latencyMessage2.ToBytes(),
 	}
 	//error here !
 	if err := relay.ReceivedMessage(msg18); err != nil {
@@ -870,6 +884,8 @@ func TestRelayRun3(t *testing.T) {
 }
 
 func TestRelayRun4(t *testing.T) {
+
+	t.Skip() //Verifiable DC-net disabled for now
 
 	timeoutHandler := func(clients, trustees []int) { log.Error(clients, trustees) }
 	resultChan := make(chan interface{}, 1)

@@ -6,8 +6,8 @@ import (
 
 // DCNetCipher is the output of a DC-net round
 type DCNetCipher struct {
-	equivocationProtectionTag []byte
-	payload                   []byte
+	EquivocationProtectionTag []byte
+	Payload                   []byte
 }
 
 // Converts the DCNetCipher to []byte
@@ -16,18 +16,18 @@ func (c *DCNetCipher) ToBytes() []byte {
 	equivocationTagStart := -1
 	payloadStart := 8
 
-	if c.equivocationProtectionTag != nil {
+	if c.EquivocationProtectionTag != nil {
 		equivocationTagStart = 8
-		payloadStart += len(c.equivocationProtectionTag)
+		payloadStart += len(c.EquivocationProtectionTag)
 	}
 
 	binary.BigEndian.PutUint32(out[0:4], uint32(equivocationTagStart))
 	binary.BigEndian.PutUint32(out[4:8], uint32(payloadStart))
 
-	if c.equivocationProtectionTag != nil {
-		out = append(out, c.equivocationProtectionTag...)
+	if c.EquivocationProtectionTag != nil {
+		out = append(out, c.EquivocationProtectionTag...)
 	}
-	out = append(out, c.payload...)
+	out = append(out, c.Payload...)
 
 	return out
 }
@@ -46,10 +46,10 @@ func DCNetCipherFromBytes(data []byte) *DCNetCipher {
 	payloadStart := int(binary.BigEndian.Uint32(data[4:8]))
 
 	if equivocationTagStart != minusOneInUint32 {
-		c.equivocationProtectionTag = data[8:payloadStart]
+		c.EquivocationProtectionTag = data[8:payloadStart]
 	}
 
-	c.payload = data[payloadStart:]
+	c.Payload = data[payloadStart:]
 
 	return c
 }
