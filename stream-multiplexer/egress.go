@@ -107,11 +107,10 @@ func (eg *EgressServer) egressConnectionReader(mc *MultiplexedConnection) {
 				continue
 			}
 
-			//if err == io.EOF { // Connection closed indicator
-			//	// it was an EOF
-			//	// remove the last line "n == 0"
-			//	return
-			//}
+			if err == io.EOF {
+				// Connection closed indicator
+				return
+			}
 
 			log.Error("Egress server: connectionReader error,", err)
 			return
@@ -123,10 +122,5 @@ func (eg *EgressServer) egressConnectionReader(mc *MultiplexedConnection) {
 		binary.BigEndian.PutUint32(slice[4:8], uint32(n))
 		copy(slice[MULTIPLEXER_HEADER_SIZE:], buffer[:n])
 		eg.downstreamChan <- slice
-
-		// Connection Closed Indicator
-		if n == 0 {
-			return
-		}
 	}
 }

@@ -11,6 +11,7 @@ import (
 	"gopkg.in/dedis/onet.v1/log"
 	"sync"
 	"time"
+	"io"
 )
 
 // MULTIPLEXER_HEADER_SIZE is the size of the header for the multiplexed data,
@@ -171,6 +172,12 @@ func (ig *IngressServer) ingressConnectionReader(mc *MultiplexedConnection) {
 				// it was a timeout
 				continue
 			}
+
+			if err == io.EOF {
+				// Connection closed indicator
+				return 
+			}
+
 			log.Error("Ingress server: connectionReader error,", err)
 			return
 		}
@@ -182,11 +189,6 @@ func (ig *IngressServer) ingressConnectionReader(mc *MultiplexedConnection) {
 		copy(slice[MULTIPLEXER_HEADER_SIZE:], buffer[:n])
 
 		ig.upstreamChan <- slice
-
-		// Connection Closed Indicator
-		if n == 0 {
-			return
-		}
 	}
 }
 
