@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"github.com/lbarman/prifi/prifi-lib/config"
 	"gopkg.in/dedis/crypto.v0/abstract"
-	//"gopkg.in/dedis/onet.v1/log"
 )
 
 // Clients compute:
@@ -32,7 +31,7 @@ type EquivocationProtection struct {
 func NewEquivocation() *EquivocationProtection {
 	e := new(EquivocationProtection)
 	e.suite = config.CryptoSuite
-	e.history = e.suite.Scalar()
+	e.history = e.suite.Scalar().One()
 
 	randomKey := make([]byte, e.suite.Cipher(nil).KeySize())
 	rand.Read(randomKey)
@@ -58,7 +57,7 @@ func (e *EquivocationProtection) UpdateHistory(data []byte) {
 }
 
 // a function that takes a payload x, encrypt it as x' = x + k, and returns x' and kappa = k + history * (sum of the (hashes of pads))
-func (e *EquivocationProtection) ClientEncryptPayload(x []byte, p_j [][]byte) ([]byte, []byte) {
+func (e *EquivocationProtection) ClientEncryptPayload(slotOwner bool, x []byte, p_j [][]byte) ([]byte, []byte) {
 
 	// hash the pads p_i into q_i
 	q_j := make([]abstract.Scalar, len(p_j))
@@ -75,7 +74,7 @@ func (e *EquivocationProtection) ClientEncryptPayload(x []byte, p_j [][]byte) ([
 	product := sum.Mul(sum, e.history)
 
 	//we're not the slot owner
-	if x == nil {
+	if !slotOwner {
 		kappa_i := product
 		return x, kappa_i.Bytes()
 	}

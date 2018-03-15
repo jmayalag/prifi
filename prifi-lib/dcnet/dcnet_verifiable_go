@@ -1,4 +1,4 @@
-package dcnet_old
+/*package dcnet_old
 
 import (
 	"bytes"
@@ -342,3 +342,4 @@ func (c *verifiableDCNet) ownerDecode(hdr []byte) []byte {
 	c.suite.Cipher(key).XORKeyStream(data, data)
 	return data
 }
+*/

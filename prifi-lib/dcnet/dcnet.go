@@ -24,12 +24,12 @@ const DISRUPTION_PROTECTION_CONTRIB_LENGTH = 32 // 256 bits reserved for a hash
 // A struct with all methods to encode and decode dc-net messages
 type DCNetEntity struct {
 	//Global for all nodes
-	EntityID               int
-	Entity                 DCNET_ENTITY
+	EntityID                      int
+	Entity                        DCNET_ENTITY
 	EquivocationProtectionEnabled bool
 	DisruptionProtectionEnabled   bool
-	DCNetMessageSize       int
-	payloadLength int
+	DCNetMessageSize              int
+	DCNetContentSize              int
 
 	cryptoSuite	 abstract.Suite
 	sharedKeys   []abstract.Cipher // keys shared with other DC-net members
@@ -70,6 +70,14 @@ func NewDCNetEntity(
 	e.DCNetRoundDecoder = nil
 	e.currentRound = 0
 
+	if equivocationProtection {
+		e.equivocationProtection = NewEquivocation()
+	}
+
+	if disruptionProtection && DCNetMessageSize <= DISRUPTION_PROTECTION_CONTRIB_LENGTH {
+		panic("DCNetMessageSize too small ("+strconv.Itoa(DCNetMessageSize)+")")
+	}
+
 	e.cryptoSuite = config.CryptoSuite
 
 	// if the node participates in the DC-net
@@ -99,23 +107,29 @@ func NewDCNetEntity(
 	}
 
 	// compute the payload size
-	e.payloadLength = e.DCNetMessageSize - e.equivocationContribLength
-	if e.EquivocationProtectionEnabled {
-		e.payloadLength -= DISRUPTION_PROTECTION_CONTRIB_LENGTH
-	}
+	e.DCNetContentSize = e.DCNetMessageSize - e.equivocationContribLength
 
 	// make sure we can still encode stuff !
-	if e.payloadLength <= 0 {
-		panic("DCNet: with those options, the payload length is" + strconv.Itoa(e.payloadLength))
+	if e.DCNetContentSize <= 0 {
+		panic("DCNet: with those options, the payload length is" + strconv.Itoa(e.DCNetContentSize))
 	}
 
 	return e
 }
 
+// Tells the owner of the slot how much he can embedded (=DCNetContentSize, -32 if disruption is enabled)
+func (e *DCNetEntity) GetPayloadSize() int{
+	s := e.DCNetContentSize
+	if e.DisruptionProtectionEnabled {
+		s -= DISRUPTION_PROTECTION_CONTRIB_LENGTH
+	}
+	return s
+}
+
 // Encodes "payload" in the correct round. Will skip PRNG material if the round is in the future,
 // and crash if the round is in the past or the payload is too long
-func (e *DCNetEntity) EncodeForRound(roundID int32, payload []byte) []byte {
-	if len(payload) > e.payloadLength {
+func (e *DCNetEntity) EncodeForRound(roundID int32, slotOwner bool, payload []byte) []byte {
+	if len(payload) > e.DCNetContentSize {
 		panic("DCNet: cannot encode payload of length " + strconv.Itoa(int(len(payload))) + " max length is "+ strconv.Itoa(len(payload)))
 	}
 
@@ -129,7 +143,7 @@ func (e *DCNetEntity) EncodeForRound(roundID int32, payload []byte) []byte {
 
 		// consume the PRNGs
 		for i := range e.sharedPRNGs {
-			dummy := make([]byte, e.payloadLength)
+			dummy := make([]byte, e.DCNetContentSize)
 			e.sharedPRNGs[i].XORKeyStream(dummy, dummy)
 		}
 
@@ -138,12 +152,19 @@ func (e *DCNetEntity) EncodeForRound(roundID int32, payload []byte) []byte {
 
 	var c *DCNetCipher
 	if e.Entity == DCNET_CLIENT {
-		c = e.clientEncode(payload)
+		c = e.clientEncode(slotOwner, payload)
 	} else {
 		c = e.trusteeEncode()
 	}
 
 	return c.ToBytes()
+}
+
+// Adds `newdata` into the sponge representing the received downstream data
+func (e *DCNetEntity) UpdateReceivedMessageHistory(newData []byte) {
+	if e.EquivocationProtectionEnabled {
+		e.equivocationProtection.UpdateHistory(newData)
+	}
 }
 
 func (e *DCNetEntity) computeHmac256(clientID int, message []byte) []byte {
@@ -153,44 +174,44 @@ func (e *DCNetEntity) computeHmac256(clientID int, message []byte) []byte {
 	return h.Sum(nil)
 }
 
-func (e *DCNetEntity) clientEncode(payload []byte) *DCNetCipher {
+func (e *DCNetEntity) clientEncode(slotOwner bool, payload []byte) *DCNetCipher {
 	c := new(DCNetCipher)
 
-	// pad the payload to the correct size
 	if payload == nil {
-		payload = make([]byte, e.payloadLength)
-	}
-	if len(payload) < e.payloadLength {
-		payload2 := make([]byte, e.payloadLength)
+		payload = make([]byte, e.DCNetContentSize)
+	} else {
+		// deep clone and pad
+		payload2 := make([]byte, e.GetPayloadSize())
 		copy(payload2[0:len(payload)], payload)
 		payload = payload2
+
+		// if the disruption protection is enabled, add a hmac
+		if slotOwner && e.DisruptionProtectionEnabled {
+			hmac := e.computeHmac256(e.EntityID, c.payload)
+			payload = append(hmac, payload...)
+		}
 	}
+	c.payload = payload
 
 	// prepare the pads
 	p_ij := make([][]byte, len(e.sharedPRNGs))
 	for i := range p_ij {
-		p_ij[i] = make([]byte, e.payloadLength)
+		p_ij[i] = make([]byte, e.DCNetContentSize)
 		e.sharedPRNGs[i].XORKeyStream(p_ij[i], p_ij[i])
-	}
-
-	// DC-net encrypt the payload
-	c.payload = payload // plaintext
-	for i := range p_ij {
-		for k := range payload {
-			payload[k] ^= p_ij[i][k] // XORs in the pads
-		}
-	}
-
-	// if the disruption protection is enabled, add a hmac
-	if e.DisruptionProtectionEnabled {
-		c.disruptionProtectionTag = e.computeHmac256(e.EntityID, c.payload)
 	}
 
 	// if the equivocation protection is enabled, encrypt the payload, and add the tag
 	if e.EquivocationProtectionEnabled {
-		payload, sigma_j := e.equivocationProtection.ClientEncryptPayload(payload, p_ij)
+		payload, sigma_j := e.equivocationProtection.ClientEncryptPayload(slotOwner, payload, p_ij)
 		c.payload = payload // replace the payload with the encrypted version
 		c.equivocationProtectionTag = sigma_j
+	}
+
+	// DC-net encrypt the payload
+	for i := range p_ij {
+		for k := range c.payload {
+			c.payload[k] ^= p_ij[i][k] // XORs in the pads
+		}
 	}
 
 	return c
@@ -199,12 +220,12 @@ func (e *DCNetEntity) clientEncode(payload []byte) *DCNetCipher {
 func (e *DCNetEntity) trusteeEncode() *DCNetCipher {
 	c := new(DCNetCipher)
 
-	c.payload = make([]byte, e.payloadLength)
+	c.payload = make([]byte, e.DCNetContentSize)
 
 	// prepare the pads
 	p_ij := make([][]byte, len(e.sharedPRNGs))
 	for i := range p_ij {
-		p_ij[i] = make([]byte, e.payloadLength)
+		p_ij[i] = make([]byte, e.DCNetContentSize)
 		e.sharedPRNGs[i].XORKeyStream(p_ij[i], p_ij[i])
 	}
 
@@ -228,7 +249,7 @@ func (e *DCNetEntity) trusteeEncode() *DCNetCipher {
 func (e *DCNetEntity) DecodeStart(roundID int32) {
 	e.DCNetRoundDecoder = new(DCNetRoundDecoder)
 	e.DCNetRoundDecoder.currentRoundBeingDecoded = roundID
-	e.DCNetRoundDecoder.xorBuffer = make([]byte, e.payloadLength)
+	e.DCNetRoundDecoder.xorBuffer = make([]byte, e.DCNetContentSize)
 	e.DCNetRoundDecoder.equivClientContribs = make([][]byte, 0)
 	e.DCNetRoundDecoder.equivTrusteeContribs = make([][]byte, 0)
 }
@@ -244,7 +265,7 @@ func (e *DCNetEntity) DecodeClient(roundID int32, slice []byte) {
 	}
 
 	for i := range dcNetCipher.payload {
-		e.DCNetRoundDecoder.xorBuffer[i] ^= slice[i]
+		e.DCNetRoundDecoder.xorBuffer[i] ^= dcNetCipher.payload[i]
 	}
 
 	if e.EquivocationProtectionEnabled {
@@ -263,19 +284,31 @@ func (e *DCNetEntity) DecodeTrustee(roundID int32, slice []byte) {
 	}
 
 	for i := range dcNetCipher.payload {
-		e.DCNetRoundDecoder.xorBuffer[i] ^= slice[i]
+		e.DCNetRoundDecoder.xorBuffer[i] ^= dcNetCipher.payload[i]
 	}
 
 	if e.EquivocationProtectionEnabled {
-		e.DCNetRoundDecoder.equivClientContribs = append(e.DCNetRoundDecoder.equivClientContribs, dcNetCipher.equivocationProtectionTag)
+		e.DCNetRoundDecoder.equivTrusteeContribs = append(e.DCNetRoundDecoder.equivTrusteeContribs, dcNetCipher.equivocationProtectionTag)
 	}
 }
 
+// Called on the relay to decode the cell, after having stored the cryptographic materials
 func (e *DCNetEntity) DecodeCell() []byte {
 	//No Equivocation -> just XOR
 	d := e.DCNetRoundDecoder
+
+	decoded := d.xorBuffer
 	if e.EquivocationProtectionEnabled {
-		return e.equivocationProtection.RelayDecode(d.xorBuffer, d.equivTrusteeContribs, d.equivClientContribs)
+		decoded = e.equivocationProtection.RelayDecode(d.xorBuffer, d.equivTrusteeContribs, d.equivClientContribs)
+	}
+
+	if e.DisruptionProtectionEnabled {
+		hmac := decoded[0:DISRUPTION_PROTECTION_CONTRIB_LENGTH]
+		payload := decoded[DISRUPTION_PROTECTION_CONTRIB_LENGTH:]
+
+		_ = hmac //TODO: do something with this
+
+		return payload
 	}
 
 	return d.xorBuffer
