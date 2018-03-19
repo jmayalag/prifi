@@ -40,7 +40,7 @@ defaultIdentitiesDir="identities_default"   # in $configdir
 realIdentitiesDir="identities_real"         # in $configdir
 
 # min required go version
-min_go_version=17                           # min required go version, without the '.', e.g. 17 for 1.7.x
+min_go_version=19                           # min required go version, without the '.', e.g. 17 for 1.7.x
 
 # unimportant variable (but do not change, ofc)
 
@@ -107,9 +107,8 @@ test_go(){
 		exit 1
 	fi
 	GO_VER=$(go version 2>&1 | sed 's/.*version go\(.*\)\.\(.*\)\ \(.*\)/\1\2/; 1q')
-	GO_VER=18
 	if [ "$GO_VER" -lt "$min_go_version" ]; then
-		echo -e "$errorMsg Go >= 1.7.0 is required"
+		echo -e "$errorMsg Go >= 1.9.0 is required"
 		exit 1
 	fi
 }

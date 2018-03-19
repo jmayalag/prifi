@@ -14,7 +14,7 @@ For more details about PriFi, please check our [WPES 2016 paper](http://www.cs.y
 
 ## Getting PriFi
 
-First, [get the Go language](https://golang.org/dl/), >= 1.7. They have some `.tar.gz`, but I personally prefer to use my package manager :
+First, [get the Go language](https://golang.org/dl/), >= 1.9. They have some `.tar.gz`, but I personally prefer to use my package manager :
 `sudo apt-get install golang` for Ubuntu, or `sudo dnf install golang` for Fedora 24.
 
 Then, get PriFi by doing:
