@@ -107,7 +107,6 @@ test_go(){
 		exit 1
 	fi
 	GO_VER=$(go version 2>&1 | sed 's/.*version go\(.*\)\.\(.*\)\ \(.*\)/\1\2/; 1q')
-	GO_VER=18
 	if [ "$GO_VER" -lt "$min_go_version" ]; then
 		echo -e "$errorMsg Go >= 1.9.0 is required"
 		exit 1
