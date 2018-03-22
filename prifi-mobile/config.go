@@ -6,19 +6,34 @@ import (
 	"gopkg.in/dedis/onet.v1/log"
 	"bytes"
 	"sync"
+	"gopkg.in/dedis/onet.v1/network"
+	prifi_protocol "github.com/lbarman/prifi/sda/protocols"
+	"gopkg.in/dedis/onet.v1/app"
 )
 
 const mobileClientConfigFilename = "prifi.toml"
+const cothorityConfigFilename = "identity.toml"
+const cothorityGroupConfigFilename = "group.toml"
 
 var prifiMobileClientConfigSingleton *PrifiMobileClientConfig
-var once sync.Once
+var cothorityConfigSingleton *CothorityConfig
+
+var onceClient, onceCothority sync.Once
+
 
 // Exposed Constructor (singleton)
 func NewPrifiMobileClientConfig() *PrifiMobileClientConfig {
-	once.Do(func() {
+	onceClient.Do(func() {
 		prifiMobileClientConfigSingleton = initPrifiMobileClientConfig()
 	})
 	return prifiMobileClientConfigSingleton
+}
+
+func NewCothorityConfig() *CothorityConfig {
+	onceCothority.Do(func() {
+		cothorityConfigSingleton = initCothorityConfig()
+	})
+	return cothorityConfigSingleton
 }
 
 // Exposed Getters and Setters
@@ -55,13 +70,76 @@ type PrifiMobileClientConfig struct {
 	RelayTrusteeCacheHighBound              int
 }
 
+type CothorityConfig struct {
+	Public      string
+	Private     string
+	Address     network.Address
+	Description string
+}
+
+func (c *CothorityConfig) GetAddress() string {
+	return c.Address.String()
+}
+
+// TODO: Hanlde more carefully
+func (c *PrifiMobileClientConfig) parseToOriginalPrifiConfig() *prifi_protocol.PrifiTomlConfig {
+	config := prifi_protocol.PrifiTomlConfig(*c)
+	return &config
+}
+
+// TODO: Reduce Code Duplication
 func initPrifiMobileClientConfig() *PrifiMobileClientConfig {
-	file, err := asset.Open(mobileClientConfigFilename)
+	tomlRawDataString := readTomlFromAssets(mobileClientConfigFilename)
+
+	config := &PrifiMobileClientConfig{}
+	_, err := toml.Decode(tomlRawDataString, config)
+	if err != nil {
+		log.Error("Could not parse toml file ", mobileClientConfigFilename)
+		return nil
+	}
+
+	return config
+}
+
+func initCothorityConfig() *CothorityConfig {
+	tomlRawDataString := readTomlFromAssets(cothorityConfigFilename)
+
+	config := &CothorityConfig{}
+	_, err := toml.Decode(tomlRawDataString, config)
+	if err != nil {
+		log.Error("Could not parse toml file ", cothorityConfigFilename)
+		return nil
+	}
+
+	return config
+}
+
+func readCothorityGroupConfig() *app.Group {
+	file, err := asset.Open(cothorityGroupConfigFilename)
+	defer file.Close()
+
+	groups, err := app.ReadGroupDescToml(file)
+
+	if err != nil {
+		log.Error("Could not parse toml file ", cothorityGroupConfigFilename)
+		return nil
+	}
+
+	if groups == nil || groups.Roster == nil || len(groups.Roster.List) == 0 {
+		log.Error("No servers found in roster from ", cothorityGroupConfigFilename)
+		return nil
+	}
+
+	return groups
+}
+
+func readTomlFromAssets(filename string) string {
+	file, err := asset.Open(filename)
 	defer file.Close()
 
 	if err != nil {
-		log.Error("Could not open file ", mobileClientConfigFilename)
-		return nil
+		log.Error("Could not open file ", filename)
+		return ""
 	}
 
 	tomlRawDataBuffer := new(bytes.Buffer)
@@ -69,15 +147,8 @@ func initPrifiMobileClientConfig() *PrifiMobileClientConfig {
 
 	if err != nil {
 		log.Error("Could not read file ", mobileClientConfigFilename)
-		return nil
+		return ""
 	}
 
-	config := &PrifiMobileClientConfig{}
-	_, err = toml.Decode(tomlRawDataBuffer.String(), config)
-	if err != nil {
-		log.Error("Could not parse toml file ", mobileClientConfigFilename)
-		return nil
-	}
-
-	return config
+	return tomlRawDataBuffer.String()
 }
