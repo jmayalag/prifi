@@ -16,6 +16,4 @@ func TestConfig(t *testing.T) {
 	if c.Address != "tcp://127.0.0.1:6000" {
 		t.Error("wrong", c.Address)
 	}
-
-	//fmt.Println(p.parseToOriginalPrifiConfig().SocksClientPort)
 }

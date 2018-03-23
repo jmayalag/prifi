@@ -1,14 +1,14 @@
 package prifiMobile
 
 import (
-	"golang.org/x/mobile/asset"
-	"github.com/BurntSushi/toml"
-	"gopkg.in/dedis/onet.v1/log"
 	"bytes"
-	"sync"
-	"gopkg.in/dedis/onet.v1/network"
+	"github.com/BurntSushi/toml"
 	prifi_protocol "github.com/lbarman/prifi/sda/protocols"
+	"golang.org/x/mobile/asset"
 	"gopkg.in/dedis/onet.v1/app"
+	"gopkg.in/dedis/onet.v1/log"
+	"gopkg.in/dedis/onet.v1/network"
+	"sync"
 )
 
 const mobileClientConfigFilename = "prifi.toml"
@@ -19,7 +19,6 @@ var prifiMobileClientConfigSingleton *PrifiMobileClientConfig
 var cothorityConfigSingleton *CothorityConfig
 
 var onceClient, onceCothority sync.Once
-
 
 // Exposed Constructor (singleton)
 func NewPrifiMobileClientConfig() *PrifiMobileClientConfig {
@@ -114,7 +113,7 @@ func initCothorityConfig() *CothorityConfig {
 	return config
 }
 
-func readCothorityGroupConfig() *app.Group {
+func readCothorityGroupConfig() (*app.Group, error) {
 	file, err := asset.Open(cothorityGroupConfigFilename)
 	defer file.Close()
 
@@ -122,15 +121,15 @@ func readCothorityGroupConfig() *app.Group {
 
 	if err != nil {
 		log.Error("Could not parse toml file ", cothorityGroupConfigFilename)
-		return nil
+		return nil, err
 	}
 
 	if groups == nil || groups.Roster == nil || len(groups.Roster.List) == 0 {
 		log.Error("No servers found in roster from ", cothorityGroupConfigFilename)
-		return nil
+		return nil, err
 	}
 
-	return groups
+	return groups, nil
 }
 
 func readTomlFromAssets(filename string) string {

@@ -4,19 +4,25 @@
 package prifiMobile
 
 import (
-	"time"
-	"os"
 	"gopkg.in/dedis/onet.v1/log"
+	"time"
 )
 
-func StartClient() {
-	host, group, service := startCothorityNode()
+func StartClient() error {
+	host, group, service, err := startCothorityNode()
+
+	if err != nil {
+		log.Error("Could not start the cothority node:", err)
+		return err
+	}
 
 	if err := service.StartClient(group, time.Duration(0)); err != nil {
 		log.Error("Could not start the prifi service:", err)
-		os.Exit(1)
+		return err
 	}
 
 	host.Router.AddErrorHandler(service.NetworkErrorHappened)
 	host.Start()
+
+	return nil
 }
