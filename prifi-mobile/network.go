@@ -1,5 +1,7 @@
 package prifiMobile
 
+// Functions that are needed to initialize a server are all here
+
 import (
 	prifi_service "github.com/lbarman/prifi/sda/services"
 	"gopkg.in/dedis/onet.v1"
@@ -16,7 +18,6 @@ func startCothorityNode() (*onet.Server, *app.Group, *prifi_service.ServiceState
 		return nil, nil, nil, err
 	}
 
-	//reads the group description
 	group, err := readCothorityGroupConfig()
 	if err != nil {
 		log.Error("Could not read the group description:", err)
@@ -43,8 +44,8 @@ func parseCothority() (*onet.Server, error) {
 		return nil, err
 	}
 
-	si := network.NewServerIdentity(point, c.Address)
-	si.Description = c.Description
-	server := onet.NewServerTCP(si, secret)
+	serverIdentity := network.NewServerIdentity(point, c.Address)
+	serverIdentity.Description = c.Description
+	server := onet.NewServerTCP(serverIdentity, secret)
 	return server, nil
 }

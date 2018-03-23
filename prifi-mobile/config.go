@@ -1,5 +1,7 @@
 package prifiMobile
 
+// Configuration files read & write and related structs
+
 import (
 	"bytes"
 	"github.com/BurntSushi/toml"
@@ -20,7 +22,7 @@ var cothorityConfigSingleton *CothorityConfig
 
 var onceClient, onceCothority sync.Once
 
-// Exposed Constructor (singleton)
+// Exposed singleton constructors (Functions with New... will become constructors that can be called by Java and ObjC)
 func NewPrifiMobileClientConfig() *PrifiMobileClientConfig {
 	onceClient.Do(func() {
 		prifiMobileClientConfigSingleton = initPrifiMobileClientConfig()
@@ -35,7 +37,8 @@ func NewCothorityConfig() *CothorityConfig {
 	return cothorityConfigSingleton
 }
 
-// Exposed Getters and Setters
+// Exposed structs and their getters and setters
+// Design Choice: PrifiConfig and Cothority Config can be manipulated by Mobile OS, that's why they are exposed
 type PrifiMobileClientConfig struct {
 	ForceConsoleColor                       bool
 	OverrideLogLevel                        int
@@ -69,6 +72,8 @@ type PrifiMobileClientConfig struct {
 	RelayTrusteeCacheHighBound              int
 }
 
+// network.Address a type that is currently not supported by gomobile (23 March 2018)
+// Thus, we have a function to return address under a supported type (string)
 type CothorityConfig struct {
 	Public      string
 	Private     string
@@ -80,13 +85,14 @@ func (c *CothorityConfig) GetAddress() string {
 	return c.Address.String()
 }
 
-// TODO: Hanlde more carefully
+// Convert mobile config into original prifi config
+// TODO: Hanlde more carefully. What if mobile config has less or more members
 func (c *PrifiMobileClientConfig) parseToOriginalPrifiConfig() *prifi_protocol.PrifiTomlConfig {
 	config := prifi_protocol.PrifiTomlConfig(*c)
 	return &config
 }
 
-// TODO: Reduce Code Duplication
+// TODO: Reduce Code Duplication of both inits
 func initPrifiMobileClientConfig() *PrifiMobileClientConfig {
 	tomlRawDataString := readTomlFromAssets(mobileClientConfigFilename)
 
@@ -113,6 +119,7 @@ func initCothorityConfig() *CothorityConfig {
 	return config
 }
 
+// TODO: less code duplication?
 func readCothorityGroupConfig() (*app.Group, error) {
 	file, err := asset.Open(cothorityGroupConfigFilename)
 	defer file.Close()
@@ -132,6 +139,7 @@ func readCothorityGroupConfig() (*app.Group, error) {
 	return groups, nil
 }
 
+// TODO: Read form any given paths
 func readTomlFromAssets(filename string) string {
 	file, err := asset.Open(filename)
 	defer file.Close()
