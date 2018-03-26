@@ -8,8 +8,12 @@ import (
 	"time"
 )
 
+var stop chan struct{}
+
 // The "main" function that is called by Mobile OS in order to launch a client server
 func StartClient() error {
+	stop = make(chan struct{})
+
 	host, group, service, err := startCothorityNode()
 
 	if err != nil {
@@ -23,7 +27,18 @@ func StartClient() error {
 	}
 
 	host.Router.AddErrorHandler(service.NetworkErrorHappened)
+
+	select {
+		case <-stop:
+			host.Close()
+			service.ShutdownSocks()
+	}
+
 	host.Start()
 
 	return nil
+}
+
+func StopClient() {
+	close(stop)
 }
