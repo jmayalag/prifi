@@ -34,7 +34,7 @@ type SOCKSConfig struct {
 
 //The configuration read in prifi.toml
 type PrifiTomlConfig struct {
-	EnforceSameVersionOnNodes				bool
+	EnforceSameVersionOnNodes               bool
 	ForceConsoleColor                       bool
 	OverrideLogLevel                        int
 	ClientDataOutputEnabled                 bool
