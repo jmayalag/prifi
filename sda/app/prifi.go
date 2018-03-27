@@ -176,8 +176,6 @@ func readConfigAndStartCothority(c *cli.Context) (*onet.Server, *app.Group, *pri
 		os.Exit(1)
 	}
 
-	log.Fatal(prifiTomlConfig.EnforceSameVersionOnNodes)
-
 	if prifiTomlConfig.EnforceSameVersionOnNodes {
 		prifiTomlConfig.ProtocolVersion = getGitCommitID()
 	} else {
