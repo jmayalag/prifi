@@ -4,17 +4,45 @@
 package prifiMobile
 
 import (
-	"gopkg.in/dedis/onet.v1/log"
+	prifi_service "github.com/lbarman/prifi/sda/services"
 	"time"
+	"gopkg.in/dedis/onet.v1/log"
+	"gopkg.in/dedis/onet.v1"
 )
 
-var stop chan struct{}
+var stopChan chan struct{}
+var errorChan chan error
+var globalHost *onet.Server
+var globalService *prifi_service.ServiceState
 
 // The "main" function that is called by Mobile OS in order to launch a client server
-func StartClient() error {
-	stop = make(chan struct{})
+func StartClient() {
+	stopChan = make(chan struct{}, 1)
+	errorChan = make(chan error, 1)
 
+	go func() {
+		errorChan <- run()
+	}()
+
+
+	select {
+		case err := <-errorChan:
+			log.Error("Error occurs", err)
+		case <-stopChan:
+			globalHost.Close()
+			globalService.ShutdownSocks()
+			log.Info("PriFi Shutdown")
+	}
+}
+
+func StopClient() {
+	close(stopChan)
+}
+
+func run() error {
 	host, group, service, err := startCothorityNode()
+	globalHost = host
+	globalService = service
 
 	if err != nil {
 		log.Error("Could not start the cothority node:", err)
@@ -22,23 +50,13 @@ func StartClient() error {
 	}
 
 	if err := service.StartClient(group, time.Duration(0)); err != nil {
-		log.Error("Could not start the prifi service:", err)
+		log.Error("Could not start the PriFi service:", err)
 		return err
 	}
 
 	host.Router.AddErrorHandler(service.NetworkErrorHappened)
-
-	select {
-		case <-stop:
-			host.Close()
-			service.ShutdownSocks()
-	}
-
 	host.Start()
 
+	// Never return
 	return nil
-}
-
-func StopClient() {
-	close(stop)
 }
