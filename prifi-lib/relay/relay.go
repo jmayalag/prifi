@@ -45,7 +45,6 @@ import (
 	prifilog "github.com/lbarman/prifi/prifi-lib/log"
 	"github.com/lbarman/prifi/prifi-lib/net"
 	"github.com/lbarman/prifi/prifi-lib/utils"
-	socks "github.com/lbarman/prifi/prifi-socks"
 	"github.com/lbarman/prifi/utils"
 	"gopkg.in/dedis/crypto.v0/abstract"
 	"gopkg.in/dedis/onet.v1/log"
@@ -454,17 +453,7 @@ func (p *PriFiLibRelayInstance) upstreamPhase2b_extractPayload() error {
 		}
 
 		if p.relayState.DataOutputEnabled {
-
-			packetType, _, _, _ := socks.ParseSocksHeaderFromBytes(upstreamPlaintext)
-
-			switch packetType {
-			case socks.SocksData, socks.SocksConnect, socks.StallCommunication, socks.ResumeCommunication:
-				p.relayState.DataFromDCNet <- upstreamPlaintext
-
-			default:
-				break
-			}
-
+			p.relayState.DataFromDCNet <- upstreamPlaintext
 		}
 	}
 
@@ -609,7 +598,9 @@ func (p *PriFiLibRelayInstance) downstreamPhase1_openRoundAndSendData() error {
 	//now relay enters a waiting state (collecting all ciphers from clients/trustees)
 	timing.StartMeasure("waiting-on-someone")
 
+	p.relayState.numberOfNonAckedDownstreamPacketsLock.Lock()
 	p.relayState.numberOfNonAckedDownstreamPackets++
+	p.relayState.numberOfNonAckedDownstreamPacketsLock.Unlock()
 
 	return nil
 }

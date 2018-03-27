@@ -25,7 +25,8 @@ type PriFiIdentity struct {
 
 //SOCKSConfig contains the port, payload, and up/down channels for data
 type SOCKSConfig struct {
-	Port              string
+	ListeningAddr     string
+	Port              int
 	PayloadLength     int
 	UpstreamChannel   chan []byte
 	DownstreamChannel chan []byte
@@ -33,6 +34,7 @@ type SOCKSConfig struct {
 
 //The configuration read in prifi.toml
 type PrifiTomlConfig struct {
+	EnforceSameVersionOnNodes               bool
 	ForceConsoleColor                       bool
 	OverrideLogLevel                        int
 	ClientDataOutputEnabled                 bool

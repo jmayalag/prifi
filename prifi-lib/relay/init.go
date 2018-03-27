@@ -81,6 +81,7 @@ func NewRelay(dataOutputEnabled bool, dataForClients chan []byte, dataFromDCNet 
 	relayState.slotScheduler = new(scheduler.BitMaskSlotScheduler_Relay)
 	relayState.roundManager = new(BufferableRoundManager)
 	relayState.timeoutMutex = *new(sync.Mutex)
+	relayState.numberOfNonAckedDownstreamPacketsLock = *new(sync.Mutex)
 	neffShuffle := new(scheduler.NeffShuffle)
 	neffShuffle.Init()
 	relayState.neffShuffle = neffShuffle.RelayView
@@ -144,6 +145,7 @@ type RelayState struct {
 	UseDummyDataDown                       bool
 	UseOpenClosedSlots                     bool
 	UseUDP                                 bool
+	numberOfNonAckedDownstreamPacketsLock  sync.Mutex
 	numberOfNonAckedDownstreamPackets      int
 	WindowSize                             int
 	ExperimentResultChannel                chan interface{}
