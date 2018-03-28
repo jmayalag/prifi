@@ -176,11 +176,11 @@ func readConfigAndStartCothority(c *cli.Context) (*onet.Server, *app.Group, *pri
 		os.Exit(1)
 	}
 
-	/*
-	 * TODO: Temporarily remove "getGitCommitID" for testing purpose.
-	 * TODO: The working copy and the server copy may not be the same version.
-	 */
-	prifiTomlConfig.ProtocolVersion = "v1" //getGitCommitID()
+	if prifiTomlConfig.EnforceSameVersionOnNodes {
+		prifiTomlConfig.ProtocolVersion = getGitCommitID()
+	} else {
+		prifiTomlConfig.ProtocolVersion = "v1" // standard string for all nodes
+	}
 
 	return host, group, service
 }
