@@ -33,7 +33,10 @@ func startCothorityNode() (*onet.Server, *app.Group, *prifi_service.ServiceState
 
 	service := host.Service(prifi_service.ServiceName).(*prifi_service.ServiceState)
 	service.SetConfigFromToml(prifiConfig)
-	prifiConfig.ProtocolVersion = "v1" //getGitCommitID()
+
+	// TODO Replace getCommitID
+	prifiConfig.ProtocolVersion = "v1" // standard string for all nodes
+
 
 	return host, group, service, nil
 }
