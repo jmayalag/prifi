@@ -31,6 +31,7 @@ func StartClient() {
 		case <-stopChan:
 			globalHost.Close()
 			globalService.ShutdownSocks()
+			globalService.ShutdownConnexionToRelay()
 			log.Info("PriFi Shutdown")
 	}
 }

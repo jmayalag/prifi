@@ -279,6 +279,16 @@ func (s *ServiceState) GlobalShutDownSocks() error {
 	return nil
 }
 
+// CleanResources kill all goroutines related to Connexion to Relay Request
+func (s *ServiceState) ShutdownConnexionToRelay() error {
+	log.Lvl2("Stopping service's connect to relay.")
+
+	s.connectToRelayStopChan <- true
+	s.connectToRelay2StopChan <- true
+
+	return nil
+}
+
 // save saves the actual identity
 func (s *ServiceState) save() {
 	log.Lvl3("Saving service")
