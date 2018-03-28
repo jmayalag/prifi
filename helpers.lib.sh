@@ -33,7 +33,7 @@ test_go(){
         echo -e "$errorMsg GOPATH ($GOPATH) is not a folder ! make sure you installed the Go language correctly."
         exit 1
     fi
-    GO_VER=$(go version 2>&1 | sed 's/.*version go\([[:digit:]]*\)\.\([[:digit:]]\)\(.*\)/\1\2/; 1q')
+    GO_VER=$(go version 2>&1 | sed 's/.*version go\([[:digit:]]*\)\.\([[:digit:]]*\)\(.*\)/\1\2/; 1q')
     if [ "$GO_VER" -lt "$min_go_version" ]; then
         echo -e "$errorMsg Go >= 1.7.0 is required"
         exit 1
