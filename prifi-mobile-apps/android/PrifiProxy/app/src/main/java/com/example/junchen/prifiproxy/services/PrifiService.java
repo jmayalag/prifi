@@ -40,11 +40,10 @@ public class PrifiService extends Service {
 
         @Override
         public void handleMessage(Message msg) {
-            // Normally we would do some work here, like download a file.
-            // For our sample, we just sleep for 5 seconds.
             try {
                 PrifiMobile.startClient();
             } finally {
+                stopForeground(true);
                 stopSelf(msg.arg1);
             }
         }
@@ -86,9 +85,6 @@ public class PrifiService extends Service {
     public void onDestroy() {
         Toast.makeText(this, "Service stopped", Toast.LENGTH_SHORT).show();
         mServiceThread.quit();
-
-        mServiceThread = null;
-        mServiceHandler = null;
     }
 
     private Notification constructForegroundNotification() {

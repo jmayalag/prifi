@@ -64,8 +64,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void stopPrifiService() {
         if (isPrifiServiceRunning.compareAndSet(true, false)) {
-            //stopService(new Intent(this, PrifiService.class));
-            PrifiMobile.stopClient();
+            PrifiMobile.stopClient(); // StopClient will make the service to shutdown by itself
         }
     }
 
