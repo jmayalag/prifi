@@ -284,7 +284,6 @@ func (s *ServiceState) ShutdownConnexionToRelay() error {
 	log.Lvl2("Stopping service's connect to relay.")
 
 	s.connectToRelayStopChan <- true
-	s.connectToRelay2StopChan <- true
 
 	return nil
 }

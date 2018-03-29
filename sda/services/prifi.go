@@ -107,7 +107,7 @@ func (s *ServiceState) NetworkErrorHappened(si *network.ServerIdentity) {
 
 	if s.role != prifi_protocol.Relay {
 		log.Lvl3("A network error occurred with node", si, ", but we're not the relay, nothing to do.")
-		s.connectToRelayStopChan <- true //"nothing" except stop this goroutine
+		//s.connectToRelayStopChan <- true //"nothing" except stop this goroutine
 		return
 	}
 	if s.churnHandler == nil {
