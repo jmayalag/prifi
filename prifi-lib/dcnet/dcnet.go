@@ -27,8 +27,7 @@ type DCNetEntity struct {
 	EntityID                      int
 	Entity                        DCNET_ENTITY
 	EquivocationProtectionEnabled bool
-	DCNetMessageSize              int
-	DCNetContentSize              int
+	DCNetPayloadSize              int
 
 	cryptoSuite  abstract.Suite
 	sharedKeys   []abstract.Cipher // keys shared with other DC-net members
@@ -55,14 +54,14 @@ type DCNetRoundDecoder struct {
 func NewDCNetEntity(
 	entityID int,
 	entity DCNET_ENTITY,
-	DCNetMessageSize int,
+	PayloadSize int,
 	equivocationProtection bool,
 	sharedKeys []abstract.Cipher) *DCNetEntity {
 
 	e := new(DCNetEntity)
 	e.EntityID = entityID
 	e.Entity = entity
-	e.DCNetMessageSize = DCNetMessageSize
+	e.DCNetPayloadSize = PayloadSize
 	e.EquivocationProtectionEnabled = equivocationProtection
 	e.DCNetRoundDecoder = nil
 	e.currentRound = 0
@@ -99,19 +98,17 @@ func NewDCNetEntity(
 		e.equivocationContribLength = len(minusOne.Bytes())
 	}
 
-	e.DCNetContentSize = DCNetMessageSize
-
 	// make sure we can still encode stuff !
-	if e.DCNetContentSize <= 0 {
-		panic("Payload length is" + strconv.Itoa(e.DCNetContentSize))
+	if e.DCNetPayloadSize <= 0 {
+		panic("Payload length is" + strconv.Itoa(e.DCNetPayloadSize))
 	}
 
 	return e
 }
 
-// Tells the owner of the slot how much he can embedded (=DCNetContentSize)
+// Tells the owner of the slot how much he can embedded (=DCNetPayloadSize)
 func (e *DCNetEntity) GetPayloadSize() int {
-	return e.DCNetContentSize
+	return e.DCNetPayloadSize
 }
 
 // Encodes "Payload" in the correct round. Will skip PRNG material if the round is in the future,
@@ -123,7 +120,7 @@ func (e *DCNetEntity) TrusteeEncodeForRound(roundID int32) []byte {
 // Encodes "Payload" in the correct round. Will skip PRNG material if the round is in the future,
 // and crash if the round is in the past or the Payload is too long
 func (e *DCNetEntity) EncodeForRound(roundID int32, slotOwner bool, payload []byte) []byte {
-	if len(payload) > e.DCNetContentSize {
+	if len(payload) > e.DCNetPayloadSize {
 		panic("DCNet: cannot encode Payload of length " + strconv.Itoa(int(len(payload))) + " max length is " + strconv.Itoa(len(payload)))
 	}
 
@@ -137,7 +134,7 @@ func (e *DCNetEntity) EncodeForRound(roundID int32, slotOwner bool, payload []by
 
 		// consume the PRNGs
 		for i := range e.sharedPRNGs {
-			dummy := make([]byte, e.DCNetContentSize)
+			dummy := make([]byte, e.DCNetPayloadSize)
 			e.sharedPRNGs[i].XORKeyStream(dummy, dummy)
 		}
 
@@ -166,7 +163,7 @@ func (e *DCNetEntity) clientEncode(slotOwner bool, payload []byte) *DCNetCipher 
 	c := new(DCNetCipher)
 
 	if payload == nil {
-		payload = make([]byte, e.DCNetContentSize)
+		payload = make([]byte, e.DCNetPayloadSize)
 	} else {
 		// deep clone and pad
 		payload2 := make([]byte, e.GetPayloadSize())
@@ -178,7 +175,7 @@ func (e *DCNetEntity) clientEncode(slotOwner bool, payload []byte) *DCNetCipher 
 	// prepare the pads
 	p_ij := make([][]byte, len(e.sharedPRNGs))
 	for i := range p_ij {
-		p_ij[i] = make([]byte, e.DCNetContentSize)
+		p_ij[i] = make([]byte, e.DCNetPayloadSize)
 		e.sharedPRNGs[i].XORKeyStream(p_ij[i], p_ij[i])
 	}
 
@@ -202,12 +199,12 @@ func (e *DCNetEntity) clientEncode(slotOwner bool, payload []byte) *DCNetCipher 
 func (e *DCNetEntity) trusteeEncode() *DCNetCipher {
 	c := new(DCNetCipher)
 
-	c.Payload = make([]byte, e.DCNetContentSize)
+	c.Payload = make([]byte, e.DCNetPayloadSize)
 
 	// prepare the pads
 	p_ij := make([][]byte, len(e.sharedPRNGs))
 	for i := range p_ij {
-		p_ij[i] = make([]byte, e.DCNetContentSize)
+		p_ij[i] = make([]byte, e.DCNetPayloadSize)
 		e.sharedPRNGs[i].XORKeyStream(p_ij[i], p_ij[i])
 	}
 
@@ -231,7 +228,7 @@ func (e *DCNetEntity) trusteeEncode() *DCNetCipher {
 func (e *DCNetEntity) DecodeStart(roundID int32) {
 	e.DCNetRoundDecoder = new(DCNetRoundDecoder)
 	e.DCNetRoundDecoder.currentRoundBeingDecoded = roundID
-	e.DCNetRoundDecoder.xorBuffer = make([]byte, e.DCNetContentSize)
+	e.DCNetRoundDecoder.xorBuffer = make([]byte, e.DCNetPayloadSize)
 	e.DCNetRoundDecoder.equivClientContribs = make([][]byte, 0)
 	e.DCNetRoundDecoder.equivTrusteeContribs = make([][]byte, 0)
 }
