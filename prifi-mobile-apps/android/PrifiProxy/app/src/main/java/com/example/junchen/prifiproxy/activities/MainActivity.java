@@ -6,7 +6,6 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
-import android.view.View;
 import android.widget.Button;
 
 import com.example.junchen.prifiproxy.R;
@@ -33,26 +32,13 @@ public class MainActivity extends AppCompatActivity {
         stopButton = findViewById(R.id.stopButton);
         testButton = findViewById(R.id.testButton);
 
-        startButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                startPrifiService();
-            }
-        });
+        startButton.setOnClickListener(view -> startPrifiService());
 
-        stopButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                stopPrifiService();
-            }
-        });
+        stopButton.setOnClickListener(view -> stopPrifiService());
 
-        testButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                boolean b = isMyServiceRunning(PrifiService.class);
-                Log.i("myapp", String.valueOf(b));
-            }
+        testButton.setOnClickListener(view -> {
+            boolean b = isMyServiceRunning(PrifiService.class);
+            Log.i("myapp", String.valueOf(b));
         });
     }
 
