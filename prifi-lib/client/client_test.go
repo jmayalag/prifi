@@ -693,15 +693,24 @@ func TestDisruptionClient(t *testing.T) {
 	}
 	sharedPRNGs_t2[0] = config.CryptoSuite.Cipher(bytes)
 
-	t1 := dcnet.NewDCNetEntity(1, dcnet.DCNET_TRUSTEE, upCellSize, false, true, sharedPRNGs_t1)
-	t2 := dcnet.NewDCNetEntity(2, dcnet.DCNET_TRUSTEE, upCellSize, false, true, sharedPRNGs_t2)
+	log.Error("upCellSize", upCellSize)
+	t1 := dcnet.NewDCNetEntity(1, dcnet.DCNET_TRUSTEE, upCellSize, true, sharedPRNGs_t1)
+	t2 := dcnet.NewDCNetEntity(2, dcnet.DCNET_TRUSTEE, upCellSize, true, sharedPRNGs_t2)
 
-	pad1 := dcnet.DCNetCipherFromBytes(t1.TrusteeEncodeForRound(0))
+	x := t1.TrusteeEncodeForRound(0)
+
+	log.Error("x", len(x))
+	log.Error("x", x)
+
+	pad1 := dcnet.DCNetCipherFromBytes(x)
 	pad2 := dcnet.DCNetCipherFromBytes(t2.TrusteeEncodeForRound(0))
 	clientPad := dcnet.DCNetCipherFromBytes(msg6.Data)
 
 	dcNetDecoded := make([]byte, upCellSize)
 	i = 0
+	log.Error("pad1.Payload", len(pad1.Payload))
+	log.Error("pad2.Payload", len(pad2.Payload))
+	log.Error("clientPad.Payload", len(clientPad.Payload))
 	for i < len(dcNetDecoded) {
 		dcNetDecoded[i] = pad1.Payload[i] ^ pad2.Payload[i] ^ clientPad.Payload[i]
 		i++

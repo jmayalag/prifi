@@ -254,7 +254,7 @@ func (p *PriFiLibClientInstance) ProcessDownStreamData(msg net.REL_CLI_DOWNSTREA
 
 		//produce the next upstream cell
 
-		upstreamCell := p.clientState.DCNet.EncodeForRound(p.clientState.RoundNo, false, contribution, nil)
+		upstreamCell := p.clientState.DCNet.EncodeForRound(p.clientState.RoundNo, false, contribution)
 
 		//send the data to the relay
 		toSend := &net.CLI_REL_OPENCLOSED_DATA{
@@ -438,8 +438,9 @@ func (p *PriFiLibClientInstance) SendUpstreamData(ownerSlotID int) error {
 	if p.clientState.DisruptionProtectionEnabled {
 		hmac = p.computeHmac256(upstreamCellContent)
 	}
+	payload := append(hmac, upstreamCellContent...)
 
-	upstreamCell := p.clientState.DCNet.EncodeForRound(p.clientState.RoundNo, slotOwner, upstreamCellContent, hmac)
+	upstreamCell := p.clientState.DCNet.EncodeForRound(p.clientState.RoundNo, slotOwner, payload)
 
 	//send the data to the relay
 	toSend := &net.CLI_REL_UPSTREAM_DATA{
@@ -495,8 +496,7 @@ func (p *PriFiLibClientInstance) Received_REL_CLI_TELL_TRUSTEES_PK(trusteesPks [
 	}
 
 	p.clientState.DCNet = dcnet.NewDCNetEntity(p.clientState.ID,
-		dcnet.DCNET_CLIENT, p.clientState.PayloadLength, p.clientState.EquivocationProtectionEnabled,
-		p.clientState.DisruptionProtectionEnabled, sharedPRNGs)
+		dcnet.DCNET_CLIENT, p.clientState.PayloadLength, p.clientState.EquivocationProtectionEnabled, sharedPRNGs)
 
 	//then, generate our ephemeral keys (used for shuffling)
 	p.clientState.EphemeralPublicKey, p.clientState.ephemeralPrivateKey = crypto.NewKeyPair()
@@ -557,17 +557,22 @@ func (p *PriFiLibClientInstance) Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(
 	log.Lvl3("Client", p.clientState.ID, "ready to communicate.")
 
 	//produce a blank cell (we could embed data, but let's keep the code simple, one wasted message is not much)
-	data := make([]byte, p.clientState.DCNet.GetPayloadSize())
-	var hmac []byte
+	data := make([]byte, p.clientState.PayloadLength)
 	slotOwner := false
 	if p.clientState.DisruptionProtectionEnabled {
-		hmac = p.computeHmac256(data)
+		if p.clientState.PayloadLength < 32 {
+			log.Fatal("Client", p.clientState.ID, "Cannot have disruption protection with less than 32 bytes payload")
+		}
+		data2 := make([]byte, p.clientState.PayloadLength-32)
+		hmac := p.computeHmac256(data2)
+
+		data = append(hmac, data2...)
 	}
 	if p.clientState.ID == 0 {
 		slotOwner = true // we need one guy that takes the responsability for this first slot
 	}
 
-	upstreamCell := p.clientState.DCNet.EncodeForRound(0, slotOwner, data, hmac)
+	upstreamCell := p.clientState.DCNet.EncodeForRound(0, slotOwner, data)
 
 	//send the data to the relay
 	toSend := &net.CLI_REL_UPSTREAM_DATA{

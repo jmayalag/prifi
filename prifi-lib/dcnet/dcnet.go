@@ -21,16 +21,12 @@ const (
 	DCNET_RELAY
 )
 
-// when enabled, this number of bytes is reserved for the disruption protection
-const DISRUPTION_PROTECTION_CONTRIB_LENGTH = 32 // 256 bits reserved for a hash
-
 // A struct with all methods to encode and decode dc-net messages
 type DCNetEntity struct {
 	//Global for all nodes
 	EntityID                      int
 	Entity                        DCNET_ENTITY
 	EquivocationProtectionEnabled bool
-	DisruptionProtectionEnabled   bool
 	DCNetMessageSize              int
 	DCNetContentSize              int
 
@@ -61,7 +57,6 @@ func NewDCNetEntity(
 	entity DCNET_ENTITY,
 	DCNetMessageSize int,
 	equivocationProtection bool,
-	disruptionProtection bool,
 	sharedKeys []abstract.Cipher) *DCNetEntity {
 
 	e := new(DCNetEntity)
@@ -69,16 +64,11 @@ func NewDCNetEntity(
 	e.Entity = entity
 	e.DCNetMessageSize = DCNetMessageSize
 	e.EquivocationProtectionEnabled = equivocationProtection
-	e.DisruptionProtectionEnabled = disruptionProtection
 	e.DCNetRoundDecoder = nil
 	e.currentRound = 0
 
 	if equivocationProtection {
 		e.equivocationProtection = NewEquivocation()
-	}
-
-	if disruptionProtection && DCNetMessageSize <= DISRUPTION_PROTECTION_CONTRIB_LENGTH {
-		panic("DCNetMessageSize too small (" + strconv.Itoa(DCNetMessageSize) + ")")
 	}
 
 	e.cryptoSuite = config.CryptoSuite
@@ -109,35 +99,30 @@ func NewDCNetEntity(
 		e.equivocationContribLength = len(minusOne.Bytes())
 	}
 
-	// compute the Payload size
-	e.DCNetContentSize = e.DCNetMessageSize - e.equivocationContribLength
+	e.DCNetContentSize = DCNetMessageSize
 
 	// make sure we can still encode stuff !
 	if e.DCNetContentSize <= 0 {
-		panic("DCNet: with those options, the Payload length is" + strconv.Itoa(e.DCNetContentSize))
+		panic("Payload length is" + strconv.Itoa(e.DCNetContentSize))
 	}
 
 	return e
 }
 
-// Tells the owner of the slot how much he can embedded (=DCNetContentSize, -32 if disruption is enabled)
+// Tells the owner of the slot how much he can embedded (=DCNetContentSize)
 func (e *DCNetEntity) GetPayloadSize() int {
-	s := e.DCNetContentSize
-	if e.DisruptionProtectionEnabled {
-		s -= DISRUPTION_PROTECTION_CONTRIB_LENGTH
-	}
-	return s
+	return e.DCNetContentSize
 }
 
 // Encodes "Payload" in the correct round. Will skip PRNG material if the round is in the future,
 // and crash if the round is in the past or the Payload is too long
 func (e *DCNetEntity) TrusteeEncodeForRound(roundID int32) []byte {
-	return e.EncodeForRound(roundID, false, nil, nil)
+	return e.EncodeForRound(roundID, false, nil)
 }
 
 // Encodes "Payload" in the correct round. Will skip PRNG material if the round is in the future,
 // and crash if the round is in the past or the Payload is too long
-func (e *DCNetEntity) EncodeForRound(roundID int32, slotOwner bool, payload []byte, disruptionProtectionTag []byte) []byte {
+func (e *DCNetEntity) EncodeForRound(roundID int32, slotOwner bool, payload []byte) []byte {
 	if len(payload) > e.DCNetContentSize {
 		panic("DCNet: cannot encode Payload of length " + strconv.Itoa(int(len(payload))) + " max length is " + strconv.Itoa(len(payload)))
 	}
@@ -161,7 +146,7 @@ func (e *DCNetEntity) EncodeForRound(roundID int32, slotOwner bool, payload []by
 
 	var c *DCNetCipher
 	if e.Entity == DCNET_CLIENT {
-		c = e.clientEncode(slotOwner, payload, disruptionProtectionTag)
+		c = e.clientEncode(slotOwner, payload)
 	} else {
 		c = e.trusteeEncode()
 	}
@@ -177,7 +162,7 @@ func (e *DCNetEntity) UpdateReceivedMessageHistory(newData []byte) {
 	}
 }
 
-func (e *DCNetEntity) clientEncode(slotOwner bool, payload []byte, disruptionProtectionTag []byte) *DCNetCipher {
+func (e *DCNetEntity) clientEncode(slotOwner bool, payload []byte) *DCNetCipher {
 	c := new(DCNetCipher)
 
 	if payload == nil {
@@ -187,15 +172,6 @@ func (e *DCNetEntity) clientEncode(slotOwner bool, payload []byte, disruptionPro
 		payload2 := make([]byte, e.GetPayloadSize())
 		copy(payload2[0:len(payload)], payload)
 		payload = payload2
-
-		// if the disruption protection is enabled, add a hmac
-		if slotOwner && e.DisruptionProtectionEnabled && disruptionProtectionTag != nil {
-			if len(disruptionProtectionTag) != DISRUPTION_PROTECTION_CONTRIB_LENGTH {
-				panic("Disruption protection tag (HMAC) must be 32 bytes")
-			}
-			hmac := disruptionProtectionTag
-			payload = append(hmac, payload...)
-		}
 	}
 	c.Payload = payload
 

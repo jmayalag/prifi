@@ -255,8 +255,7 @@ func (p *PriFiLibTrusteeInstance) Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_
 	}
 
 	p.trusteeState.DCNet = dcnet.NewDCNetEntity(p.trusteeState.ID, dcnet.DCNET_TRUSTEE,
-		p.trusteeState.PayloadLength, p.trusteeState.EquivocationProtectionEnabled,
-		false, sharedPRNGs)
+		p.trusteeState.PayloadLength, p.trusteeState.EquivocationProtectionEnabled, sharedPRNGs)
 
 	//In case we use the simple dcnet, vkey isn't needed
 	vkey := make([]byte, 1)

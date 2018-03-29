@@ -37,17 +37,13 @@ func TestDCNetCreation(t *testing.T) {
 }
 
 func VariousLevelsOfProtection(t *testing.T, nRounds int32, dcNetMessageSize, NClients, NTrustees int) {
-	tg := NewTestGroup(t, false, false, dcNetMessageSize, NClients, NTrustees)
+	tg := NewTestGroup(t, false, dcNetMessageSize, NClients, NTrustees)
 	SimulateRounds(t, tg, nRounds)
-	tg = NewTestGroup(t, true, false, dcNetMessageSize, NClients, NTrustees)
-	SimulateRounds(t, tg, nRounds)
-	tg = NewTestGroup(t, false, true, dcNetMessageSize, NClients, NTrustees)
-	SimulateRounds(t, tg, nRounds)
-	tg = NewTestGroup(t, true, true, dcNetMessageSize, NClients, NTrustees)
+	tg = NewTestGroup(t, false, dcNetMessageSize, NClients, NTrustees)
 	SimulateRounds(t, tg, nRounds)
 }
 
-func NewTestGroup(t *testing.T, disruptionProtectionEnabled, equivocationProtectionEnabled bool, dcNetMessageSize, nclients, ntrustees int) *TestGroup {
+func NewTestGroup(t *testing.T, equivocationProtectionEnabled bool, dcNetMessageSize, nclients, ntrustees int) *TestGroup {
 
 	// Use a pseudorandom stream from a well-known seed
 	// for all our setup randomness,
@@ -67,7 +63,7 @@ func NewTestGroup(t *testing.T, disruptionProtectionEnabled, equivocationProtect
 
 	relay := new(TestNode)
 	relay.name = "Relay"
-	relay.DCNetEntity = NewDCNetEntity(0, DCNET_RELAY, dcNetMessageSize, equivocationProtectionEnabled, disruptionProtectionEnabled, nil)
+	relay.DCNetEntity = NewDCNetEntity(0, DCNET_RELAY, dcNetMessageSize, equivocationProtectionEnabled, nil)
 
 	// Create tables of the clients' and the trustees' public session keys
 	clientsKeys := make([]abstract.Point, nclients)
@@ -91,7 +87,7 @@ func NewTestGroup(t *testing.T, disruptionProtectionEnabled, equivocationProtect
 			data, _ := dh.MarshalBinary()
 			n.sharedSecrets[i] = config.CryptoSuite.Cipher(data)
 		}
-		n.DCNetEntity = NewDCNetEntity(i, DCNET_CLIENT, dcNetMessageSize, equivocationProtectionEnabled, disruptionProtectionEnabled, n.sharedSecrets)
+		n.DCNetEntity = NewDCNetEntity(i, DCNET_CLIENT, dcNetMessageSize, equivocationProtectionEnabled, n.sharedSecrets)
 	}
 
 	for i, n := range trustees {
@@ -105,7 +101,7 @@ func NewTestGroup(t *testing.T, disruptionProtectionEnabled, equivocationProtect
 			data, _ := dh.MarshalBinary()
 			n.sharedSecrets[i] = config.CryptoSuite.Cipher(data)
 		}
-		n.DCNetEntity = NewDCNetEntity(i, DCNET_TRUSTEE, dcNetMessageSize, equivocationProtectionEnabled, disruptionProtectionEnabled, n.sharedSecrets)
+		n.DCNetEntity = NewDCNetEntity(i, DCNET_TRUSTEE, dcNetMessageSize, equivocationProtectionEnabled, n.sharedSecrets)
 	}
 
 	// Create a set of fake history streams for the relay and clients
@@ -124,14 +120,9 @@ func NewTestGroup(t *testing.T, disruptionProtectionEnabled, equivocationProtect
 
 func SimulateRounds(t *testing.T, tg *TestGroup, maxRounds int32) {
 
-	fakeHmac := make([]byte, 32)
-	for k := range fakeHmac {
-		fakeHmac[k] = byte(k) //make it recognizable
-	}
-
 	d := tg.Relay.DCNetEntity
 	fmt.Println("Testing for ", len(tg.Clients), "/", len(tg.Trustees),
-		"DC-net with protections: disruption=", d.DisruptionProtectionEnabled, "equiv=", d.EquivocationProtectionEnabled)
+		"DC-net with equiv=", d.EquivocationProtectionEnabled)
 
 	for roundID := int32(0); roundID <= maxRounds; roundID += 2 {
 		clientMessages := make([][]byte, 0)
@@ -150,10 +141,10 @@ func SimulateRounds(t *testing.T, tg *TestGroup, maxRounds int32) {
 			var m []byte
 			if first {
 				//fmt.Println("Embedding message:", message)
-				m = tg.Clients[i].DCNetEntity.EncodeForRound(roundID, true, message, fakeHmac)
+				m = tg.Clients[i].DCNetEntity.EncodeForRound(roundID, true, message)
 				first = false
 			} else {
-				m = tg.Clients[i].DCNetEntity.EncodeForRound(roundID, false, nil, nil)
+				m = tg.Clients[i].DCNetEntity.EncodeForRound(roundID, false, nil)
 			}
 			clientMessages = append(clientMessages, m)
 		}
@@ -174,10 +165,6 @@ func SimulateRounds(t *testing.T, tg *TestGroup, maxRounds int32) {
 		}
 
 		output := tg.Relay.DCNetEntity.DecodeCell()
-
-		if tg.Relay.DCNetEntity.DisruptionProtectionEnabled {
-			output = output[DISRUPTION_PROTECTION_CONTRIB_LENGTH:]
-		}
 
 		//fmt.Println("-----------------")
 		//fmt.Println(output)

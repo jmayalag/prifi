@@ -380,7 +380,7 @@ func (p *PriFiLibRelayInstance) upstreamPhase2b_extractPayload() error {
 
 		if !valid {
 			// start blame
-			//log.Error("Warning: Disruption Protection check failed")
+			log.Error("Warning: Disruption Protection check failed")
 		}
 	}
 
@@ -755,7 +755,7 @@ func (p *PriFiLibRelayInstance) Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS(msg n
 		}
 
 		p.relayState.DCNet = dcnet.NewDCNetEntity(0, dcnet.DCNET_RELAY, p.relayState.UpstreamCellSize,
-			p.relayState.EquivocationProtectionEnabled, p.relayState.DisruptionProtectionEnabled, nil)
+			p.relayState.EquivocationProtectionEnabled, nil)
 
 		// prepare to collect the ciphers
 		p.relayState.DCNet.DecodeStart(0)
