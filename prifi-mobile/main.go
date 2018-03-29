@@ -10,14 +10,14 @@ import (
 	"gopkg.in/dedis/onet.v1"
 )
 
-var stopChan chan struct{}
+var stopChan chan bool
 var errorChan chan error
 var globalHost *onet.Server
 var globalService *prifi_service.ServiceState
 
 // The "main" function that is called by Mobile OS in order to launch a client server
 func StartClient() {
-	stopChan = make(chan struct{}, 1)
+	stopChan = make(chan bool, 1)
 	errorChan = make(chan error, 1)
 
 	go func() {
@@ -37,7 +37,7 @@ func StartClient() {
 }
 
 func StopClient() {
-	close(stopChan)
+	stopChan <- true
 }
 
 func run() error {
