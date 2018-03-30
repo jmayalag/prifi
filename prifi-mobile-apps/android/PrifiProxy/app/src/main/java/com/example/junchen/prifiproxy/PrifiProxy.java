@@ -13,8 +13,8 @@ public class PrifiProxy extends Application {
 
     @Override
     public void onCreate() {
-        mContext = getApplicationContext();
         super.onCreate();
+        mContext = getApplicationContext();
     }
 
     public static Context getContext() {

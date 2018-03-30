@@ -24,6 +24,8 @@ import prifiMobile.PrifiMobile;
 
 public class PrifiService extends Service {
 
+    public static final String PRIFI_STOPPED_BROADCAST_ACTION = "PRIFI_STOPPED_BROADCAST_ACTION";
+
     private static final String PRIFI_SERVICE_THREAD_NAME = "PrifiService";
     private static final String PRIFI_SERVICE_NOTIFICATION_CHANNEL = "PrifiChannel";
     private static final int PRIFI_SERVICE_NOTIFICATION_ID = 42;
@@ -65,24 +67,21 @@ public class PrifiService extends Service {
     public int onStartCommand(Intent intent, int flags, int startId) {
         Toast.makeText(this, "Service starting", Toast.LENGTH_SHORT).show();
 
-        // For each start request, send a message to start a job and deliver the
-        // start ID so we know which request we're stopping when we finish the job
         Message msg = mServiceHandler.obtainMessage();
         msg.arg1 = startId;
         mServiceHandler.sendMessage(msg);
 
-        // If we get killed, after returning from here, restart
         return START_NOT_STICKY;
     }
 
     @Override
     public IBinder onBind(Intent intent) {
-        // We don't provide binding, so return null
         return null;
     }
 
     @Override
     public void onDestroy() {
+        sendBroadcast(new Intent(PRIFI_STOPPED_BROADCAST_ACTION));
         Toast.makeText(this, "Service stopped", Toast.LENGTH_SHORT).show();
         mServiceThread.quit();
     }
