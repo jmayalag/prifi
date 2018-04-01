@@ -42,6 +42,8 @@ realIdentitiesDir="identities_real"         # in $configdir
 
 cothorityBranchRequired="master"            # the branch required for the cothority (SDA) framework
 
+sleeptime_between_spawns=1                  # time in second between entities launch in "make it"
+
 source "helpers.lib.sh"
 
 # ------------------------

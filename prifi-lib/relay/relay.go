@@ -358,7 +358,6 @@ func (p *PriFiLibRelayInstance) upstreamPhase2b_extractPayload() error {
 
 	//decode all clients and trustees
 	for _, s := range clientSlices {
-		log.Lvl1("Decoding", roundID, len(s))
 		p.relayState.DCNet.DecodeClient(roundID, s)
 	}
 	for _, s := range trusteesSlices {
@@ -489,6 +488,11 @@ func (p *PriFiLibRelayInstance) upstreamPhase3_finalizeRound(roundID int32) erro
 	}
 
 	p.relayState.roundManager.CloseRound()
+
+	// we just closed that round. If there is any other round opened (window > 1), directly prepare to decode it
+	if roundOpened, nextRoundID := p.relayState.roundManager.currentRound(); roundOpened {
+		p.relayState.DCNet.DecodeStart(nextRoundID)
+	}
 
 	return nil
 }
