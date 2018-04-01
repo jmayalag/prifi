@@ -67,7 +67,7 @@ func (p *PriFiLibTrusteeInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PA
 		return errors.New("nClients cannot be smaller than 1")
 	}
 	if payloadSize < 1 {
-		return errors.New("UpCellSize cannot be 0")
+		return errors.New("payloadSize cannot be 0")
 	}
 
 	switch dcNetType {
