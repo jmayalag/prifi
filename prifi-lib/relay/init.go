@@ -141,7 +141,7 @@ type RelayState struct {
 	PublicKey                              abstract.Point
 	ExperimentRoundLimit                   int
 	trustees                               []NodeRepresentation
-	UpstreamCellSize                       int
+	PayloadSize                            int
 	UseDummyDataDown                       bool
 	UseOpenClosedSlots                     bool
 	UseUDP                                 bool

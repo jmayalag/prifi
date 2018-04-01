@@ -12,18 +12,18 @@ import (
 // EgressServer takes data from a go channel and recreates the multiplexed TCP streams
 type EgressServer struct {
 	activeConnections map[string]*MultiplexedConnection
-	maxMessageLength  int
-	maxPayloadLength  int
+	maxMessageSize    int
+	maxPayloadSize    int
 	upstreamChan      chan []byte
 	downstreamChan    chan []byte
 	stopChan          chan bool
 }
 
 // StartEgressHandler creates (and block) an Egress Server
-func StartEgressHandler(serverAddress string, maxMessageLength int, upstreamChan chan []byte, downstreamChan chan []byte, stopChan chan bool) {
+func StartEgressHandler(serverAddress string, maxMessageSize int, upstreamChan chan []byte, downstreamChan chan []byte, stopChan chan bool) {
 	eg := new(EgressServer)
-	eg.maxMessageLength = maxMessageLength
-	eg.maxPayloadLength = maxMessageLength - MULTIPLEXER_HEADER_SIZE //we use 8 bytes for the multiplexing
+	eg.maxMessageSize = maxMessageSize
+	eg.maxPayloadSize = maxMessageSize - MULTIPLEXER_HEADER_SIZE //we use 8 bytes for the multiplexing
 	eg.upstreamChan = upstreamChan
 	eg.downstreamChan = downstreamChan
 	eg.stopChan = stopChan
@@ -65,7 +65,7 @@ func StartEgressHandler(serverAddress string, maxMessageLength int, upstreamChan
 				mc.ID = ID
 				mc.ID_bytes = []byte(ID)
 				mc.stopChan = make(chan bool, 1)
-				mc.maxMessageLength = eg.maxMessageLength
+				mc.maxMessageLength = eg.maxMessageSize
 
 				eg.activeConnections[ID] = mc
 				go eg.egressConnectionReader(mc)
@@ -98,7 +98,7 @@ func (eg *EgressServer) egressConnectionReader(mc *MultiplexedConnection) {
 		}
 
 		// Read data from the connection
-		buffer := make([]byte, eg.maxPayloadLength)
+		buffer := make([]byte, eg.maxPayloadSize)
 		n, err := mc.conn.Read(buffer)
 
 		if err != nil {

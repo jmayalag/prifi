@@ -61,7 +61,7 @@ func (p *PriFiLibClientInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PAR
 	p.messageSender.SetEntity(e)
 	nTrustees := msg.IntValueOrElse("NTrustees", p.clientState.nTrustees)
 	nClients := msg.IntValueOrElse("NClients", p.clientState.nClients)
-	upCellSize := msg.IntValueOrElse("UpstreamCellSize", p.clientState.PayloadLength) //todo: change this name
+	payloadSize := msg.IntValueOrElse("PayloadSize", p.clientState.PayloadSize)
 	useUDP := msg.BoolValueOrElse("UseUDP", p.clientState.UseUDP)
 	dcNetType := msg.StringValueOrElse("DCNetType", "not initialized")
 	disruptionProtection := msg.BoolValueOrElse("DisruptionProtectionEnabled", false)
@@ -77,8 +77,8 @@ func (p *PriFiLibClientInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PAR
 	if nClients < 1 {
 		return errors.New("nClients cannot be smaller than 1")
 	}
-	if upCellSize < 1 {
-		return errors.New("UpCellSize cannot be 0")
+	if payloadSize < 1 {
+		return errors.New("PayloadSize cannot be 0")
 	}
 
 	switch dcNetType {
@@ -92,7 +92,7 @@ func (p *PriFiLibClientInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PAR
 	p.clientState.MySlot = -1
 	p.clientState.nClients = nClients
 	p.clientState.nTrustees = nTrustees
-	p.clientState.PayloadLength = upCellSize
+	p.clientState.PayloadSize = payloadSize
 	p.clientState.UseUDP = useUDP
 	p.clientState.TrusteePublicKey = make([]abstract.Point, nTrustees)
 	p.clientState.sharedSecrets = make([]abstract.Point, nTrustees)
@@ -105,7 +105,7 @@ func (p *PriFiLibClientInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PAR
 	//we know our client number, if needed, parse the pcap for replay
 	if p.clientState.pcapReplay.Enabled {
 		p.clientState.pcapReplay.PCAPFile = p.clientState.pcapReplay.PCAPFolder + "client" + strconv.Itoa(clientID) + ".pcap"
-		packets, err := utils.ParsePCAP(p.clientState.pcapReplay.PCAPFile, p.clientState.PayloadLength)
+		packets, err := utils.ParsePCAP(p.clientState.pcapReplay.PCAPFile, p.clientState.PayloadSize)
 		if err != nil {
 			log.Lvl2("Client", clientID, "Requested PCAP Replay, but could not parse;", err)
 		}
@@ -345,10 +345,10 @@ func (p *PriFiLibClientInstance) SendUpstreamData(ownerSlotID int) error {
 	var upstreamCellContent []byte
 
 	//how much data we can send
-	payloadLength := p.clientState.PayloadLength
+	actualPayloadSize := p.clientState.PayloadSize
 	if p.clientState.DisruptionProtectionEnabled {
-		payloadLength -= 32
-		if payloadLength <= 0 {
+		actualPayloadSize -= 32
+		if actualPayloadSize <= 0 {
 			log.Fatal("Client", p.clientState.ID, "Cannot have disruption protection with less than 32 bytes payload")
 		}
 	}
@@ -383,7 +383,7 @@ func (p *PriFiLibClientInstance) SendUpstreamData(ownerSlotID int) error {
 				//all packets >= currentPacket AND <= relativeNow should be sent
 				basePacketID := p.clientState.pcapReplay.currentPacket
 				lastPacketID := p.clientState.pcapReplay.currentPacket
-				for currentPacket.MsSinceBeginningOfCapture <= relativeNow && payloadRealLength+currentPacket.RealLength <= payloadLength {
+				for currentPacket.MsSinceBeginningOfCapture <= relativeNow && payloadRealLength+currentPacket.RealLength <= actualPayloadSize {
 
 					// add this packet
 					payload = append(payload, currentPacket.Header...)
@@ -409,7 +409,7 @@ func (p *PriFiLibClientInstance) SendUpstreamData(ownerSlotID int) error {
 
 				//or, if we have nothing to send, and we are doing Latency tests, embed a pre-crafted message that we will recognize later on
 				default:
-					upstreamCellContent = make([]byte, payloadLength)
+					upstreamCellContent = make([]byte, actualPayloadSize)
 
 					if len(p.clientState.LatencyTest.LatencyTestsToSend) > 0 {
 
@@ -419,7 +419,7 @@ func (p *PriFiLibClientInstance) SendUpstreamData(ownerSlotID int) error {
 						}
 
 						bytes, outMsgs := prifilog.LatencyMessagesToBytes(p.clientState.LatencyTest.LatencyTestsToSend,
-							p.clientState.ID, p.clientState.RoundNo, payloadLength, logFn)
+							p.clientState.ID, p.clientState.RoundNo, actualPayloadSize, logFn)
 
 						p.clientState.LatencyTest.LatencyTestsToSend = outMsgs
 						upstreamCellContent = bytes
@@ -496,7 +496,7 @@ func (p *PriFiLibClientInstance) Received_REL_CLI_TELL_TRUSTEES_PK(trusteesPks [
 	}
 
 	p.clientState.DCNet = dcnet.NewDCNetEntity(p.clientState.ID,
-		dcnet.DCNET_CLIENT, p.clientState.PayloadLength, p.clientState.EquivocationProtectionEnabled, sharedPRNGs)
+		dcnet.DCNET_CLIENT, p.clientState.PayloadSize, p.clientState.EquivocationProtectionEnabled, sharedPRNGs)
 
 	//then, generate our ephemeral keys (used for shuffling)
 	p.clientState.EphemeralPublicKey, p.clientState.ephemeralPrivateKey = crypto.NewKeyPair()
@@ -557,13 +557,13 @@ func (p *PriFiLibClientInstance) Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(
 	log.Lvl3("Client", p.clientState.ID, "ready to communicate.")
 
 	//produce a blank cell (we could embed data, but let's keep the code simple, one wasted message is not much)
-	data := make([]byte, p.clientState.PayloadLength)
+	data := make([]byte, p.clientState.PayloadSize)
 	slotOwner := false
 	if p.clientState.DisruptionProtectionEnabled {
-		if p.clientState.PayloadLength < 32 {
+		if p.clientState.PayloadSize < 32 {
 			log.Fatal("Client", p.clientState.ID, "Cannot have disruption protection with less than 32 bytes payload")
 		}
-		data2 := make([]byte, p.clientState.PayloadLength-32)
+		data2 := make([]byte, p.clientState.PayloadSize-32)
 		hmac := p.computeHmac256(data2)
 
 		data = append(hmac, data2...)

@@ -150,7 +150,7 @@ func (s *ServiceState) StartRelay(group *app.Group) error {
 
 	socksServerConfig = &prifi_protocol.SOCKSConfig{
 		ListeningAddr:     "127.0.0.1:" + strconv.Itoa(s.prifiTomlConfig.SocksClientPort),
-		PayloadLength:     s.prifiTomlConfig.CellSizeUp,
+		PayloadSize:       s.prifiTomlConfig.PayloadSize,
 		UpstreamChannel:   make(chan []byte),
 		DownstreamChannel: make(chan []byte),
 	}
@@ -158,7 +158,7 @@ func (s *ServiceState) StartRelay(group *app.Group) error {
 	//the relay has a socks Client
 	if !s.hasSocksClientGoRoutine {
 		stopChan := make(chan bool, 1)
-		go stream_multiplexer.StartEgressHandler(socksServerConfig.ListeningAddr, socksServerConfig.PayloadLength, socksServerConfig.UpstreamChannel, socksServerConfig.DownstreamChannel, stopChan)
+		go stream_multiplexer.StartEgressHandler(socksServerConfig.ListeningAddr, socksServerConfig.PayloadSize, socksServerConfig.UpstreamChannel, socksServerConfig.DownstreamChannel, stopChan)
 		s.socksStopChan = append(s.socksStopChan, stopChan)
 		s.hasSocksClientGoRoutine = true
 	}
@@ -180,7 +180,7 @@ func (s *ServiceState) StartClient(group *app.Group, delay time.Duration) error 
 
 	socksClientConfig = &prifi_protocol.SOCKSConfig{
 		Port:              s.prifiTomlConfig.SocksServerPort,
-		PayloadLength:     s.prifiTomlConfig.CellSizeUp,
+		PayloadSize:       s.prifiTomlConfig.PayloadSize,
 		UpstreamChannel:   make(chan []byte),
 		DownstreamChannel: make(chan []byte),
 	}
@@ -189,7 +189,7 @@ func (s *ServiceState) StartClient(group *app.Group, delay time.Duration) error 
 	if !s.hasSocksServerGoRoutine {
 		log.Lvl1("Starting SOCKS server on port", socksClientConfig.Port)
 		stopChan := make(chan bool, 1)
-		go stream_multiplexer.StartIngressServer(socksClientConfig.Port, socksClientConfig.PayloadLength, socksClientConfig.UpstreamChannel, socksClientConfig.DownstreamChannel, stopChan)
+		go stream_multiplexer.StartIngressServer(socksClientConfig.Port, socksClientConfig.PayloadSize, socksClientConfig.UpstreamChannel, socksClientConfig.DownstreamChannel, stopChan)
 		s.socksStopChan = append(s.socksStopChan, stopChan)
 		s.hasSocksServerGoRoutine = true
 	}
@@ -216,21 +216,21 @@ func (s *ServiceState) StartSocksTunnelOnly() error {
 
 	socksClientConfig = &prifi_protocol.SOCKSConfig{
 		Port:              s.prifiTomlConfig.SocksServerPort,
-		PayloadLength:     s.prifiTomlConfig.CellSizeUp,
+		PayloadSize:       s.prifiTomlConfig.PayloadSize,
 		UpstreamChannel:   make(chan []byte),
 		DownstreamChannel: make(chan []byte),
 	}
 
 	socksServerConfig = &prifi_protocol.SOCKSConfig{
 		ListeningAddr:     "127.0.0.1:" + strconv.Itoa(s.prifiTomlConfig.SocksClientPort),
-		PayloadLength:     s.prifiTomlConfig.CellSizeUp,
+		PayloadSize:       s.prifiTomlConfig.PayloadSize,
 		UpstreamChannel:   socksClientConfig.UpstreamChannel,
 		DownstreamChannel: socksClientConfig.DownstreamChannel,
 	}
 	stopChan1 := make(chan bool, 1)
 	stopChan2 := make(chan bool, 1)
-	go stream_multiplexer.StartIngressServer(socksClientConfig.Port, socksClientConfig.PayloadLength, socksClientConfig.UpstreamChannel, socksClientConfig.DownstreamChannel, stopChan1)
-	go stream_multiplexer.StartEgressHandler(socksServerConfig.ListeningAddr, socksClientConfig.PayloadLength, socksServerConfig.UpstreamChannel, socksServerConfig.DownstreamChannel, stopChan2)
+	go stream_multiplexer.StartIngressServer(socksClientConfig.Port, socksClientConfig.PayloadSize, socksClientConfig.UpstreamChannel, socksClientConfig.DownstreamChannel, stopChan1)
+	go stream_multiplexer.StartEgressHandler(socksServerConfig.ListeningAddr, socksClientConfig.PayloadSize, socksServerConfig.UpstreamChannel, socksServerConfig.DownstreamChannel, stopChan2)
 	s.socksStopChan = append(s.socksStopChan, stopChan1)
 	s.socksStopChan = append(s.socksStopChan, stopChan2)
 

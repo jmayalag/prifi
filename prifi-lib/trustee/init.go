@@ -80,7 +80,7 @@ type TrusteeState struct {
 	nClients                      int
 	neffShuffle                   *scheduler.NeffShuffleTrustee
 	nTrustees                     int
-	PayloadLength                 int
+	PayloadSize                   int
 	privateKey                    abstract.Scalar
 	PublicKey                     abstract.Point
 	sendingRate                   chan int16

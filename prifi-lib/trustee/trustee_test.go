@@ -96,7 +96,7 @@ func TestTrustee(t *testing.T) {
 		t.Error("Trustee should not accept this message")
 	}
 	weird.Add("NClients", 1)
-	weird.Add("UpstreamCellSize", 0)
+	weird.Add("PayloadSize", 0)
 	if err := trustee.ReceivedMessage(*weird); err == nil {
 		t.Error("Trustee should not accept this message")
 	}
@@ -112,7 +112,7 @@ func TestTrustee(t *testing.T) {
 	msg.Add("StartNow", true)
 	msg.Add("NClients", nClients)
 	msg.Add("NTrustees", nTrustees)
-	msg.Add("UpstreamCellSize", upCellSize)
+	msg.Add("PayloadSize", upCellSize)
 	msg.Add("NextFreeTrusteeID", trusteeID)
 	msg.Add("DCNetType", dcNetType)
 
@@ -126,8 +126,8 @@ func TestTrustee(t *testing.T) {
 	if ts.nTrustees != nTrustees {
 		t.Error("nTrustees should be 2")
 	}
-	if ts.PayloadLength != 1500 {
-		t.Error("PayloadLength should be 1500")
+	if ts.PayloadSize != 1500 {
+		t.Error("PayloadSize should be 1500")
 	}
 	if ts.ID != trusteeID {
 		t.Error("ID should be 3")

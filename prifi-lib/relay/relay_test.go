@@ -144,7 +144,7 @@ func TestRelayRun1(t *testing.T) {
 	msg.Add("StartNow", true)
 	msg.Add("NClients", nClients)
 	msg.Add("NTrustees", nTrustees)
-	msg.Add("UpstreamCellSize", upCellSize)
+	msg.Add("PayloadSize", upCellSize)
 	msg.Add("DownstreamCellSize", 10*upCellSize)
 	msg.Add("WindowSize", 1)
 	msg.Add("UseUDP", true)
@@ -182,8 +182,8 @@ func TestRelayRun1(t *testing.T) {
 	if rs.ExperimentRoundLimit != 2 {
 		t.Error("ExperimentRoundLimit was not set correctly")
 	}
-	if rs.UpstreamCellSize != upCellSize {
-		t.Error("UpstreamCellSize was not set correctly")
+	if rs.PayloadSize != upCellSize {
+		t.Error("PayloadSize was not set correctly")
 	}
 	if rs.DownstreamCellSize != 10*upCellSize {
 		t.Error("DownstreamCellSize was not set correctly")
@@ -256,8 +256,8 @@ func TestRelayRun1(t *testing.T) {
 	if msg3.ParamsBool["StartNow"] != true {
 		t.Error("StartNow not set correctly")
 	}
-	if msg3.ParamsInt["UpstreamCellSize"] != upCellSize {
-		t.Error("UpstreamCellSize not set correctly")
+	if msg3.ParamsInt["PayloadSize"] != upCellSize {
+		t.Error("PayloadSize not set correctly")
 	}
 	if msg3.ParamsInt["NextFreeClientID"] != 0 {
 		t.Error("NextFreeTrusteeID not set correctly")
@@ -296,8 +296,8 @@ func TestRelayRun1(t *testing.T) {
 	if msg5.ParamsBool["StartNow"] != true {
 		t.Error("StartNow not set correctly")
 	}
-	if msg5.ParamsInt["UpstreamCellSize"] != upCellSize {
-		t.Error("UpstreamCellSize not set correctly")
+	if msg5.ParamsInt["PayloadSize"] != upCellSize {
+		t.Error("PayloadSize not set correctly")
 	}
 	if msg5.ParamsInt["NextFreeTrusteeID"] != 0 {
 		t.Error("NextFreeTrusteeID not set correctly")
@@ -470,7 +470,7 @@ func TestRelayRun2(t *testing.T) {
 	msg.Add("StartNow", true)
 	msg.Add("NClients", nClients)
 	msg.Add("NTrustees", nTrustees)
-	msg.Add("UpstreamCellSize", upCellSize)
+	msg.Add("PayloadSize", upCellSize)
 	msg.Add("DownstreamCellSize", 10*upCellSize)
 	msg.Add("WindowSize", 1)
 	msg.Add("UseUDP", true)
@@ -667,7 +667,7 @@ func TestRelayRun3(t *testing.T) {
 	msg.Add("StartNow", true)
 	msg.Add("NClients", nClients)
 	msg.Add("NTrustees", nTrustees)
-	msg.Add("UpstreamCellSize", upCellSize)
+	msg.Add("PayloadSize", upCellSize)
 	msg.Add("DownstreamCellSize", 10*upCellSize)
 	msg.Add("WindowSize", 1)
 	msg.Add("UseUDP", false)
@@ -909,7 +909,7 @@ func TestRelayRun4(t *testing.T) {
 	msg.Add("StartNow", true)
 	msg.Add("NClients", nClients)
 	msg.Add("NTrustees", nTrustees)
-	msg.Add("UpstreamCellSize", upCellSize)
+	msg.Add("PayloadSize", upCellSize)
 	msg.Add("DownstreamCellSize", 10*upCellSize)
 	msg.Add("WindowSize", 1)
 	msg.Add("UseUDP", false)
@@ -983,7 +983,7 @@ func TestRelayRun4(t *testing.T) {
 	msg21.Add("StartNow", true)
 	msg21.Add("NClients", nClients)
 	msg21.Add("NTrustees", nTrustees)
-	msg21.Add("UpstreamCellSize", upCellSize)
+	msg21.Add("PayloadSize", upCellSize)
 	msg21.Add("DownstreamCellSize", 10*upCellSize)
 	msg21.Add("WindowSize", 1)
 	msg21.Add("UseUDP", false)

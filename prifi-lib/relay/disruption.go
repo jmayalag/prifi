@@ -136,11 +136,11 @@ func (p *PriFiLibRelayInstance) replayRounds(secret abstract.Point) int {
 
 	for i := 0; i < roundID; i++ {
 		//discard crypto material
-		dst := make([]byte, p.relayState.UpstreamCellSize)
+		dst := make([]byte, p.relayState.PayloadSize)
 		dcCipher.Read(dst)
 	}
 
-	dst := make([]byte, p.relayState.UpstreamCellSize)
+	dst := make([]byte, p.relayState.PayloadSize)
 	dcCipher.Read(dst)
 	bitPos := p.relayState.blamingData[0]
 	m := float64(bitPos) / float64(8)

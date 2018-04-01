@@ -51,7 +51,7 @@ type ClientState struct {
 	Name                          string
 	nClients                      int
 	nTrustees                     int
-	PayloadLength                 int
+	PayloadSize                   int
 	privateKey                    abstract.Scalar
 	PublicKey                     abstract.Point
 	sharedSecrets                 []abstract.Point

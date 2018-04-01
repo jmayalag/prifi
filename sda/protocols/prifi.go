@@ -27,7 +27,7 @@ type PriFiIdentity struct {
 type SOCKSConfig struct {
 	ListeningAddr     string
 	Port              int
-	PayloadLength     int
+	PayloadSize       int
 	UpstreamChannel   chan []byte
 	DownstreamChannel chan []byte
 }
@@ -39,7 +39,7 @@ type PrifiTomlConfig struct {
 	OverrideLogLevel                        int
 	ClientDataOutputEnabled                 bool
 	RelayDataOutputEnabled                  bool
-	CellSizeUp                              int
+	PayloadSize                             int
 	CellSizeDown                            int
 	RelayWindowSize                         int
 	RelayUseOpenClosedSlots                 bool

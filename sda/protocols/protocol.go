@@ -66,7 +66,7 @@ func (p *PriFiSDAProtocol) Start() error {
 	msg.Add("StartNow", true)
 	msg.Add("NTrustees", len(p.ms.trustees))
 	msg.Add("NClients", len(p.ms.clients))
-	msg.Add("UpstreamCellSize", p.config.Toml.CellSizeUp)
+	msg.Add("PayloadSize", p.config.Toml.PayloadSize)
 	msg.Add("DownstreamCellSize", p.config.Toml.CellSizeDown)
 	msg.Add("WindowSize", p.config.Toml.RelayWindowSize)
 	msg.Add("UseOpenClosedSlots", p.config.Toml.RelayUseOpenClosedSlots)

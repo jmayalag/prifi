@@ -128,9 +128,9 @@ func SimulateRounds(t *testing.T, tg *TestGroup, maxRounds int32) {
 		clientMessages := make([][]byte, 0)
 		trusteesMessages := make([][]byte, 0)
 		first := true
-		message := randomBytes(d.GetPayloadSize())
+		message := randomBytes(d.DCNetPayloadSize)
 
-		downstreamMessage := randomBytes(d.GetPayloadSize()) //used only to update the history
+		downstreamMessage := randomBytes(d.DCNetPayloadSize) //used only to update the history
 		for i := range tg.Clients {
 			tg.Clients[i].DCNetEntity.UpdateReceivedMessageHistory(downstreamMessage)
 		}

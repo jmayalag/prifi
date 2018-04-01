@@ -52,7 +52,7 @@ func (p *PriFiLibTrusteeInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PA
 	p.messageSender.SetEntity(e)
 	nTrustees := msg.IntValueOrElse("NTrustees", p.trusteeState.nTrustees)
 	nClients := msg.IntValueOrElse("NClients", p.trusteeState.nClients)
-	cellSize := msg.IntValueOrElse("UpstreamCellSize", p.trusteeState.PayloadLength)
+	payloadSize := msg.IntValueOrElse("PayloadSize", p.trusteeState.PayloadSize)
 	dcNetType := msg.StringValueOrElse("DCNetType", "not initilaized")
 	equivProtection := msg.BoolValueOrElse("EquivocationProtectionEnabled", false)
 
@@ -66,7 +66,7 @@ func (p *PriFiLibTrusteeInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PA
 	if nClients < 1 {
 		return errors.New("nClients cannot be smaller than 1")
 	}
-	if cellSize < 1 {
+	if payloadSize < 1 {
 		return errors.New("UpCellSize cannot be 0")
 	}
 
@@ -79,7 +79,7 @@ func (p *PriFiLibTrusteeInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PA
 	p.trusteeState.Name = "Trustee-" + strconv.Itoa(trusteeID)
 	p.trusteeState.nClients = nClients
 	p.trusteeState.nTrustees = nTrustees
-	p.trusteeState.PayloadLength = cellSize
+	p.trusteeState.PayloadSize = payloadSize
 	p.trusteeState.TrusteeID = trusteeID
 	p.trusteeState.EquivocationProtectionEnabled = equivProtection
 	p.trusteeState.neffShuffle.Init(trusteeID, p.trusteeState.privateKey, p.trusteeState.PublicKey)
@@ -255,7 +255,7 @@ func (p *PriFiLibTrusteeInstance) Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_
 	}
 
 	p.trusteeState.DCNet = dcnet.NewDCNetEntity(p.trusteeState.ID, dcnet.DCNET_TRUSTEE,
-		p.trusteeState.PayloadLength, p.trusteeState.EquivocationProtectionEnabled, sharedPRNGs)
+		p.trusteeState.PayloadSize, p.trusteeState.EquivocationProtectionEnabled, sharedPRNGs)
 
 	//In case we use the simple dcnet, vkey isn't needed
 	vkey := make([]byte, 1)
@@ -308,7 +308,7 @@ We send back one bit per client, from the shared cipher, at bitPos
 /*
 func (p *PriFiLibTrusteeInstance) Received_REL_ALL_REVEAL(msg net.REL_ALL_DISRUPTION_REVEAL) error {
 	p.stateMachine.ChangeState("BLAMING")
-	bits := p.trusteeState.DCNet.RevealBits(msg.RoundID, msg.BitPos, p.trusteeState.PayloadLength)
+	bits := p.trusteeState.DCNet.RevealBits(msg.RoundID, msg.BitPos, p.trusteeState.PayloadSize)
 	toSend := &net.TRU_REL_DISRUPTION_REVEAL{
 		TrusteeID: p.trusteeState.ID,
 		Bits:      bits}

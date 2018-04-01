@@ -23,7 +23,7 @@ func TestEquivocation(t *testing.T) {
 	}
 }
 
-func equivocationTestForDataLength(t *testing.T, cellSize int) {
+func equivocationTestForDataLength(t *testing.T, payloadSize int) {
 
 	// set up the Shared secrets
 	tpub, _ := crypto.NewKeyPair()
@@ -51,18 +51,18 @@ func equivocationTestForDataLength(t *testing.T, cellSize int) {
 	sharedPRNGs_t[1] = config.CryptoSuite.Cipher(ssBytes)
 
 	// set up the DC-nets
-	dcnet_Trustee := NewDCNetEntity(0, DCNET_TRUSTEE, cellSize, false, sharedPRNGs_t)
-	dcnet_Client1 := NewDCNetEntity(0, DCNET_CLIENT, cellSize, false, sharedPRNGs_c1)
-	dcnet_Client2 := NewDCNetEntity(1, DCNET_CLIENT, cellSize, false, sharedPRNGs_c2)
+	dcnet_Trustee := NewDCNetEntity(0, DCNET_TRUSTEE, payloadSize, false, sharedPRNGs_t)
+	dcnet_Client1 := NewDCNetEntity(0, DCNET_CLIENT, payloadSize, false, sharedPRNGs_c1)
+	dcnet_Client2 := NewDCNetEntity(1, DCNET_CLIENT, payloadSize, false, sharedPRNGs_c2)
 
-	data := randomBytes(cellSize)
+	data := randomBytes(payloadSize)
 
 	// get the pads
 	padRound2_t := DCNetCipherFromBytes(dcnet_Trustee.TrusteeEncodeForRound(0))
 	padRound1_c1 := DCNetCipherFromBytes(dcnet_Client1.EncodeForRound(0, true, data))
 	padRound1_c2 := DCNetCipherFromBytes(dcnet_Client2.EncodeForRound(0, false, nil))
 
-	res := make([]byte, cellSize)
+	res := make([]byte, payloadSize)
 	for i := range padRound1_c2.Payload {
 		v := padRound1_c1.Payload[i]
 		v ^= padRound1_c2.Payload[i] ^ padRound2_t.Payload[i]
@@ -78,7 +78,7 @@ func equivocationTestForDataLength(t *testing.T, cellSize int) {
 
 	// prepare for equivocation
 
-	payload := randomBytes(cellSize)
+	payload := randomBytes(payloadSize)
 
 	e_client0 := NewEquivocation()
 	e_client1 := NewEquivocation()

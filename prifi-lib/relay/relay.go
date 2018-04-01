@@ -87,7 +87,7 @@ func (p *PriFiLibRelayInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARA
 	startNow := msg.BoolValueOrElse("StartNow", false)
 	nTrustees := msg.IntValueOrElse("NTrustees", p.relayState.nTrustees)
 	nClients := msg.IntValueOrElse("NClients", p.relayState.nClients)
-	upCellSize := msg.IntValueOrElse("UpstreamCellSize", p.relayState.UpstreamCellSize)
+	payloadSize := msg.IntValueOrElse("PayloadSize", p.relayState.PayloadSize)
 	downCellSize := msg.IntValueOrElse("DownstreamCellSize", p.relayState.DownstreamCellSize)
 	windowSize := msg.IntValueOrElse("WindowSize", p.relayState.WindowSize)
 	useDummyDown := msg.BoolValueOrElse("UseDummyDataDown", p.relayState.UseDummyDataDown)
@@ -111,9 +111,9 @@ func (p *PriFiLibRelayInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARA
 	p.relayState.nTrusteesPkCollected = 0
 	p.relayState.nClientsPkCollected = 0
 	p.relayState.ExperimentRoundLimit = reportingLimit
-	p.relayState.UpstreamCellSize = upCellSize
+	p.relayState.PayloadSize = payloadSize
 	p.relayState.DownstreamCellSize = downCellSize
-	p.relayState.bitrateStatistics = prifilog.NewBitRateStatistics(upCellSize)
+	p.relayState.bitrateStatistics = prifilog.NewBitRateStatistics(payloadSize)
 	p.relayState.UseDummyDataDown = useDummyDown
 	p.relayState.UseOpenClosedSlots = useOpenClosedSlots
 	p.relayState.UseUDP = useUDP
@@ -184,7 +184,7 @@ func (p *PriFiLibRelayInstance) BroadcastParameters() error {
 	msg.Add("NTrustees", p.relayState.nTrustees)
 	msg.Add("UseUDP", p.relayState.UseUDP)
 	msg.Add("StartNow", true)
-	msg.Add("UpstreamCellSize", p.relayState.UpstreamCellSize)
+	msg.Add("PayloadSize", p.relayState.PayloadSize)
 	msg.Add("DCNetType", p.relayState.dcNetType)
 	msg.Add("DisruptionProtectionEnabled", p.relayState.DisruptionProtectionEnabled)
 	msg.Add("EquivocationProtectionEnabled", p.relayState.EquivocationProtectionEnabled)
@@ -438,12 +438,12 @@ func (p *PriFiLibRelayInstance) upstreamPhase2b_extractPayload() error {
 
 	if upstreamPlaintext != nil {
 		// verify that the decoded payload has the correct size
-		expectedSize := p.relayState.UpstreamCellSize
+		expectedSize := p.relayState.PayloadSize
 		if p.relayState.DisruptionProtectionEnabled {
 			expectedSize -= 32
 		}
 		if len(upstreamPlaintext) != expectedSize {
-			e := "Relay : DecodeCell produced wrong-size payload, " + strconv.Itoa(len(upstreamPlaintext)) + "!=" + strconv.Itoa(p.relayState.UpstreamCellSize)
+			e := "Relay : DecodeCell produced wrong-size payload, " + strconv.Itoa(len(upstreamPlaintext)) + "!=" + strconv.Itoa(p.relayState.PayloadSize)
 			log.Error(e)
 			return errors.New(e)
 		}
@@ -629,7 +629,7 @@ func (p *PriFiLibRelayInstance) Received_TRU_REL_TELL_PK(msg net.TRU_REL_TELL_PK
 		toSend.Add("NTrustees", p.relayState.nTrustees)
 		toSend.Add("UseUDP", p.relayState.UseUDP)
 		toSend.Add("StartNow", true)
-		toSend.Add("UpstreamCellSize", p.relayState.UpstreamCellSize)
+		toSend.Add("PayloadSize", p.relayState.PayloadSize)
 		toSend.Add("DCNetType", p.relayState.dcNetType)
 		toSend.Add("DisruptionProtectionEnabled", p.relayState.DisruptionProtectionEnabled)
 		toSend.TrusteesPks = trusteesPk
@@ -754,7 +754,7 @@ func (p *PriFiLibRelayInstance) Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS(msg n
 			p.messageSender.SendToTrusteeWithLog(j, toSend, "(trustee "+strconv.Itoa(j+1)+")")
 		}
 
-		p.relayState.DCNet = dcnet.NewDCNetEntity(0, dcnet.DCNET_RELAY, p.relayState.UpstreamCellSize,
+		p.relayState.DCNet = dcnet.NewDCNetEntity(0, dcnet.DCNET_RELAY, p.relayState.PayloadSize,
 			p.relayState.EquivocationProtectionEnabled, nil)
 
 		// prepare to collect the ciphers

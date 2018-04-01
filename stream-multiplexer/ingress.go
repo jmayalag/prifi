@@ -34,22 +34,22 @@ type IngressServer struct {
 	activeConnectionsLock sync.Locker
 	activeConnections     []*MultiplexedConnection
 	socketListener        *net.TCPListener
-	maxMessageLength      int
-	maxPayloadLength      int
+	maxMessageSize        int
+	maxPayloadSize        int
 	upstreamChan          chan []byte
 	downstreamChan        chan []byte
 	stopChan              chan bool
 }
 
 // StartIngressServer creates (and block) an Ingress Server
-func StartIngressServer(port int, maxMessageLength int, upstreamChan chan []byte, downstreamChan chan []byte, stopChan chan bool) {
+func StartIngressServer(port int, maxMessageSize int, upstreamChan chan []byte, downstreamChan chan []byte, stopChan chan bool) {
 
 	ig := new(IngressServer)
-	ig.maxMessageLength = maxMessageLength
+	ig.maxMessageSize = maxMessageSize
 	ig.upstreamChan = upstreamChan
 	ig.downstreamChan = downstreamChan
 	ig.stopChan = stopChan
-	ig.maxPayloadLength = maxMessageLength - MULTIPLEXER_HEADER_SIZE //we use 8 bytes for the multiplexing
+	ig.maxPayloadSize = maxMessageSize - MULTIPLEXER_HEADER_SIZE //we use 8 bytes for the multiplexing
 	ig.activeConnectionsLock = new(sync.Mutex)
 	ig.activeConnections = make([]*MultiplexedConnection, 0)
 
@@ -108,7 +108,7 @@ func StartIngressServer(port int, maxMessageLength int, upstreamChan chan []byte
 		ID_bytes := []byte(id)
 		mc.ID_bytes = ID_bytes[0:4]
 		mc.stopChan = make(chan bool, 1)
-		mc.maxMessageLength = ig.maxMessageLength
+		mc.maxMessageLength = ig.maxMessageSize
 
 		// lock the list before editing it
 		ig.activeConnectionsLock.Lock()
@@ -163,7 +163,7 @@ func (ig *IngressServer) ingressConnectionReader(mc *MultiplexedConnection) {
 		}
 
 		// Read data from the connection
-		buffer := make([]byte, ig.maxPayloadLength)
+		buffer := make([]byte, ig.maxPayloadSize)
 		mc.conn.SetReadDeadline(time.Now().Add(time.Second))
 		n, err := mc.conn.Read(buffer)
 

@@ -106,11 +106,6 @@ func NewDCNetEntity(
 	return e
 }
 
-// Tells the owner of the slot how much he can embedded (=DCNetPayloadSize)
-func (e *DCNetEntity) GetPayloadSize() int {
-	return e.DCNetPayloadSize
-}
-
 // Encodes "Payload" in the correct round. Will skip PRNG material if the round is in the future,
 // and crash if the round is in the past or the Payload is too long
 func (e *DCNetEntity) TrusteeEncodeForRound(roundID int32) []byte {
@@ -166,7 +161,7 @@ func (e *DCNetEntity) clientEncode(slotOwner bool, payload []byte) *DCNetCipher 
 		payload = make([]byte, e.DCNetPayloadSize)
 	} else {
 		// deep clone and pad
-		payload2 := make([]byte, e.GetPayloadSize())
+		payload2 := make([]byte, e.DCNetPayloadSize)
 		copy(payload2[0:len(payload)], payload)
 		payload = payload2
 	}

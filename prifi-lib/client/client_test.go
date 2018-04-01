@@ -97,7 +97,7 @@ func TestClient(t *testing.T) {
 	dcNetType := "Simple"
 	msg.Add("NClients", 3)
 	msg.Add("NTrustees", nTrustees)
-	msg.Add("UpstreamCellSize", upCellSize)
+	msg.Add("PayloadSize", upCellSize)
 	msg.Add("NextFreeClientID", clientID)
 	msg.Add("UseUDP", true)
 	msg.Add("DCNetType", dcNetType)
@@ -121,8 +121,8 @@ func TestClient(t *testing.T) {
 	if cs.nTrustees != nTrustees {
 		t.Error("nTrustees should be 2")
 	}
-	if cs.PayloadLength != 1500 {
-		t.Error("PayloadLength should be 1500")
+	if cs.PayloadSize != 1500 {
+		t.Error("PayloadSize should be 1500")
 	}
 	if cs.ID != clientID {
 		t.Error("ID should be 3")
@@ -459,7 +459,7 @@ func TestClient2(t *testing.T) {
 	dcNetType := "Simple"
 	msg.Add("NClients", 1)
 	msg.Add("NTrustees", nTrustees)
-	msg.Add("UpstreamCellSize", upCellSize)
+	msg.Add("PayloadSize", upCellSize)
 	msg.Add("NextFreeClientID", clientID)
 	msg.Add("UseUDP", true)
 	msg.Add("DCNetType", dcNetType)
@@ -591,7 +591,7 @@ func TestDisruptionClient(t *testing.T) {
 	disruptionProtection := true
 	msg.Add("NClients", 3)
 	msg.Add("NTrustees", nTrustees)
-	msg.Add("UpstreamCellSize", upCellSize)
+	msg.Add("PayloadSize", upCellSize)
 	msg.Add("NextFreeClientID", clientID)
 	msg.Add("UseUDP", true)
 	msg.Add("DCNetType", dcNetType)
