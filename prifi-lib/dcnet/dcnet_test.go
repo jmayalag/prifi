@@ -29,8 +29,8 @@ func TestDCNetCreation(t *testing.T) {
 	nRounds := int32(100)
 	dcNetMessageLength := 100
 
-	for nTrustees := 1; nTrustees < 3; nTrustees++ {
-		for nClients := 1; nClients < 3; nClients++ {
+	for nTrustees := 1; nTrustees < 10; nTrustees++ {
+		for nClients := 1; nClients < 10; nClients++ {
 			VariousLevelsOfProtection(t, nRounds, dcNetMessageLength, nClients, nTrustees)
 		}
 	}
