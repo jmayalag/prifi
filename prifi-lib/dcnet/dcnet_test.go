@@ -39,7 +39,7 @@ func TestDCNetCreation(t *testing.T) {
 func VariousLevelsOfProtection(t *testing.T, nRounds int32, dcNetMessageSize, NClients, NTrustees int) {
 	tg := NewTestGroup(t, false, dcNetMessageSize, NClients, NTrustees)
 	SimulateRounds(t, tg, nRounds)
-	tg = NewTestGroup(t, false, dcNetMessageSize, NClients, NTrustees)
+	tg = NewTestGroup(t, true, dcNetMessageSize, NClients, NTrustees)
 	SimulateRounds(t, tg, nRounds)
 }
 
