@@ -42,11 +42,11 @@ test_verbose:
 
 .PHONY: it
 it:
-	./test.sh integration || cat relay.log
+	./test.sh integration || cat relay.log; exit 1
 
 .PHONY: it2
 it2:
-	./test.sh integration2 || cat relay.log
+	./test.sh integration2 || cat relay.log; exit 1
 
 .PHONY: clean
 clean:
