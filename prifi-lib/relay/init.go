@@ -80,8 +80,7 @@ func NewRelay(dataOutputEnabled bool, dataForClients chan []byte, dataFromDCNet 
 	relayState.PublicKey, relayState.privateKey = crypto.NewKeyPair()
 	relayState.slotScheduler = new(scheduler.BitMaskSlotScheduler_Relay)
 	relayState.roundManager = new(BufferableRoundManager)
-	relayState.timeoutMutex = *new(sync.Mutex)
-	relayState.numberOfNonAckedDownstreamPacketsLock = *new(sync.Mutex)
+	relayState.processingLock = *new(sync.Mutex)
 	neffShuffle := new(scheduler.NeffShuffle)
 	neffShuffle.Init()
 	relayState.neffShuffle = neffShuffle.RelayView
@@ -145,7 +144,6 @@ type RelayState struct {
 	UseDummyDataDown                       bool
 	UseOpenClosedSlots                     bool
 	UseUDP                                 bool
-	numberOfNonAckedDownstreamPacketsLock  sync.Mutex
 	numberOfNonAckedDownstreamPackets      int
 	WindowSize                             int
 	ExperimentResultChannel                chan interface{}
@@ -170,7 +168,7 @@ type RelayState struct {
 	EquivocationProtectionEnabled          bool
 
 	// sync
-	timeoutMutex sync.Mutex
+	processingLock sync.Mutex // either we treat a message, or a timeout, never both
 
 	//disruption protection
 	clientBitMap  map[int]map[int]int
@@ -185,6 +183,9 @@ type RelayState struct {
 // ReceivedMessage must be called when a PriFi host receives a message.
 // It takes care to call the correct message handler function.
 func (p *PriFiLibRelayInstance) ReceivedMessage(msg interface{}) error {
+
+	p.relayState.processingLock.Lock()
+	defer p.relayState.processingLock.Unlock()
 
 	var err error
 

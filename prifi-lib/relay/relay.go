@@ -604,9 +604,7 @@ func (p *PriFiLibRelayInstance) downstreamPhase1_openRoundAndSendData() error {
 	//now relay enters a waiting state (collecting all ciphers from clients/trustees)
 	timing.StartMeasure("waiting-on-someone")
 
-	p.relayState.numberOfNonAckedDownstreamPacketsLock.Lock()
 	p.relayState.numberOfNonAckedDownstreamPackets++
-	p.relayState.numberOfNonAckedDownstreamPacketsLock.Unlock()
 
 	return nil
 }
