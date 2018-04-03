@@ -1,11 +1,15 @@
 package com.example.junchen.prifiproxy.activities;
 
 import android.app.ActivityManager;
+import android.app.AlertDialog;
 import android.app.ProgressDialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.PackageManager;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.HandlerThread;
 import android.os.Process;
@@ -135,6 +139,7 @@ public class MainActivity extends AppCompatActivity {
     private void startPrifiService() {
         if (isPrifiServiceRunning.compareAndSet(false, true)) {
             startService(new Intent(this, PrifiService.class));
+            showRedirectDialog();
         }
     }
 
@@ -145,6 +150,30 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private void showRedirectDialog() {
+        AlertDialog alertDialog = new AlertDialog.Builder(this).create();
+        alertDialog.setTitle("Open Telegram");
+        alertDialog.setMessage("You will be redirected to Telegram");
+        alertDialog.setButton(AlertDialog.BUTTON_NEGATIVE, "Cancel",
+                (dialog, which) -> dialog.dismiss());
+        alertDialog.setButton(AlertDialog.BUTTON_POSITIVE, "Go",
+                (dialog, which) -> redirectToTelegram());
+        alertDialog.show();
+    }
+
+    private void redirectToTelegram() {
+        final String appName = "org.telegram.messenger";
+        Intent intent;
+        final boolean isAppInstalled = isAppAvailable(this, appName);
+        if (isAppInstalled) {
+            intent = getPackageManager().getLaunchIntentForPackage(appName);
+        } else {
+            intent = new Intent(Intent.ACTION_VIEW);
+            intent.setData(Uri.parse("market://details?id=" + appName));
+        }
+        startActivity(intent);
+    }
+
     private boolean isMyServiceRunning(Class<?> serviceClass) {
         ActivityManager manager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
         for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
@@ -153,6 +182,16 @@ public class MainActivity extends AppCompatActivity {
             }
         }
         return false;
+    }
+
+    private boolean isAppAvailable(Context context, String appName) {
+        PackageManager packageManager = context.getPackageManager();
+        try {
+            packageManager.getPackageInfo(appName, PackageManager.GET_ACTIVITIES);
+            return true;
+        } catch (PackageManager.NameNotFoundException e) {
+            return false;
+        }
     }
 
 }
