@@ -1,6 +1,6 @@
 PayloadSize = 5000 # CellSizeUp is automatically computed w.r.t to equivocation protection flag
 CellSizeDown = 17500
-RelayWindowSize = 5
+RelayWindowSize = 1
 DCNetType = "Simple"
 EnforceSameVersionOnNodes = true
 OverrideLogLevel = 3

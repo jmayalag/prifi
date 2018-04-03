@@ -168,20 +168,32 @@ run_integration_test_no_data() {
     echo "Waiting $waitTime seconds..."
     sleep "$waitTime"
 
-    #reporting is every 5 second by default. if we wait 30, we should have 6 of those
+    for repeat in 1 2 3
+    do
+        #reporting is every 5 second by default. if we wait 30, we should have 6 of those
+        lines=$(cat relay.log | grep -E "([0-9\.]+) round/sec, ([0-9\.]+) kB/s up, ([0-9\.]+) kB/s down, ([0-9\.]+) kB/s down\(udp\)" | wc -l)
+
+        echo "Number of reportings : $lines"
+
+        if [ "$lines" -eq 0 ]; then
+            echo "Waiting more time... $repeat/3"
+            sleep 5
+        else
+            break
+        fi
+
+    done
     lines=$(cat relay.log | grep -E "([0-9\.]+) round/sec, ([0-9\.]+) kB/s up, ([0-9\.]+) kB/s down, ([0-9\.]+) kB/s down\(udp\)" | wc -l)
 
-    echo "Number of reportings : $lines"
-
-    pkill prifi 2>/dev/null
-    kill -TERM $(pidof "go run run-server.go")  2>/dev/null
-
-    if [ "$lines" -gt 1 ]; then
+    if [ "$lines" -gt 0 ]; then
         echo "Test succeeded"
     else
         echo "Test failed"
         exit 1
     fi
+
+    pkill prifi 2>/dev/null
+    kill -TERM $(pidof "go run run-server.go")  2>/dev/null
 }
 
 run_integration_test_ping() {
@@ -331,6 +343,7 @@ case $1 in
             echo -e "Gonna test with ${highlightOn}$f${highlightOff}";
             prifi_file=$(basename "$f")
             run_integration_test_no_data
+            sleep 5
         done
 
         echo -e "All tests passed."
