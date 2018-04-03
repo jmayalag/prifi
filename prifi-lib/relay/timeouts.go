@@ -15,6 +15,10 @@ func (p *PriFiLibRelayInstance) checkIfRoundHasEndedAfterTimeOut_Phase1(roundID 
 
 	time.Sleep(time.Duration(p.relayState.RoundTimeOut) * time.Millisecond)
 
+	// never start treating two timeout concurrently (or receiving a message)
+	p.relayState.processingLock.Lock()
+	defer p.relayState.processingLock.Unlock()
+
 	if !p.relayState.roundManager.IsRoundOpenend(roundID) {
 		return //everything went dwell, it's great !
 	}
@@ -22,10 +26,6 @@ func (p *PriFiLibRelayInstance) checkIfRoundHasEndedAfterTimeOut_Phase1(roundID 
 	if p.stateMachine.State() == "SHUTDOWN" {
 		return //nothing to ensure in that case
 	}
-
-	// never start treating two timeout concurrently
-	p.relayState.processingLock.Lock()
-	defer p.relayState.processingLock.Unlock()
 
 	// new policy : just kill that round, do not retransmit, let SOCKS take care of the loss
 

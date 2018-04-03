@@ -3,6 +3,7 @@ package stream_multiplexer
 import (
 	"bytes"
 	"encoding/binary"
+	"encoding/hex"
 	"github.com/dedis/onet/log"
 	"io"
 	"net"
@@ -17,10 +18,11 @@ type EgressServer struct {
 	upstreamChan      chan []byte
 	downstreamChan    chan []byte
 	stopChan          chan bool
+	verbose           bool
 }
 
 // StartEgressHandler creates (and block) an Egress Server
-func StartEgressHandler(serverAddress string, maxMessageSize int, upstreamChan chan []byte, downstreamChan chan []byte, stopChan chan bool) {
+func StartEgressHandler(serverAddress string, maxMessageSize int, upstreamChan chan []byte, downstreamChan chan []byte, stopChan chan bool, verbose bool) {
 	eg := new(EgressServer)
 	eg.maxMessageSize = maxMessageSize
 	eg.maxPayloadSize = maxMessageSize - MULTIPLEXER_HEADER_SIZE //we use 8 bytes for the multiplexing
@@ -28,6 +30,11 @@ func StartEgressHandler(serverAddress string, maxMessageSize int, upstreamChan c
 	eg.downstreamChan = downstreamChan
 	eg.stopChan = stopChan
 	eg.activeConnections = make(map[string]*MultiplexedConnection)
+	eg.verbose = verbose
+
+	if verbose {
+		log.Lvl1("Egress Server in verbose mode")
+	}
 
 	for {
 		dataRead := <-upstreamChan
@@ -47,6 +54,10 @@ func StartEgressHandler(serverAddress string, maxMessageSize int, upstreamChan c
 		ID := string(dataRead[0:4])
 		size := int(binary.BigEndian.Uint32(dataRead[4:8]))
 		data := dataRead[8:]
+
+		if eg.verbose {
+			log.Lvl1("Clients -> Egress Server:\n" + hex.Dump(dataRead[:8+size]))
+		}
 
 		// trim the data if needed
 		if len(data) > size {
@@ -114,7 +125,7 @@ func (eg *EgressServer) egressConnectionReader(mc *MultiplexedConnection) {
 				return
 			}
 
-			log.Error("Egress server: connectionReader error,", err)
+			log.Error("Egress server: connectionReader error (reading will stop),", err)
 			return
 		}
 
@@ -124,5 +135,10 @@ func (eg *EgressServer) egressConnectionReader(mc *MultiplexedConnection) {
 		binary.BigEndian.PutUint32(slice[4:8], uint32(n))
 		copy(slice[MULTIPLEXER_HEADER_SIZE:], buffer[:n])
 		eg.downstreamChan <- slice
+
+		if eg.verbose {
+			log.Lvl1("Egress Server -> Clients:\n", hex.Dump(slice))
+		}
+
 	}
 }

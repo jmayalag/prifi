@@ -65,6 +65,7 @@ type PrifiTomlConfig struct {
 	RelayRoundTimeOut                       int
 	RelayTrusteeCacheLowBound               int
 	RelayTrusteeCacheHighBound              int
+	VerboseIngressEgressServers             bool
 }
 
 //PriFiSDAWrapperConfig is all the information the SDA-Protocols needs. It contains the network map of identities, our role, and the socks parameters if we are the corresponding role

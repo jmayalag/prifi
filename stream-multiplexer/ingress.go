@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"crypto/rand"
 	"encoding/binary"
+	"encoding/hex"
 	"gopkg.in/dedis/onet.v1/log"
 	"io"
 	"sync"
@@ -39,10 +40,11 @@ type IngressServer struct {
 	upstreamChan          chan []byte
 	downstreamChan        chan []byte
 	stopChan              chan bool
+	verbose               bool
 }
 
 // StartIngressServer creates (and block) an Ingress Server
-func StartIngressServer(port int, maxMessageSize int, upstreamChan chan []byte, downstreamChan chan []byte, stopChan chan bool) {
+func StartIngressServer(port int, maxMessageSize int, upstreamChan chan []byte, downstreamChan chan []byte, stopChan chan bool, verbose bool) {
 
 	ig := new(IngressServer)
 	ig.maxMessageSize = maxMessageSize
@@ -52,6 +54,10 @@ func StartIngressServer(port int, maxMessageSize int, upstreamChan chan []byte, 
 	ig.maxPayloadSize = maxMessageSize - MULTIPLEXER_HEADER_SIZE //we use 8 bytes for the multiplexing
 	ig.activeConnectionsLock = new(sync.Mutex)
 	ig.activeConnections = make([]*MultiplexedConnection, 0)
+	ig.verbose = verbose
+	if verbose {
+		log.Lvl1("Ingress Server in verbose mode")
+	}
 
 	var err error
 	s, err := net.Listen("tcp", ":"+strconv.Itoa(port))
@@ -131,6 +137,10 @@ func (ig *IngressServer) multiplexedChannelReader() {
 			continue
 		}
 
+		if ig.verbose {
+			log.Lvl1("Ingress Server <- DCNet: \n", hex.Dump(slice))
+		}
+
 		ID := slice[0:4]
 		length := int(binary.BigEndian.Uint32(slice[4:MULTIPLEXER_HEADER_SIZE]))
 		data := slice[MULTIPLEXER_HEADER_SIZE:]
@@ -187,6 +197,10 @@ func (ig *IngressServer) ingressConnectionReader(mc *MultiplexedConnection) {
 		copy(slice[0:4], mc.ID_bytes[:])
 		binary.BigEndian.PutUint32(slice[4:8], uint32(n))
 		copy(slice[MULTIPLEXER_HEADER_SIZE:], buffer[:n])
+
+		if ig.verbose {
+			log.Lvl1("Ingress Server -> DCNet:\n", hex.Dump(slice))
+		}
 
 		ig.upstreamChan <- slice
 	}

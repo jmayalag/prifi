@@ -67,6 +67,7 @@ run_relay() {
     test_files
 
     #run PriFi in relay mode
+    echo "Config: $prifi_file2"
     DEBUG_COLOR="$colors" go run "$bin_file" --cothority_config "$identity_file2" --group "$group_file2" -d "$dbg_lvl" --prifi_config "$prifi_file2" --port "$socksServer1Port" --port_client "$socksServer2Port" relay
 }
 
@@ -130,7 +131,6 @@ run_integration_test_no_data() {
     # start all entities
 
     echo -n "Starting relay...                      "
-    run_relay > relay.log 2>&1 &
     echo -e "$okMsg"
     sleep "$sleeptime_between_spawns"
 
@@ -198,7 +198,7 @@ run_integration_test_no_data() {
 
 run_integration_test_ping() {
     pkill prifi 2>/dev/null
-    kill -TERM $(pidof "go run run-server.go") 2>/dev/null
+    pkill prifi-socks-server 2>/dev/null
 
     rm -f *.log
 
@@ -209,7 +209,10 @@ run_integration_test_ping() {
         echo -n "Socks proxy not running, starting it... "
         cd socks && ./run-socks-proxy.sh "$socksServer2Port" > ../socks.log 2>&1 &
         SOCKSPID=$!
-        echo -e "$okMsg"
+        echo -e "$okMsg (SOCKSPID $SOCKSPID)"
+    else
+        echo "Socks Server already running, confirm ?"
+        read -p test
     fi
 
     echo -n "Starting relay...                      "
@@ -289,7 +292,7 @@ run_integration_test_ping() {
     # cleaning everything
 
     pkill prifi 2>/dev/null
-    kill -TERM $(pidof "go run run-server.go")  2>/dev/null
+    pkill prifi-socks-server 2>/dev/null
 
     if [ "$res" -eq 0 ]; then
         echo "Test succeeded"
@@ -338,6 +341,7 @@ case $1 in
 
         echo "This test check that PriFi's clients, trustees and relay connect and start performing communication rounds with no real data."
 
+
         for f in "$configdir/"*-test.toml;
         do
             echo -e "Gonna test with ${highlightOn}$f${highlightOff}";
@@ -355,15 +359,26 @@ case $1 in
 
         echo "This test check that PriFi's clients, trustees and relay connect and start performing communication rounds, and that a Ping request can go through (back and forth)."
 
-        for f in "$configdir/"*-test.toml;
-        do
-            m=$(echo "$f" | grep "pcap" | wc -l) # do not use the test with replays pcap, it's incompatible with this
-            if [ "$m" -eq 0 ]; then
-                echo -e "Gonna test with ${highlightOn}$f${highlightOff}";
-                prifi_file=$(basename "$f")
-                run_integration_test_ping
+        if [ "$#" -eq 1 ]; then
+            for f in "$configdir/"*-test.toml;
+            do
+                m=$(echo "$f" | grep "pcap" | wc -l) # do not use the test with replays pcap, it's incompatible with this
+                if [ "$m" -eq 0 ]; then
+                    echo -e "Gonna test with ${highlightOn}$f${highlightOff}";
+                    prifi_file=$(basename "$f")
+                    run_integration_test_ping
+                fi
+            done
+        else
+            f="$2"
+            if [ ! -f "$f" ]; then
+                echo -e "Cannot read file ${highlightOn}$f${highlightOff}"
+                exit 1
             fi
-        done
+            echo -e "Gonna test with ${highlightOn}$f${highlightOff}";
+            prifi_file=$(basename "$f")
+            run_integration_test_ping
+        fi
 
         echo -e "All tests passed."
         exit 0

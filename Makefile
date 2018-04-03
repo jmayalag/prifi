@@ -1,5 +1,5 @@
 .PHONY: all
-all: test coveralls it it2
+all: test coveralls it-verbose it2-verbose
 
 .PHONY: test
 test: build test_fmt test_govet test_lint
@@ -42,10 +42,18 @@ test_verbose:
 
 .PHONY: it
 it:
-	./test.sh integration || (cat relay.log; exit 1)
+	./test.sh integration
 
 .PHONY: it2
 it2:
+	./test.sh integration2
+
+.PHONY: it-verbose
+it-verbose:
+	./test.sh integration || (cat relay.log; exit 1)
+
+.PHONY: it2-verbose
+it2-verbose:
 	./test.sh integration2 || (cat relay.log; exit 1)
 
 .PHONY: clean

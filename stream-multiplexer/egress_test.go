@@ -103,7 +103,7 @@ func TestEgress1(t *testing.T) {
 	downstreamChan := make(chan []byte)
 	stopChan := make(chan bool)
 
-	go StartEgressHandler(remote, payloadLength, upstreamChan, downstreamChan, stopChan)
+	go StartEgressHandler(remote, payloadLength, upstreamChan, downstreamChan, stopChan, true)
 
 	// prepare a dummy message
 	payload := []byte("hello")
@@ -147,7 +147,7 @@ func TestEgress2(t *testing.T) {
 	downstreamChan := make(chan []byte)
 	stopChan := make(chan bool)
 
-	go StartEgressHandler(remote, payloadLength, upstreamChan, downstreamChan, stopChan)
+	go StartEgressHandler(remote, payloadLength, upstreamChan, downstreamChan, stopChan, true)
 
 	// prepare a dummy message
 	payload := []byte("hello")
@@ -196,7 +196,7 @@ func TestEgressMultiplex(t *testing.T) {
 	downstreamChan := make(chan []byte)
 	stopChan := make(chan bool)
 
-	go StartEgressHandler(remote, payloadLength, upstreamChan, downstreamChan, stopChan)
+	go StartEgressHandler(remote, payloadLength, upstreamChan, downstreamChan, stopChan, true)
 
 	// prepare a dummy message
 	payload := []byte("hello")
@@ -270,7 +270,7 @@ func TestEgressMultiplexLong(t *testing.T) {
 	downstreamChan := make(chan []byte)
 	stopChan := make(chan bool)
 
-	go StartEgressHandler(remote, payloadLength, upstreamChan, downstreamChan, stopChan)
+	go StartEgressHandler(remote, payloadLength, upstreamChan, downstreamChan, stopChan, true)
 
 	// prepare a dummy message
 	payload := []byte("hello")

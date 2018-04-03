@@ -30,3 +30,4 @@ RelayRoundTimeOut = 1000
 RelayTrusteeCacheLowBound = 10
 RelayTrusteeCacheHighBound = 15
 EquivocationProtectionEnabled = false
+VerboseIngressEgressServers = true
