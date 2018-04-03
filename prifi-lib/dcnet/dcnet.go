@@ -1,6 +1,7 @@
 package dcnet
 
 import (
+	"fmt"
 	"github.com/lbarman/prifi/prifi-lib/config"
 	"gopkg.in/dedis/crypto.v0/abstract"
 	"gopkg.in/dedis/onet.v1/log"
@@ -40,6 +41,8 @@ type DCNetEntity struct {
 	//Equivocation protection
 	equivocationProtection    *EquivocationProtection //nil if unused
 	equivocationContribLength int                     //0 if equivocation protection is disabled
+
+	verbose bool
 }
 
 // DCNetRoundDecoder is used by the relay to decode the dcnet ciphers
@@ -66,6 +69,8 @@ func NewDCNetEntity(
 	e.DCNetRoundDecoder = nil
 	e.currentRound = 0
 
+	e.verbose = false // todo: wire in the .toml
+
 	if equivocationProtection {
 		e.equivocationProtection = NewEquivocation()
 	}
@@ -83,6 +88,7 @@ func NewDCNetEntity(
 			key := make([]byte, keySize)
 			sharedKeys[i].Partial(key, key, nil)
 			e.sharedPRNGs[i] = e.cryptoSuite.Cipher(key)
+			e.verbosePrint("key", i, ":", sharedKeys[i])
 		}
 	} else {
 		e.sharedKeys = make([]abstract.Cipher, 0)
@@ -91,11 +97,14 @@ func NewDCNetEntity(
 
 	// if the equivocation protection is enabled
 	if equivocationProtection {
+		e.verbosePrint("equivocation = true")
 		e.equivocationProtection = NewEquivocation()
 		zero := e.equivocationProtection.suite.Scalar().Zero()
 		one := e.equivocationProtection.suite.Scalar().One()
 		minusOne := e.equivocationProtection.suite.Scalar().Sub(zero, one) //max value
 		e.equivocationContribLength = len(minusOne.Bytes())
+	} else {
+		e.verbosePrint("equivocation = false")
 	}
 
 	// make sure we can still encode stuff !
@@ -104,6 +113,27 @@ func NewDCNetEntity(
 	}
 
 	return e
+}
+
+func (e *DCNetEntity) verbosePrint(info ...interface{}) {
+	if !e.verbose {
+		return
+	}
+
+	s := "DCNet"
+
+	if e.Entity == DCNET_RELAY {
+		s += "[relay]:"
+	} else if e.Entity == DCNET_CLIENT {
+		s += "[client-" + strconv.Itoa(e.EntityID) + "]:"
+	} else if e.Entity == DCNET_TRUSTEE {
+		s += "[trustee-" + strconv.Itoa(e.EntityID) + "]:"
+	} else {
+		s += "[???]"
+	}
+
+	s2 := fmt.Sprint(info...)
+	log.Lvl1(s, s2)
 }
 
 // Encodes "Payload" in the correct round. Will skip PRNG material if the round is in the future,
@@ -144,6 +174,9 @@ func (e *DCNetEntity) EncodeForRound(roundID int32, slotOwner bool, payload []by
 	}
 	e.currentRound++
 
+	e.verbosePrint("r[", roundID, "]:\n", c.Payload)
+	e.verbosePrint("r[", roundID, "]: equiv\n", c.EquivocationProtectionTag)
+
 	return c.ToBytes()
 }
 
@@ -177,6 +210,8 @@ func (e *DCNetEntity) clientEncode(slotOwner bool, payload []byte) *DCNetCipher 
 	// if the equivocation protection is enabled, encrypt the Payload, and add the tag
 	if e.EquivocationProtectionEnabled {
 		payload, sigma_j := e.equivocationProtection.ClientEncryptPayload(slotOwner, payload, p_ij)
+		e.verbosePrint("payload\n", payload)
+		e.verbosePrint("sigma_j\n", sigma_j)
 		c.Payload = payload // replace the Payload with the encrypted version
 		c.EquivocationProtectionTag = sigma_j
 	}

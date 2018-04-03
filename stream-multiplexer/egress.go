@@ -55,13 +55,13 @@ func StartEgressHandler(serverAddress string, maxMessageSize int, upstreamChan c
 		size := int(binary.BigEndian.Uint32(dataRead[4:8]))
 		data := dataRead[8:]
 
-		if eg.verbose {
-			log.Lvl1("Clients -> Egress Server:\n" + hex.Dump(dataRead[:8+size]))
-		}
-
 		// trim the data if needed
 		if len(data) > size {
 			data = data[:size]
+		}
+
+		if eg.verbose {
+			log.Lvl1("Clients -> Egress Server:\n" + hex.Dump(data))
 		}
 
 		// if this a new connection, dial it first

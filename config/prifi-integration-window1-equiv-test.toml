@@ -1,4 +1,4 @@
-PayloadSize = 5000 # CellSizeUp is automatically computed w.r.t to equivocation protection flag
+PayloadSize = 100 # CellSizeUp is automatically computed w.r.t to equivocation protection flag
 CellSizeDown = 5000
 RelayWindowSize = 1
 DCNetType = "Simple"

@@ -196,6 +196,27 @@ run_integration_test_no_data() {
     kill -TERM $(pidof "go run run-server.go")  2>/dev/null
 }
 
+do_socks_through_prifi() {
+    port="$1"
+
+    for repeat in 1 2 3
+    do
+        echo -en "Doing SOCKS HTTP request via :$port...   "
+        curl google.com --socks5 127.0.0.1:$port --max-time 10 1>/dev/null 2>&1
+        res=$?
+        if [ "$res" -eq 0 ]; then
+            echo -e "$okMsg"
+            return 0
+        else
+            echo "Failed. Trying again... $repeat/3"
+            sleep 5
+        fi
+    done
+
+    echo "Test failed"
+    exit 1
+}
+
 run_integration_test_ping() {
     pkill prifi 2>/dev/null
     pkill prifi-socks-server 2>/dev/null
@@ -206,13 +227,10 @@ run_integration_test_ping() {
     socks=$(netstat -tunpl 2>/dev/null | grep "$socksServer2Port" | wc -l)
 
     if [ "$socks" -ne 1 ]; then
-        echo -n "Socks proxy not running, starting it... "
+        echo -n "Socks proxy not running, starting it..."
         cd socks && ./run-socks-proxy.sh "$socksServer2Port" > ../socks.log 2>&1 &
         SOCKSPID=$!
-        echo -e "$okMsg (SOCKSPID $SOCKSPID)"
-    else
-        echo "Socks Server already running, confirm ?"
-        read -p test
+        echo -e "$okMsg"
     fi
 
     echo -n "Starting relay...                      "
@@ -253,40 +271,16 @@ run_integration_test_ping() {
     sleep "$waitTime"
 
     # first client
-    echo -en "Doing SOCKS HTTP request via :8081...   "
-    curl google.com --socks5 127.0.0.1:8081 --max-time 10 1>/dev/null 2>&1
-    res=$?
-    if [ "$res" -eq 0 ]; then
-        echo -e "$okMsg"
-    else
-        echo "Test failed"
-        exit 1
-    fi
+    do_socks_through_prifi 8081
 
     if [ "$socks_test_n_clients" -gt 1 ]; then
         # second client
-        echo -en "Doing SOCKS HTTP request via :8082...   "
-        curl google.com --socks5 127.0.0.1:8082 --max-time 10 1>/dev/null 2>&1
-        res=$?
-        if [ "$res" -eq 0 ]; then
-            echo -e "$okMsg"
-        else
-            echo "Test failed"
-            exit 1
-        fi
+        do_socks_through_prifi 8082
     fi
 
     if [ "$socks_test_n_clients" -gt 2 ]; then
         # third client
-        echo -en "Doing SOCKS HTTP request via :8083...   "
-        curl google.com --socks5 127.0.0.1:8083 --max-time 10 1>/dev/null 2>&1
-        res=$?
-        if [ "$res" -eq 0 ]; then
-            echo -e "$okMsg"
-        else
-            echo "Test failed"
-            exit 1
-        fi
+        do_socks_through_prifi 8083
     fi
 
     # cleaning everything

@@ -638,6 +638,7 @@ func (p *PriFiLibRelayInstance) Received_TRU_REL_TELL_PK(msg net.TRU_REL_TELL_PK
 		toSend.Add("PayloadSize", p.relayState.PayloadSize)
 		toSend.Add("DCNetType", p.relayState.dcNetType)
 		toSend.Add("DisruptionProtectionEnabled", p.relayState.DisruptionProtectionEnabled)
+		toSend.Add("EquivocationProtectionEnabled", p.relayState.EquivocationProtectionEnabled)
 		toSend.TrusteesPks = trusteesPk
 
 		// Send those parameters to all clients
