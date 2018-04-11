@@ -5,7 +5,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:layout_margin="15dp"
-    tools:context="com.example.junchen.prifiproxy.activities.MainActivity">
+    tools:context="com.example.junchen.prifiproxy.ch.epfl.prifiproxy.MainActivity">
 
     <Button
         android:id="@+id/startButton"
@@ -44,24 +44,49 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/mainScrollView" />
 
+    <Button
+        android:id="@+id/testButton1"
+        android:layout_width="165dp"
+        android:layout_height="wrap_content"
+        android:text="@string/test_button_1"
+        app:layout_constraintBottom_toTopOf="@+id/mainScrollView"
+        app:layout_constraintEnd_toStartOf="@+id/testButton2"
+        app:layout_constraintHorizontal_bias="0.5"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <Button
+        android:id="@+id/testButton2"
+        android:layout_width="165dp"
+        android:layout_height="wrap_content"
+        android:text="@string/test_button_2"
+        app:layout_constraintBottom_toTopOf="@+id/mainScrollView"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.5"
+        app:layout_constraintStart_toEndOf="@+id/testButton1"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.0" />
+
     <ScrollView
         android:id="@+id/mainScrollView"
         android:layout_width="0dp"
         android:layout_height="0dp"
+        android:layout_marginTop="8dp"
         android:fillViewport="true"
         android:scrollbars="vertical"
         app:layout_constraintBottom_toTopOf="@+id/startButton"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.5"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/testButton1"
         app:layout_constraintVertical_chainStyle="spread_inside">
 
-        <TextView android:id="@+id/logTextView"
-            android:text="@string/prifi_log_welcome_message"
+        <TextView
+            android:id="@+id/logTextView"
             android:layout_width="fill_parent"
             android:layout_height="wrap_content"
-            android:singleLine="false" />
+            android:singleLine="false"
+            android:text="@string/prifi_log_welcome_message" />
 
     </ScrollView>
 

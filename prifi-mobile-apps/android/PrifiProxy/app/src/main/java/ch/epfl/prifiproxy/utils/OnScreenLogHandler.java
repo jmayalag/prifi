@@ -1,4 +1,4 @@
-package com.example.junchen.prifiproxy.utils;
+package ch.epfl.prifiproxy.utils;
 
 import android.content.Intent;
 import android.os.Handler;
@@ -6,7 +6,7 @@ import android.os.Looper;
 import android.os.Message;
 import android.util.Log;
 
-import com.example.junchen.prifiproxy.PrifiProxy;
+import ch.epfl.prifiproxy.PrifiProxy;
 
 import java.io.BufferedReader;
 import java.io.IOException;

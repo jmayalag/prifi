@@ -1,4 +1,4 @@
-package com.example.junchen.prifiproxy.services;
+package ch.epfl.prifiproxy.services;
 
 import android.app.Notification;
 import android.app.PendingIntent;
@@ -13,9 +13,8 @@ import android.os.Process;
 import android.support.v4.app.NotificationCompat;
 import android.widget.Toast;
 
-import com.example.junchen.prifiproxy.R;
-import com.example.junchen.prifiproxy.activities.MainActivity;
-
+import ch.epfl.prifiproxy.R;
+import ch.epfl.prifiproxy.activities.MainActivity;
 import prifiMobile.PrifiMobile;
 
 /**

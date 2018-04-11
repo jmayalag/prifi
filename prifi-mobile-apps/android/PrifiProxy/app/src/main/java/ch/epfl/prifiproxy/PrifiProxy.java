@@ -1,4 +1,4 @@
-package com.example.junchen.prifiproxy;
+package ch.epfl.prifiproxy;
 
 import android.app.Application;
 import android.content.Context;
