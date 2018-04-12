@@ -18,8 +18,9 @@ const cothorityGroupConfigFilename = "group.toml"
 
 var prifiConfigSingleton *prifi_protocol.PrifiTomlConfig
 var cothorityConfigSingleton *app.CothorityConfig
+var groupConfigSingleton *app.Group
 
-var onceClient, onceCothority sync.Once
+var onceClient, onceCothority, onceGroup sync.Once
 var globalErr error
 
 
@@ -35,6 +36,13 @@ func getCothorityConfig() (*app.CothorityConfig, error) {
 		cothorityConfigSingleton, globalErr = initCothorityConfig()
 	})
 	return cothorityConfigSingleton, globalErr
+}
+
+func getGroupConfig() (*app.Group, error) {
+	onceGroup.Do(func() {
+		groupConfigSingleton, globalErr = initCothorityGroupConfig()
+	})
+	return groupConfigSingleton, globalErr
 }
 
 // TODO: Reduce Code Duplication of both inits
@@ -73,23 +81,23 @@ func initCothorityConfig() (*app.CothorityConfig, error) {
 }
 
 // TODO: less code duplication?
-func readCothorityGroupConfig() (*app.Group, error) {
+func initCothorityGroupConfig() (*app.Group, error) {
 	file, err := asset.Open(cothorityGroupConfigFilename)
 	defer file.Close()
 
-	groups, err := app.ReadGroupDescToml(file)
+	group, err := app.ReadGroupDescToml(file)
 
 	if err != nil {
 		log.Error("Could not parse toml file ", cothorityGroupConfigFilename)
 		return nil, err
 	}
 
-	if groups == nil || groups.Roster == nil || len(groups.Roster.List) == 0 {
+	if group == nil || group.Roster == nil || len(group.Roster.List) == 0 {
 		log.Error("No servers found in roster from ", cothorityGroupConfigFilename)
 		return nil, err
 	}
 
-	return groups, nil
+	return group, nil
 }
 
 // TODO: Read from any given paths

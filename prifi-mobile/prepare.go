@@ -25,7 +25,7 @@ func startCothorityNode() (*onet.Server, *app.Group, *prifi_service.ServiceState
 		return nil, nil, nil, err
 	}
 
-	group, err := readCothorityGroupConfig()
+	group, err := parseGroup()
 	if err != nil {
 		log.Error("Could not read the group description:", err)
 		return nil, nil, nil, err
@@ -36,7 +36,6 @@ func startCothorityNode() (*onet.Server, *app.Group, *prifi_service.ServiceState
 
 	// TODO Replace getCommitID
 	prifiConfig.ProtocolVersion = "v1" // standard string for all nodes
-
 
 	return host, group, service, nil
 }
@@ -74,4 +73,13 @@ func parseCothority() (*onet.Server, error) {
 	serverIdentity.Description = c.Description
 	server := onet.NewServerTCP(serverIdentity, secret)
 	return server, nil
+}
+
+func parseGroup() (*app.Group, error) {
+	c, err := getGroupConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	return c, nil
 }
