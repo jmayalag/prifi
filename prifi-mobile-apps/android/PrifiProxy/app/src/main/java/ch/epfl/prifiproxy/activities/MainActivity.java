@@ -7,20 +7,25 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.HandlerThread;
 import android.os.Process;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ScrollView;
 import android.widget.Switch;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import ch.epfl.prifiproxy.R;
 import ch.epfl.prifiproxy.services.PrifiService;
+import ch.epfl.prifiproxy.utils.NetworkStatusHelper;
 import ch.epfl.prifiproxy.utils.OnScreenLogHandler;
 
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -31,6 +36,11 @@ public class MainActivity extends AppCompatActivity {
 
     private final String ON_SCREEN_LOG_THREAD = "ON_SCREEN_LOG";
     private final String EMPTY_TEXT_VIEW = "";
+    private final int DEFAULT_PING_TIMEOUT = 3000; // 3s
+
+    private String prifiRelayAddress;
+    private int prifiRelayPort;
+    private int prifiRelaySocksPort;
 
     private AtomicBoolean isPrifiServiceRunning;
     private Button startButton, stopButton, testButton1, testButton2;
@@ -48,6 +58,12 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        // Load Variables from SharedPreferences
+        SharedPreferences prifiPrefs = getSharedPreferences(getString(R.string.prifi_config_shared_preferences), MODE_PRIVATE);
+        prifiRelayAddress = prifiPrefs.getString(getString(R.string.prifi_config_relay_address),"");
+        prifiRelayPort = prifiPrefs.getInt(getString(R.string.prifi_config_relay_port), 0);
+        prifiRelaySocksPort = prifiPrefs.getInt(getString(R.string.prifi_config_relay_socks_port),0);
 
         // Buttons
         startButton = findViewById(R.id.startButton);
@@ -88,7 +104,7 @@ public class MainActivity extends AppCompatActivity {
         mHandlerThread.start();
         mOnScreenLogHandler = new OnScreenLogHandler(mHandlerThread.getLooper());
 
-        startButton.setOnClickListener(view -> startPrifiService());
+        startButton.setOnClickListener(view -> startPrifiService(this));
 
         stopButton.setOnClickListener(view -> stopPrifiService());
 
@@ -147,10 +163,34 @@ public class MainActivity extends AppCompatActivity {
         mScrollView.post(() -> mScrollView.fullScroll(View.FOCUS_DOWN));
     }
 
-    private void startPrifiService() {
-        if (isPrifiServiceRunning.compareAndSet(false, true)) {
-            startService(new Intent(this, PrifiService.class));
-            showRedirectDialog();
+    private void startPrifiService(Context context) {
+        if (!isPrifiServiceRunning.get()) {
+            new AsyncTask<Void, Void, Boolean>() {
+                @Override
+                protected void onPreExecute() {
+                    mProgessDialog = ProgressDialog.show(context, "Check Network Availability", "Please wait");
+                }
+
+                @Override
+                protected Boolean doInBackground(Void... voids) {
+                    // TODO get dynamic Server Address, SOCKS PORT and RELAY PORT
+                    boolean isRelayAvailable = NetworkStatusHelper.isHostReachable(prifiRelayAddress, prifiRelayPort, DEFAULT_PING_TIMEOUT);
+                    boolean isSocksAvailable = NetworkStatusHelper.isHostReachable(prifiRelayAddress, prifiRelaySocksPort, DEFAULT_PING_TIMEOUT);
+                    return isRelayAvailable && isSocksAvailable;
+                }
+
+                @Override
+                protected void onPostExecute(Boolean isNetworkAvailable) {
+                    if (mProgessDialog.isShowing()) {mProgessDialog.dismiss();}
+                    if (isNetworkAvailable) {
+                        isPrifiServiceRunning.set(true);
+                        startService(new Intent(context, PrifiService.class));
+                        showRedirectDialog();
+                    } else {
+                        Toast.makeText(context, "Relay is not available", Toast.LENGTH_LONG).show();
+                    }
+                }
+            }.execute();
         }
     }
 
