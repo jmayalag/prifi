@@ -58,7 +58,27 @@ public class PrifiProxy extends Application {
             // apply
             editor.apply();
         } else {
-            // Modify PrifiConfig Memory Call setters with existing values
+            final String currentPrifiRelayAddress = prifiPrefs.getString(getString(R.string.prifi_config_relay_address),"");
+            final int currentPrifiRelayPort = prifiPrefs.getInt(getString(R.string.prifi_config_relay_port), 0);
+            final int currentPrifiRelaySocksPort = prifiPrefs.getInt(getString(R.string.prifi_config_relay_socks_port),0);
+
+            try {
+
+                if (!currentPrifiRelayAddress.equals(defaultRelayAddress)) {
+                    PrifiMobile.setRelayAddress(currentPrifiRelayAddress);
+                }
+
+                if (currentPrifiRelayPort != defaultRelayPort) {
+                    PrifiMobile.setRelayPort((long) currentPrifiRelayPort);
+                }
+
+                if (currentPrifiRelaySocksPort != defaultRelaySocksPort) {
+                    PrifiMobile.setRelaySocksPort((long) currentPrifiRelaySocksPort);
+                }
+
+            } catch (Exception e) {
+
+            }
         }
     }
 

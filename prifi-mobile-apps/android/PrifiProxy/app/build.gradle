@@ -31,4 +31,6 @@ dependencies {
     androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.1'
 
     implementation(name:'prifiMobile', ext:'aar')
+    implementation 'com.android.support:design:26.1.0'
+    implementation 'com.jakewharton:process-phoenix:2.0.0'
 }
