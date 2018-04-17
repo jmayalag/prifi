@@ -12,10 +12,13 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 
+/**
+ * This class allows us to display Logcat content (logs) directly in the app.
+ */
 public class OnScreenLogHandler extends Handler {
 
-    public static final String UPDATE_LOG_BROADCAST_ACTION = "UPDATE_LOG_BROADCAST_ACTION";
-    public static final String UPDATE_LOG_INTENT_KEY = "LOG";
+    public static final String UPDATE_LOG_BROADCAST_ACTION = "UPDATE_LOG_BROADCAST_ACTION"; // Broadcast Action Keyword
+    public static final String UPDATE_LOG_INTENT_KEY = "LOG"; // Intent Action Keyword
     public static final int UPDATE_LOG_MESSAGE_WHAT = 1;
 
     private final int DELAY = 2000;
@@ -24,6 +27,11 @@ public class OnScreenLogHandler extends Handler {
        super(looper);
     }
 
+    /**
+     * The handler will broadcast update commands with logcat content every DELAY seconds.
+     * The UI part must implement a corresponding broadcast receiver.
+     * @param msg Handler's message
+     */
     @Override
     public void handleMessage(Message msg) {
         if (msg.what == UPDATE_LOG_MESSAGE_WHAT) {
@@ -36,6 +44,10 @@ public class OnScreenLogHandler extends Handler {
         }
     }
 
+    /**
+     * This function will execute "adb logcat -d -s TAG".
+     * @return logcat content
+     */
     private String getLogCatContent() {
         StringBuilder logBuilder = new StringBuilder();
 

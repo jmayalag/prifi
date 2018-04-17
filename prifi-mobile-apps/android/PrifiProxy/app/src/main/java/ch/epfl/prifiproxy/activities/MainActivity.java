@@ -33,8 +33,6 @@ import prifiMobile.PrifiMobile;
 
 public class MainActivity extends AppCompatActivity {
 
-    private final int DEFAULT_PING_TIMEOUT = 3000; // 3s
-
     private String prifiRelayAddress;
     private int prifiRelayPort;
     private int prifiRelaySocksPort;
@@ -76,7 +74,7 @@ public class MainActivity extends AppCompatActivity {
 
                 if (action != null) {
                     switch (action) {
-                        case PrifiService.PRIFI_STOPPED_BROADCAST_ACTION:
+                        case PrifiService.PRIFI_STOPPED_BROADCAST_ACTION: // Update UI after shutting down PriFi
                             if (mProgessDialog.isShowing()) {
                                 mProgessDialog.dismiss();
                             }
@@ -119,9 +117,12 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
 
+        // Check if the PriFi service is running or not
+        // Depending on the result, update UI
         isPrifiServiceRunning = new AtomicBoolean(isMyServiceRunning(PrifiService.class));
         updateUIInputCapability(isPrifiServiceRunning.get());
 
+        // Register BroadcastReceiver
         IntentFilter intentFilter = new IntentFilter();
         intentFilter.addAction(PrifiService.PRIFI_STOPPED_BROADCAST_ACTION);
         registerReceiver(mBroadcastReceiver, intentFilter);
@@ -133,12 +134,22 @@ public class MainActivity extends AppCompatActivity {
         unregisterReceiver(mBroadcastReceiver);
     }
 
+    /**
+     * Start PriFi "Service" (if not running)
+     *
+     * It will execute an AsyncTask, because the network check can't be on the main thread.
+     */
     private void startPrifiService() {
         if (!isPrifiServiceRunning.get()) {
             new StartPrifiAsyncTask(this).execute();
         }
     }
 
+    /**
+     * Stop PriFi "Core" (if running), the service will be shut down by itself.
+     *
+     * The stopping process may take 1-2 seconds, so a ProgressDialog has been added to give users some feedback.
+     */
     private void stopPrifiService() {
         if (isPrifiServiceRunning.compareAndSet(true, false)) {
             mProgessDialog = ProgressDialog.show(
@@ -150,6 +161,9 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * A Dialog that guides users to launch or install Telegram after enabling PriFi Service
+     */
     private void showRedirectDialog() {
         AlertDialog alertDialog = new AlertDialog.Builder(this).create();
         alertDialog.setTitle(getString(R.string.redirect_dialog_title));
@@ -161,6 +175,9 @@ public class MainActivity extends AppCompatActivity {
         alertDialog.show();
     }
 
+    /**
+     * Open Telegram if the app is installed, otherwise open Google Play Download Page.
+     */
     private void redirectToTelegram() {
         final String appName = "org.telegram.messenger";
         Intent intent;
@@ -174,6 +191,11 @@ public class MainActivity extends AppCompatActivity {
         startActivity(intent);
     }
 
+    /**
+     * Check if the given service is running or not.
+     * @param serviceClass Service
+     * @return true if running, otherwise false
+     */
     private boolean isMyServiceRunning(Class<?> serviceClass) {
         ActivityManager manager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
         if (manager != null) {
@@ -186,6 +208,12 @@ public class MainActivity extends AppCompatActivity {
         return false;
     }
 
+    /**
+     * Check if the given app is installed or not.
+     * @param context context
+     * @param appName app package name
+     * @return true if installed, otherwise false
+     */
     private boolean isAppAvailable(Context context, String appName) {
         PackageManager packageManager = context.getPackageManager();
         try {
@@ -196,7 +224,11 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void updateInputField(TextView view) {
+    /**
+     * Trigger actions if the Done key is pressed
+     * @param view the input field where the Done key is pressed
+     */
+    private void triggerDoneAction(TextView view) {
         String text = view.getText().toString();
         switch (view.getId()) {
             case R.id.relayAddressInput:
@@ -216,6 +248,12 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Update input fields and preferences, if the user input is valid.
+     * @param relayAddressText user input relay address
+     * @param relayPortText user input relay port
+     * @param relaySocksPortText user input relay socks port
+     */
     private void updateInputFieldsAndPrefs(String relayAddressText, String relayPortText, String relaySocksPortText) {
         SharedPreferences.Editor editor = getSharedPreferences(getString(R.string.prifi_config_shared_preferences), MODE_PRIVATE).edit();
 
@@ -266,6 +304,11 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
+    /**
+     * Reset PriFi Configuration to its default value.
+     *
+     * It sets Preferences.isFirstInit to true and restart the app. The Application class will do the rest.
+     */
     private void resetPrifiConfig() {
         if (!isPrifiServiceRunning.get()) {
             SharedPreferences.Editor editor = getSharedPreferences(getString(R.string.prifi_config_shared_preferences), MODE_PRIVATE).edit();
@@ -276,6 +319,10 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Depending on the PriFi Service status, we enable or disable some UI elements.
+     * @param isServiceRunning Is the PriFi Service running?
+     */
     private void updateUIInputCapability(boolean isServiceRunning) {
         if (isServiceRunning) {
             startButton.setEnabled(false);
@@ -294,13 +341,29 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * The Async Task that
+     *
+     * 1. Checks network availability
+     * 2. Starts PriFi Service
+     * 3. Updates UI
+     */
     private static class StartPrifiAsyncTask extends AsyncTask<Void, Void, Boolean> {
+
+        private final int DEFAULT_PING_TIMEOUT = 3000; // 3s
+
+        // We need this to update UI, but it's a weak reference in order to prevent the memory leak
         private WeakReference<MainActivity> activityReference;
 
         StartPrifiAsyncTask(MainActivity context) {
             activityReference = new WeakReference<>(context);
         }
 
+        /**
+         * Pre Async Execution
+         *
+         * Show a ProgressDialog, because the network check may take up to 3 seconds.
+         */
         @Override
         protected void onPreExecute() {
             MainActivity activity = activityReference.get();
@@ -313,6 +376,13 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
+        /**
+         * During Async Execution
+         *
+         * Check the network availability
+         *
+         * @return true if the relay is available, otherwise false
+         */
         @Override
         protected Boolean doInBackground(Void... voids) {
             MainActivity activity = activityReference.get();
@@ -321,17 +391,24 @@ public class MainActivity extends AppCompatActivity {
                 boolean isRelayAvailable = NetworkHelper.isHostReachable(
                         activity.prifiRelayAddress,
                         activity.prifiRelayPort,
-                        activity.DEFAULT_PING_TIMEOUT);
+                        DEFAULT_PING_TIMEOUT);
                 boolean isSocksAvailable = NetworkHelper.isHostReachable(
                         activity.prifiRelayAddress,
                         activity.prifiRelaySocksPort,
-                        activity.DEFAULT_PING_TIMEOUT);
+                        DEFAULT_PING_TIMEOUT);
                 return isRelayAvailable && isSocksAvailable;
             } else {
                 return false;
             }
         }
 
+        /**
+         * Post Async Execution
+         *
+         * Start PriFi Service and update UI
+         *
+         * @param isNetworkAvailable Is the relay available?
+         */
         @Override
         protected void onPostExecute(Boolean isNetworkAvailable) {
             MainActivity activity = activityReference.get();
@@ -353,11 +430,16 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * A custom EditorActionListener
+     *
+     * When the Done key is pressed, execute pre defined actions and hide the virtual keyboard.
+     */
     private class DoneEditorActionListener implements TextView.OnEditorActionListener {
         @Override
         public boolean onEditorAction(TextView textView, int actionId, KeyEvent keyEvent) {
             if (actionId == EditorInfo.IME_ACTION_DONE) {
-                updateInputField(textView);
+                triggerDoneAction(textView);
                 InputMethodManager imm = (InputMethodManager)textView.getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
                 if (imm != null) {
                     imm.hideSoftInputFromWindow(textView.getWindowToken(), 0);

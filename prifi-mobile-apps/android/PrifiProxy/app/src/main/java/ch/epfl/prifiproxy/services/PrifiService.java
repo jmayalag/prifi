@@ -18,12 +18,24 @@ import ch.epfl.prifiproxy.activities.MainActivity;
 import prifiMobile.PrifiMobile;
 
 /**
- * Created by junchen on 23.03.18.
+ * This class controls the PriFi Core as Android Service (Foreground Service).
+ *
+ * PriFi Service Lifecycle:
+ *
+ * 1. onStartCommand triggered by user action
+ *
+ * 2. Handler's handleMessage is triggered by the previous action
+ *
+ * 3. The blocking PriFi Core runs on a separate thread
+ *
+ * 4. The PriFi Core will return when a stopped signal is given (check Golang code).
+ *    The finally block will be executed and the service shuts down by itself.
+ *
+ * 5. While shutting down the service (onDestroy), a broadcast is sent in order to update UI.
  */
-
 public class PrifiService extends Service {
 
-    public static final String PRIFI_STOPPED_BROADCAST_ACTION = "PRIFI_STOPPED_BROADCAST_ACTION";
+    public static final String PRIFI_STOPPED_BROADCAST_ACTION = "PRIFI_STOPPED_BROADCAST_ACTION"; // Broadcast Action Key
 
     private static final String PRIFI_SERVICE_THREAD_NAME = "PrifiService";
     private static final String PRIFI_SERVICE_NOTIFICATION_CHANNEL = "PrifiChannel";
@@ -42,7 +54,7 @@ public class PrifiService extends Service {
         @Override
         public void handleMessage(Message msg) {
             try {
-                PrifiMobile.startClient();
+                PrifiMobile.startClient(); // startClient is a blocking method.
             } finally {
                 stopForeground(true);
                 stopSelf(msg.arg1);
@@ -68,18 +80,19 @@ public class PrifiService extends Service {
 
         Message msg = mServiceHandler.obtainMessage();
         msg.arg1 = startId;
-        mServiceHandler.sendMessage(msg);
+        mServiceHandler.sendMessage(msg); // Trigger handlerMessage
 
         return START_NOT_STICKY;
     }
 
     @Override
     public IBinder onBind(Intent intent) {
-        return null;
+        return null; // onBind is not supported
     }
 
     @Override
     public void onDestroy() {
+        // While destroying the service, a broadcast is sent to update UI.
         sendBroadcast(new Intent(PRIFI_STOPPED_BROADCAST_ACTION));
         Toast.makeText(this, getString(R.string.prifi_service_stopped), Toast.LENGTH_SHORT).show();
         mServiceThread.quit();
