@@ -2,7 +2,7 @@
     <!--App-->
     <string name="app_name">Prifi Proxy</string>
 
-    <!--UI-->
+    <!--UI Elements-->
     <string name="start_button">Start</string>
     <string name="stop_button">Stop</string>
     <string name="reset_button">Reset</string>
@@ -13,6 +13,22 @@
     <string name="relay_address_hint">Relay Address</string>
     <string name="relay_port_hint">Relay Port</string>
     <string name="relay_port_socks_hint">Relay Socks Port</string>
+
+    <!--UI Messages-->
+    <string name="prifi_service_starting">PriFi starting</string>
+    <string name="prifi_service_stopped">PriFi stopped</string>
+    <string name="prifi_service_stopping_dialog_title">Stopping PriFi</string>
+    <string name="prifi_service_stopping_dialog_message">Please wait</string>
+    <string name="redirect_dialog_title">Open Telegram?</string>
+    <string name="redirect_dialog_message">You will be redirected to Telegram</string>
+    <string name="redirect_dialog_confirm">Go</string>
+    <string name="redirect_dialog_cancel">Cancel</string>
+    <string name="prifi_invalid_address">Invalid address</string>
+    <string name="prifi_invalid_port">Invalid port</string>
+    <string name="prifi_configuration_failed">Configuration failed</string>
+    <string name="relay_not_available">Relay is not available</string>
+    <string name="check_network_dialog_title">Check Network Availability</string>
+    <string name="check_network_dialog_message">Please wait</string>
 
     <!--Preferences-->
     <string name="prifi_config_shared_preferences">PrifiConfigPreferences</string>
@@ -29,4 +45,6 @@
     <!--Notification-->
     <string name="prifi_service_notification_title">Prifi</string>
     <string name="prifi_service_notification_message">Service running</string>
+
+    <!--Others-->
 </resources>

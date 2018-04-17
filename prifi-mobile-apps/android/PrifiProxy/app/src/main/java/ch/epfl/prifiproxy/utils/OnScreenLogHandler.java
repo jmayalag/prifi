@@ -31,9 +31,6 @@ public class OnScreenLogHandler extends Handler {
             Intent intent = new Intent(UPDATE_LOG_BROADCAST_ACTION);
             intent.putExtra(UPDATE_LOG_INTENT_KEY, log);
 
-            if (PrifiProxy.getContext() == null) {
-                Log.i("myapp", "null");
-            }
             PrifiProxy.getContext().sendBroadcast(intent);
             this.sendEmptyMessageDelayed(UPDATE_LOG_MESSAGE_WHAT, DELAY);
         }

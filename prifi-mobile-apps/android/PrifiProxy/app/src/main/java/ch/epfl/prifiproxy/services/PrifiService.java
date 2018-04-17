@@ -64,7 +64,7 @@ public class PrifiService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        Toast.makeText(this, "Service starting", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, getString(R.string.prifi_service_starting), Toast.LENGTH_SHORT).show();
 
         Message msg = mServiceHandler.obtainMessage();
         msg.arg1 = startId;
@@ -81,7 +81,7 @@ public class PrifiService extends Service {
     @Override
     public void onDestroy() {
         sendBroadcast(new Intent(PRIFI_STOPPED_BROADCAST_ACTION));
-        Toast.makeText(this, "Service stopped", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, getString(R.string.prifi_service_stopped), Toast.LENGTH_SHORT).show();
         mServiceThread.quit();
     }
 

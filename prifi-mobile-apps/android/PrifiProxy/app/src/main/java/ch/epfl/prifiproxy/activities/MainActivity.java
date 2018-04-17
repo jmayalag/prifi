@@ -141,18 +141,22 @@ public class MainActivity extends AppCompatActivity {
 
     private void stopPrifiService() {
         if (isPrifiServiceRunning.compareAndSet(true, false)) {
-            mProgessDialog = ProgressDialog.show(this, "Stopping PriFi", "Please wait");
+            mProgessDialog = ProgressDialog.show(
+                    this,
+                    getString(R.string.prifi_service_stopping_dialog_title),
+                    getString(R.string.prifi_service_stopping_dialog_message)
+            );
             PrifiMobile.stopClient(); // StopClient will make the service to shutdown by itself
         }
     }
 
     private void showRedirectDialog() {
         AlertDialog alertDialog = new AlertDialog.Builder(this).create();
-        alertDialog.setTitle("Open Telegram");
-        alertDialog.setMessage("You will be redirected to Telegram");
-        alertDialog.setButton(AlertDialog.BUTTON_NEGATIVE, "Cancel",
+        alertDialog.setTitle(getString(R.string.redirect_dialog_title));
+        alertDialog.setMessage(getString(R.string.redirect_dialog_message));
+        alertDialog.setButton(AlertDialog.BUTTON_NEGATIVE, getString(R.string.redirect_dialog_cancel),
                 (dialog, which) -> dialog.dismiss());
-        alertDialog.setButton(AlertDialog.BUTTON_POSITIVE, "Go",
+        alertDialog.setButton(AlertDialog.BUTTON_POSITIVE, getString(R.string.redirect_dialog_confirm),
                 (dialog, which) -> redirectToTelegram());
         alertDialog.show();
     }
@@ -224,7 +228,7 @@ public class MainActivity extends AppCompatActivity {
 
                     PrifiMobile.setRelayAddress(prifiRelayAddress);
                 } else {
-                    Toast.makeText(this, "Invalid Address", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, getString(R.string.prifi_invalid_address), Toast.LENGTH_SHORT).show();
                 }
                 relayAddressInput.setText(prifiRelayAddress);
             }
@@ -236,7 +240,7 @@ public class MainActivity extends AppCompatActivity {
 
                     PrifiMobile.setRelayPort((long) prifiRelayPort);
                 } else {
-                    Toast.makeText(this, "Invalid Relay Port", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, getString(R.string.prifi_invalid_port), Toast.LENGTH_SHORT).show();
                 }
                 relayPortInput.setText(String.valueOf(prifiRelayPort));
             }
@@ -248,14 +252,14 @@ public class MainActivity extends AppCompatActivity {
 
                     PrifiMobile.setRelaySocksPort((long) prifiRelaySocksPort);
                 } else {
-                    Toast.makeText(this, "Invalid Relay Socks Port", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, getString(R.string.prifi_invalid_port), Toast.LENGTH_SHORT).show();
                 }
                 relaySocksPortInput.setText(String.valueOf(prifiRelaySocksPort));
             }
 
         } catch (Exception e) {
             e.printStackTrace();
-            Toast.makeText(this, "Configuration failed", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, getString(R.string.prifi_configuration_failed), Toast.LENGTH_LONG).show();
         } finally {
             editor.apply();
         }
@@ -302,7 +306,10 @@ public class MainActivity extends AppCompatActivity {
             MainActivity activity = activityReference.get();
 
             if (activity != null && !activity.isFinishing()) {
-                activityReference.get().mProgessDialog = ProgressDialog.show(activityReference.get(), "Check Network Availability", "Please wait");
+                activity.mProgessDialog = ProgressDialog.show(
+                        activity,
+                        activity.getString(R.string.check_network_dialog_title),
+                        activity.getString(R.string.check_network_dialog_message));
             }
         }
 
@@ -340,7 +347,7 @@ public class MainActivity extends AppCompatActivity {
                     activity.updateUIInputCapability(true);
                     activity.showRedirectDialog();
                 } else {
-                    Toast.makeText(activity, "Relay is not available", Toast.LENGTH_LONG).show();
+                    Toast.makeText(activity, activity.getString(R.string.relay_not_available), Toast.LENGTH_LONG).show();
                 }
             }
         }
