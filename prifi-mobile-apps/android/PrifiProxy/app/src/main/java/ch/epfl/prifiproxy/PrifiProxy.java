@@ -35,7 +35,7 @@ public class PrifiProxy extends Application {
         final int defaultRelayPort;
         final int defaultRelaySocksPort;
 
-        // Retrieve
+        // Retrieve relay info
         try {
             defaultRelayAddress = PrifiMobile.getRelayAddress();
             defaultRelayPort = longToInt(PrifiMobile.getRelayPort());
@@ -49,6 +49,17 @@ public class PrifiProxy extends Application {
 
         // Save if it's the first initialization
         if (isFirstInit) {
+            final String pubKey;
+            final String priKey;
+
+            try {
+                PrifiMobile.generateNewKeyPairAndAssign();
+                pubKey = PrifiMobile.getPublicKey();
+                priKey = PrifiMobile.getPrivateKey();
+            } catch (Exception e) {
+                throw new RuntimeException("Can't generate keys");
+            }
+
             SharedPreferences.Editor editor = getSharedPreferences(getString(R.string.prifi_config_shared_preferences), MODE_PRIVATE).edit();
             // Save default values
             editor.putString(getString(R.string.prifi_config_relay_address_default), defaultRelayAddress);
@@ -58,6 +69,9 @@ public class PrifiProxy extends Application {
             editor.putString(getString(R.string.prifi_config_relay_address), defaultRelayAddress);
             editor.putInt(getString(R.string.prifi_config_relay_port), defaultRelayPort);
             editor.putInt(getString(R.string.prifi_config_relay_socks_port), defaultRelaySocksPort);
+            // Save keys
+            editor.putString(getString(R.string.prifi_client_public_key), pubKey);
+            editor.putString(getString(R.string.prifi_client_private_key), priKey);
             // Set isFirstInit false
             editor.putBoolean(getString(R.string.prifi_config_first_init), false);
             // apply
@@ -67,6 +81,9 @@ public class PrifiProxy extends Application {
             final String currentPrifiRelayAddress = prifiPrefs.getString(getString(R.string.prifi_config_relay_address),"");
             final int currentPrifiRelayPort = prifiPrefs.getInt(getString(R.string.prifi_config_relay_port), 0);
             final int currentPrifiRelaySocksPort = prifiPrefs.getInt(getString(R.string.prifi_config_relay_socks_port),0);
+
+            final String currentPubKey = prifiPrefs.getString(getString(R.string.prifi_client_public_key),"");
+            final String currentPriKey = prifiPrefs.getString(getString(R.string.prifi_client_private_key),"");
 
             try {
 
@@ -81,6 +98,9 @@ public class PrifiProxy extends Application {
                 if (currentPrifiRelaySocksPort != defaultRelaySocksPort) {
                     PrifiMobile.setRelaySocksPort((long) currentPrifiRelaySocksPort);
                 }
+
+                PrifiMobile.setPublicKey(currentPubKey);
+                PrifiMobile.setPrivateKey(currentPriKey);
 
             } catch (Exception e) {
                 throw new RuntimeException("Can't set PrifiMobile values");

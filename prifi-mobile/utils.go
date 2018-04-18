@@ -4,6 +4,9 @@ import (
 	"strconv"
 	"gopkg.in/dedis/onet.v1/network"
 	"errors"
+	"gopkg.in/dedis/onet.v1/crypto"
+	"gopkg.in/dedis/crypto.v0/abstract"
+	cryptoconfig "gopkg.in/dedis/crypto.v0/config"
 )
 
 const relayIndex = 0
@@ -76,14 +79,65 @@ func SetRelaySocksPort(port int) error {
 
 
 // Keys
+func GenerateNewKeyPairAndAssign() error {
+	// Generate new raw key pair
+	kp := cryptoconfig.NewKeyPair(network.Suite)
+
+	// Parse private key
+	priStr, err := crypto.ScalarToStringHex(network.Suite, kp.Secret)
+	if err != nil {
+		return err
+	}
+
+	// Parse public key
+	var point abstract.Point
+	point = kp.Public
+	pubStr, err := crypto.PointToStringHex(network.Suite, point)
+	if err != nil {
+		return err
+	}
+
+	err = SetPublicKey(pubStr)
+	if err != nil {
+		return err
+	}
+
+	err = SetPrivateKey(priStr)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func GetPublicKey() (string, error) {
 	c, err := getCothorityConfig()
 	return c.Public, err
 }
 
+func SetPublicKey(pubKey string) error {
+	c, err := getCothorityConfig()
+	if err != nil {
+		return err
+	}
+
+	c.Public = pubKey
+	return nil
+}
+
 func GetPrivateKey() (string, error) {
 	c, err := getCothorityConfig()
 	return c.Private, err
+}
+
+func SetPrivateKey(priKey string) error {
+	c, err := getCothorityConfig()
+	if err != nil {
+		return err
+	}
+
+	c.Private = priKey
+	return nil
 }
 
 

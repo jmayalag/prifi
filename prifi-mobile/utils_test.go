@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-func TestUtils(t *testing.T) {
+func TestGetterSetter(t *testing.T) {
 	// Relay Address
 	a, _ := GetRelayAddress()
 	fmt.Println("Address ", a)
@@ -30,6 +30,7 @@ func TestUtils(t *testing.T) {
 	p, _ = GetRelayPort()
 	fmt.Println("Full Address ", getFullAddress())
 
+
 	// Relay Socks Port
 	sp, _ := GetRelaySocksPort()
 	fmt.Println("Relay Socks Port", sp)
@@ -41,11 +42,20 @@ func TestUtils(t *testing.T) {
 	_ = SetRelaySocksPort(8090)
 	sp, _ = GetRelaySocksPort()
 	fmt.Println("Relay Socks Port", sp)
+}
 
-	// Keys
+func TestKeyGeneration(t *testing.T) {
 	pub, _ := GetPublicKey()
 	fmt.Println("Pub key", pub)
 
 	pri, _ := GetPrivateKey()
 	fmt.Println("Private key", pri)
+
+	GenerateNewKeyPairAndAssign()
+
+	pub, _ = GetPublicKey()
+	fmt.Println("New Pub key", pub)
+
+	pri, _ = GetPrivateKey()
+	fmt.Println("New Private key", pri)
 }

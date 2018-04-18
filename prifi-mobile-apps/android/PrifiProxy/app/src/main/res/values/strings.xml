@@ -42,6 +42,10 @@
     <string name="prifi_config_relay_port">PrifiRelayPort</string>
     <string name="prifi_config_relay_socks_port">PrifiRelaySocksPort</string>
 
+    <string name="prifi_client_public_key">PrifiCLientPubKey</string>
+    <string name="prifi_client_private_key">PrifiClientPriKey</string>
+    <string name="prifi_relay_public_key">PrifiRelayPubKey</string>
+
     <!--Notification-->
     <string name="prifi_service_notification_title">Prifi</string>
     <string name="prifi_service_notification_message">Service running</string>
