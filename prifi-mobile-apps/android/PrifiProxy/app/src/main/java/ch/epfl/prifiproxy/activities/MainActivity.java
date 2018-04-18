@@ -29,6 +29,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import ch.epfl.prifiproxy.R;
 import ch.epfl.prifiproxy.services.PrifiService;
 import ch.epfl.prifiproxy.utils.NetworkHelper;
+import ch.epfl.prifiproxy.utils.SystemHelper;
 import prifiMobile.PrifiMobile;
 
 public class MainActivity extends AppCompatActivity {
@@ -119,7 +120,7 @@ public class MainActivity extends AppCompatActivity {
 
         // Check if the PriFi service is running or not
         // Depending on the result, update UI
-        isPrifiServiceRunning = new AtomicBoolean(isMyServiceRunning(PrifiService.class));
+        isPrifiServiceRunning = new AtomicBoolean(SystemHelper.isMyServiceRunning(PrifiService.class, this));
         updateUIInputCapability(isPrifiServiceRunning.get());
 
         // Register BroadcastReceiver
@@ -181,7 +182,7 @@ public class MainActivity extends AppCompatActivity {
     private void redirectToTelegram() {
         final String appName = "org.telegram.messenger";
         Intent intent;
-        final boolean isAppInstalled = isAppAvailable(this, appName);
+        final boolean isAppInstalled = SystemHelper.isAppAvailable(this, appName);
         if (isAppInstalled) {
             intent = getPackageManager().getLaunchIntentForPackage(appName);
         } else {
@@ -189,39 +190,6 @@ public class MainActivity extends AppCompatActivity {
             intent.setData(Uri.parse("market://details?id=" + appName));
         }
         startActivity(intent);
-    }
-
-    /**
-     * Check if the given service is running or not.
-     * @param serviceClass Service
-     * @return true if running, otherwise false
-     */
-    private boolean isMyServiceRunning(Class<?> serviceClass) {
-        ActivityManager manager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
-        if (manager != null) {
-            for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
-                if (serviceClass.getName().equals(service.service.getClassName())) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-    /**
-     * Check if the given app is installed or not.
-     * @param context context
-     * @param appName app package name
-     * @return true if installed, otherwise false
-     */
-    private boolean isAppAvailable(Context context, String appName) {
-        PackageManager packageManager = context.getPackageManager();
-        try {
-            packageManager.getPackageInfo(appName, PackageManager.GET_ACTIVITIES);
-            return true;
-        } catch (PackageManager.NameNotFoundException e) {
-            return false;
-        }
     }
 
     /**
