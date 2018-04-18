@@ -4,8 +4,9 @@ import android.app.ActivityManager;
 import android.content.Context;
 import android.content.pm.PackageManager;
 
-import ch.epfl.prifiproxy.PrifiProxy;
-
+/**
+ * This class provides functions that interact with OS.
+ */
 public class SystemHelper {
 
     /**
