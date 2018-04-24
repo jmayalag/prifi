@@ -1,5 +1,6 @@
 package ch.epfl.prifiproxy.activities;
 
+import android.app.ActivityOptions;
 import android.app.AlertDialog;
 import android.app.ProgressDialog;
 import android.content.BroadcastReceiver;
@@ -9,6 +10,7 @@ import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Bundle;
 import android.support.design.widget.TextInputEditText;
 import android.support.v7.app.AppCompatActivity;
@@ -26,6 +28,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import ch.epfl.prifiproxy.R;
 import ch.epfl.prifiproxy.services.PrifiService;
+import ch.epfl.prifiproxy.utils.HttpThroughPrifiTask;
 import ch.epfl.prifiproxy.utils.NetworkHelper;
 import ch.epfl.prifiproxy.utils.SystemHelper;
 import prifiMobile.PrifiMobile;
@@ -38,7 +41,7 @@ public class MainActivity extends AppCompatActivity {
 
     private AtomicBoolean isPrifiServiceRunning;
 
-    private Button startButton, stopButton, resetButton, testButton1, testButton2;
+    private Button startButton, stopButton, resetButton, testPrifiButton, logButton;
     private TextInputEditText relayAddressInput, relayPortInput, relaySocksPortInput;
     private ProgressDialog mProgessDialog;
 
@@ -59,8 +62,8 @@ public class MainActivity extends AppCompatActivity {
         startButton = findViewById(R.id.startButton);
         stopButton = findViewById(R.id.stopButton);
         resetButton = findViewById(R.id.resetButton);
-        testButton1 = findViewById(R.id.testButton1);
-        testButton2 = findViewById(R.id.testButton2);
+        testPrifiButton = findViewById(R.id.testPrifiButton);
+        logButton = findViewById(R.id.logButton);
         relayAddressInput = findViewById(R.id.relayAddressInput);
         relayPortInput = findViewById(R.id.relayPortInput);
         relaySocksPortInput = findViewById(R.id.relaySocksPortInput);
@@ -103,12 +106,15 @@ public class MainActivity extends AppCompatActivity {
         relaySocksPortInput.setText(String.valueOf(prifiRelaySocksPort));
         relaySocksPortInput.setOnEditorActionListener(new DoneEditorActionListener());
 
-        testButton1.setOnClickListener(view -> {
+        testPrifiButton.setOnClickListener(view -> new HttpThroughPrifiTask().execute());
 
-        });
-
-        testButton2.setOnClickListener(view -> {
-
+        logButton.setOnClickListener(view -> {
+            Intent intent = new Intent(this, OnScreenLogActivity.class);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                startActivity(intent, ActivityOptions.makeSceneTransitionAnimation(this).toBundle());
+            } else {
+                startActivity(intent);
+            }
         });
     }
 

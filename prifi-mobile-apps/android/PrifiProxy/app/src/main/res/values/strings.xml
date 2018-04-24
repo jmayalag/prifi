@@ -1,15 +1,14 @@
 <resources>
-    <!--App-->
+    <!--App and Activities-->
     <string name="app_name">Prifi Proxy</string>
+    <string name="on_screen_log_activity_label">Log</string>
 
     <!--UI Elements-->
     <string name="start_button">Start</string>
     <string name="stop_button">Stop</string>
     <string name="reset_button">Reset</string>
-    <string name="log_switch">Log</string>
-    <string name="prifi_log_welcome_message">Welcome to Prifi ! \n</string>
-    <string name="test_button_1">Test 1</string>
-    <string name="test_button_2">Test 2</string>
+    <string name="test_prifi_button">Test PriFi</string>
+    <string name="log_button">Show Log</string>
     <string name="relay_address_hint">Relay Address</string>
     <string name="relay_port_hint">Relay Port</string>
     <string name="relay_port_socks_hint">Relay Socks Port</string>
@@ -29,6 +28,8 @@
     <string name="relay_not_available">Relay is not available</string>
     <string name="check_network_dialog_title">Check Network Availability</string>
     <string name="check_network_dialog_message">Please wait</string>
+    <string name="prifi_test_message_successful">PriFi can be used now, enjoy!</string>
+    <string name="prifi_test_message_failed">PriFi is not available now</string>
 
     <!--Preferences-->
     <string name="prifi_config_shared_preferences">PrifiConfigPreferences</string>

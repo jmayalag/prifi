@@ -8,25 +8,25 @@
     tools:context="ch.epfl.prifiproxy.activities.MainActivity">
 
     <Button
-        android:id="@+id/testButton1"
+        android:id="@+id/testPrifiButton"
         android:layout_width="165dp"
         android:layout_height="wrap_content"
-        android:text="@string/test_button_1"
+        android:text="@string/test_prifi_button"
         app:layout_constraintBottom_toTopOf="@+id/relayAddressInputLayout"
-        app:layout_constraintEnd_toStartOf="@+id/testButton2"
+        app:layout_constraintEnd_toStartOf="@+id/logButton"
         app:layout_constraintHorizontal_bias="0.5"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
     <Button
-        android:id="@+id/testButton2"
+        android:id="@+id/logButton"
         android:layout_width="165dp"
         android:layout_height="wrap_content"
-        android:text="@string/test_button_2"
+        android:text="@string/log_button"
         app:layout_constraintBottom_toTopOf="@+id/relayAddressInputLayout"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.5"
-        app:layout_constraintStart_toEndOf="@+id/testButton1"
+        app:layout_constraintStart_toEndOf="@+id/testPrifiButton"
         app:layout_constraintTop_toTopOf="parent" />
 
     <Button
@@ -73,7 +73,7 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.5"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/testButton1">
+        app:layout_constraintTop_toBottomOf="@+id/testPrifiButton">
 
         <android.support.design.widget.TextInputEditText
             android:id="@+id/relayAddressInput"
