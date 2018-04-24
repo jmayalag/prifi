@@ -314,13 +314,28 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /**
+     * An enum that describes the network availability.
+     *
+     * None: Both PriFi Relay and Socks Server are not available.
+     * RELAY_ONLY: Socks Server is not available.
+     * SOCKS_ONLY: PriFi Relay is not available.
+     * BOTH: Available
+     */
+    private enum NetworkStatus {
+        NONE,
+        RELAY_ONLY,
+        SOCKS_ONLY,
+        BOTH
+    }
+
+    /**
      * The Async Task that
      *
      * 1. Checks network availability
      * 2. Starts PriFi Service
      * 3. Updates UI
      */
-    private static class StartPrifiAsyncTask extends AsyncTask<Void, Void, Boolean> {
+    private static class StartPrifiAsyncTask extends AsyncTask<Void, Void, NetworkStatus> {
 
         private final int DEFAULT_PING_TIMEOUT = 3000; // 3s
 
@@ -353,10 +368,10 @@ public class MainActivity extends AppCompatActivity {
          *
          * Check the network availability
          *
-         * @return true if the relay is available, otherwise false
+         * @return relay status: none, relay only, socks only or both
          */
         @Override
-        protected Boolean doInBackground(Void... voids) {
+        protected NetworkStatus doInBackground(Void... voids) {
             MainActivity activity = activityReference.get();
 
             if (activity != null && !activity.isFinishing()) {
@@ -368,9 +383,19 @@ public class MainActivity extends AppCompatActivity {
                         activity.prifiRelayAddress,
                         activity.prifiRelaySocksPort,
                         DEFAULT_PING_TIMEOUT);
-                return isRelayAvailable && isSocksAvailable;
+
+                if (isRelayAvailable && isSocksAvailable) {
+                    return NetworkStatus.BOTH;
+                } else if (isRelayAvailable) {
+                    return NetworkStatus.RELAY_ONLY;
+                } else if (isSocksAvailable) {
+                    return NetworkStatus.SOCKS_ONLY;
+                } else {
+                    return NetworkStatus.NONE;
+                }
+
             } else {
-                return false;
+                return NetworkStatus.NONE;
             }
         }
 
@@ -379,10 +404,10 @@ public class MainActivity extends AppCompatActivity {
          *
          * Start PriFi Service and update UI
          *
-         * @param isNetworkAvailable Is the relay available?
+         * @param networkStatus relay status
          */
         @Override
-        protected void onPostExecute(Boolean isNetworkAvailable) {
+        protected void onPostExecute(NetworkStatus networkStatus) {
             MainActivity activity = activityReference.get();
 
             if (activity != null && !activity.isFinishing()) {
@@ -390,13 +415,28 @@ public class MainActivity extends AppCompatActivity {
                     activity.mProgessDialog.dismiss();
                 }
 
-                if (isNetworkAvailable) {
-                    activity.isPrifiServiceRunning.set(true);
-                    activity.startService(new Intent(activity, PrifiService.class));
-                    activity.updateUIInputCapability(true);
-                    activity.showRedirectDialog();
-                } else {
-                    Toast.makeText(activity, activity.getString(R.string.relay_not_available), Toast.LENGTH_LONG).show();
+                switch (networkStatus) {
+                    case NONE:
+                        Toast.makeText(activity, activity.getString(R.string.relay_status_none), Toast.LENGTH_LONG).show();
+                        break;
+
+                    case RELAY_ONLY:
+                        Toast.makeText(activity, activity.getString(R.string.relay_status_relay_only), Toast.LENGTH_LONG).show();
+                        break;
+
+                    case SOCKS_ONLY:
+                        Toast.makeText(activity, activity.getString(R.string.relay_status_socks_only), Toast.LENGTH_LONG).show();
+                        break;
+
+                    case BOTH:
+                        activity.isPrifiServiceRunning.set(true);
+                        activity.startService(new Intent(activity, PrifiService.class));
+                        activity.updateUIInputCapability(true);
+                        activity.showRedirectDialog();
+                        break;
+
+                    default:
+                        break;
                 }
             }
         }

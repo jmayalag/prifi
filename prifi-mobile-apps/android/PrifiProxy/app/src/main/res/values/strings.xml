@@ -25,7 +25,9 @@
     <string name="prifi_invalid_address">Invalid address</string>
     <string name="prifi_invalid_port">Invalid port</string>
     <string name="prifi_configuration_failed">Configuration failed</string>
-    <string name="relay_not_available">Relay is not available</string>
+    <string name="relay_status_none">Relay and Socks Server are both not available</string>
+    <string name="relay_status_relay_only">Socks Server is not available</string>
+    <string name="relay_status_socks_only">Relay is not available</string>
     <string name="check_network_dialog_title">Check Network Availability</string>
     <string name="check_network_dialog_message">Please wait</string>
     <string name="prifi_test_message_successful">PriFi can be used now, enjoy!</string>
