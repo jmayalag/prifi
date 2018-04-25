@@ -45,8 +45,10 @@ To test a real PriFi deployement, first, re-generates your identity (so your pri
 
  - [README about ./prifi.sh startup script](README_prifi.sh.md)
 
+ - [README about deployment of PriFi on mobile platforms](README_mobile.md)
+
  - [README about contributing to this repository](README_contributing.md)
 
 ## API Documentation
 
-The PriFi API documentation can be found in  `doc/doc.html`. 
+The PriFi API documentation can be found in  `doc/doc.html`.
