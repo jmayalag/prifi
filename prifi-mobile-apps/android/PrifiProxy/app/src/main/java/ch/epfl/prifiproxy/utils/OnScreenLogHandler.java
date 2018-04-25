@@ -17,8 +17,8 @@ import java.io.InputStreamReader;
  */
 public class OnScreenLogHandler extends Handler {
 
-    public static final String UPDATE_LOG_BROADCAST_ACTION = "UPDATE_LOG_BROADCAST_ACTION"; // Broadcast Action Keyword
-    public static final String UPDATE_LOG_INTENT_KEY = "LOG"; // Intent Action Keyword
+    public static final String UPDATE_LOG_BROADCAST_ACTION = "ch.epfl.prifiproxy.UPDATE_LOG_BROADCAST_ACTION"; // Broadcast Action Keyword
+    public static final String UPDATE_LOG_INTENT_KEY = "ch.epfl.prifiproxy.LOG"; // Intent Action Keyword
     public static final int UPDATE_LOG_MESSAGE_WHAT = 1;
 
     private final int DELAY = 2000;

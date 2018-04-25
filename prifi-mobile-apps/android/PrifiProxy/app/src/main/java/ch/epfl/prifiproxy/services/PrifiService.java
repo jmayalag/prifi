@@ -35,10 +35,10 @@ import prifiMobile.PrifiMobile;
  */
 public class PrifiService extends Service {
 
-    public static final String PRIFI_STOPPED_BROADCAST_ACTION = "PRIFI_STOPPED_BROADCAST_ACTION"; // Broadcast Action Key
+    public static final String PRIFI_STOPPED_BROADCAST_ACTION = "ch.epfl.prifiproxy.PRIFI_STOPPED_BROADCAST_ACTION"; // Broadcast Action Key
 
-    private static final String PRIFI_SERVICE_THREAD_NAME = "PrifiService";
-    private static final String PRIFI_SERVICE_NOTIFICATION_CHANNEL = "PrifiChannel";
+    private static final String PRIFI_SERVICE_THREAD_NAME = "ch.epfl.prifiproxy.PRIFI_SERVICE_THREAD";
+    private static final String PRIFI_SERVICE_NOTIFICATION_CHANNEL = "ch.epfl.prifiproxy.PRIFI_SERVICE_NOTIFICATION_CHANNEL";
     private static final int PRIFI_SERVICE_NOTIFICATION_ID = 42;
 
     private Looper mServiceLooper;

@@ -25,7 +25,7 @@ import ch.epfl.prifiproxy.utils.OnScreenLogHandler;
  */
 public class OnScreenLogActivity extends AppCompatActivity {
 
-    private final String ON_SCREEN_LOG_THREAD = "ON_SCREEN_LOG";
+    private final String ON_SCREEN_LOG_THREAD_NAME = "ch.epfl.prifiproxy.ON_SCREEN_LOG_THREAD";
 
     private ScrollView mScrollView;
     private TextView onScreenLogTextView;
@@ -69,7 +69,7 @@ public class OnScreenLogActivity extends AppCompatActivity {
         };
 
         // Handler and HandlerThread
-        mHandlerThread = new HandlerThread(ON_SCREEN_LOG_THREAD, Process.THREAD_PRIORITY_BACKGROUND);
+        mHandlerThread = new HandlerThread(ON_SCREEN_LOG_THREAD_NAME, Process.THREAD_PRIORITY_BACKGROUND);
         mHandlerThread.start();
         mOnScreenLogHandler = new OnScreenLogHandler(mHandlerThread.getLooper());
     }
