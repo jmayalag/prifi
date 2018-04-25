@@ -27,9 +27,9 @@ Make sure that the target SDK tools are installed before calling `gomobile init`
 
 Normally, the generated AAR can be directly used in any Android apps. Unfortunately in our case, there is one more step to do.
 
-We know that PriFi uses [ONet](https://github.com/dedis/onet) as a network framework, and `ONet` has a OS check at launch. Unfortunately, `ONet.v1` (25 April 2018) currently doesn't support Android, which results a crash on Android.
+We know that PriFi uses [ONet](https://github.com/dedis/onet) as a network framework, and `ONet` has an OS check at launch. Unfortunately, `ONet.v1` (25 April 2018) currently doesn't support Android, which results a crash on Android.
 
-We need to modify one function from `gopkg.in/dedis/onet.v1/context.go`.
+We need to modify the checking mechanism in `gopkg.in/dedis/onet.v1/context.go`.
 ```
 // Returns the path to the file for storage/retrieval of the service-state.
 func initContextDataPath() {
@@ -46,6 +46,7 @@ func initContextDataPath() {
 			p = path.Join(u.HomeDir, ".local", "share", "conode")
 		case "windows":
 			p = path.Join(u.HomeDir, "AppData", "Local", "Conode")
+		// New
 		case "android":
 			p = path.Join("/data/data/ch.epfl.prifiproxy/files", "conode")
 		default:
@@ -71,7 +72,7 @@ If you want to use the generated AAR in your own app, please put the file in the
 
 **Project-level build.gradle**
 
-Please include
+Include
 ```
 flatDir {
   dirs 'libs'
@@ -88,7 +89,7 @@ allprojects {
 
 **App-level build.gradle**
 
-Add
+Include
 ```
 implementation(name: 'prifiMobile', ext: 'aar')
 ```
