@@ -23,7 +23,7 @@ Make sure that the target SDK tools are installed before calling `gomobile init`
 
 `gomobile bind -target android github.com/lbarman/prifi/prifi-mobile` produces an AAR (Android ARchive) file. The output is named '<package_name>.aar' by default, in our case, it's `prifiMobile.aar`. For more information, pleas check the official [wiki](https://godoc.org/golang.org/x/mobile/cmd/gomobile).
 
-Note: the generated library is big, thus it's not tracked by git.
+**Note:** _the generated library is big, thus it's not tracked by git._
 
 Normally, the generated AAR can be directly used in any Android apps. Unfortunately in our case, there is one more step to do.
 
@@ -69,7 +69,7 @@ If you use our demo app `prifi-mobile-apps/android/PrifiProxy`, there is nothing
 
 If you want to use the generated AAR in your own app, please put the file in the same location `YourApp/app/libs` and include the following lines into the gradle scripts.
 
-*Project-level build.gradle*
+**Project-level build.gradle**
 
 Please include
 ```
@@ -86,7 +86,7 @@ allprojects {
 }
 ```
 
-*App-level build.gradle*
+**App-level build.gradle**
 
 Add
 ```
@@ -99,18 +99,18 @@ dependencies{
 }
 ```
 
-Note 1: Old gradle versions uses the keyword `compile` instead of `implementation`.
+**Note 1:** _Old gradle versions uses the keyword `compile` instead of `implementation`._
 
-Note 2: If you want to replace AAR with a newer version, please delete the old one and sync gradle, then put the new one in and resync gradle.
+**Note 2:** _If you want to replace AAR with a newer version, please delete the old one and sync gradle, then put the new one in and resync gradle._
 
 
 ## Download our AAR and APK
 
 The steps described above are complicated, so we provide the AAR and the APK of our demo app that we are currently using.
 
-[prifiMobile.aar](https://drive.google.com/file/d/1Pck2us_HcVQHeMkWvHp7w4nR-loVpknZ/view?usp=sharing)
+[prifiMobile.aar](https://drive.google.com/file/d/1Pck2us_HcVQHeMkWvHp7w4nR-loVpknZ/view?usp=sharing) (25 April 2018)
 
-[PrifiProxy.apk](https://drive.google.com/file/d/1ABPJ5cSVmpP8_a6U0s-9sjlyM3HqduiE/view?usp=sharing)
+[PrifiProxy.apk](https://drive.google.com/file/d/1ABPJ5cSVmpP8_a6U0s-9sjlyM3HqduiE/view?usp=sharing) (25 April 2018)
 
 
 [back to main README](README.md)
