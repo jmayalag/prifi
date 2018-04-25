@@ -69,7 +69,8 @@ If you use our demo app `prifi-mobile-apps/android/PrifiProxy`, there is nothing
 
 If you want to use the generated AAR in your own app, please put the file in the same location `YourApp/app/libs` and include the following lines into the gradle scripts.
 
-Project-level build.gradle
+*Project-level build.gradle*
+
 Please include
 ```
 flatDir {
@@ -85,7 +86,8 @@ allprojects {
 }
 ```
 
-App-level build.gradle
+*App-level build.gradle*
+
 Add
 ```
 implementation(name: 'prifiMobile', ext: 'aar')
