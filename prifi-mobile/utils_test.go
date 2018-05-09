@@ -59,3 +59,8 @@ func TestKeyGeneration(t *testing.T) {
 	pri, _ = GetPrivateKey()
 	fmt.Println("New Private key", pri)
 }
+
+func TestGetPrifiPort(t *testing.T) {
+	port, _ := GetPrifiPort()
+	fmt.Println("Prifi port", port)
+}

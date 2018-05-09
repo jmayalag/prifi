@@ -12,6 +12,17 @@ import (
 const relayIndex = 0
 const separatorHostPort = ":"
 
+// PriFi Port
+func GetPrifiPort() (int, error) {
+	c, err := getPrifiConfig()
+	if err != nil {
+		return 0, err
+	}
+
+	return c.SocksServerPort, nil
+}
+
+
 // Relay Address
 func GetRelayAddress() (string, error) {
 	c, err := getGroupConfig()

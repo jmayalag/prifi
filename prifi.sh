@@ -94,6 +94,8 @@ case $1 in
 		cd ../..
 		cd socks; go get ./... 1>/dev/null 2>&1
 		cd ..
+		cd prifi-mobile; go get ./... 1>/dev/null 2>&1
+		cd ..
 		echo -e "$okMsg"
 
 		echo -en "Switching ONet branch to ${highlightOn}$cothorityBranchRequired${highlightOff}... "

@@ -4,13 +4,12 @@ import android.content.Intent;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
-import android.util.Log;
-
-import ch.epfl.prifiproxy.PrifiProxy;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+
+import ch.epfl.prifiproxy.PrifiProxy;
 
 /**
  * This class allows us to display Logcat content (logs) directly in the app.

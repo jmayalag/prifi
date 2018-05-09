@@ -4,39 +4,29 @@ import android.content.Context;
 import android.os.AsyncTask;
 import android.widget.Toast;
 
-import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.net.Proxy;
-import java.util.concurrent.TimeUnit;
-
 import ch.epfl.prifiproxy.PrifiProxy;
 import ch.epfl.prifiproxy.R;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.Response;
+import prifiMobile.HttpRequestResult;
 
 /**
  * This class is an AsyncTask that makes a HTTP Request through PriFi.
  * The purpose is to test the PriFi connexion.
- * (HTTP Request + SOCKS Proxy + PriFi Localhost)
  */
 public class HttpThroughPrifiTask extends AsyncTask<Void, Void, Boolean> {
 
     /**
-     * Request the google page through PriFi (localhost:8080)
-     * @return is the HTTP request successful?
+     * Request the google page through PriFi
+     * @return is the HTTP request successful? (true if no error)
      */
     @Override
     protected Boolean doInBackground(Void... voids) {
-        Proxy proxy = new Proxy(Proxy.Type.SOCKS, new InetSocketAddress("127.0.0.1", 8080)); // TODO Don't hard code the port
-        OkHttpClient client = new OkHttpClient.Builder().connectTimeout(5, TimeUnit.SECONDS).proxy(proxy).build();
-        Request request = new Request.Builder().url("https://www.google.com").get().build();
+        final long timeout = 5;
+        boolean isSuccessful = true;
 
-        boolean isSuccessful;
+        HttpRequestResult result = new HttpRequestResult();
         try {
-            Response response = client.newCall(request).execute();
-            isSuccessful = response.isSuccessful();
-        } catch (IOException e) {
+            result.retrieveHttpResponseThroughPrifi(timeout);
+        } catch (Exception e) {
             isSuccessful = false;
         }
 
