@@ -12,11 +12,10 @@ import (
 func TestEquivocation(t *testing.T) {
 
 	rangeTest := []int{100, 1000, 10000}
-	repeat := 10000
+	repeat := 100
 
 	for _, dataLen := range rangeTest {
 		log.Lvl1("Testing for data length", dataLen)
-
 		for i := 0; i < repeat; i++ {
 			equivocationTestForDataLength(t, dataLen)
 		}
