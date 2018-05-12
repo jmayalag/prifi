@@ -131,6 +131,7 @@ run_integration_test_no_data() {
     # start all entities
 
     echo -n "Starting relay...                      "
+    run_relay > relay.log 2>&1 &
     echo -e "$okMsg"
     sleep "$sleeptime_between_spawns"
 
