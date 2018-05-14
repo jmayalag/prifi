@@ -6,59 +6,8 @@ import (
 	"testing"
 
 	"fmt"
-	"crypto/rand"
 	"strconv"
 )
-
-func genDataSlice() []byte {
-	b := make([]byte, 100)
-	_, err := rand.Read(b)
-	if err != nil {
-		panic(err)
-	}
-	return b
-}
-
-func TestSchnorr(t *testing.T) {
-
-	pub, priv := NewKeyPair()
-	pub2, priv2 := NewKeyPair()
-
-	//with empty data
-	data := make([]byte, 0)
-	sig := SchnorrSign(config.CryptoSuite, random.Stream, data, priv)
-	err := SchnorrVerify(config.CryptoSuite, data, pub, sig)
-
-	if err != nil {
-		t.Error("Should validate with nil message, err is " + err.Error())
-	}
-
-	//with empty data
-	data = genDataSlice()
-	sig = SchnorrSign(config.CryptoSuite, random.Stream, data, priv)
-	err = SchnorrVerify(config.CryptoSuite, data, pub, sig)
-
-	if err != nil {
-		t.Error("Should validate with random message, err is " + err.Error())
-	}
-
-	//should trivially not validate with other keys
-	data = genDataSlice()
-	sig = SchnorrSign(config.CryptoSuite, random.Stream, data, priv2)
-	err = SchnorrVerify(config.CryptoSuite, data, pub, sig)
-
-	if err == nil {
-		t.Error("Should not validate with wrong keys")
-	}
-	data = genDataSlice()
-	sig = SchnorrSign(config.CryptoSuite, random.Stream, data, priv)
-	err = SchnorrVerify(config.CryptoSuite, data, pub2, sig)
-
-	if err == nil {
-		t.Error("Should not validate with wrong keys")
-	}
-
-}
 
 func TestNeffErrors(t *testing.T) {
 
@@ -92,17 +41,6 @@ func TestNeffErrors(t *testing.T) {
 		t.Error("NeffShuffle with 0 public keys should fail")
 	}
 
-}
-
-func TestSchnorrHash(t *testing.T) {
-
-	pub, _ := NewKeyPair()
-	data := random.Bits(100, false, random.Stream)
-	secret := hashSchnorr(config.CryptoSuite, data, pub)
-
-	if secret == nil {
-		t.Error("Secret should not be nil")
-	}
 }
 
 func TestNeffShuffle(t *testing.T) {
