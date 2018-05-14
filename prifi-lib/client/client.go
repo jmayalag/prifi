@@ -94,11 +94,11 @@ func (p *PriFiLibClientInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PAR
 	p.clientState.nTrustees = nTrustees
 	p.clientState.PayloadSize = payloadSize
 	p.clientState.UseUDP = useUDP
-	p.clientState.TrusteePublicKey = make([]abstract.Point, nTrustees)
-	p.clientState.sharedSecrets = make([]abstract.Point, nTrustees)
+	p.clientState.TrusteePublicKey = make([]kyber.Point, nTrustees)
+	p.clientState.sharedSecrets = make([]kyber.Point, nTrustees)
 	p.clientState.RoundNo = int32(0)
 	p.clientState.BufferedRoundData = make(map[int32]net.REL_CLI_DOWNSTREAM_DATA)
-	p.clientState.MessageHistory = config.CryptoSuite.Cipher([]byte("init")) //any non-nil, non-empty, constant array
+	p.clientState.MessageHistory = config.CryptoSuite.XOF([]byte("init")) //any non-nil, non-empty, constant array
 	p.clientState.DisruptionProtectionEnabled = disruptionProtection
 	p.clientState.EquivocationProtectionEnabled = equivProtection
 
@@ -482,21 +482,11 @@ func (p *PriFiLibClientInstance) Received_REL_CLI_TELL_TRUSTEES_PK(trusteesPks [
 
 	for i := 0; i < len(trusteesPks); i++ {
 		p.clientState.TrusteePublicKey[i] = trusteesPks[i]
-		p.clientState.sharedSecrets[i] = config.CryptoSuite.Point().Mul(trusteesPks[i], p.clientState.privateKey)
-	}
-
-	//set up the DC-nets
-	sharedPRNGs := make([]kyber.Cipher, p.clientState.nTrustees)
-	for i := 0; i < p.clientState.nTrustees; i++ {
-		bytes, err := p.clientState.sharedSecrets[i].MarshalBinary()
-		if err != nil {
-			return errors.New("Could not marshal point !")
-		}
-		sharedPRNGs[i] = config.CryptoSuite.Cipher(bytes)
+		p.clientState.sharedSecrets[i] = config.CryptoSuite.Point().Mul(p.clientState.privateKey, trusteesPks[i])
 	}
 
 	p.clientState.DCNet = dcnet.NewDCNetEntity(p.clientState.ID,
-		dcnet.DCNET_CLIENT, p.clientState.PayloadSize, p.clientState.EquivocationProtectionEnabled, sharedPRNGs)
+		dcnet.DCNET_CLIENT, p.clientState.PayloadSize, p.clientState.EquivocationProtectionEnabled, p.clientState.sharedSecrets)
 
 	//then, generate our ephemeral keys (used for shuffling)
 	p.clientState.EphemeralPublicKey, p.clientState.ephemeralPrivateKey = crypto.NewKeyPair()

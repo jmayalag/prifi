@@ -24,19 +24,15 @@ func TestNeffErrors(t *testing.T) {
 	}
 
 	//each of those call should fail
-	_, _, _, _, err := NeffShuffle(nil, base, config.CryptoSuite, true)
+	_, _, _, _, err := NeffShuffle(nil, base, true)
 	if err == nil {
 		t.Error("NeffShuffle without a public key array should fail")
 	}
-	_, _, _, _, err = NeffShuffle(clientPks, nil, config.CryptoSuite, true)
+	_, _, _, _, err = NeffShuffle(clientPks, nil, true)
 	if err == nil {
 		t.Error("NeffShuffle without a base should fail")
 	}
-	_, _, _, _, err = NeffShuffle(clientPks, base, nil, true)
-	if err == nil {
-		t.Error("NeffShuffle without a suite should fail")
-	}
-	_, _, _, _, err = NeffShuffle(make([]kyber.Point, 0), base, config.CryptoSuite, true)
+	_, _, _, _, err = NeffShuffle(make([]kyber.Point, 0), base, true)
 	if err == nil {
 		t.Error("NeffShuffle with 0 public keys should fail")
 	}
@@ -64,7 +60,7 @@ func TestNeffShuffle(t *testing.T) {
 		}
 
 		//shuffle
-		shuffledKeys, newBase, secretCoeff, proof, err := NeffShuffle(clientPks, base, config.CryptoSuite, true)
+		shuffledKeys, newBase, secretCoeff, proof, err := NeffShuffle(clientPks, base, true)
 
 		if err != nil {
 			t.Error(err)
@@ -85,7 +81,7 @@ func TestNeffShuffle(t *testing.T) {
 		//now test that the shuffled keys are indeed the old keys in the new base
 		transformedKeys := make([]kyber.Point, nClients)
 		for i := 0; i < nClients; i++ {
-			transformedKeys[i] = config.CryptoSuite.Point().Mul(newBase, clientPrivKeys[i])
+			transformedKeys[i] = config.CryptoSuite.Point().Mul(clientPrivKeys[i], newBase)
 		}
 
 		//for every key, check that it exists in the remaining array
@@ -109,7 +105,7 @@ func TestNeffShuffle(t *testing.T) {
 		}
 		fmt.Print("Testing distribution for ", nClients, " clients.")
 		for i := 0; i < repetition; i++ {
-			shuffledKeys, newBase, secretCoeff, proof, err = NeffShuffle(clientPks, base, config.CryptoSuite, true)
+			shuffledKeys, newBase, secretCoeff, proof, err = NeffShuffle(clientPks, base, true)
 
 			if err != nil {
 				t.Error("Shouldn't have an error here," + err.Error())
@@ -122,7 +118,7 @@ func TestNeffShuffle(t *testing.T) {
 			mapping := make([]int, nClients)
 			transformedKeys := make([]kyber.Point, nClients)
 			for i := 0; i < nClients; i++ {
-				transformedKeys[i] = config.CryptoSuite.Point().Mul(newBase, clientPrivKeys[i])
+				transformedKeys[i] = config.CryptoSuite.Point().Mul(clientPrivKeys[i], newBase)
 			}
 			for k, v := range transformedKeys {
 				for i := 0; i < nClients; i++ {

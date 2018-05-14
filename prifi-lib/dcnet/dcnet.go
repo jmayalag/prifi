@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/lbarman/prifi/prifi-lib/config"
 	"gopkg.in/dedis/kyber.v2"
+	"gopkg.in/dedis/kyber.v2/suites"
 	"gopkg.in/dedis/onet.v1/log"
 	"strconv"
 )
@@ -30,9 +31,9 @@ type DCNetEntity struct {
 	EquivocationProtectionEnabled bool
 	DCNetPayloadSize              int
 
-	cryptoSuite  abstract.Suite
-	sharedKeys   []kyber.Cipher // keys shared with other DC-net members
-	sharedPRNGs  []kyber.Cipher // PRNGs shared with other DC-net members (seeded with sharedKeys)
+	cryptoSuite  suites.Suite
+	sharedKeys   []kyber.Point // keys shared with other DC-net members
+	sharedPRNGs  []kyber.XOF // PRNGs shared with other DC-net members (seeded with sharedKeys)
 	currentRound int32
 
 	//Used by the relay
@@ -59,7 +60,7 @@ func NewDCNetEntity(
 	entity DCNET_ENTITY,
 	PayloadSize int,
 	equivocationProtection bool,
-	sharedKeys []kyber.Cipher) *DCNetEntity {
+	sharedKeys []kyber.Point) *DCNetEntity {
 
 	e := new(DCNetEntity)
 	e.EntityID = entityID
@@ -82,17 +83,18 @@ func NewDCNetEntity(
 		e.sharedKeys = sharedKeys
 
 		// Use the provided shared secrets to seed a pseudorandom DC-nets ciphers shared with each peer.
-		keySize := e.cryptoSuite.Cipher(nil).KeySize()
-		e.sharedPRNGs = make([]kyber.Cipher, len(sharedKeys))
+		e.sharedPRNGs = make([]kyber.XOF, len(sharedKeys))
 		for i := range sharedKeys {
-			key := make([]byte, keySize)
-			sharedKeys[i].Partial(key, key, nil)
-			e.sharedPRNGs[i] = e.cryptoSuite.Cipher(key)
 			e.verbosePrint("key", i, ":", sharedKeys[i])
+			seed, err := sharedKeys[i].Data()
+			if err != nil {
+				log.Fatal("Could not extract data from shared key", err)
+			}
+			e.sharedPRNGs[i] = e.cryptoSuite.XOF(seed)
 		}
 	} else {
-		e.sharedKeys = make([]kyber.Cipher, 0)
-		e.sharedPRNGs = make([]kyber.Cipher, 0)
+		e.sharedKeys = make([]kyber.Point, 0)
+		e.sharedPRNGs = make([]kyber.XOF, 0)
 	}
 
 	// if the equivocation protection is enabled
@@ -102,7 +104,7 @@ func NewDCNetEntity(
 		zero := e.equivocationProtection.suite.Scalar().Zero()
 		one := e.equivocationProtection.suite.Scalar().One()
 		minusOne := e.equivocationProtection.suite.Scalar().Sub(zero, one) //max value
-		e.equivocationContribLength = len(minusOne.Bytes())
+		e.equivocationContribLength = minusOne.MarshalSize()
 	} else {
 		e.verbosePrint("equivocation = false")
 	}

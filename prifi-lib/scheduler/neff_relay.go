@@ -3,10 +3,10 @@ package scheduler
 import (
 	"errors"
 	"github.com/lbarman/prifi/prifi-lib/config"
-	"github.com/lbarman/prifi/prifi-lib/crypto"
 	"github.com/lbarman/prifi/prifi-lib/net"
 	"gopkg.in/dedis/kyber.v2"
 	"strconv"
+	"gopkg.in/dedis/kyber.v2/sign/schnorr"
 )
 
 /**
@@ -212,7 +212,7 @@ func multiSigVerify(trusteesPublicKeys []kyber.Point, lastBase kyber.Point, shuf
 
 	//we test the signatures
 	for j := 0; j < nTrustees; j++ {
-		err := crypto.SchnorrVerify(config.CryptoSuite, M, trusteesPublicKeys[j], signatures[j])
+		err := schnorr.Verify(config.CryptoSuite, trusteesPublicKeys[j], M, signatures[j])
 
 		if err != nil {
 			return false, errors.New("Can't verify sig n°" + strconv.Itoa(j) + "; " + err.Error())

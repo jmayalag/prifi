@@ -4,8 +4,8 @@ import (
 	"math/rand"
 
 	"errors"
-	"github.com/lbarman/prifi/prifi-lib/config"
 	"gopkg.in/dedis/kyber.v2"
+	"github.com/lbarman/prifi/prifi-lib/config"
 )
 
 // NeffShuffle implements Andrew Neff's verifiable shuffle proof scheme as described in the
@@ -14,8 +14,6 @@ import (
 // producing a correctness proof in the process.
 // Returns (Xbar,Ybar), the shuffled and randomized pairs.
 func NeffShuffle(publicKeys []kyber.Point, base kyber.Point, doShufflePositions bool) ([]kyber.Point, kyber.Point, kyber.Scalar, []byte, error) {
-
-	suite := config.CryptoSuite
 
 	if base == nil {
 		return nil, nil, nil, nil, errors.New("Cannot perform a shuffle is base is nil")
@@ -26,9 +24,7 @@ func NeffShuffle(publicKeys []kyber.Point, base kyber.Point, doShufflePositions 
 	if len(publicKeys) == 0 {
 		return nil, nil, nil, nil, errors.New("Cannot perform a shuffle is len(publicKeys) is 0")
 	}
-	if suite == nil {
-		return nil, nil, nil, nil, errors.New("Cannot perform a shuffle without a suite")
-	}
+	suite := config.CryptoSuite
 
 	//compute new shares
 	secretCoeff := suite.Scalar().Pick(suite.RandomStream())

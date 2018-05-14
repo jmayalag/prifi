@@ -114,8 +114,8 @@ func NewRelay(dataOutputEnabled bool, dataForClients chan []byte, dataFromDCNet 
 type NodeRepresentation struct {
 	ID                 int
 	Connected          bool
-	PublicKey          abstract.Point
-	EphemeralPublicKey abstract.Point
+	PublicKey          kyber.Point
+	EphemeralPublicKey kyber.Point
 }
 
 // RelayState contains the mutable state of the relay.
@@ -130,7 +130,7 @@ type RelayState struct {
 	DataFromDCNet                          chan []byte // VPN / SOCKS should read data from there !
 	DataOutputEnabled                      bool        // If FALSE, nothing will be written to DataFromDCNet
 	DownstreamCellSize                     int
-	MessageHistory                         kyber.Cipher
+	MessageHistory                         kyber.XOF
 	Name                                   string
 	nClients                               int
 	nClientsPkCollected                    int

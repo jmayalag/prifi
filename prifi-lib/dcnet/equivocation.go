@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"github.com/lbarman/prifi/prifi-lib/config"
 	"gopkg.in/dedis/kyber.v2"
+	"gopkg.in/dedis/kyber.v2/suites"
 	"gopkg.in/dedis/onet.v1/log"
 )
 
@@ -24,8 +25,8 @@ import (
 // Equivocation holds the functions needed for equivocation protection
 type EquivocationProtection struct {
 	history    kyber.Scalar
-	randomness kyber.Cipher
-	suite      kyber.Suite
+	randomness kyber.XOF
+	suite      suites.Suite
 }
 
 // NewEquivocation creates the structure that handle equivocation protection
@@ -34,9 +35,9 @@ func NewEquivocation() *EquivocationProtection {
 	e.suite = config.CryptoSuite
 	e.history = e.suite.Scalar().One()
 
-	randomKey := make([]byte, e.suite.Cipher(nil).KeySize())
+	randomKey := make([]byte, 100)
 	rand.Read(randomKey)
-	e.randomness = e.suite.Cipher(randomKey)
+	e.randomness = e.suite.XOF(randomKey)
 
 	return e
 }
@@ -51,7 +52,10 @@ func (e *EquivocationProtection) hashInGroup(data []byte) kyber.Scalar {
 
 // Update History adds those bits to the history hash chain
 func (e *EquivocationProtection) UpdateHistory(data []byte) {
-	historyB := e.history.Bytes()
+	historyB, err := e.history.MarshalBinary()
+	if err != nil {
+		log.Fatal("Could not unmarshall bytes", err)
+	}
 	toBeHashed := make([]byte, len(historyB)+len(data))
 	newPayload := sha256.Sum256(toBeHashed)
 	e.history.SetBytes(newPayload[:])
@@ -77,11 +81,18 @@ func (e *EquivocationProtection) ClientEncryptPayload(slotOwner bool, x []byte, 
 	//we're not the slot owner
 	if !slotOwner {
 		kappa_i := product
-		return x, kappa_i.Bytes()
+		kappa_i_bytes, err := kappa_i.MarshalBinary()
+		if err != nil {
+			log.Fatal("Couldn't marshall", err)
+		}
+		return x, kappa_i_bytes
 	}
 
 	k_i := e.randomScalar()
-	k_i_bytes := k_i.Bytes()
+	k_i_bytes, err := k_i.MarshalBinary()
+	if err != nil {
+		log.Fatal("Couldn't marshall", err)
+	}
 
 	// encrypt payload
 	for i := range x {
@@ -90,7 +101,11 @@ func (e *EquivocationProtection) ClientEncryptPayload(slotOwner bool, x []byte, 
 
 	// compute kappa
 	kappa_i := k_i.Add(k_i, product)
-	return x, kappa_i.Bytes()
+	kappa_i_bytes, err := kappa_i.MarshalBinary()
+	if err != nil {
+		log.Fatal("Couldn't marshall", err)
+	}
+	return x, kappa_i_bytes
 }
 
 // a function that takes returns the byte[] version of sigma_j
@@ -110,7 +125,11 @@ func (e *EquivocationProtection) TrusteeGetContribution(s_i [][]byte) []byte {
 
 	kappa_j := sum
 
-	return kappa_j.Bytes()
+	kappa_j_bytes, err := kappa_j.MarshalBinary()
+	if err != nil {
+		log.Fatal("Couldn't marshall", err)
+	}
+	return kappa_j_bytes
 }
 
 // given all contributions, decodes the payload
@@ -143,7 +162,10 @@ func (e *EquivocationProtection) RelayDecode(encryptedPayload []byte, trusteesCo
 	k_i := sumClients.Sub(sumClients, prod)
 
 	//now use k to decrypt the payload
-	k_bytes := k_i.Bytes()
+	k_bytes, err := k_i.MarshalBinary()
+	if err != nil {
+		log.Fatal("Couldn't marshall", err)
+	}
 
 	if len(k_bytes) == 0 {
 		log.Lvl1("Error: Equivocation couldn't recover the k_bytes value")

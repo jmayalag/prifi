@@ -130,7 +130,7 @@ func (p *PriFiLibRelayInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARA
 	p.relayState.TrusteeCacheLowBound = trusteeCacheLowBound
 	p.relayState.TrusteeCacheHighBound = trusteeCacheHighBound
 	p.relayState.EquivocationProtectionEnabled = equivocationProtectionEnabled
-	p.relayState.MessageHistory = config.CryptoSuite.Cipher([]byte("init")) //any non-nil, non-empty, constant array
+	p.relayState.MessageHistory = config.CryptoSuite.XOF([]byte("init")) //any non-nil, non-empty, constant array
 	p.relayState.VerifiableDCNetKeys = make([][]byte, nTrustees)
 	p.relayState.nVkeysCollected = 0
 	p.relayState.roundManager = NewBufferableRoundManager(nClients, nTrustees, windowSize)

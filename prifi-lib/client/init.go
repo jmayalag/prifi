@@ -58,7 +58,7 @@ type ClientState struct {
 	TrusteePublicKey              []kyber.Point
 	UseSocksProxy                 bool
 	UseUDP                        bool
-	MessageHistory                kyber.Cipher
+	MessageHistory                kyber.XOF
 	StartStopReceiveBroadcast     chan bool
 	timeStatistics                map[string]*prifilog.TimeStatistics
 	pcapReplay                    *PCAPReplayer

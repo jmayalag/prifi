@@ -241,21 +241,11 @@ func (p *PriFiLibTrusteeInstance) Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_
 	//fill in the clients keys
 	for i := 0; i < len(clientsPks); i++ {
 		p.trusteeState.ClientPublicKeys[i] = clientsPks[i]
-		p.trusteeState.sharedSecrets[i] = config.CryptoSuite.Point().Mul(clientsPks[i], p.trusteeState.privateKey)
-	}
-
-	//set up the DC-nets
-	sharedPRNGs := make([]abstract.Cipher, p.trusteeState.nClients)
-	for i := 0; i < p.trusteeState.nClients; i++ {
-		bytes, err := p.trusteeState.sharedSecrets[i].MarshalBinary()
-		if err != nil {
-			return errors.New("Could not marshal point !")
-		}
-		sharedPRNGs[i] = config.CryptoSuite.Cipher(bytes)
+		p.trusteeState.sharedSecrets[i] = config.CryptoSuite.Point().Mul(p.trusteeState.privateKey, clientsPks[i])
 	}
 
 	p.trusteeState.DCNet = dcnet.NewDCNetEntity(p.trusteeState.ID, dcnet.DCNET_TRUSTEE,
-		p.trusteeState.PayloadSize, p.trusteeState.EquivocationProtectionEnabled, sharedPRNGs)
+		p.trusteeState.PayloadSize, p.trusteeState.EquivocationProtectionEnabled, p.trusteeState.sharedSecrets)
 
 	//In case we use the simple dcnet, vkey isn't needed
 	vkey := make([]byte, 1)

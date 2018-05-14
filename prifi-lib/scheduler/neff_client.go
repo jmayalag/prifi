@@ -42,7 +42,7 @@ func (n *NeffShuffle) ClientVerifySigAndRecognizeSlot(privateKey kyber.Scalar, t
 	}
 
 	//locate our public key in shuffle
-	publicKeyInNewBase := config.CryptoSuite.Point().Mul(lastBase, privateKey)
+	publicKeyInNewBase := config.CryptoSuite.Point().Mul(privateKey, lastBase)
 
 	mySlot := -1
 

@@ -75,7 +75,7 @@ type TrusteeState struct {
 	DCNet                         *dcnet.DCNetEntity
 	ClientPublicKeys              []kyber.Point
 	ID                            int
-	MessageHistory                kyber.Cipher
+	MessageHistory                kyber.XOF
 	Name                          string
 	nClients                      int
 	neffShuffle                   *scheduler.NeffShuffleTrustee

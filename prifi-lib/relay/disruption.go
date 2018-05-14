@@ -1,11 +1,9 @@
 package relay
 
 import (
-	"github.com/lbarman/prifi/prifi-lib/config"
 	"github.com/lbarman/prifi/prifi-lib/net"
 	"gopkg.in/dedis/kyber.v2"
 	"gopkg.in/dedis/onet.v1/log"
-	"math"
 	"strconv"
 )
 
@@ -124,15 +122,16 @@ func (p *PriFiLibRelayInstance) Received_CLI_REL_SECRET(msg net.CLI_REL_DISRUPTI
 replayRounds takes the secret revealed by a user and recomputes until the disrupted bit
 */
 func (p *PriFiLibRelayInstance) replayRounds(secret kyber.Point) int {
+	/*
 	bytes, err := secret.MarshalBinary()
 	if err != nil {
 		log.Fatal("Could not marshal point !")
 	}
 	roundID := p.relayState.blamingData[0]
-	sharedPRNG := config.CryptoSuite.Cipher(bytes)
-	key := make([]byte, config.CryptoSuite.Cipher(nil).KeySize())
+	sharedPRNG := config.CryptoSuite.XOF(bytes)
+	key := make([]byte, config.CryptoSuite.XOF(nil).KeySize())
 	sharedPRNG.Partial(key, key, nil)
-	dcCipher := config.CryptoSuite.Cipher(key)
+	dcCipher := config.CryptoSuite.XOF(key)
 
 	for i := 0; i < roundID; i++ {
 		//discard crypto material
@@ -151,5 +150,7 @@ func (p *PriFiLibRelayInstance) replayRounds(secret kyber.Point) int {
 	if (dst[m2] & mask) == 0 {
 		return 0
 	}
+	*/
+	panic("not implemented")
 	return 1
 }
