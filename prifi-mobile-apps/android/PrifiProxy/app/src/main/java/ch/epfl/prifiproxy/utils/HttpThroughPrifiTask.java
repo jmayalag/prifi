@@ -26,7 +26,8 @@ public class HttpThroughPrifiTask extends AsyncTask<Void, Void, Boolean> {
 
         HttpRequestResult result = new HttpRequestResult();
         try {
-            result.retrieveHttpResponseThroughPrifi(targetUrl, timeout);
+            // Check golang part for more info about this method. The third parameter is whether use prifi or not
+            result.retrieveHttpResponseThroughPrifi(targetUrl, timeout, true);
         } catch (Exception e) {
             isSuccessful = false;
         }

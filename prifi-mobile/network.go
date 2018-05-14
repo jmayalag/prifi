@@ -22,7 +22,7 @@ func NewHttpRequestResult() *HttpRequestResult {
  *
  * It is a method instead of a function due to the type restriction of gomobile.
  */
-func (result *HttpRequestResult) RetrieveHttpResponseThroughPrifi(targetUrlString string, timeout int) error {
+func (result *HttpRequestResult) RetrieveHttpResponseThroughPrifi(targetUrlString string, timeout int, throughPrifi bool) error {
 	// Get the localhost PriFi server port
 	prifiPort, err := GetPrifiPort()
 	if err != nil {
@@ -33,7 +33,12 @@ func (result *HttpRequestResult) RetrieveHttpResponseThroughPrifi(targetUrlStrin
 	proxyUrl := "socks5://127.0.0.1:" + strconv.Itoa(prifiPort)
 
 	// Construct a request object with proxy and timeout value
-	request := gorequest.New().Proxy(proxyUrl).Timeout(time.Duration(timeout)*time.Second)
+	var request *gorequest.SuperAgent
+	if throughPrifi {
+		request = gorequest.New().Proxy(proxyUrl).Timeout(time.Duration(timeout)*time.Second)
+	} else {
+		request = gorequest.New().Timeout(time.Duration(timeout)*time.Second)
+	}
 
 	// Used for latency test
 	start := time.Now()
