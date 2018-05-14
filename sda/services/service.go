@@ -73,7 +73,7 @@ type Storage struct {
 // newService receives the context and a path where it can write its
 // configuration, if desired. As we don't know when the service will exit,
 // we need to save the configuration on our own from time to time.
-func newService(c *onet.Context) onet.Service {
+func newService(c *onet.Context) (onet.Service, error) {
 	s := &ServiceState{
 		ServiceProcessor: onet.NewServiceProcessor(c),
 	}
@@ -90,10 +90,10 @@ func newService(c *onet.Context) onet.Service {
 	c.RegisterProcessorFunc(disconnectMsg, s.HandleDisconnection)
 
 	if err := s.tryLoad(); err != nil {
-		log.Error(err)
+		log.Fatal(err)
 	}
 
-	return s
+	return s, nil
 }
 
 // NewProtocol is called on all nodes of a Tree (except the root, since it is

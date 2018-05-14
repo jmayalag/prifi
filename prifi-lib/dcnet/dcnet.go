@@ -33,7 +33,7 @@ type DCNetEntity struct {
 
 	cryptoSuite  suites.Suite
 	sharedKeys   []kyber.Point // keys shared with other DC-net members
-	sharedPRNGs  []kyber.XOF // PRNGs shared with other DC-net members (seeded with sharedKeys)
+	sharedPRNGs  []kyber.XOF   // PRNGs shared with other DC-net members (seeded with sharedKeys)
 	currentRound int32
 
 	//Used by the relay

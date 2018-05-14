@@ -4,8 +4,8 @@ import (
 	"math/rand"
 
 	"errors"
-	"gopkg.in/dedis/kyber.v2"
 	"github.com/lbarman/prifi/prifi-lib/config"
+	"gopkg.in/dedis/kyber.v2"
 )
 
 // NeffShuffle implements Andrew Neff's verifiable shuffle proof scheme as described in the

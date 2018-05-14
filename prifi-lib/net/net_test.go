@@ -2,10 +2,10 @@ package net
 
 import (
 	"bytes"
+	"crypto/rand"
 	"errors"
 	"github.com/lbarman/prifi/prifi-lib/crypto"
 	"gopkg.in/dedis/kyber.v2"
-	"crypto/rand"
 	"testing"
 )
 
@@ -17,7 +17,6 @@ func genDataSlice() []byte {
 	}
 	return b
 }
-
 
 type TestMessageSender struct {
 }

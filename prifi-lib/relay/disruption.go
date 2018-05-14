@@ -123,34 +123,34 @@ replayRounds takes the secret revealed by a user and recomputes until the disrup
 */
 func (p *PriFiLibRelayInstance) replayRounds(secret kyber.Point) int {
 	/*
-	bytes, err := secret.MarshalBinary()
-	if err != nil {
-		log.Fatal("Could not marshal point !")
-	}
-	roundID := p.relayState.blamingData[0]
-	sharedPRNG := config.CryptoSuite.XOF(bytes)
-	key := make([]byte, config.CryptoSuite.XOF(nil).KeySize())
-	sharedPRNG.Partial(key, key, nil)
-	dcCipher := config.CryptoSuite.XOF(key)
+		bytes, err := secret.MarshalBinary()
+		if err != nil {
+			log.Fatal("Could not marshal point !")
+		}
+		roundID := p.relayState.blamingData[0]
+		sharedPRNG := config.CryptoSuite.XOF(bytes)
+		key := make([]byte, config.CryptoSuite.XOF(nil).KeySize())
+		sharedPRNG.Partial(key, key, nil)
+		dcCipher := config.CryptoSuite.XOF(key)
 
-	for i := 0; i < roundID; i++ {
-		//discard crypto material
+		for i := 0; i < roundID; i++ {
+			//discard crypto material
+			dst := make([]byte, p.relayState.PayloadSize)
+			dcCipher.Read(dst)
+		}
+
 		dst := make([]byte, p.relayState.PayloadSize)
 		dcCipher.Read(dst)
-	}
-
-	dst := make([]byte, p.relayState.PayloadSize)
-	dcCipher.Read(dst)
-	bitPos := p.relayState.blamingData[0]
-	m := float64(bitPos) / float64(8)
-	m = math.Floor(m)
-	m2 := int(m)
-	n := bitPos % 8
-	mask := byte(1 << uint8(n))
-	if (dst[m2] & mask) == 0 {
-		return 0
-	}
+		bitPos := p.relayState.blamingData[0]
+		m := float64(bitPos) / float64(8)
+		m = math.Floor(m)
+		m2 := int(m)
+		n := bitPos % 8
+		mask := byte(1 << uint8(n))
+		if (dst[m2] & mask) == 0 {
+			return 0
+		}
 	*/
-	panic("not implemented")
+	log.Fatal("not implemented")
 	return 1
 }

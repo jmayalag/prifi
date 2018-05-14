@@ -7,4 +7,5 @@ import (
 	"gopkg.in/dedis/kyber.v2/suites"
 )
 
-var CryptoSuite suites.Suite = suites.MustFind("Ed25519")
+// the suite used in the prifi-lib
+var CryptoSuite = suites.MustFind("Ed25519")

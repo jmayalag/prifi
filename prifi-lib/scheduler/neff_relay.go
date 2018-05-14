@@ -5,8 +5,8 @@ import (
 	"github.com/lbarman/prifi/prifi-lib/config"
 	"github.com/lbarman/prifi/prifi-lib/net"
 	"gopkg.in/dedis/kyber.v2"
-	"strconv"
 	"gopkg.in/dedis/kyber.v2/sign/schnorr"
+	"strconv"
 )
 
 /**
