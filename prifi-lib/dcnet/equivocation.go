@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"github.com/lbarman/prifi/prifi-lib/config"
 	"gopkg.in/dedis/crypto.v0/abstract"
+	"gopkg.in/dedis/onet.v1/log"
 )
 
 // Clients compute:
@@ -142,6 +143,22 @@ func (e *EquivocationProtection) RelayDecode(encryptedPayload []byte, trusteesCo
 
 	//now use k to decrypt the payload
 	k_bytes := k_i.Bytes()
+
+	if len(k_bytes) == 0 {
+		log.Lvl1("Error: Equivocation couldn't recover the k_bytes value")
+		log.Lvl1("encryptedPayload:", encryptedPayload)
+		for k, v := range trusteesContributions {
+			log.Lvl1("trusteesContributions:", v, "mapped to", trustee_kappa_j[k])
+		}
+		for k, v := range clientsContributions {
+			log.Lvl1("clientsContributions:", v, "mapped to", client_kappa_i[k])
+		}
+		log.Lvl1("sumTrustees:", sumTrustees)
+		log.Lvl1("sumClients:", sumClients)
+		log.Lvl1("prod:", prod)
+		log.Lvl1("k_i:", k_i)
+		return make([]byte, 0)
+	}
 
 	// decrypt the payload
 	for i := range encryptedPayload {
