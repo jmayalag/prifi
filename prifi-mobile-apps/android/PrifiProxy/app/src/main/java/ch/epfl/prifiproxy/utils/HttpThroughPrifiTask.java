@@ -20,12 +20,13 @@ public class HttpThroughPrifiTask extends AsyncTask<Void, Void, Boolean> {
      */
     @Override
     protected Boolean doInBackground(Void... voids) {
+        final String targetUrl = "https://www.google.com";
         final long timeout = 5;
         boolean isSuccessful = true;
 
         HttpRequestResult result = new HttpRequestResult();
         try {
-            result.retrieveHttpResponseThroughPrifi(timeout);
+            result.retrieveHttpResponseThroughPrifi(targetUrl, timeout);
         } catch (Exception e) {
             isSuccessful = false;
         }
