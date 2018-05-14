@@ -39,7 +39,7 @@ import (
 	"github.com/lbarman/prifi/prifi-lib/net"
 	"github.com/lbarman/prifi/prifi-lib/scheduler"
 	"github.com/lbarman/prifi/prifi-lib/utils"
-	"gopkg.in/dedis/crypto.v0/abstract"
+	"gopkg.in/dedis/kyber.v2"
 	"gopkg.in/dedis/onet.v1/log"
 
 	"github.com/lbarman/prifi/prifi-lib/crypto"
@@ -130,14 +130,14 @@ type RelayState struct {
 	DataFromDCNet                          chan []byte // VPN / SOCKS should read data from there !
 	DataOutputEnabled                      bool        // If FALSE, nothing will be written to DataFromDCNet
 	DownstreamCellSize                     int
-	MessageHistory                         abstract.Cipher
+	MessageHistory                         kyber.Cipher
 	Name                                   string
 	nClients                               int
 	nClientsPkCollected                    int
 	nTrustees                              int
 	nTrusteesPkCollected                   int
-	privateKey                             abstract.Scalar
-	PublicKey                              abstract.Point
+	privateKey                             kyber.Scalar
+	PublicKey                              kyber.Point
 	ExperimentRoundLimit                   int
 	trustees                               []NodeRepresentation
 	PayloadSize                            int

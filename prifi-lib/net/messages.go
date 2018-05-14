@@ -4,7 +4,7 @@ import (
 	"encoding/binary"
 	"errors"
 
-	"gopkg.in/dedis/crypto.v0/abstract"
+	"gopkg.in/dedis/kyber.v2"
 	"gopkg.in/dedis/onet.v1/log"
 )
 
@@ -42,8 +42,8 @@ type ALL_ALL_SHUTDOWN struct {
 // and is sent to the relay.
 type CLI_REL_TELL_PK_AND_EPH_PK struct {
 	ClientID int
-	Pk       abstract.Point
-	EphPk    abstract.Point
+	Pk       kyber.Point
+	EphPk    kyber.Point
 }
 
 // CLI_REL_UPSTREAM_DATA message contains the upstream data of a client for a given round
@@ -83,22 +83,22 @@ func (m *REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG) GetSignatures() [][]byte {
 // REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG message contains the ephemeral public keys and the signatures
 // of the trustees and is sent by the relay to the client.
 type REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG struct {
-	Base         abstract.Point
-	EphPks       []abstract.Point
+	Base         kyber.Point
+	EphPks       []kyber.Point
 	TrusteesSigs []ByteArray
 }
 
 // REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE message contains the public keys and ephemeral keys
 // of the clients and is sent by the relay to the trustees.
 type REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE struct {
-	Pks    []abstract.Point
-	EphPks []abstract.Point
-	Base   abstract.Point
+	Pks    []kyber.Point
+	EphPks []kyber.Point
+	Base   kyber.Point
 }
 
 //protobuf can't handle [][]abstract.Point, so we do []PublicKeyArray
 type PublicKeyArray struct {
-	Keys []abstract.Point
+	Keys []kyber.Point
 }
 
 //protobuf can't handle [][]byte, so we do []ByteArray
@@ -107,8 +107,8 @@ type ByteArray struct {
 }
 
 //Converts []PublicKeyArray -> [][]abstract.Point and returns it
-func (m *REL_TRU_TELL_TRANSCRIPT) GetKeys() [][]abstract.Point {
-	out := make([][]abstract.Point, 0)
+func (m *REL_TRU_TELL_TRANSCRIPT) GetKeys() [][]kyber.Point {
+	out := make([][]kyber.Point, 0)
 	for k := range m.EphPks {
 		out = append(out, m.EphPks[k].Keys)
 	}
@@ -127,7 +127,7 @@ func (m *REL_TRU_TELL_TRANSCRIPT) GetProofs() [][]byte {
 // REL_TRU_TELL_TRANSCRIPT message contains all the shuffles perfomrmed in a Neff shuffle round.
 // It is sent by the relay to the trustees to be verified.
 type REL_TRU_TELL_TRANSCRIPT struct {
-	Bases  []abstract.Point
+	Bases  []kyber.Point
 	EphPks []PublicKeyArray
 	Proofs []ByteArray
 }
@@ -154,8 +154,8 @@ type REL_TRU_TELL_RATE_CHANGE struct {
 // TRU_REL_TELL_NEW_BASE_AND_EPH_PKS message contains the new ephemeral key of a trustee and
 // is sent to the relay.
 type TRU_REL_TELL_NEW_BASE_AND_EPH_PKS struct {
-	NewBase            abstract.Point
-	NewEphPks          []abstract.Point
+	NewBase            kyber.Point
+	NewEphPks          []kyber.Point
 	Proof              []byte
 	VerifiableDCNetKey []byte
 }
@@ -163,7 +163,7 @@ type TRU_REL_TELL_NEW_BASE_AND_EPH_PKS struct {
 // TRU_REL_TELL_PK message contains the public key of a trustee and is sent to the relay.
 type TRU_REL_TELL_PK struct {
 	TrusteeID int
-	Pk        abstract.Point
+	Pk        kyber.Point
 }
 
 /*
@@ -281,12 +281,12 @@ type REL_ALL_DISRUPTION_SECRET struct {
 
 // CLI_REL_DISRUPTION_SECRET contains the shared secret requested by the relay, with a proof we computed it correctly
 type CLI_REL_DISRUPTION_SECRET struct {
-	Secret abstract.Point
+	Secret kyber.Point
 	NIZK   []byte
 }
 
 // TRU_REL_DISRUPTION_SECRET contains the shared secret requested by the relay, with a proof we computed it correctly
 type TRU_REL_DISRUPTION_SECRET struct {
-	Secret abstract.Point
+	Secret kyber.Point
 	NIZK   []byte
 }

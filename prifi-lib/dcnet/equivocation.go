@@ -4,7 +4,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"github.com/lbarman/prifi/prifi-lib/config"
-	"gopkg.in/dedis/crypto.v0/abstract"
+	"gopkg.in/dedis/kyber.v2"
 	"gopkg.in/dedis/onet.v1/log"
 )
 
@@ -23,9 +23,9 @@ import (
 
 // Equivocation holds the functions needed for equivocation protection
 type EquivocationProtection struct {
-	history    abstract.Scalar
-	randomness abstract.Cipher
-	suite      abstract.Suite
+	history    kyber.Scalar
+	randomness kyber.Cipher
+	suite      kyber.Suite
 }
 
 // NewEquivocation creates the structure that handle equivocation protection
@@ -41,11 +41,11 @@ func NewEquivocation() *EquivocationProtection {
 	return e
 }
 
-func (e *EquivocationProtection) randomScalar() abstract.Scalar {
+func (e *EquivocationProtection) randomScalar() kyber.Scalar {
 	return e.suite.Scalar().Pick(e.randomness)
 }
 
-func (e *EquivocationProtection) hashInGroup(data []byte) abstract.Scalar {
+func (e *EquivocationProtection) hashInGroup(data []byte) kyber.Scalar {
 	return e.suite.Scalar().SetBytes(data)
 }
 
@@ -61,7 +61,7 @@ func (e *EquivocationProtection) UpdateHistory(data []byte) {
 func (e *EquivocationProtection) ClientEncryptPayload(slotOwner bool, x []byte, p_j [][]byte) ([]byte, []byte) {
 
 	// hash the pads p_i into q_i
-	q_j := make([]abstract.Scalar, len(p_j))
+	q_j := make([]kyber.Scalar, len(p_j))
 	for trustee_j := range q_j {
 		q_j[trustee_j] = e.hashInGroup(p_j[trustee_j])
 	}
@@ -97,7 +97,7 @@ func (e *EquivocationProtection) ClientEncryptPayload(slotOwner bool, x []byte, 
 func (e *EquivocationProtection) TrusteeGetContribution(s_i [][]byte) []byte {
 
 	// hash the pads p_i into q_i
-	q_i := make([]abstract.Scalar, len(s_i))
+	q_i := make([]kyber.Scalar, len(s_i))
 	for client_i := range q_i {
 		q_i[client_i] = e.hashInGroup(s_i[client_i])
 	}
@@ -117,11 +117,11 @@ func (e *EquivocationProtection) TrusteeGetContribution(s_i [][]byte) []byte {
 func (e *EquivocationProtection) RelayDecode(encryptedPayload []byte, trusteesContributions [][]byte, clientsContributions [][]byte) []byte {
 
 	//reconstitute the abstract.Point values
-	trustee_kappa_j := make([]abstract.Scalar, len(trusteesContributions))
+	trustee_kappa_j := make([]kyber.Scalar, len(trusteesContributions))
 	for k, v := range trusteesContributions {
 		trustee_kappa_j[k] = e.suite.Scalar().SetBytes(v)
 	}
-	client_kappa_i := make([]abstract.Scalar, len(clientsContributions))
+	client_kappa_i := make([]kyber.Scalar, len(clientsContributions))
 	for k, v := range clientsContributions {
 		client_kappa_i[k] = e.suite.Scalar().SetBytes(v)
 	}

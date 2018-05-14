@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/lbarman/prifi/prifi-lib/config"
-	"gopkg.in/dedis/crypto.v0/abstract"
+	"gopkg.in/dedis/kyber.v2"
 	"testing"
 )
 
@@ -16,11 +16,11 @@ type TestGroup struct {
 
 type TestNode struct {
 	name          string
-	pubKey        abstract.Point
-	privKey       abstract.Scalar
-	peerKeys      []abstract.Point
-	sharedSecrets []abstract.Cipher
-	History       abstract.Cipher
+	pubKey        kyber.Point
+	privKey       kyber.Scalar
+	peerKeys      []kyber.Point
+	sharedSecrets []kyber.Cipher
+	History       kyber.Cipher
 	DCNetEntity   *DCNetEntity
 }
 
@@ -66,8 +66,8 @@ func NewTestGroup(t *testing.T, equivocationProtectionEnabled bool, dcNetMessage
 	relay.DCNetEntity = NewDCNetEntity(0, DCNET_RELAY, dcNetMessageSize, equivocationProtectionEnabled, nil)
 
 	// Create tables of the clients' and the trustees' public session keys
-	clientsKeys := make([]abstract.Point, nclients)
-	trusteesKeys := make([]abstract.Point, ntrustees)
+	clientsKeys := make([]kyber.Point, nclients)
+	trusteesKeys := make([]kyber.Point, ntrustees)
 	for i := range clients {
 		clientsKeys[i] = clients[i].pubKey
 	}
@@ -81,7 +81,7 @@ func NewTestGroup(t *testing.T, equivocationProtectionEnabled bool, dcNetMessage
 		// and a pseudorandom cipher derived from each.
 		n.name = fmt.Sprintf("Client-%d", i)
 		n.peerKeys = trusteesKeys
-		n.sharedSecrets = make([]abstract.Cipher, len(n.peerKeys))
+		n.sharedSecrets = make([]kyber.Cipher, len(n.peerKeys))
 		for i := range n.peerKeys {
 			dh := config.CryptoSuite.Point().Mul(n.peerKeys[i], n.privKey)
 			data, _ := dh.MarshalBinary()
@@ -95,7 +95,7 @@ func NewTestGroup(t *testing.T, equivocationProtectionEnabled bool, dcNetMessage
 		// and a pseudorandom cipher derived from each.
 		n.name = fmt.Sprintf("Trustee-%d", i)
 		n.peerKeys = clientsKeys
-		n.sharedSecrets = make([]abstract.Cipher, len(n.peerKeys))
+		n.sharedSecrets = make([]kyber.Cipher, len(n.peerKeys))
 		for i := range n.peerKeys {
 			dh := config.CryptoSuite.Point().Mul(n.peerKeys[i], n.privKey)
 			data, _ := dh.MarshalBinary()

@@ -11,7 +11,7 @@ import (
 	"github.com/lbarman/prifi/prifi-lib/net"
 	"github.com/lbarman/prifi/prifi-lib/relay"
 	"github.com/lbarman/prifi/prifi-lib/scheduler"
-	"gopkg.in/dedis/crypto.v0/abstract"
+	"gopkg.in/dedis/kyber.v2"
 	"gopkg.in/dedis/onet.v1/log"
 	"testing"
 	"time"
@@ -103,8 +103,8 @@ func TestClient(t *testing.T) {
 	msg.Add("DCNetType", dcNetType)
 
 	// ALL_ALL_PARAMETERS contains the public keys of the trustees when it is REL -> CLI
-	trusteesPubKeys := make([]abstract.Point, nTrustees)
-	trusteesPrivKeys := make([]abstract.Scalar, nTrustees)
+	trusteesPubKeys := make([]kyber.Point, nTrustees)
+	trusteesPrivKeys := make([]kyber.Scalar, nTrustees)
 	for i := 0; i < nTrustees; i++ {
 		trusteesPubKeys[i], trusteesPrivKeys[i] = crypto.NewKeyPair()
 	}

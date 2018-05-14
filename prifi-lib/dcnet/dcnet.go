@@ -3,7 +3,7 @@ package dcnet
 import (
 	"fmt"
 	"github.com/lbarman/prifi/prifi-lib/config"
-	"gopkg.in/dedis/crypto.v0/abstract"
+	"gopkg.in/dedis/kyber.v2"
 	"gopkg.in/dedis/onet.v1/log"
 	"strconv"
 )
@@ -31,8 +31,8 @@ type DCNetEntity struct {
 	DCNetPayloadSize              int
 
 	cryptoSuite  abstract.Suite
-	sharedKeys   []abstract.Cipher // keys shared with other DC-net members
-	sharedPRNGs  []abstract.Cipher // PRNGs shared with other DC-net members (seeded with sharedKeys)
+	sharedKeys   []kyber.Cipher // keys shared with other DC-net members
+	sharedPRNGs  []kyber.Cipher // PRNGs shared with other DC-net members (seeded with sharedKeys)
 	currentRound int32
 
 	//Used by the relay
@@ -59,7 +59,7 @@ func NewDCNetEntity(
 	entity DCNET_ENTITY,
 	PayloadSize int,
 	equivocationProtection bool,
-	sharedKeys []abstract.Cipher) *DCNetEntity {
+	sharedKeys []kyber.Cipher) *DCNetEntity {
 
 	e := new(DCNetEntity)
 	e.EntityID = entityID
@@ -83,7 +83,7 @@ func NewDCNetEntity(
 
 		// Use the provided shared secrets to seed a pseudorandom DC-nets ciphers shared with each peer.
 		keySize := e.cryptoSuite.Cipher(nil).KeySize()
-		e.sharedPRNGs = make([]abstract.Cipher, len(sharedKeys))
+		e.sharedPRNGs = make([]kyber.Cipher, len(sharedKeys))
 		for i := range sharedKeys {
 			key := make([]byte, keySize)
 			sharedKeys[i].Partial(key, key, nil)
@@ -91,8 +91,8 @@ func NewDCNetEntity(
 			e.verbosePrint("key", i, ":", sharedKeys[i])
 		}
 	} else {
-		e.sharedKeys = make([]abstract.Cipher, 0)
-		e.sharedPRNGs = make([]abstract.Cipher, 0)
+		e.sharedKeys = make([]kyber.Cipher, 0)
+		e.sharedPRNGs = make([]kyber.Cipher, 0)
 	}
 
 	// if the equivocation protection is enabled

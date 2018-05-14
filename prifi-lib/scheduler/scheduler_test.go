@@ -5,14 +5,14 @@ import (
 	"github.com/lbarman/prifi/prifi-lib/config"
 	"github.com/lbarman/prifi/prifi-lib/crypto"
 	"github.com/lbarman/prifi/prifi-lib/net"
-	"gopkg.in/dedis/crypto.v0/abstract"
+	"gopkg.in/dedis/kyber.v2"
 	"strconv"
 	"testing"
 )
 
 type PrivatePublicPair struct {
-	Private abstract.Scalar
-	Public  abstract.Point
+	Private kyber.Scalar
+	Public  kyber.Point
 }
 
 /*

@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"github.com/lbarman/prifi/prifi-lib/config"
 	"github.com/lbarman/prifi/prifi-lib/crypto"
-	"gopkg.in/dedis/crypto.v0/abstract"
+	"gopkg.in/dedis/kyber.v2"
 	"gopkg.in/dedis/onet.v1/log"
 	"testing"
 )
@@ -32,9 +32,9 @@ func equivocationTestForDataLength(t *testing.T, payloadSize int) {
 	sharedSecret_c1 := config.CryptoSuite.Point().Mul(tpub, c1priv)
 	sharedSecret_c2 := config.CryptoSuite.Point().Mul(tpub, c2priv)
 
-	sharedPRNGs_t := make([]abstract.Cipher, 2)
-	sharedPRNGs_c1 := make([]abstract.Cipher, 1)
-	sharedPRNGs_c2 := make([]abstract.Cipher, 1)
+	sharedPRNGs_t := make([]kyber.Cipher, 2)
+	sharedPRNGs_c1 := make([]kyber.Cipher, 1)
+	sharedPRNGs_c2 := make([]kyber.Cipher, 1)
 
 	ssBytes, err := sharedSecret_c1.MarshalBinary()
 	if err != nil {

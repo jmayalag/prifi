@@ -3,7 +3,7 @@ package relay
 import (
 	"github.com/lbarman/prifi/prifi-lib/config"
 	"github.com/lbarman/prifi/prifi-lib/net"
-	"gopkg.in/dedis/crypto.v0/abstract"
+	"gopkg.in/dedis/kyber.v2"
 	"gopkg.in/dedis/onet.v1/log"
 	"math"
 	"strconv"
@@ -123,7 +123,7 @@ func (p *PriFiLibRelayInstance) Received_CLI_REL_SECRET(msg net.CLI_REL_DISRUPTI
 /*
 replayRounds takes the secret revealed by a user and recomputes until the disrupted bit
 */
-func (p *PriFiLibRelayInstance) replayRounds(secret abstract.Point) int {
+func (p *PriFiLibRelayInstance) replayRounds(secret kyber.Point) int {
 	bytes, err := secret.MarshalBinary()
 	if err != nil {
 		log.Fatal("Could not marshal point !")

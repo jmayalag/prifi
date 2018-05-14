@@ -46,7 +46,7 @@ import (
 	"github.com/lbarman/prifi/prifi-lib/net"
 	"github.com/lbarman/prifi/prifi-lib/utils"
 	"github.com/lbarman/prifi/utils"
-	"gopkg.in/dedis/crypto.v0/abstract"
+	"gopkg.in/dedis/kyber.v2"
 	"gopkg.in/dedis/onet.v1/log"
 )
 
@@ -624,7 +624,7 @@ func (p *PriFiLibRelayInstance) Received_TRU_REL_TELL_PK(msg net.TRU_REL_TELL_PK
 	if p.relayState.nTrusteesPkCollected == p.relayState.nTrustees {
 
 		// prepare the message for the clients
-		trusteesPk := make([]abstract.Point, p.relayState.nTrustees)
+		trusteesPk := make([]kyber.Point, p.relayState.nTrustees)
 		for i := 0; i < p.relayState.nTrustees; i++ {
 			trusteesPk[i] = p.relayState.trustees[i].PublicKey
 		}
@@ -687,7 +687,7 @@ func (p *PriFiLibRelayInstance) Received_CLI_REL_TELL_PK_AND_EPH_PK(msg net.CLI_
 		toSend := msg.(*net.REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE)
 
 		//todo: fix this. The neff shuffle now stores twices the ephemeral public keys
-		toSend.Pks = make([]abstract.Point, p.relayState.nClients)
+		toSend.Pks = make([]kyber.Point, p.relayState.nClients)
 		for i := 0; i < p.relayState.nClients; i++ {
 			toSend.Pks[i] = p.relayState.clients[i].PublicKey
 		}
@@ -732,7 +732,7 @@ func (p *PriFiLibRelayInstance) Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS(msg n
 		toSend := msg.(*net.REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE)
 
 		//todo: fix this. The neff shuffle now stores twices the ephemeral public keys
-		toSend.Pks = make([]abstract.Point, p.relayState.nClients)
+		toSend.Pks = make([]kyber.Point, p.relayState.nClients)
 		for i := 0; i < p.relayState.nClients; i++ {
 			toSend.Pks[i] = p.relayState.clients[i].PublicKey
 		}
@@ -792,7 +792,7 @@ func (p *PriFiLibRelayInstance) Received_TRU_REL_SHUFFLE_SIG(msg net.TRU_REL_SHU
 
 	// if we have all the signatures
 	if done {
-		trusteesPks := make([]abstract.Point, p.relayState.nTrustees)
+		trusteesPks := make([]kyber.Point, p.relayState.nTrustees)
 		i := 0
 		for _, v := range p.relayState.trustees {
 			trusteesPks[i] = v.PublicKey

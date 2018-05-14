@@ -4,8 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/BurntSushi/toml"
-	"gopkg.in/dedis/crypto.v0/abstract"
-	"gopkg.in/dedis/crypto.v0/config"
+	"gopkg.in/dedis/kyber.v2"
+	"gopkg.in/dedis/kyber.v2/util/key"
 	"gopkg.in/dedis/onet.v1"
 	"gopkg.in/dedis/onet.v1/log"
 	"gopkg.in/dedis/onet.v1/network"
@@ -66,7 +66,7 @@ func (s *SimulationManualAssignment) CreateRoster(sc *onet.SimulationConfig, add
 	start := time.Now()
 	nbrAddr := len(addresses)
 	if sc.PrivateKeys == nil {
-		sc.PrivateKeys = make(map[network.Address]abstract.Scalar)
+		sc.PrivateKeys = make(map[network.Address]kyber.Scalar)
 	}
 	hosts := s.Hosts
 	if s.SingleHost {
@@ -86,7 +86,7 @@ func (s *SimulationManualAssignment) CreateRoster(sc *onet.SimulationConfig, add
 	}
 	entities := make([]*network.ServerIdentity, hosts)
 	log.Lvl3("Doing", hosts, "hosts")
-	key := config.NewKeyPair(network.Suite)
+	key := key.NewKeyPair(network.Suite)
 
 	//replaces linus automatic assignement by the one read in hosts_mapping.toml
 	mapping, err := decodeHostsMapping(HostsMappingFile)
@@ -149,7 +149,7 @@ func (s *SimulationManualAssignment) CreateRoster(sc *onet.SimulationConfig, add
 	if hosts > 1 {
 		if sc.PrivateKeys[entities[0].Address].Equal(
 			sc.PrivateKeys[entities[1].Address]) {
-			log.Fatal("Please update dedis/crypto with\n go get -u gopkg.in/dedis/crypto.v0")
+			log.Fatal("Something went terribly wrong.")
 		}
 	}
 

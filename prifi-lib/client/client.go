@@ -29,7 +29,7 @@ import (
 	"github.com/lbarman/prifi/prifi-lib/crypto"
 	prifilog "github.com/lbarman/prifi/prifi-lib/log"
 	"github.com/lbarman/prifi/prifi-lib/net"
-	"gopkg.in/dedis/crypto.v0/abstract"
+	"gopkg.in/dedis/kyber.v2"
 	"gopkg.in/dedis/onet.v1/log"
 
 	"crypto/hmac"
@@ -468,7 +468,7 @@ Of course, there should be check on those public keys (each client need to trust
 and that clients have agreed on the set of trustees.
 Once we receive this message, we need to reply with our Public Key (Used to derive DC-net secrets), and our Ephemeral Public Key (used for the Shuffle protocol)
 */
-func (p *PriFiLibClientInstance) Received_REL_CLI_TELL_TRUSTEES_PK(trusteesPks []abstract.Point) error {
+func (p *PriFiLibClientInstance) Received_REL_CLI_TELL_TRUSTEES_PK(trusteesPks []kyber.Point) error {
 
 	//sanity check
 	if len(trusteesPks) < 1 {
@@ -477,8 +477,8 @@ func (p *PriFiLibClientInstance) Received_REL_CLI_TELL_TRUSTEES_PK(trusteesPks [
 		return errors.New(e)
 	}
 
-	p.clientState.TrusteePublicKey = make([]abstract.Point, p.clientState.nTrustees)
-	p.clientState.sharedSecrets = make([]abstract.Point, p.clientState.nTrustees)
+	p.clientState.TrusteePublicKey = make([]kyber.Point, p.clientState.nTrustees)
+	p.clientState.sharedSecrets = make([]kyber.Point, p.clientState.nTrustees)
 
 	for i := 0; i < len(trusteesPks); i++ {
 		p.clientState.TrusteePublicKey[i] = trusteesPks[i]
@@ -486,7 +486,7 @@ func (p *PriFiLibClientInstance) Received_REL_CLI_TELL_TRUSTEES_PK(trusteesPks [
 	}
 
 	//set up the DC-nets
-	sharedPRNGs := make([]abstract.Cipher, p.clientState.nTrustees)
+	sharedPRNGs := make([]kyber.Cipher, p.clientState.nTrustees)
 	for i := 0; i < p.clientState.nTrustees; i++ {
 		bytes, err := p.clientState.sharedSecrets[i].MarshalBinary()
 		if err != nil {

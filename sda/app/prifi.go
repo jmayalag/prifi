@@ -16,8 +16,8 @@ import (
 	"github.com/BurntSushi/toml"
 	prifi_protocol "github.com/lbarman/prifi/sda/protocols"
 	prifi_service "github.com/lbarman/prifi/sda/services"
-	"gopkg.in/dedis/crypto.v0/abstract"
-	cryptoconfig "gopkg.in/dedis/crypto.v0/config"
+	"gopkg.in/dedis/kyber.v2"
+	"gopkg.in/dedis/kyber.v2/util/key"
 	"gopkg.in/dedis/onet.v1"
 	"gopkg.in/dedis/onet.v1/app"
 	"gopkg.in/dedis/onet.v1/crypto"
@@ -486,12 +486,12 @@ func readCothorityGroupConfig(c *cli.Context) *app.Group {
 
 // createKeyPair returns the private and public key in hexadecimal representation.
 func createKeyPair() (string, string) {
-	kp := cryptoconfig.NewKeyPair(network.Suite)
+	kp := key.NewKeyPair(network.Suite)
 	privStr, err := crypto.ScalarToStringHex(network.Suite, kp.Secret)
 	if err != nil {
 		log.Fatal("Error formating private key to hexadecimal. Abort.")
 	}
-	var point abstract.Point
+	var point kyber.Point
 	// use the transformation for EdDSA signatures
 	//point = cosi.Ed25519Public(network.Suite, kp.Secret)
 	point = kp.Public

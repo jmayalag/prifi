@@ -16,10 +16,10 @@ import (
 	"github.com/lbarman/prifi/prifi-lib/config"
 	"github.com/lbarman/prifi/prifi-lib/crypto"
 	"github.com/lbarman/prifi/prifi-lib/net"
-	"gopkg.in/dedis/crypto.v0/abstract"
-	crypto_proof "gopkg.in/dedis/crypto.v0/proof"
-	"gopkg.in/dedis/crypto.v0/random"
-	"gopkg.in/dedis/crypto.v0/shuffle"
+	"gopkg.in/dedis/kyber.v2"
+	crypto_proof "gopkg.in/dedis/kyber.v2/proof"
+	"gopkg.in/dedis/kyber.v2/random"
+	"gopkg.in/dedis/kyber.v2/shuffle"
 	"strconv"
 )
 
@@ -28,19 +28,19 @@ import (
  */
 type NeffShuffleTrustee struct {
 	TrusteeID  int
-	PrivateKey abstract.Scalar
-	PublicKey  abstract.Point
+	PrivateKey kyber.Scalar
+	PublicKey  kyber.Point
 
-	SecretCoeff   abstract.Scalar // c[i]
-	NewBase       abstract.Point  // s[i] = G * c[1] ... c[1]
+	SecretCoeff   kyber.Scalar // c[i]
+	NewBase       kyber.Point  // s[i] = G * c[1] ... c[1]
 	Proof         []byte
-	EphemeralKeys []abstract.Point
+	EphemeralKeys []kyber.Point
 }
 
 /**
  * Creates a new trustee-view for the neff shuffle, and initiates the fields correctly
  */
-func (t *NeffShuffleTrustee) Init(trusteeID int, private abstract.Scalar, public abstract.Point) error {
+func (t *NeffShuffleTrustee) Init(trusteeID int, private kyber.Scalar, public kyber.Point) error {
 	if trusteeID < 0 {
 		return errors.New("Cannot shuffle without a valid id (>= 0)")
 	}
@@ -60,7 +60,7 @@ func (t *NeffShuffleTrustee) Init(trusteeID int, private abstract.Scalar, public
  * Received s[i-1], and the public keys. Do the shuffle, store locally, and send back the new s[i], shuffle array
  * If shuffleKeyPositions is false, do not shuffle the key's position (useful for testing - 0 anonymity)
  */
-func (t *NeffShuffleTrustee) ReceivedShuffleFromRelay(lastBase abstract.Point, clientPublicKeys []abstract.Point, shuffleKeyPositions bool, vkey []byte) (interface{}, error) {
+func (t *NeffShuffleTrustee) ReceivedShuffleFromRelay(lastBase kyber.Point, clientPublicKeys []kyber.Point, shuffleKeyPositions bool, vkey []byte) (interface{}, error) {
 
 	if lastBase == nil {
 		return nil, errors.New("Cannot perform a shuffle is lastBase is nil")
@@ -97,7 +97,7 @@ func (t *NeffShuffleTrustee) ReceivedShuffleFromRelay(lastBase abstract.Point, c
 /**
  * We received a transcript of the whole shuffle from the relay. Check that we are included, and sign
  */
-func (t *NeffShuffleTrustee) ReceivedTranscriptFromRelay(bases []abstract.Point, shuffledPublicKeys [][]abstract.Point, proofs [][]byte) (interface{}, error) {
+func (t *NeffShuffleTrustee) ReceivedTranscriptFromRelay(bases []kyber.Point, shuffledPublicKeys [][]kyber.Point, proofs [][]byte) (interface{}, error) {
 
 	if t.NewBase == nil {
 		return nil, errors.New("Cannot verify the shuffle, we didn't store the base")

@@ -28,7 +28,7 @@ import (
 	prifilog "github.com/lbarman/prifi/prifi-lib/log"
 	"github.com/lbarman/prifi/prifi-lib/net"
 	"github.com/lbarman/prifi/prifi-lib/utils"
-	"gopkg.in/dedis/crypto.v0/abstract"
+	"gopkg.in/dedis/kyber.v2"
 	"gopkg.in/dedis/onet.v1/log"
 	"reflect"
 	"strings"
@@ -43,8 +43,8 @@ type ClientState struct {
 	NextDataForDCNet              *[]byte     //if not nil, send this before polling DataForDCNet
 	DataFromDCNet                 chan []byte //Data from the relay : VPN / SOCKS should read data from there !
 	DataOutputEnabled             bool        //if FALSE, nothing will be written to DataFromDCNet
-	ephemeralPrivateKey           abstract.Scalar
-	EphemeralPublicKey            abstract.Point
+	ephemeralPrivateKey           kyber.Scalar
+	EphemeralPublicKey            kyber.Point
 	ID                            int
 	LatencyTest                   *prifilog.LatencyTests
 	MySlot                        int
@@ -52,13 +52,13 @@ type ClientState struct {
 	nClients                      int
 	nTrustees                     int
 	PayloadSize                   int
-	privateKey                    abstract.Scalar
-	PublicKey                     abstract.Point
-	sharedSecrets                 []abstract.Point
-	TrusteePublicKey              []abstract.Point
+	privateKey                    kyber.Scalar
+	PublicKey                     kyber.Point
+	sharedSecrets                 []kyber.Point
+	TrusteePublicKey              []kyber.Point
 	UseSocksProxy                 bool
 	UseUDP                        bool
-	MessageHistory                abstract.Cipher
+	MessageHistory                kyber.Cipher
 	StartStopReceiveBroadcast     chan bool
 	timeStatistics                map[string]*prifilog.TimeStatistics
 	pcapReplay                    *PCAPReplayer

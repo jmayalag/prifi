@@ -7,7 +7,7 @@ import (
 	"github.com/lbarman/prifi/prifi-lib/net"
 	"github.com/lbarman/prifi/prifi-lib/scheduler"
 	"github.com/lbarman/prifi/prifi-lib/utils"
-	"gopkg.in/dedis/crypto.v0/abstract"
+	"gopkg.in/dedis/kyber.v2"
 	"gopkg.in/dedis/onet.v1/log"
 	"reflect"
 	"strings"
@@ -73,18 +73,18 @@ func NewTrustee(neverSlowDown bool, alwaysSlowDown bool, baseSleepTime int, msgS
 // TrusteeState contains the mutable state of the trustee.
 type TrusteeState struct {
 	DCNet                         *dcnet.DCNetEntity
-	ClientPublicKeys              []abstract.Point
+	ClientPublicKeys              []kyber.Point
 	ID                            int
-	MessageHistory                abstract.Cipher
+	MessageHistory                kyber.Cipher
 	Name                          string
 	nClients                      int
 	neffShuffle                   *scheduler.NeffShuffleTrustee
 	nTrustees                     int
 	PayloadSize                   int
-	privateKey                    abstract.Scalar
-	PublicKey                     abstract.Point
+	privateKey                    kyber.Scalar
+	PublicKey                     kyber.Point
 	sendingRate                   chan int16
-	sharedSecrets                 []abstract.Point
+	sharedSecrets                 []kyber.Point
 	TrusteeID                     int
 	BaseSleepTime                 int
 	AlwaysSlowDown                bool //enforce the sleep in the sending function even if rate is FULL
@@ -95,8 +95,8 @@ type TrusteeState struct {
 // NeffShuffleResult holds the result of the NeffShuffle,
 // since it needs to be verified when we receive REL_TRU_TELL_TRANSCRIPT.
 type NeffShuffleResult struct {
-	base  abstract.Point
-	pks   []abstract.Point
+	base  kyber.Point
+	pks   []kyber.Point
 	proof []byte
 }
 

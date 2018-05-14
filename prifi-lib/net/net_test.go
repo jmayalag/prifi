@@ -4,10 +4,20 @@ import (
 	"bytes"
 	"errors"
 	"github.com/lbarman/prifi/prifi-lib/crypto"
-	"gopkg.in/dedis/crypto.v0/abstract"
-	"gopkg.in/dedis/crypto.v0/random"
+	"gopkg.in/dedis/kyber.v2"
+	"crypto/rand"
 	"testing"
 )
+
+func genDataSlice() []byte {
+	b := make([]byte, 100)
+	_, err := rand.Read(b)
+	if err != nil {
+		panic(err)
+	}
+	return b
+}
+
 
 type TestMessageSender struct {
 }
@@ -114,7 +124,7 @@ func TestMessageSenderWrapperRelay(t *testing.T) {
 func TestTELL_TRANSCRIPT_Message(t *testing.T) {
 
 	msg := new(REL_TRU_TELL_TRANSCRIPT)
-	pks := make([]abstract.Point, 2)
+	pks := make([]kyber.Point, 2)
 	pks[0], _ = crypto.NewKeyPair()
 	pks[1], _ = crypto.NewKeyPair()
 	msg.EphPks = make([]PublicKeyArray, 1)
@@ -139,7 +149,7 @@ func TestUDPMessage(t *testing.T) {
 	content.RoundID = 1
 	content.OwnershipID = 2
 	content.FlagResync = true
-	content.Data = random.Bits(100, false, random.Stream)
+	content.Data = genDataSlice()
 	content.FlagOpenClosedRequest = true
 
 	msg.SetContent(*content)

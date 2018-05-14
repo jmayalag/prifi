@@ -4,13 +4,18 @@ Package config contains the cryptographic primitives that are used by the PriFi 
 package config
 
 import (
-	"gopkg.in/dedis/crypto.v0/abstract"
-	"gopkg.in/dedis/crypto.v0/ed25519"
+	"gopkg.in/dedis/kyber.v2"
+	"gopkg.in/dedis/kyber.v2/suites"
 )
 
-//CryptoSuite contains crypto suite used, here ED25519
-var CryptoSuite abstract.Suite
+var CryptoSuite Suite
 
-func init() {
-	CryptoSuite = ed25519.NewAES128SHA256Ed25519(false) //nist.NewAES128SHA256P256()
+type Suite struct {
+	kyber.Group
+	kyber.HashFactory
+	kyber.XOF
+}
+
+func Init() {
+	CryptoSuite = suites.MustFind("Ed25519")
 }

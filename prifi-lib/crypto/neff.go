@@ -4,8 +4,8 @@ import (
 	"math/rand"
 
 	"errors"
-	"gopkg.in/dedis/crypto.v0/abstract"
-	"gopkg.in/dedis/crypto.v0/random"
+	"github.com/lbarman/prifi/prifi-lib/config"
+	"gopkg.in/dedis/kyber.v2"
 )
 
 // NeffShuffle implements Andrew Neff's verifiable shuffle proof scheme as described in the
@@ -13,7 +13,9 @@ import (
 // The function randomly shuffles and re-randomizes a set of ElGamal pairs,
 // producing a correctness proof in the process.
 // Returns (Xbar,Ybar), the shuffled and randomized pairs.
-func NeffShuffle(publicKeys []abstract.Point, base abstract.Point, suite abstract.Suite, doShufflePositions bool) ([]abstract.Point, abstract.Point, abstract.Scalar, []byte, error) {
+func NeffShuffle(publicKeys []kyber.Point, base kyber.Point, doShufflePositions bool) ([]kyber.Point, kyber.Point, kyber.Scalar, []byte, error) {
+
+	suite := config.CryptoSuite
 
 	if base == nil {
 		return nil, nil, nil, nil, errors.New("Cannot perform a shuffle is base is nil")
@@ -29,19 +31,19 @@ func NeffShuffle(publicKeys []abstract.Point, base abstract.Point, suite abstrac
 	}
 
 	//compute new shares
-	secretCoeff := suite.Scalar().Pick(random.Stream)
-	newBase := suite.Point().Mul(base, secretCoeff)
+	secretCoeff := suite.Scalar().Pick(suite.RandomStream())
+	newBase := suite.Point().Mul(secretCoeff, base)
 
 	//transform the public keys with the secret coeff
-	publicKeys2 := make([]abstract.Point, len(publicKeys))
+	publicKeys2 := make([]kyber.Point, len(publicKeys))
 	for i := 0; i < len(publicKeys); i++ {
 		oldKey := publicKeys[i]
-		publicKeys2[i] = suite.Point().Mul(oldKey, secretCoeff)
+		publicKeys2[i] = suite.Point().Mul(secretCoeff, oldKey)
 	}
 
 	//shuffle the array
 	if doShufflePositions {
-		publicKeys3 := make([]abstract.Point, len(publicKeys2))
+		publicKeys3 := make([]kyber.Point, len(publicKeys2))
 		perm := rand.Perm(len(publicKeys2))
 		for i, v := range perm {
 			publicKeys3[v] = publicKeys2[i]

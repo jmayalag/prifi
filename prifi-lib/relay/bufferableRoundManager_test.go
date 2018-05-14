@@ -2,7 +2,7 @@ package relay
 
 import (
 	"bytes"
-	"gopkg.in/dedis/crypto.v0/random"
+	"crypto/rand"
 	"gopkg.in/dedis/onet.v1/log"
 	"testing"
 )
@@ -195,7 +195,12 @@ func TestRoundSuccessionWithSchedule(test *testing.T) {
 }
 
 func genDataSlice() []byte {
-	return random.Bits(100, false, random.Stream)
+	b := make([]byte, 100)
+	_, err := rand.Read(b)
+	if err != nil {
+		panic(err)
+	}
+	return b
 }
 
 func TestCipherBuffering(test *testing.T) {

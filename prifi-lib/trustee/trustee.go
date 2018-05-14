@@ -18,7 +18,7 @@ import (
 	"github.com/lbarman/prifi/prifi-lib/config"
 	"github.com/lbarman/prifi/prifi-lib/dcnet"
 	"github.com/lbarman/prifi/prifi-lib/net"
-	"gopkg.in/dedis/crypto.v0/abstract"
+	"gopkg.in/dedis/kyber.v2"
 	"gopkg.in/dedis/onet.v1/log"
 	"strconv"
 	"time"
@@ -85,8 +85,8 @@ func (p *PriFiLibTrusteeInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PA
 	p.trusteeState.neffShuffle.Init(trusteeID, p.trusteeState.privateKey, p.trusteeState.PublicKey)
 
 	//placeholders for pubkeys and secrets
-	p.trusteeState.ClientPublicKeys = make([]abstract.Point, nClients)
-	p.trusteeState.sharedSecrets = make([]abstract.Point, nClients)
+	p.trusteeState.ClientPublicKeys = make([]kyber.Point, nClients)
+	p.trusteeState.sharedSecrets = make([]kyber.Point, nClients)
 
 	if startNow {
 		// send our public key to the relay
