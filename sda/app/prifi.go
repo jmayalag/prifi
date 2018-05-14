@@ -280,6 +280,8 @@ func checkOverwrite(file string) bool {
 
 func createNewIdentityToml(c *cli.Context) error {
 
+	log.Fatal("Not implemented")
+
 	log.Print("Generating public/private keys...")
 
 	//privStr, pubStr := createKeyPair() //TODO FIX THIS

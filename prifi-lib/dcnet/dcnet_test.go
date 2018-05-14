@@ -19,8 +19,8 @@ type TestNode struct {
 	pubKey        kyber.Point
 	privKey       kyber.Scalar
 	peerKeys      []kyber.Point
-	sharedSecrets []kyber.Cipher
-	History       kyber.Cipher
+	sharedSecrets []kyber.Point
+	History       kyber.XOF
 	DCNetEntity   *DCNetEntity
 }
 
@@ -48,14 +48,14 @@ func NewTestGroup(t *testing.T, equivocationProtectionEnabled bool, dcNetMessage
 	// Use a pseudorandom stream from a well-known seed
 	// for all our setup randomness,
 	// so we can reproduce the same keys etc on each node.
-	rand := config.CryptoSuite.Cipher([]byte("DCTest"))
+	rand := config.CryptoSuite.XOF([]byte("DCTest"))
 
 	nodes := make([]*TestNode, nclients+ntrustees)
 	base := config.CryptoSuite.Point().Base()
 	for i := range nodes {
 		nodes[i] = new(TestNode)
 		nodes[i].privKey = config.CryptoSuite.Scalar().Pick(rand)
-		nodes[i].pubKey = config.CryptoSuite.Point().Mul(base, nodes[i].privKey)
+		nodes[i].pubKey = config.CryptoSuite.Point().Mul(nodes[i].privKey, base)
 	}
 
 	clients := nodes[:nclients]
@@ -81,11 +81,9 @@ func NewTestGroup(t *testing.T, equivocationProtectionEnabled bool, dcNetMessage
 		// and a pseudorandom cipher derived from each.
 		n.name = fmt.Sprintf("Client-%d", i)
 		n.peerKeys = trusteesKeys
-		n.sharedSecrets = make([]kyber.Cipher, len(n.peerKeys))
+		n.sharedSecrets = make([]kyber.Point, len(n.peerKeys))
 		for i := range n.peerKeys {
-			dh := config.CryptoSuite.Point().Mul(n.peerKeys[i], n.privKey)
-			data, _ := dh.MarshalBinary()
-			n.sharedSecrets[i] = config.CryptoSuite.Cipher(data)
+			n.sharedSecrets[i] = config.CryptoSuite.Point().Mul(n.privKey, n.peerKeys[i])
 		}
 		n.DCNetEntity = NewDCNetEntity(i, DCNET_CLIENT, dcNetMessageSize, equivocationProtectionEnabled, n.sharedSecrets)
 	}
@@ -95,11 +93,9 @@ func NewTestGroup(t *testing.T, equivocationProtectionEnabled bool, dcNetMessage
 		// and a pseudorandom cipher derived from each.
 		n.name = fmt.Sprintf("Trustee-%d", i)
 		n.peerKeys = clientsKeys
-		n.sharedSecrets = make([]kyber.Cipher, len(n.peerKeys))
+		n.sharedSecrets = make([]kyber.Point, len(n.peerKeys))
 		for i := range n.peerKeys {
-			dh := config.CryptoSuite.Point().Mul(n.peerKeys[i], n.privKey)
-			data, _ := dh.MarshalBinary()
-			n.sharedSecrets[i] = config.CryptoSuite.Cipher(data)
+			n.sharedSecrets[i] = config.CryptoSuite.Point().Mul(n.privKey, n.peerKeys[i])
 		}
 		n.DCNetEntity = NewDCNetEntity(i, DCNET_TRUSTEE, dcNetMessageSize, equivocationProtectionEnabled, n.sharedSecrets)
 	}

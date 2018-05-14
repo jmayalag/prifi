@@ -29,30 +29,19 @@ func equivocationTestForDataLength(t *testing.T, payloadSize int) {
 	_, c1priv := crypto.NewKeyPair()
 	_, c2priv := crypto.NewKeyPair()
 
-	sharedSecret_c1 := config.CryptoSuite.Point().Mul(tpub, c1priv)
-	sharedSecret_c2 := config.CryptoSuite.Point().Mul(tpub, c2priv)
+	sharedSecret_c1 := make([]kyber.Point, 1)
+	sharedSecret_c1[0] = config.CryptoSuite.Point().Mul(c1priv, tpub)
+	sharedSecret_c2 := make([]kyber.Point, 1)
+	sharedSecret_c2[0] = config.CryptoSuite.Point().Mul(c2priv, tpub)
 
-	sharedPRNGs_t := make([]kyber.Cipher, 2)
-	sharedPRNGs_c1 := make([]kyber.Cipher, 1)
-	sharedPRNGs_c2 := make([]kyber.Cipher, 1)
-
-	ssBytes, err := sharedSecret_c1.MarshalBinary()
-	if err != nil {
-		t.Error("Could not marshal point !")
-	}
-	sharedPRNGs_c1[0] = config.CryptoSuite.Cipher(ssBytes)
-	sharedPRNGs_t[0] = config.CryptoSuite.Cipher(ssBytes)
-	ssBytes, err = sharedSecret_c2.MarshalBinary()
-	if err != nil {
-		t.Error("Could not marshal point !")
-	}
-	sharedPRNGs_c2[0] = config.CryptoSuite.Cipher(ssBytes)
-	sharedPRNGs_t[1] = config.CryptoSuite.Cipher(ssBytes)
+	sharedSecrets_t := make([]kyber.Point, 2)
+	sharedSecrets_t[0] = config.CryptoSuite.Point().Mul(c1priv, tpub)
+	sharedSecrets_t[1] = config.CryptoSuite.Point().Mul(c1priv, tpub)
 
 	// set up the DC-nets
-	dcnet_Trustee := NewDCNetEntity(0, DCNET_TRUSTEE, payloadSize, false, sharedPRNGs_t)
-	dcnet_Client1 := NewDCNetEntity(0, DCNET_CLIENT, payloadSize, false, sharedPRNGs_c1)
-	dcnet_Client2 := NewDCNetEntity(1, DCNET_CLIENT, payloadSize, false, sharedPRNGs_c2)
+	dcnet_Trustee := NewDCNetEntity(0, DCNET_TRUSTEE, payloadSize, false, sharedSecrets_t)
+	dcnet_Client1 := NewDCNetEntity(0, DCNET_CLIENT, payloadSize, false, sharedSecret_c1)
+	dcnet_Client2 := NewDCNetEntity(1, DCNET_CLIENT, payloadSize, false, sharedSecret_c2)
 
 	data := randomBytes(payloadSize)
 

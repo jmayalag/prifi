@@ -151,7 +151,7 @@ func TestClient(t *testing.T) {
 			t.Error("Pub key", i, "has not been stored correctly")
 		}
 		myPrivKey := cs.privateKey
-		if !cs.sharedSecrets[i].Equal(config.CryptoSuite.Point().Mul(trusteesPubKeys[i], myPrivKey)) {
+		if !cs.sharedSecrets[i].Equal(config.CryptoSuite.Point().Mul(myPrivKey, trusteesPubKeys[i])) {
 			t.Error("Shared secret", i, "has not been computed correctly")
 		}
 	}
@@ -463,8 +463,8 @@ func TestClient2(t *testing.T) {
 	msg.Add("NextFreeClientID", clientID)
 	msg.Add("UseUDP", true)
 	msg.Add("DCNetType", dcNetType)
-	trusteesPubKeys := make([]abstract.Point, nTrustees)
-	trusteesPrivKeys := make([]abstract.Scalar, nTrustees)
+	trusteesPubKeys := make([]kyber.Point, nTrustees)
+	trusteesPrivKeys := make([]kyber.Scalar, nTrustees)
 	for i := 0; i < nTrustees; i++ {
 		trusteesPubKeys[i], trusteesPrivKeys[i] = crypto.NewKeyPair()
 	}
@@ -596,8 +596,8 @@ func TestDisruptionClient(t *testing.T) {
 	msg.Add("UseUDP", true)
 	msg.Add("DCNetType", dcNetType)
 	msg.Add("DisruptionProtectionEnabled", disruptionProtection)
-	trusteesPubKeys := make([]abstract.Point, nTrustees)
-	trusteesPrivKeys := make([]abstract.Scalar, nTrustees)
+	trusteesPubKeys := make([]kyber.Point, nTrustees)
+	trusteesPrivKeys := make([]kyber.Scalar, nTrustees)
 	for i := 0; i < nTrustees; i++ {
 		trusteesPubKeys[i], trusteesPrivKeys[i] = crypto.NewKeyPair()
 	}
@@ -680,22 +680,15 @@ func TestDisruptionClient(t *testing.T) {
 	// set up the trustee's ciphers to decrypt
 
 	//set up the DC-nets
-	sharedPRNGs_t1 := make([]abstract.Cipher, 1)
-	sharedPRNGs_t2 := make([]abstract.Cipher, 1)
-	bytes, err := cs.sharedSecrets[0].MarshalBinary()
-	if err != nil {
-		t.Error("Could not marshal point !")
-	}
-	sharedPRNGs_t1[0] = config.CryptoSuite.Cipher(bytes)
-	bytes, err = cs.sharedSecrets[1].MarshalBinary()
-	if err != nil {
-		t.Error("Could not marshal point !")
-	}
-	sharedPRNGs_t2[0] = config.CryptoSuite.Cipher(bytes)
+
+	sharedSecrets_t1 := make([]kyber.Point, 1)
+	sharedSecrets_t1[0] = cs.sharedSecrets[0]
+	sharedSecrets_t2 := make([]kyber.Point, 1)
+	sharedSecrets_t2[0] = cs.sharedSecrets[0]
 
 	log.Error("upCellSize", upCellSize)
-	t1 := dcnet.NewDCNetEntity(1, dcnet.DCNET_TRUSTEE, upCellSize, true, sharedPRNGs_t1)
-	t2 := dcnet.NewDCNetEntity(2, dcnet.DCNET_TRUSTEE, upCellSize, true, sharedPRNGs_t2)
+	t1 := dcnet.NewDCNetEntity(1, dcnet.DCNET_TRUSTEE, upCellSize, true, sharedSecrets_t1)
+	t2 := dcnet.NewDCNetEntity(2, dcnet.DCNET_TRUSTEE, upCellSize, true, sharedSecrets_t2)
 
 	x := t1.TrusteeEncodeForRound(0)
 
@@ -732,7 +725,7 @@ func TestDisruptionClient(t *testing.T) {
 		Data:       dataDown,
 		FlagResync: false,
 	}
-	err = client.ReceivedMessage(msg7)
+	err := client.ReceivedMessage(msg7)
 	if err != nil {
 		t.Error("Client should be able to receive this data")
 	}

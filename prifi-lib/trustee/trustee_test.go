@@ -189,7 +189,7 @@ func TestTrustee(t *testing.T) {
 			t.Error("Pub key", i, "has not been stored correctly")
 		}
 		myPrivKey := ts.privateKey
-		if !ts.sharedSecrets[i].Equal(config.CryptoSuite.Point().Mul(clientPubKeys[i], myPrivKey)) {
+		if !ts.sharedSecrets[i].Equal(config.CryptoSuite.Point().Mul(myPrivKey, clientPubKeys[i])) {
 			t.Error("Shared secret", i, "has not been computed correctly")
 		}
 	}

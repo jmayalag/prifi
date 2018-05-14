@@ -386,7 +386,11 @@ func TestRelayRun1(t *testing.T) {
 		}
 		blob = append(blob, pkBytes...)
 	}
-	signature := schnorr.Sign(config.CryptoSuite, blob, trusteePriv)
+	signature, err := schnorr.Sign(config.CryptoSuite, trusteePriv, blob)
+
+	if err != nil {
+		log.Fatal("Couldn't Schnorr sign")
+	}
 
 	msg15 := net.TRU_REL_SHUFFLE_SIG{
 		TrusteeID: 0,
@@ -570,7 +574,10 @@ func TestRelayRun2(t *testing.T) {
 		}
 		blob = append(blob, pkBytes...)
 	}
-	signature := schnorr.Sign(config.CryptoSuite, blob, trusteePriv)
+	signature, err := schnorr.Sign(config.CryptoSuite, trusteePriv, blob)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	//should receive a TRU_REL_SHUFFLE_SIG
 	msg15 := net.TRU_REL_SHUFFLE_SIG{
@@ -796,7 +803,10 @@ func TestRelayRun3(t *testing.T) {
 		}
 		blob = append(blob, pkBytes...)
 	}
-	signature := crypto.SchnorrSign(config.CryptoSuite, random.Stream, blob, trusteePriv)
+	signature, err := schnorr.Sign(config.CryptoSuite, trusteePriv, blob)
+	if err != nil {
+		log.Fatal("Couldn't schnorr sign")
+	}
 
 	//should receive two TRU_REL_SHUFFLE_SIG
 	msg15 := net.TRU_REL_SHUFFLE_SIG{
