@@ -22,7 +22,7 @@ func NewHttpRequestResult() *HttpRequestResult {
  *
  * It is a method instead of a function due to the type restriction of gomobile.
  */
-func (result *HttpRequestResult) RetrieveHttpResponseThroughPrifi(timeout int) error {
+func (result *HttpRequestResult) RetrieveHttpResponseThroughPrifi(targetUrlString string, timeout int) error {
 	// Get the localhost PriFi server port
 	prifiPort, err := GetPrifiPort()
 	if err != nil {
@@ -37,7 +37,7 @@ func (result *HttpRequestResult) RetrieveHttpResponseThroughPrifi(timeout int) e
 
 	// Used for latency test
 	start := time.Now()
-	resp, bodyBytes, errs := request.Get("https://www.google.com").EndBytes()
+	resp, bodyBytes, errs := request.Get(targetUrlString).EndBytes()
 	elapsed := time.Since(start)
 
 	if len(errs) > 0 {
