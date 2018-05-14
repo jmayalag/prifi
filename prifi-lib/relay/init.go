@@ -40,7 +40,7 @@ import (
 	"github.com/lbarman/prifi/prifi-lib/scheduler"
 	"github.com/lbarman/prifi/prifi-lib/utils"
 	"gopkg.in/dedis/kyber.v2"
-	"gopkg.in/dedis/onet.v1/log"
+	"gopkg.in/dedis/onet.v2/log"
 
 	"github.com/lbarman/prifi/prifi-lib/crypto"
 	"reflect"

@@ -9,8 +9,8 @@ import (
 	"github.com/lbarman/prifi/prifi-lib/crypto"
 	"github.com/lbarman/prifi/prifi-lib/dcnet"
 	"github.com/lbarman/prifi/prifi-lib/net"
-	"gopkg.in/dedis/kyber.v2"
-	"gopkg.in/dedis/onet.v1/log"
+	"gopkg.in/dedis/kyber.v2/sign/schnorr"
+	"gopkg.in/dedis/onet.v2/log"
 	"strconv"
 	"sync"
 	"testing"
@@ -386,7 +386,7 @@ func TestRelayRun1(t *testing.T) {
 		}
 		blob = append(blob, pkBytes...)
 	}
-	signature := crypto.SchnorrSign(config.CryptoSuite, random.Stream, blob, trusteePriv)
+	signature := schnorr.Sign(config.CryptoSuite, blob, trusteePriv)
 
 	msg15 := net.TRU_REL_SHUFFLE_SIG{
 		TrusteeID: 0,
@@ -570,7 +570,7 @@ func TestRelayRun2(t *testing.T) {
 		}
 		blob = append(blob, pkBytes...)
 	}
-	signature := crypto.SchnorrSign(config.CryptoSuite, random.Stream, blob, trusteePriv)
+	signature := schnorr.Sign(config.CryptoSuite, blob, trusteePriv)
 
 	//should receive a TRU_REL_SHUFFLE_SIG
 	msg15 := net.TRU_REL_SHUFFLE_SIG{

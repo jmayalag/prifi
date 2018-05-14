@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/hex"
-	"github.com/dedis/onet/log"
+	"gopkg.in/dedis/onet.v2/log"
 	"io"
 	"net"
 	"time"

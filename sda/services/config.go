@@ -6,9 +6,9 @@ import (
 	"os"
 
 	prifi_protocol "github.com/lbarman/prifi/sda/protocols"
-	"gopkg.in/dedis/onet.v1/app"
-	"gopkg.in/dedis/onet.v1/log"
-	"gopkg.in/dedis/onet.v1/network"
+	"gopkg.in/dedis/onet.v2/app"
+	"gopkg.in/dedis/onet.v2/log"
+	"gopkg.in/dedis/onet.v2/network"
 )
 
 var socksClientConfig *prifi_protocol.SOCKSConfig

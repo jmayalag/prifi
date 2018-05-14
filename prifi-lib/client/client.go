@@ -30,7 +30,7 @@ import (
 	prifilog "github.com/lbarman/prifi/prifi-lib/log"
 	"github.com/lbarman/prifi/prifi-lib/net"
 	"gopkg.in/dedis/kyber.v2"
-	"gopkg.in/dedis/onet.v1/log"
+	"gopkg.in/dedis/onet.v2/log"
 
 	"crypto/hmac"
 	"crypto/sha256"

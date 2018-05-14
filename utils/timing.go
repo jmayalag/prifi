@@ -10,7 +10,7 @@
 package timing
 
 import (
-	"gopkg.in/dedis/onet.v1/log"
+	"gopkg.in/dedis/onet.v2/log"
 	"sync"
 	"time"
 )

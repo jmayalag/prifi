@@ -2,8 +2,8 @@ package protocols
 
 import (
 	prifi_lib "github.com/lbarman/prifi/prifi-lib"
-	"gopkg.in/dedis/onet.v1/log"
-	"gopkg.in/dedis/onet.v1/network"
+	"gopkg.in/dedis/onet.v2/log"
+	"gopkg.in/dedis/onet.v2/network"
 )
 
 //PriFiRole is the type of the enum to qualify the role of a SDA node (Relay, Client, Trustee)
