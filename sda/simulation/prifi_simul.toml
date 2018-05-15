@@ -33,10 +33,11 @@ ForceConsoleColor = true
 Simulation = "PriFi"
 Servers = 9
 Depth = 1
-CloseWait = 10000000
-RunWait = 10000000
+CloseWait = "10000000ms"
+RunWait = "10000000ms"
 NTrustees = 3
 SimulDelayBetweenClients = 0
+Suite = "Ed25519"
 
 Rounds
 1

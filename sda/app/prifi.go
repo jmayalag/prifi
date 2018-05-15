@@ -15,6 +15,9 @@ import (
 	"github.com/BurntSushi/toml"
 	prifi_protocol "github.com/lbarman/prifi/sda/protocols"
 	prifi_service "github.com/lbarman/prifi/sda/services"
+	"gopkg.in/dedis/kyber.v2/suites"
+	"gopkg.in/dedis/kyber.v2/util/encoding"
+	"gopkg.in/dedis/kyber.v2/util/key"
 	"gopkg.in/dedis/onet.v2"
 	"gopkg.in/dedis/onet.v2/app"
 	"gopkg.in/dedis/onet.v2/log"
@@ -284,9 +287,16 @@ func createNewIdentityToml(c *cli.Context) error {
 
 	log.Print("Generating public/private keys...")
 
-	//privStr, pubStr := createKeyPair() //TODO FIX THIS
-	privStr := "NOT_IMPLEMENTED"
-	pubStr := "NOT_IMPLEMENTEd"
+	suite := suites.MustFind("Ed25519") //TODO Nikko wants to change this
+	key := key.NewKeyPair(suite)
+	pubStr, err := encoding.PointToStringHex(suite, key.Public)
+	if err != nil {
+		panic(err)
+	}
+	privStr, err := encoding.ScalarToStringHex(suite, key.Private)
+	if err != nil {
+		panic(err)
+	}
 
 	addrPort := app.Inputf(":"+strconv.Itoa(DefaultPort)+"", "Which port do you want PriFi to use locally ?")
 
@@ -347,28 +357,6 @@ func createNewIdentityToml(c *cli.Context) error {
 	if err := identity.Save(identityFilePath); err != nil {
 		log.Fatal("Unable to write the config to file:", err)
 	}
-
-	//now since cothority is smart enough to write only the decimal format of the key, AND require the base64 format for group.toml, let's add it as a comment
-	/*
-		public, err := crypto.StringHexToPub(network.Suite, pubStr)
-		if err != nil {
-			log.Fatal("Impossible to parse public key:", err)
-		}
-		var buff bytes.Buffer
-		if err := crypto.Write64Pub(network.Suite, &buff, public); err != nil {
-			log.Error("Can't convert public key to base 64")
-			return nil
-		}
-
-		f, err := os.OpenFile(identityFilePath, os.O_RDWR|os.O_APPEND, 0660)
-
-		if err != nil {
-			log.Fatal("Unable to write the config to file (2):", err)
-		}
-		publicKeyBase64String := string(buff.Bytes())
-		f.WriteString("# Public (base64) = " + publicKeyBase64String + "\n")
-		f.Close()
-	*/
 
 	log.Info("Identity file saved.")
 
