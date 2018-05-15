@@ -684,16 +684,12 @@ func TestDisruptionClient(t *testing.T) {
 	sharedSecrets_t1 := make([]kyber.Point, 1)
 	sharedSecrets_t1[0] = cs.sharedSecrets[0]
 	sharedSecrets_t2 := make([]kyber.Point, 1)
-	sharedSecrets_t2[0] = cs.sharedSecrets[0]
+	sharedSecrets_t2[0] = cs.sharedSecrets[1]
 
-	log.Error("upCellSize", upCellSize)
 	t1 := dcnet.NewDCNetEntity(1, dcnet.DCNET_TRUSTEE, upCellSize, true, sharedSecrets_t1)
 	t2 := dcnet.NewDCNetEntity(2, dcnet.DCNET_TRUSTEE, upCellSize, true, sharedSecrets_t2)
 
 	x := t1.TrusteeEncodeForRound(0)
-
-	log.Error("x", len(x))
-	log.Error("x", x)
 
 	pad1 := dcnet.DCNetCipherFromBytes(x)
 	pad2 := dcnet.DCNetCipherFromBytes(t2.TrusteeEncodeForRound(0))
@@ -701,13 +697,11 @@ func TestDisruptionClient(t *testing.T) {
 
 	dcNetDecoded := make([]byte, upCellSize)
 	i = 0
-	log.Error("pad1.Payload", len(pad1.Payload))
-	log.Error("pad2.Payload", len(pad2.Payload))
-	log.Error("clientPad.Payload", len(clientPad.Payload))
 	for i < len(dcNetDecoded) {
 		dcNetDecoded[i] = pad1.Payload[i] ^ pad2.Payload[i] ^ clientPad.Payload[i]
 		i++
 	}
+	log.Error("dcNetDecoded", dcNetDecoded)
 
 	hmac := dcNetDecoded[0:32]
 	data := dcNetDecoded[32:]

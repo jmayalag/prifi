@@ -439,7 +439,6 @@ func (p *PriFiLibClientInstance) SendUpstreamData(ownerSlotID int) error {
 		hmac = p.computeHmac256(upstreamCellContent)
 	}
 	payload := append(hmac, upstreamCellContent...)
-
 	upstreamCell := p.clientState.DCNet.EncodeForRound(p.clientState.RoundNo, slotOwner, payload)
 
 	//send the data to the relay
