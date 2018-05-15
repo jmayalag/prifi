@@ -86,7 +86,7 @@ func NewDCNetEntity(
 		e.sharedPRNGs = make([]kyber.XOF, len(sharedKeys))
 		for i := range sharedKeys {
 			e.verbosePrint("key", i, ":", sharedKeys[i])
-			seed, err := sharedKeys[i].Data()
+			seed, err := sharedKeys[i].MarshalBinary()
 			if err != nil {
 				log.Fatal("Could not extract data from shared key", err)
 			}

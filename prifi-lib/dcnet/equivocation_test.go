@@ -36,7 +36,7 @@ func equivocationTestForDataLength(t *testing.T, payloadSize int) {
 
 	sharedSecrets_t := make([]kyber.Point, 2)
 	sharedSecrets_t[0] = config.CryptoSuite.Point().Mul(c1priv, tpub)
-	sharedSecrets_t[1] = config.CryptoSuite.Point().Mul(c1priv, tpub)
+	sharedSecrets_t[1] = config.CryptoSuite.Point().Mul(c2priv, tpub)
 
 	// set up the DC-nets
 	dcnet_Trustee := NewDCNetEntity(0, DCNET_TRUSTEE, payloadSize, false, sharedSecrets_t)
@@ -49,6 +49,7 @@ func equivocationTestForDataLength(t *testing.T, payloadSize int) {
 	padRound2_t := DCNetCipherFromBytes(dcnet_Trustee.TrusteeEncodeForRound(0))
 	padRound1_c1 := DCNetCipherFromBytes(dcnet_Client1.EncodeForRound(0, true, data))
 	padRound1_c2 := DCNetCipherFromBytes(dcnet_Client2.EncodeForRound(0, false, nil))
+
 
 	res := make([]byte, payloadSize)
 	for i := range padRound1_c2.Payload {

@@ -154,7 +154,7 @@ func (e *EquivocationProtection) RelayDecode(encryptedPayload []byte, trusteesCo
 	// compute sum of clients contribs
 	sumClients := e.suite.Scalar().Zero()
 	for _, v := range client_kappa_i {
-		log.Lvl1("Adding in", v, "value is now", sumClients)
+		//log.Lvl1("Adding in", v, "value is now", sumClients)
 		sumClients = sumClients.Add(sumClients, v)
 	}
 
