@@ -2,5 +2,5 @@ Description = "Prifi"
 
 [[servers]]
   Address = "tcp://128.178.151.111:7000"
-  Public = "55873114984971f38b63f7ac1b51abdb42e773e1e42a6ef7bf762c131ee345db"
+  Public = "VYcxFJhJcfOLY/esG1Gr20Lnc+HkKm73v3YsEx7jRds="
   Description = "relay"

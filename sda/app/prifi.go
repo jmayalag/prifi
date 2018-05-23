@@ -463,6 +463,7 @@ func readCothorityGroupConfig(c *cli.Context) *app.Group {
 
 	if err != nil {
 		log.Error("Could not parse toml file \"", gfile, "\"")
+		log.Fatal(err)
 		return nil
 	}
 

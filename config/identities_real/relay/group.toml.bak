@@ -2,20 +2,20 @@ Description = "Prifi"
 
 [[servers]]
   Address = "tcp://127.0.0.1:7000"
-  Public = "55873114984971f38b63f7ac1b51abdb42e773e1e42a6ef7bf762c131ee345db"
+  Public = "VYcxFJhJcfOLY/esG1Gr20Lnc+HkKm73v3YsEx7jRds="
   Description = "relay"
 
 [[servers]]
   Address = "tcp://127.0.0.1:7004"
-  Public = "8b08dd94177490094ebe26ad32f4ee37de5c0746a6f6663cf8399e2bce9cdc58"
+  Public = "iwjdlBd0kAlOviatMvTuN95cB0am9mY8+DmeK86c3Fg="
   Description = "trustee"
 
 [[servers]]
   Address = "tcp://127.0.0.1:7008"
-  Public = "2a6e9a1e0d0c7a7427187ee026db7ac1bdbc15b51013d1fb8bd73c203dde966f"
+  Public = "Km6aHg0MenQnGH7gJtt6wb28FbUQE9H7i9c8ID3elm8="
   Description = "trustee"
 
 [[servers]]
   Address = "tcp://127.0.0.1:7012"
-  Public = "73163f59ac5f21b15aa5e9c4eafbf0849c53c1e43937e22b1d6e55ca13bfe8ac"
+  Public = "cxY/WaxfIbFapenE6vvwhJxTweQ5N+IrHW5VyhO/6Kw="
   Description = "trustee"
