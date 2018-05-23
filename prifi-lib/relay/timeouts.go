@@ -53,6 +53,12 @@ func (p *PriFiLibRelayInstance) checkIfRoundHasEndedAfterTimeOut_Phase1(roundID 
 
 		p.relayState.numberOfNonAckedDownstreamPackets-- // packet is not "in-flight" because it is lost
 
+		// if we still have open rounds (after closing this one), we need to tell the DC-net to move to this new round
+		if roundOpened, roundID := p.relayState.roundManager.currentRound(); roundOpened {
+			//prepare for the next round (this empties the dc-net buffer, making them ready for a new round)
+			p.relayState.DCNet.DecodeStart(roundID)
+		}
+
 		// if we can, open new rounds
 		p.downstreamPhase_sendMany()
 
