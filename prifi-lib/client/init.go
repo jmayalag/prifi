@@ -24,11 +24,12 @@ package client
 import (
 	"errors"
 	"github.com/lbarman/prifi/prifi-lib/crypto"
+	"github.com/lbarman/prifi/prifi-lib/dcnet"
 	prifilog "github.com/lbarman/prifi/prifi-lib/log"
 	"github.com/lbarman/prifi/prifi-lib/net"
 	"github.com/lbarman/prifi/prifi-lib/utils"
-	"gopkg.in/dedis/crypto.v0/abstract"
-	"gopkg.in/dedis/onet.v1/log"
+	"gopkg.in/dedis/kyber.v2"
+	"gopkg.in/dedis/onet.v2/log"
 	"reflect"
 	"strings"
 	"time"
@@ -36,28 +37,28 @@ import (
 
 // ClientState contains the mutable state of the client.
 type ClientState struct {
-	DCNet_RoundManager            *DCNet_RoundManager
+	DCNet                         *dcnet.DCNetEntity
 	currentState                  int16
 	DataForDCNet                  chan []byte //Data to the relay : VPN / SOCKS should put data there !
 	NextDataForDCNet              *[]byte     //if not nil, send this before polling DataForDCNet
 	DataFromDCNet                 chan []byte //Data from the relay : VPN / SOCKS should read data from there !
 	DataOutputEnabled             bool        //if FALSE, nothing will be written to DataFromDCNet
-	ephemeralPrivateKey           abstract.Scalar
-	EphemeralPublicKey            abstract.Point
+	ephemeralPrivateKey           kyber.Scalar
+	EphemeralPublicKey            kyber.Point
 	ID                            int
 	LatencyTest                   *prifilog.LatencyTests
 	MySlot                        int
 	Name                          string
 	nClients                      int
 	nTrustees                     int
-	PayloadLength                 int
-	privateKey                    abstract.Scalar
-	PublicKey                     abstract.Point
-	sharedSecrets                 []abstract.Point
-	TrusteePublicKey              []abstract.Point
+	PayloadSize                   int
+	privateKey                    kyber.Scalar
+	PublicKey                     kyber.Point
+	sharedSecrets                 []kyber.Point
+	TrusteePublicKey              []kyber.Point
 	UseSocksProxy                 bool
 	UseUDP                        bool
-	MessageHistory                abstract.Cipher
+	MessageHistory                kyber.XOF
 	StartStopReceiveBroadcast     chan bool
 	timeStatistics                map[string]*prifilog.TimeStatistics
 	pcapReplay                    *PCAPReplayer
@@ -109,7 +110,6 @@ func NewClient(doLatencyTest bool, dataOutputEnabled bool, dataForDCNet chan []b
 	clientState.NextDataForDCNet = nil
 	clientState.DataFromDCNet = dataFromDCNet
 	clientState.DataOutputEnabled = dataOutputEnabled
-	clientState.DCNet_RoundManager = new(DCNet_RoundManager)
 	clientState.LastWantToSend = time.Now()
 	clientState.pcapReplay = &PCAPReplayer{
 		Enabled:    doReplayPcap,

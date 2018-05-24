@@ -3,7 +3,7 @@ package scheduler
 import (
 	"errors"
 	"github.com/lbarman/prifi/prifi-lib/config"
-	"gopkg.in/dedis/crypto.v0/abstract"
+	"gopkg.in/dedis/kyber.v2"
 	"strconv"
 )
 
@@ -11,7 +11,7 @@ import (
  * Tests that all trustees signed correctly the [lastBase, ephPubKey array].
  * Locate our slot (position in the shuffle) given the ephemeral public key and the new base
  */
-func (n *NeffShuffle) ClientVerifySigAndRecognizeSlot(privateKey abstract.Scalar, trusteesPublicKeys []abstract.Point, lastBase abstract.Point, shuffledPublicKeys []abstract.Point, signatures [][]byte) (int, error) {
+func (n *NeffShuffle) ClientVerifySigAndRecognizeSlot(privateKey kyber.Scalar, trusteesPublicKeys []kyber.Point, lastBase kyber.Point, shuffledPublicKeys []kyber.Point, signatures [][]byte) (int, error) {
 
 	if privateKey == nil {
 		return -1, errors.New("Can't verify without private key")
@@ -42,7 +42,7 @@ func (n *NeffShuffle) ClientVerifySigAndRecognizeSlot(privateKey abstract.Scalar
 	}
 
 	//locate our public key in shuffle
-	publicKeyInNewBase := config.CryptoSuite.Point().Mul(lastBase, privateKey)
+	publicKeyInNewBase := config.CryptoSuite.Point().Mul(privateKey, lastBase)
 
 	mySlot := -1
 

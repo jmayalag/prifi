@@ -97,13 +97,13 @@ case $1 in
 		echo -e "$okMsg"
 
 		echo -en "Switching ONet branch to ${highlightOn}$cothorityBranchRequired${highlightOff}... "
-		cd "$GOPATH/src/gopkg.in/dedis/onet.v1"; git checkout "$cothorityBranchRequired" 1>/dev/null 2>&1
+		cd "$GOPATH/src/gopkg.in/dedis/onet.v2"; git checkout "$cothorityBranchRequired" 1>/dev/null 2>&1
 		echo -e "$okMsg"
 
 		echo -n "Re-getting all go packages (since we switched branch)... "
 		cd "$GOPATH/src/github.com/lbarman/prifi/sda/app"; go get ./... 1>/dev/null 2>&1
 		cd ../..
-		cd "$GOPATH/src/gopkg.in/dedis/onet.v1"; go get -u ./... 1>/dev/null 2>&1
+		cd "$GOPATH/src/gopkg.in/dedis/onet.v2"; go get -u ./... 1>/dev/null 2>&1
 		echo -e "$okMsg"
 
 		echo -n "Testing ONet branch... "

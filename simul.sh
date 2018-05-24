@@ -47,7 +47,6 @@ configdir="config"
 defaultIdentitiesDir="identities_default"   # in $configdir
 realIdentitiesDir="identities_real"         # in $configdir
 
-# unimportant variable (but do not change, ofc)
 sleeptime_between_spawns=1                  # time in second between entities launch in all-localhost part
 
     

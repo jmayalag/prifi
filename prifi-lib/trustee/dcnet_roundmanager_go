@@ -1,52 +1,23 @@
-package client
+/*
+package trustee
+
 
 import (
 	"github.com/lbarman/prifi/prifi-lib/config"
-	"github.com/lbarman/prifi/prifi-lib/dcnet"
+	"github.com/lbarman/prifi/prifi-lib/dcnet.old"
 	"gopkg.in/dedis/crypto.v0/abstract"
 	"gopkg.in/dedis/onet.v1/log"
 	"math"
 	"sync"
 )
 
-// DCNet_RoundManager allows to request DC-net pads for a specific round
-type DCNet_RoundManager struct {
-	sync.Mutex
-	DCNet         dcnet.DCNet
-	currentRound  int32
-	sharedSecrets []abstract.Point
-}
-
-// ClientSetup stores the sharedSecrets to be able to reveal bits in case of disruption
-func (dc *DCNet_RoundManager) ClientSetup(sharedSecrets []abstract.Point) {
-	dc.sharedSecrets = sharedSecrets
-}
-
-// ClientEncodeForRound allows to request DC-net pads for a specific round
-func (dc *DCNet_RoundManager) ClientEncodeForRound(roundID int32, payload []byte, payloadSize int, history abstract.Cipher) []byte {
-	dc.Lock()
-	defer dc.Unlock()
-
-	for dc.currentRound < roundID {
-		//discard crypto material
-		log.Lvl4("Discarding round", dc.currentRound)
-		_ = dc.DCNet.ClientEncode(nil, payloadSize, history)
-		dc.currentRound++
-	}
-
-	log.Lvl4("Producing round", dc.currentRound)
-	//produce the real round
-	data := dc.DCNet.ClientEncode(payload, payloadSize, history)
-	dc.currentRound++
-	return data
-}
-
 // RevealBits reveals the individual bits from each cipher in case of disruption
 func (dc *DCNet_RoundManager) RevealBits(roundID int32, bitPos int, payloadLength int) map[int]int {
 	dc.Lock()
 	defer dc.Unlock()
 	round_ID := roundID
-	if round_ID > dc.currentRound {
+	curRound := dc.currentRound
+	if round_ID > curRound {
 		log.Fatal("Trying to reveal a future round")
 	}
 	var bits map[int]int
@@ -92,3 +63,4 @@ func (dc *DCNet_RoundManager) RevealBits(roundID int32, bitPos int, payloadLengt
 	}
 	return bits
 }
+*/

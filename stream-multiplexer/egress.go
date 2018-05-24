@@ -3,7 +3,8 @@ package stream_multiplexer
 import (
 	"bytes"
 	"encoding/binary"
-	"github.com/dedis/onet/log"
+	"encoding/hex"
+	"gopkg.in/dedis/onet.v2/log"
 	"io"
 	"net"
 	"time"
@@ -12,22 +13,28 @@ import (
 // EgressServer takes data from a go channel and recreates the multiplexed TCP streams
 type EgressServer struct {
 	activeConnections map[string]*MultiplexedConnection
-	maxMessageLength  int
-	maxPayloadLength  int
+	maxMessageSize    int
+	maxPayloadSize    int
 	upstreamChan      chan []byte
 	downstreamChan    chan []byte
 	stopChan          chan bool
+	verbose           bool
 }
 
 // StartEgressHandler creates (and block) an Egress Server
-func StartEgressHandler(serverAddress string, maxMessageLength int, upstreamChan chan []byte, downstreamChan chan []byte, stopChan chan bool) {
+func StartEgressHandler(serverAddress string, maxMessageSize int, upstreamChan chan []byte, downstreamChan chan []byte, stopChan chan bool, verbose bool) {
 	eg := new(EgressServer)
-	eg.maxMessageLength = maxMessageLength
-	eg.maxPayloadLength = maxMessageLength - MULTIPLEXER_HEADER_SIZE //we use 8 bytes for the multiplexing
+	eg.maxMessageSize = maxMessageSize
+	eg.maxPayloadSize = maxMessageSize - MULTIPLEXER_HEADER_SIZE //we use 8 bytes for the multiplexing
 	eg.upstreamChan = upstreamChan
 	eg.downstreamChan = downstreamChan
 	eg.stopChan = stopChan
 	eg.activeConnections = make(map[string]*MultiplexedConnection)
+	eg.verbose = verbose
+
+	if verbose {
+		log.Lvl1("Egress Server in verbose mode")
+	}
 
 	for {
 		dataRead := <-upstreamChan
@@ -53,11 +60,17 @@ func StartEgressHandler(serverAddress string, maxMessageLength int, upstreamChan
 			data = data[:size]
 		}
 
+		if eg.verbose {
+			log.Lvl1("Clients -> Egress Server:\n" + hex.Dump(data))
+		}
+
 		// if this a new connection, dial it first
 		if mc, ok := eg.activeConnections[ID]; !ok || mc.conn == nil {
 			c, err := net.Dial("tcp", serverAddress)
 			if err != nil {
-				log.Error("Egress server: Could not connect to server, discarding data.", err)
+				log.Error("Egress server: Could not connect to server, discarding data. Do you have a SOCKS server running on",
+					serverAddress, "? You need one!", err)
+				continue
 			} else {
 
 				mc := new(MultiplexedConnection)
@@ -65,7 +78,7 @@ func StartEgressHandler(serverAddress string, maxMessageLength int, upstreamChan
 				mc.ID = ID
 				mc.ID_bytes = []byte(ID)
 				mc.stopChan = make(chan bool, 1)
-				mc.maxMessageLength = eg.maxMessageLength
+				mc.maxMessageLength = eg.maxMessageSize
 
 				eg.activeConnections[ID] = mc
 				go eg.egressConnectionReader(mc)
@@ -98,7 +111,7 @@ func (eg *EgressServer) egressConnectionReader(mc *MultiplexedConnection) {
 		}
 
 		// Read data from the connection
-		buffer := make([]byte, eg.maxPayloadLength)
+		buffer := make([]byte, eg.maxPayloadSize)
 		n, err := mc.conn.Read(buffer)
 
 		if err != nil {
@@ -112,7 +125,7 @@ func (eg *EgressServer) egressConnectionReader(mc *MultiplexedConnection) {
 				return
 			}
 
-			log.Error("Egress server: connectionReader error,", err)
+			log.Error("Egress server: connectionReader error (reading will stop),", err)
 			return
 		}
 
@@ -122,5 +135,10 @@ func (eg *EgressServer) egressConnectionReader(mc *MultiplexedConnection) {
 		binary.BigEndian.PutUint32(slice[4:8], uint32(n))
 		copy(slice[MULTIPLEXER_HEADER_SIZE:], buffer[:n])
 		eg.downstreamChan <- slice
+
+		if eg.verbose {
+			log.Lvl1("Egress Server -> Clients:\n", hex.Dump(slice))
+		}
+
 	}
 }

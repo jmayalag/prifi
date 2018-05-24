@@ -12,7 +12,7 @@
 
 # variables that you might change often
 
-dbg_lvl=2                       # 1=less verbose, 3=more verbose. goes up to 5, but then prints the SDA's message (network framework)
+dbg_lvl=3                       # 1=less verbose, 3=more verbose. goes up to 5, but then prints the SDA's message (network framework)
 colors="true"                   # if  "false", the output of PriFi (and this script) will be in black-n-white
 
 socksServer1Port=8080           # the port for the SOCKS-Server-1 (part of the PriFi client)
@@ -42,6 +42,8 @@ realIdentitiesDir="identities_real"         # in $configdir
 
 cothorityBranchRequired="master"            # the branch required for the cothority (SDA) framework
 
+sleeptime_between_spawns=1                  # time in second between entities launch in "make it"
+
 source "helpers.lib.sh"
 
 # ------------------------
@@ -65,6 +67,7 @@ run_relay() {
     test_files
 
     #run PriFi in relay mode
+    echo "Config: $prifi_file2"
     DEBUG_COLOR="$colors" go run "$bin_file" --cothority_config "$identity_file2" --group "$group_file2" -d "$dbg_lvl" --prifi_config "$prifi_file2" --port "$socksServer1Port" --port_client "$socksServer2Port" relay
 }
 
@@ -166,25 +169,58 @@ run_integration_test_no_data() {
     echo "Waiting $waitTime seconds..."
     sleep "$waitTime"
 
-    #reporting is every 5 second by default. if we wait 30, we should have 6 of those
+    for repeat in 1 2 3
+    do
+        #reporting is every 5 second by default. if we wait 30, we should have 6 of those
+        lines=$(cat relay.log | grep -E "([0-9\.]+) round/sec, ([0-9\.]+) kB/s up, ([0-9\.]+) kB/s down, ([0-9\.]+) kB/s down\(udp\)" | wc -l)
+
+        echo "Number of reportings : $lines"
+
+        if [ "$lines" -eq 0 ]; then
+            echo "Waiting more time... $repeat/3"
+            sleep 5
+        else
+            break
+        fi
+
+    done
     lines=$(cat relay.log | grep -E "([0-9\.]+) round/sec, ([0-9\.]+) kB/s up, ([0-9\.]+) kB/s down, ([0-9\.]+) kB/s down\(udp\)" | wc -l)
 
-    echo "Number of reportings : $lines"
-
-    pkill prifi 2>/dev/null
-    kill -TERM $(pidof "go run run-server.go")  2>/dev/null
-
-    if [ "$lines" -gt 1 ]; then
+    if [ "$lines" -gt 0 ]; then
         echo "Test succeeded"
     else
         echo "Test failed"
         exit 1
     fi
+
+    pkill prifi 2>/dev/null
+    kill -TERM $(pidof "go run run-server.go")  2>/dev/null
+}
+
+do_socks_through_prifi() {
+    port="$1"
+
+    for repeat in 1 2 3
+    do
+        echo -en "Doing SOCKS HTTP request via :$port...   "
+        curl google.com --socks5 127.0.0.1:$port --max-time 10 1>/dev/null 2>&1
+        res=$?
+        if [ "$res" -eq 0 ]; then
+            echo -e "$okMsg"
+            return 0
+        else
+            echo "Failed. Trying again... $repeat/3"
+            sleep 5
+        fi
+    done
+
+    echo "Test failed"
+    exit 1
 }
 
 run_integration_test_ping() {
     pkill prifi 2>/dev/null
-    kill -TERM $(pidof "go run run-server.go") 2>/dev/null
+    pkill prifi-socks-server 2>/dev/null
 
     rm -f *.log
 
@@ -192,7 +228,7 @@ run_integration_test_ping() {
     socks=$(netstat -tunpl 2>/dev/null | grep "$socksServer2Port" | wc -l)
 
     if [ "$socks" -ne 1 ]; then
-        echo -n "Socks proxy not running, starting it... "
+        echo -n "Socks proxy not running, starting it..."
         cd socks && ./run-socks-proxy.sh "$socksServer2Port" > ../socks.log 2>&1 &
         SOCKSPID=$!
         echo -e "$okMsg"
@@ -236,46 +272,22 @@ run_integration_test_ping() {
     sleep "$waitTime"
 
     # first client
-    echo -en "Doing SOCKS HTTP request via :8081...   "
-    curl google.com --socks5 127.0.0.1:8081 --max-time 10 1>/dev/null 2>&1
-    res=$?
-    if [ "$res" -eq 0 ]; then
-        echo -e "$okMsg"
-    else
-        echo "Test failed"
-        exit 1
-    fi
+    do_socks_through_prifi 8081
 
     if [ "$socks_test_n_clients" -gt 1 ]; then
         # second client
-        echo -en "Doing SOCKS HTTP request via :8082...   "
-        curl google.com --socks5 127.0.0.1:8082 --max-time 10 1>/dev/null 2>&1
-        res=$?
-        if [ "$res" -eq 0 ]; then
-            echo -e "$okMsg"
-        else
-            echo "Test failed"
-            exit 1
-        fi
+        do_socks_through_prifi 8082
     fi
 
     if [ "$socks_test_n_clients" -gt 2 ]; then
         # third client
-        echo -en "Doing SOCKS HTTP request via :8083...   "
-        curl google.com --socks5 127.0.0.1:8083 --max-time 10 1>/dev/null 2>&1
-        res=$?
-        if [ "$res" -eq 0 ]; then
-            echo -e "$okMsg"
-        else
-            echo "Test failed"
-            exit 1
-        fi
+        do_socks_through_prifi 8083
     fi
 
     # cleaning everything
 
     pkill prifi 2>/dev/null
-    kill -TERM $(pidof "go run run-server.go")  2>/dev/null
+    pkill prifi-socks-server 2>/dev/null
 
     if [ "$res" -eq 0 ]; then
         echo "Test succeeded"
@@ -324,11 +336,13 @@ case $1 in
 
         echo "This test check that PriFi's clients, trustees and relay connect and start performing communication rounds with no real data."
 
+
         for f in "$configdir/"*-test.toml;
         do
             echo -e "Gonna test with ${highlightOn}$f${highlightOff}";
             prifi_file=$(basename "$f")
             run_integration_test_no_data
+            sleep 5
         done
 
         echo -e "All tests passed."
@@ -340,15 +354,26 @@ case $1 in
 
         echo "This test check that PriFi's clients, trustees and relay connect and start performing communication rounds, and that a Ping request can go through (back and forth)."
 
-        for f in "$configdir/"*-test.toml;
-        do
-            m=$(echo "$f" | grep "pcap" | wc -l) # do not use the test with replays pcap, it's incompatible with this
-            if [ "$m" -eq 0 ]; then
-                echo -e "Gonna test with ${highlightOn}$f${highlightOff}";
-                prifi_file=$(basename "$f")
-                run_integration_test_ping
+        if [ "$#" -eq 1 ]; then
+            for f in "$configdir/"*-test.toml;
+            do
+                m=$(echo "$f" | grep "pcap" | wc -l) # do not use the test with replays pcap, it's incompatible with this
+                if [ "$m" -eq 0 ]; then
+                    echo -e "Gonna test with ${highlightOn}$f${highlightOff}";
+                    prifi_file=$(basename "$f")
+                    run_integration_test_ping
+                fi
+            done
+        else
+            f="$2"
+            if [ ! -f "$f" ]; then
+                echo -e "Cannot read file ${highlightOn}$f${highlightOff}"
+                exit 1
             fi
-        done
+            echo -e "Gonna test with ${highlightOn}$f${highlightOff}";
+            prifi_file=$(basename "$f")
+            run_integration_test_ping
+        fi
 
         echo -e "All tests passed."
         exit 0

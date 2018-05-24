@@ -2,8 +2,8 @@ package protocols
 
 import (
 	prifi_lib "github.com/lbarman/prifi/prifi-lib"
-	"gopkg.in/dedis/onet.v1/log"
-	"gopkg.in/dedis/onet.v1/network"
+	"gopkg.in/dedis/onet.v2/log"
+	"gopkg.in/dedis/onet.v2/network"
 )
 
 //PriFiRole is the type of the enum to qualify the role of a SDA node (Relay, Client, Trustee)
@@ -27,7 +27,7 @@ type PriFiIdentity struct {
 type SOCKSConfig struct {
 	ListeningAddr     string
 	Port              int
-	PayloadLength     int
+	PayloadSize       int
 	UpstreamChannel   chan []byte
 	DownstreamChannel chan []byte
 }
@@ -39,7 +39,7 @@ type PrifiTomlConfig struct {
 	OverrideLogLevel                        int
 	ClientDataOutputEnabled                 bool
 	RelayDataOutputEnabled                  bool
-	CellSizeUp                              int
+	PayloadSize                             int
 	CellSizeDown                            int
 	RelayWindowSize                         int
 	RelayUseOpenClosedSlots                 bool
@@ -65,6 +65,7 @@ type PrifiTomlConfig struct {
 	RelayRoundTimeOut                       int
 	RelayTrusteeCacheLowBound               int
 	RelayTrusteeCacheHighBound              int
+	VerboseIngressEgressServers             bool
 }
 
 //PriFiSDAWrapperConfig is all the information the SDA-Protocols needs. It contains the network map of identities, our role, and the socks parameters if we are the corresponding role

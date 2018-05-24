@@ -8,8 +8,8 @@ import (
 	"github.com/lbarman/prifi/prifi-lib/crypto"
 	"github.com/lbarman/prifi/prifi-lib/net"
 	"github.com/lbarman/prifi/prifi-lib/scheduler"
-	"gopkg.in/dedis/crypto.v0/abstract"
-	"gopkg.in/dedis/onet.v1/log"
+	"gopkg.in/dedis/kyber.v2"
+	"gopkg.in/dedis/onet.v2/log"
 	"time"
 )
 
@@ -96,7 +96,7 @@ func TestTrustee(t *testing.T) {
 		t.Error("Trustee should not accept this message")
 	}
 	weird.Add("NClients", 1)
-	weird.Add("UpstreamCellSize", 0)
+	weird.Add("PayloadSize", 0)
 	if err := trustee.ReceivedMessage(*weird); err == nil {
 		t.Error("Trustee should not accept this message")
 	}
@@ -112,7 +112,7 @@ func TestTrustee(t *testing.T) {
 	msg.Add("StartNow", true)
 	msg.Add("NClients", nClients)
 	msg.Add("NTrustees", nTrustees)
-	msg.Add("UpstreamCellSize", upCellSize)
+	msg.Add("PayloadSize", upCellSize)
 	msg.Add("NextFreeTrusteeID", trusteeID)
 	msg.Add("DCNetType", dcNetType)
 
@@ -126,14 +126,11 @@ func TestTrustee(t *testing.T) {
 	if ts.nTrustees != nTrustees {
 		t.Error("nTrustees should be 2")
 	}
-	if ts.PayloadLength != 1500 {
-		t.Error("PayloadLength should be 1500")
+	if ts.PayloadSize != 1500 {
+		t.Error("PayloadSize should be 1500")
 	}
 	if ts.ID != trusteeID {
 		t.Error("ID should be 3")
-	}
-	if ts.DCNet_RoundManager == nil {
-		t.Error("DCNet_RoundManager should have been created")
 	}
 	if len(ts.ClientPublicKeys) != nClients {
 		t.Error("Len(TrusteePKs) should be equal to NTrustees")
@@ -164,8 +161,8 @@ func TestTrustee(t *testing.T) {
 	n.Init()
 	n.RelayView.Init(1)
 
-	clientPubKeys := make([]abstract.Point, nClients)
-	clientPrivKeys := make([]abstract.Scalar, nClients)
+	clientPubKeys := make([]kyber.Point, nClients)
+	clientPrivKeys := make([]kyber.Scalar, nClients)
 	for i := 0; i < nClients; i++ {
 		clientPubKeys[i], clientPrivKeys[i] = crypto.NewKeyPair()
 		n.RelayView.AddClient(clientPubKeys[i])
@@ -177,7 +174,7 @@ func TestTrustee(t *testing.T) {
 	msg4 := toSend.(*net.REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE)
 
 	//we inject the public keys
-	msg4.Pks = make([]abstract.Point, nClients)
+	msg4.Pks = make([]kyber.Point, nClients)
 	for i := 0; i < nClients; i++ {
 		msg4.Pks[i] = clientPubKeys[i]
 	}
@@ -192,7 +189,7 @@ func TestTrustee(t *testing.T) {
 			t.Error("Pub key", i, "has not been stored correctly")
 		}
 		myPrivKey := ts.privateKey
-		if !ts.sharedSecrets[i].Equal(config.CryptoSuite.Point().Mul(clientPubKeys[i], myPrivKey)) {
+		if !ts.sharedSecrets[i].Equal(config.CryptoSuite.Point().Mul(myPrivKey, clientPubKeys[i])) {
 			t.Error("Shared secret", i, "has not been computed correctly")
 		}
 	}
@@ -257,7 +254,7 @@ func TestTrustee(t *testing.T) {
 		if msg8_parsed.RoundID != 0 {
 			t.Error("TRU_REL_DC_CIPHER has the wrong round ID")
 		}
-		if len(msg8_parsed.Data) != upCellSize {
+		if len(msg8_parsed.Data) != upCellSize+8 {
 			t.Error("TRU_REL_DC_CIPHER sent a payload with wrong size")
 		}
 
@@ -305,7 +302,7 @@ func TestTrustee(t *testing.T) {
 		if msg8_parsed.TrusteeID != trusteeID {
 			t.Error("TRU_REL_DC_CIPHER has the wrong trustee ID")
 		}
-		if len(msg8_parsed.Data) != upCellSize {
+		if len(msg8_parsed.Data) != upCellSize+8 {
 			t.Error("TRU_REL_DC_CIPHER sent a payload with wrong size")
 		}
 

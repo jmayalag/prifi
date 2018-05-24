@@ -39,8 +39,8 @@ import (
 	"github.com/lbarman/prifi/prifi-lib/net"
 	"github.com/lbarman/prifi/prifi-lib/scheduler"
 	"github.com/lbarman/prifi/prifi-lib/utils"
-	"gopkg.in/dedis/crypto.v0/abstract"
-	"gopkg.in/dedis/onet.v1/log"
+	"gopkg.in/dedis/kyber.v2"
+	"gopkg.in/dedis/onet.v2/log"
 
 	"github.com/lbarman/prifi/prifi-lib/crypto"
 	"reflect"
@@ -80,8 +80,7 @@ func NewRelay(dataOutputEnabled bool, dataForClients chan []byte, dataFromDCNet 
 	relayState.PublicKey, relayState.privateKey = crypto.NewKeyPair()
 	relayState.slotScheduler = new(scheduler.BitMaskSlotScheduler_Relay)
 	relayState.roundManager = new(BufferableRoundManager)
-	relayState.timeoutMutex = *new(sync.Mutex)
-	relayState.numberOfNonAckedDownstreamPacketsLock = *new(sync.Mutex)
+	relayState.processingLock = *new(sync.Mutex)
 	neffShuffle := new(scheduler.NeffShuffle)
 	neffShuffle.Init()
 	relayState.neffShuffle = neffShuffle.RelayView
@@ -115,13 +114,13 @@ func NewRelay(dataOutputEnabled bool, dataForClients chan []byte, dataFromDCNet 
 type NodeRepresentation struct {
 	ID                 int
 	Connected          bool
-	PublicKey          abstract.Point
-	EphemeralPublicKey abstract.Point
+	PublicKey          kyber.Point
+	EphemeralPublicKey kyber.Point
 }
 
 // RelayState contains the mutable state of the relay.
 type RelayState struct {
-	DCNet                                  dcnet.DCNet
+	DCNet                                  *dcnet.DCNetEntity
 	clients                                []NodeRepresentation
 	roundManager                           *BufferableRoundManager
 	neffShuffle                            *scheduler.NeffShuffleRelay
@@ -131,21 +130,20 @@ type RelayState struct {
 	DataFromDCNet                          chan []byte // VPN / SOCKS should read data from there !
 	DataOutputEnabled                      bool        // If FALSE, nothing will be written to DataFromDCNet
 	DownstreamCellSize                     int
-	MessageHistory                         abstract.Cipher
+	MessageHistory                         kyber.XOF
 	Name                                   string
 	nClients                               int
 	nClientsPkCollected                    int
 	nTrustees                              int
 	nTrusteesPkCollected                   int
-	privateKey                             abstract.Scalar
-	PublicKey                              abstract.Point
+	privateKey                             kyber.Scalar
+	PublicKey                              kyber.Point
 	ExperimentRoundLimit                   int
 	trustees                               []NodeRepresentation
-	UpstreamCellSize                       int
+	PayloadSize                            int
 	UseDummyDataDown                       bool
 	UseOpenClosedSlots                     bool
 	UseUDP                                 bool
-	numberOfNonAckedDownstreamPacketsLock  sync.Mutex
 	numberOfNonAckedDownstreamPackets      int
 	WindowSize                             int
 	ExperimentResultChannel                chan interface{}
@@ -170,14 +168,14 @@ type RelayState struct {
 	EquivocationProtectionEnabled          bool
 
 	// sync
-	timeoutMutex sync.Mutex
+	processingLock sync.Mutex // either we treat a message, or a timeout, never both
 
 	//disruption protection
 	clientBitMap  map[int]map[int]int
 	trusteeBitMap map[int]map[int]int
 	blamingData   []int //[round#, bitPos, clientID, bitRevealed, trusteeID, bitRevealed]
 
-	//Used for verifiable DC-net, part of the dcnet/owned.go
+	//Used for verifiable DC-net, part of the dcnet.old/owned.go
 	VerifiableDCNetKeys [][]byte
 	nVkeysCollected     int
 }
@@ -185,6 +183,9 @@ type RelayState struct {
 // ReceivedMessage must be called when a PriFi host receives a message.
 // It takes care to call the correct message handler function.
 func (p *PriFiLibRelayInstance) ReceivedMessage(msg interface{}) error {
+
+	p.relayState.processingLock.Lock()
+	defer p.relayState.processingLock.Unlock()
 
 	var err error
 

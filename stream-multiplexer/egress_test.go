@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"gopkg.in/dedis/onet.v2/log"
 	"net"
 	"sync"
 	"testing"
@@ -68,6 +69,8 @@ func StartServerAndExpect(data map[int][]byte, remote string, t *testing.T, done
 		socketListener.SetDeadline(time.Now().Add(time.Second))
 		conn, err := socketListener.Accept()
 
+		log.Lvl1("ExpectedServer accepted a conn")
+
 		if err != nil {
 			if err, ok := err.(*net.OpError); ok && err.Timeout() {
 				// it was a timeout
@@ -100,7 +103,7 @@ func TestEgress1(t *testing.T) {
 	downstreamChan := make(chan []byte)
 	stopChan := make(chan bool)
 
-	go StartEgressHandler(remote, payloadLength, upstreamChan, downstreamChan, stopChan)
+	go StartEgressHandler(remote, payloadLength, upstreamChan, downstreamChan, stopChan, true)
 
 	// prepare a dummy message
 	payload := []byte("hello")
@@ -116,6 +119,8 @@ func TestEgress1(t *testing.T) {
 	expected := make(map[int][]byte)
 	expected[0] = payload
 	go StartServerAndExpect(expected, remote, t, doneChan)
+
+	time.Sleep(time.Second)
 
 	upstreamChan <- multiplexedMsg
 
@@ -142,7 +147,7 @@ func TestEgress2(t *testing.T) {
 	downstreamChan := make(chan []byte)
 	stopChan := make(chan bool)
 
-	go StartEgressHandler(remote, payloadLength, upstreamChan, downstreamChan, stopChan)
+	go StartEgressHandler(remote, payloadLength, upstreamChan, downstreamChan, stopChan, true)
 
 	// prepare a dummy message
 	payload := []byte("hello")
@@ -162,6 +167,8 @@ func TestEgress2(t *testing.T) {
 	expected := make(map[int][]byte)
 	expected[0] = doubleHello
 	go StartServerAndExpect(expected, remote, t, doneChan)
+
+	time.Sleep(time.Second)
 
 	upstreamChan <- multiplexedMsg
 	upstreamChan <- multiplexedMsg
@@ -189,7 +196,7 @@ func TestEgressMultiplex(t *testing.T) {
 	downstreamChan := make(chan []byte)
 	stopChan := make(chan bool)
 
-	go StartEgressHandler(remote, payloadLength, upstreamChan, downstreamChan, stopChan)
+	go StartEgressHandler(remote, payloadLength, upstreamChan, downstreamChan, stopChan, true)
 
 	// prepare a dummy message
 	payload := []byte("hello")
@@ -215,6 +222,8 @@ func TestEgressMultiplex(t *testing.T) {
 	expected[0] = payload
 	expected[1] = payload2
 	go StartServerAndExpect(expected, remote, t, doneChan)
+
+	time.Sleep(time.Second)
 
 	upstreamChan <- multiplexedMsg
 	upstreamChan <- multiplexedMsg2
@@ -261,7 +270,7 @@ func TestEgressMultiplexLong(t *testing.T) {
 	downstreamChan := make(chan []byte)
 	stopChan := make(chan bool)
 
-	go StartEgressHandler(remote, payloadLength, upstreamChan, downstreamChan, stopChan)
+	go StartEgressHandler(remote, payloadLength, upstreamChan, downstreamChan, stopChan, true)
 
 	// prepare a dummy message
 	payload := []byte("hello")
@@ -295,6 +304,8 @@ func TestEgressMultiplexLong(t *testing.T) {
 	expected[0] = doubleHello
 	expected[1] = doubleHello2
 	go StartServerAndExpect(expected, remote, t, doneChan)
+
+	time.Sleep(time.Second)
 
 	upstreamChan <- multiplexedMsg
 	upstreamChan <- multiplexedMsg2

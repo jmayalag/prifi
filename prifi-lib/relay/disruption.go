@@ -1,11 +1,9 @@
 package relay
 
 import (
-	"github.com/lbarman/prifi/prifi-lib/config"
 	"github.com/lbarman/prifi/prifi-lib/net"
-	"gopkg.in/dedis/crypto.v0/abstract"
-	"gopkg.in/dedis/onet.v1/log"
-	"math"
+	"gopkg.in/dedis/kyber.v2"
+	"gopkg.in/dedis/onet.v2/log"
 	"strconv"
 )
 
@@ -123,33 +121,36 @@ func (p *PriFiLibRelayInstance) Received_CLI_REL_SECRET(msg net.CLI_REL_DISRUPTI
 /*
 replayRounds takes the secret revealed by a user and recomputes until the disrupted bit
 */
-func (p *PriFiLibRelayInstance) replayRounds(secret abstract.Point) int {
-	bytes, err := secret.MarshalBinary()
-	if err != nil {
-		log.Fatal("Could not marshal point !")
-	}
-	roundID := p.relayState.blamingData[0]
-	sharedPRNG := config.CryptoSuite.Cipher(bytes)
-	key := make([]byte, config.CryptoSuite.Cipher(nil).KeySize())
-	sharedPRNG.Partial(key, key, nil)
-	dcCipher := config.CryptoSuite.Cipher(key)
+func (p *PriFiLibRelayInstance) replayRounds(secret kyber.Point) int {
+	/*
+		bytes, err := secret.MarshalBinary()
+		if err != nil {
+			log.Fatal("Could not marshal point !")
+		}
+		roundID := p.relayState.blamingData[0]
+		sharedPRNG := config.CryptoSuite.XOF(bytes)
+		key := make([]byte, config.CryptoSuite.XOF(nil).KeySize())
+		sharedPRNG.Partial(key, key, nil)
+		dcCipher := config.CryptoSuite.XOF(key)
 
-	for i := 0; i < roundID; i++ {
-		//discard crypto material
-		dst := make([]byte, p.relayState.UpstreamCellSize)
+		for i := 0; i < roundID; i++ {
+			//discard crypto material
+			dst := make([]byte, p.relayState.PayloadSize)
+			dcCipher.Read(dst)
+		}
+
+		dst := make([]byte, p.relayState.PayloadSize)
 		dcCipher.Read(dst)
-	}
-
-	dst := make([]byte, p.relayState.UpstreamCellSize)
-	dcCipher.Read(dst)
-	bitPos := p.relayState.blamingData[0]
-	m := float64(bitPos) / float64(8)
-	m = math.Floor(m)
-	m2 := int(m)
-	n := bitPos % 8
-	mask := byte(1 << uint8(n))
-	if (dst[m2] & mask) == 0 {
-		return 0
-	}
+		bitPos := p.relayState.blamingData[0]
+		m := float64(bitPos) / float64(8)
+		m = math.Floor(m)
+		m2 := int(m)
+		n := bitPos % 8
+		mask := byte(1 << uint8(n))
+		if (dst[m2] & mask) == 0 {
+			return 0
+		}
+	*/
+	log.Fatal("not implemented")
 	return 1
 }
