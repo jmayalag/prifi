@@ -38,6 +38,7 @@ RunWait = "10000000ms"
 NTrustees = 3
 SimulDelayBetweenClients = 0
 Suite = "Ed25519"
+SimulateNetworkFailureClient0AtRound = -1
 
 Rounds
 1

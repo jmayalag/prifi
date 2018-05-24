@@ -55,6 +55,7 @@ func (p *PriFiLibClientInstance) Received_ALL_ALL_SHUTDOWN(msg net.ALL_ALL_SHUTD
 // Received_ALL_CLI_PARAMETERS handles ALL_CLI_PARAMETERS messages.
 // It uses the message's parameters to initialize the client.
 func (p *PriFiLibClientInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARAMETERS) error {
+	log.Lvlf3("Client " + strconv.Itoa(p.clientState.ID) +" Received_ALL_ALL_PARAMETERS: %+v\n", msg)
 	clientID := msg.IntValueOrElse("NextFreeClientID", -1)
 	e := "Client " + strconv.Itoa(clientID)
 	p.stateMachine.SetEntity(e)
@@ -66,6 +67,7 @@ func (p *PriFiLibClientInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PAR
 	dcNetType := msg.StringValueOrElse("DCNetType", "not initialized")
 	disruptionProtection := msg.BoolValueOrElse("DisruptionProtectionEnabled", false)
 	equivProtection := msg.BoolValueOrElse("EquivocationProtectionEnabled", false)
+	simulateNetworkFailureClient0AtRound := msg.IntValueOrElse("SimulateNetworkFailureClient0AtRound", -1)
 
 	//sanity checks
 	if clientID < -1 {
@@ -101,6 +103,10 @@ func (p *PriFiLibClientInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PAR
 	p.clientState.MessageHistory = config.CryptoSuite.XOF([]byte("init")) //any non-nil, non-empty, constant array
 	p.clientState.DisruptionProtectionEnabled = disruptionProtection
 	p.clientState.EquivocationProtectionEnabled = equivProtection
+	p.clientState.SimulateNetworkFailureClient0AtRound = simulateNetworkFailureClient0AtRound
+	if simulateNetworkFailureClient0AtRound != 1 && clientID == 0 {
+		log.Lvl1("WARNING: Client 0 will simulate an error on round", simulateNetworkFailureClient0AtRound)
+	}
 
 	//we know our client number, if needed, parse the pcap for replay
 	if p.clientState.pcapReplay.Enabled {
@@ -130,6 +136,7 @@ func (p *PriFiLibClientInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PAR
 		go p.messageSender.MessageSender.ClientSubscribeToBroadcast(p.clientState.ID, p.ReceivedMessage, p.clientState.StartStopReceiveBroadcast)
 	}
 
+	log.Lvlf3("Client " + strconv.Itoa(p.clientState.ID) +" new state: %+v\n", p.clientState)
 	log.Lvl2("Client " + strconv.Itoa(p.clientState.ID) + " has been initialized by message. ")
 
 	// continue with handling the public keys
@@ -151,6 +158,17 @@ func (p *PriFiLibClientInstance) Received_REL_CLI_DOWNSTREAM_DATA(msg net.REL_CL
 
 	if msg.RoundID == 1 {
 		p.clientState.pcapReplay.time0 = uint64(MsTimeStampNow())
+	}
+
+	log.Lvl1(p.clientState.ID)
+	log.Lvl1(p.clientState.HasAlreadySimulatedNetworkFailure)
+	log.Lvl1(int(msg.RoundID), p.clientState.SimulateNetworkFailureClient0AtRound)
+	if p.clientState.ID == 0 && p.clientState.SimulateNetworkFailureClient0AtRound != -1 &&
+		!p.clientState.HasAlreadySimulatedNetworkFailure && int(msg.RoundID) > p.clientState.SimulateNetworkFailureClient0AtRound {
+		p.clientState.HasAlreadySimulatedNetworkFailure = true
+		log.Error("WARNING: Simulating packet loss/big delay as indicated, on round", msg.RoundID, ". Sleeping 5 sec")
+		time.Sleep(5 * time.Second)
+		log.Error("WARNING: Done simulating packet loss/big delay as indicated, on round", msg.RoundID, ". Resuming")
 	}
 
 	//check if it is in-order

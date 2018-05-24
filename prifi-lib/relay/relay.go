@@ -103,6 +103,7 @@ func (p *PriFiLibRelayInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARA
 	trusteeCacheLowBound := msg.IntValueOrElse("RelayTrusteeCacheLowBound", p.relayState.TrusteeCacheLowBound)
 	trusteeCacheHighBound := msg.IntValueOrElse("RelayTrusteeCacheHighBound", p.relayState.TrusteeCacheHighBound)
 	equivocationProtectionEnabled := msg.BoolValueOrElse("EquivocationProtectionEnabled", p.relayState.EquivocationProtectionEnabled)
+	simulateNetworkFailureClient0AtRound := msg.IntValueOrElse("SimulateNetworkFailureClient0AtRound", p.relayState.SimulateNetworkFailureClient0AtRound)
 
 	if payloadSize < 1 {
 		return errors.New("payloadSize cannot be 0")
@@ -141,6 +142,7 @@ func (p *PriFiLibRelayInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARA
 	p.relayState.trusteeBitMap = make(map[int]map[int]int)
 	p.relayState.blamingData = make([]int, 6)
 	p.relayState.OpenClosedSlotsRequestsRoundID = make(map[int32]bool)
+	p.relayState.SimulateNetworkFailureClient0AtRound = simulateNetworkFailureClient0AtRound
 
 	switch dcNetType {
 	case "Verifiable":
@@ -168,7 +170,7 @@ func (p *PriFiLibRelayInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARA
 	// Broadcast those parameters to the other nodes, then tell the trustees which ID they are.
 	if startNow {
 		p.stateMachine.ChangeState("COLLECTING_TRUSTEES_PKS")
-		p.BroadcastParameters()
+		p.BroadcastTrusteeParameters()
 	}
 	log.Lvl1("Relay setup done, and setup sent to the trustees.")
 
@@ -180,7 +182,7 @@ func (p *PriFiLibRelayInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARA
 }
 
 // ConnectToTrustees connects to the trustees and initializes them with default parameters.
-func (p *PriFiLibRelayInstance) BroadcastParameters() error {
+func (p *PriFiLibRelayInstance) BroadcastTrusteeParameters() error {
 
 	// Craft default parameters
 	msg := new(net.ALL_ALL_PARAMETERS)
@@ -639,6 +641,7 @@ func (p *PriFiLibRelayInstance) Received_TRU_REL_TELL_PK(msg net.TRU_REL_TELL_PK
 		toSend.Add("DCNetType", p.relayState.dcNetType)
 		toSend.Add("DisruptionProtectionEnabled", p.relayState.DisruptionProtectionEnabled)
 		toSend.Add("EquivocationProtectionEnabled", p.relayState.EquivocationProtectionEnabled)
+		toSend.Add("SimulateNetworkFailureClient0AtRound", p.relayState.SimulateNetworkFailureClient0AtRound)
 		toSend.TrusteesPks = trusteesPk
 
 		// Send those parameters to all clients

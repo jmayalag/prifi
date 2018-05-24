@@ -71,6 +71,7 @@ func NewRelay(dataOutputEnabled bool, dataForClients chan []byte, dataFromDCNet 
 	relayState.ExperimentResultData = make([]string, 0)
 	relayState.PriorityDataForClients = make(chan []byte, 10) // This is used for relay's control message (like latency-tests) d
 	relayState.schedulesStatistics = prifilog.NewSchedulesStatistics()
+	relayState.SimulateNetworkFailureClient0AtRound = -1
 	relayState.timeStatistics = make(map[string]*prifilog.TimeStatistics)
 	relayState.timeStatistics["round-duration"] = prifilog.NewTimeStatistics()
 	relayState.timeStatistics["waiting-on-clients"] = prifilog.NewTimeStatistics()
@@ -166,6 +167,7 @@ type RelayState struct {
 	TrusteeCacheLowBound                   int // Number of ciphertexts buffered by trustees. When <= TRUSTEE_CACHE_LOWBOUND, resume sending
 	TrusteeCacheHighBound                  int // Number of ciphertexts buffered by trustees. When >= TRUSTEE_CACHE_HIGHBOUND, stop sending
 	EquivocationProtectionEnabled          bool
+	SimulateNetworkFailureClient0AtRound   int
 
 	// sync
 	processingLock sync.Mutex // either we treat a message, or a timeout, never both

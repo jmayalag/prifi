@@ -37,34 +37,36 @@ import (
 
 // ClientState contains the mutable state of the client.
 type ClientState struct {
-	DCNet                         *dcnet.DCNetEntity
-	currentState                  int16
-	DataForDCNet                  chan []byte //Data to the relay : VPN / SOCKS should put data there !
-	NextDataForDCNet              *[]byte     //if not nil, send this before polling DataForDCNet
-	DataFromDCNet                 chan []byte //Data from the relay : VPN / SOCKS should read data from there !
-	DataOutputEnabled             bool        //if FALSE, nothing will be written to DataFromDCNet
-	ephemeralPrivateKey           kyber.Scalar
-	EphemeralPublicKey            kyber.Point
-	ID                            int
-	LatencyTest                   *prifilog.LatencyTests
-	MySlot                        int
-	Name                          string
-	nClients                      int
-	nTrustees                     int
-	PayloadSize                   int
-	privateKey                    kyber.Scalar
-	PublicKey                     kyber.Point
-	sharedSecrets                 []kyber.Point
-	TrusteePublicKey              []kyber.Point
-	UseSocksProxy                 bool
-	UseUDP                        bool
-	MessageHistory                kyber.XOF
-	StartStopReceiveBroadcast     chan bool
-	timeStatistics                map[string]*prifilog.TimeStatistics
-	pcapReplay                    *PCAPReplayer
-	DisruptionProtectionEnabled   bool
-	LastWantToSend                time.Time
-	EquivocationProtectionEnabled bool
+	DCNet                                *dcnet.DCNetEntity
+	currentState                         int16
+	DataForDCNet                         chan []byte //Data to the relay : VPN / SOCKS should put data there !
+	NextDataForDCNet                     *[]byte     //if not nil, send this before polling DataForDCNet
+	DataFromDCNet                        chan []byte //Data from the relay : VPN / SOCKS should read data from there !
+	DataOutputEnabled                    bool        //if FALSE, nothing will be written to DataFromDCNet
+	ephemeralPrivateKey                  kyber.Scalar
+	EphemeralPublicKey                   kyber.Point
+	ID                                   int
+	LatencyTest                          *prifilog.LatencyTests
+	MySlot                               int
+	Name                                 string
+	nClients                             int
+	nTrustees                            int
+	PayloadSize                          int
+	privateKey                           kyber.Scalar
+	PublicKey                            kyber.Point
+	sharedSecrets                        []kyber.Point
+	TrusteePublicKey                     []kyber.Point
+	UseSocksProxy                        bool
+	UseUDP                               bool
+	MessageHistory                       kyber.XOF
+	StartStopReceiveBroadcast            chan bool
+	timeStatistics                       map[string]*prifilog.TimeStatistics
+	pcapReplay                           *PCAPReplayer
+	DisruptionProtectionEnabled          bool
+	LastWantToSend                       time.Time
+	EquivocationProtectionEnabled        bool
+	SimulateNetworkFailureClient0AtRound int
+	HasAlreadySimulatedNetworkFailure    bool
 
 	//concurrent stuff
 	RoundNo           int32
@@ -106,6 +108,7 @@ func NewClient(doLatencyTest bool, dataOutputEnabled bool, dataForDCNet chan []b
 	clientState.timeStatistics["latency-msg-stayed-in-buffer"] = prifilog.NewTimeStatistics()
 	clientState.timeStatistics["measured-latency"] = prifilog.NewTimeStatistics()
 	clientState.timeStatistics["round-processing"] = prifilog.NewTimeStatistics()
+	clientState.SimulateNetworkFailureClient0AtRound = -1
 	clientState.DataForDCNet = dataForDCNet
 	clientState.NextDataForDCNet = nil
 	clientState.DataFromDCNet = dataFromDCNet
