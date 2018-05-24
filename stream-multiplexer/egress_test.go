@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"github.com/dedis/onet/log"
+	"gopkg.in/dedis/onet.v2/log"
 	"net"
 	"sync"
 	"testing"
