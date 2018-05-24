@@ -1,12 +1,12 @@
 package net
 
 import (
-	"gopkg.in/dedis/crypto.v0/abstract"
+	"gopkg.in/dedis/kyber.v2"
 )
 
 // ALL_ALL_PARAMETERS message contains all the parameters used by the protocol.
 type ALL_ALL_PARAMETERS struct {
-	TrusteesPks []abstract.Point // only filled when the relay sends this to the clients
+	TrusteesPks []kyber.Point // only filled when the relay sends this to the clients
 	ForceParams bool
 	ParamsInt   map[string]int
 	ParamsStr   map[string]string

@@ -21,7 +21,7 @@ func TestIngressSizes(t *testing.T) {
 	downstreamChan := make(chan []byte)
 	stopChan := make(chan bool)
 
-	go StartIngressServer(port, payloadLength, upstreamChan, downstreamChan, stopChan)
+	go StartIngressServer(port, payloadLength, upstreamChan, downstreamChan, stopChan, true)
 
 	time.Sleep(2 * time.Second)
 
@@ -77,7 +77,7 @@ func TestUpstreamIngressMultiplexer(t *testing.T) {
 	downstreamChan := make(chan []byte)
 	stopChan := make(chan bool, 1)
 
-	go StartIngressServer(port, payloadLength, upstreamChan, downstreamChan, stopChan)
+	go StartIngressServer(port, payloadLength, upstreamChan, downstreamChan, stopChan, true)
 
 	time.Sleep(2 * time.Second)
 
@@ -180,7 +180,7 @@ func TestDownstreamIngressMultiplexer(t *testing.T) {
 	downstreamChan := make(chan []byte)
 	stopChan := make(chan bool, 1)
 
-	go StartIngressServer(port, payloadLength, upstreamChan, downstreamChan, stopChan)
+	go StartIngressServer(port, payloadLength, upstreamChan, downstreamChan, stopChan, true)
 
 	time.Sleep(2 * time.Second)
 

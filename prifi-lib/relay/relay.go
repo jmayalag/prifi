@@ -46,8 +46,8 @@ import (
 	"github.com/lbarman/prifi/prifi-lib/net"
 	"github.com/lbarman/prifi/prifi-lib/utils"
 	"github.com/lbarman/prifi/utils"
-	"gopkg.in/dedis/crypto.v0/abstract"
-	"gopkg.in/dedis/onet.v1/log"
+	"gopkg.in/dedis/kyber.v2"
+	"gopkg.in/dedis/onet.v2/log"
 )
 
 /*
@@ -87,7 +87,7 @@ func (p *PriFiLibRelayInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARA
 	startNow := msg.BoolValueOrElse("StartNow", false)
 	nTrustees := msg.IntValueOrElse("NTrustees", p.relayState.nTrustees)
 	nClients := msg.IntValueOrElse("NClients", p.relayState.nClients)
-	upCellSize := msg.IntValueOrElse("UpstreamCellSize", p.relayState.UpstreamCellSize)
+	payloadSize := msg.IntValueOrElse("PayloadSize", p.relayState.PayloadSize)
 	downCellSize := msg.IntValueOrElse("DownstreamCellSize", p.relayState.DownstreamCellSize)
 	windowSize := msg.IntValueOrElse("WindowSize", p.relayState.WindowSize)
 	useDummyDown := msg.BoolValueOrElse("UseDummyDataDown", p.relayState.UseDummyDataDown)
@@ -104,6 +104,10 @@ func (p *PriFiLibRelayInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARA
 	trusteeCacheHighBound := msg.IntValueOrElse("RelayTrusteeCacheHighBound", p.relayState.TrusteeCacheHighBound)
 	equivocationProtectionEnabled := msg.BoolValueOrElse("EquivocationProtectionEnabled", p.relayState.EquivocationProtectionEnabled)
 
+	if payloadSize < 1 {
+		return errors.New("payloadSize cannot be 0")
+	}
+
 	p.relayState.clients = make([]NodeRepresentation, nClients)
 	p.relayState.trustees = make([]NodeRepresentation, nTrustees)
 	p.relayState.nClients = nClients
@@ -111,9 +115,9 @@ func (p *PriFiLibRelayInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARA
 	p.relayState.nTrusteesPkCollected = 0
 	p.relayState.nClientsPkCollected = 0
 	p.relayState.ExperimentRoundLimit = reportingLimit
-	p.relayState.UpstreamCellSize = upCellSize
+	p.relayState.PayloadSize = payloadSize
 	p.relayState.DownstreamCellSize = downCellSize
-	p.relayState.bitrateStatistics = prifilog.NewBitRateStatistics(upCellSize)
+	p.relayState.bitrateStatistics = prifilog.NewBitRateStatistics(payloadSize)
 	p.relayState.UseDummyDataDown = useDummyDown
 	p.relayState.UseOpenClosedSlots = useOpenClosedSlots
 	p.relayState.UseUDP = useUDP
@@ -126,7 +130,7 @@ func (p *PriFiLibRelayInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARA
 	p.relayState.TrusteeCacheLowBound = trusteeCacheLowBound
 	p.relayState.TrusteeCacheHighBound = trusteeCacheHighBound
 	p.relayState.EquivocationProtectionEnabled = equivocationProtectionEnabled
-	p.relayState.MessageHistory = config.CryptoSuite.Cipher([]byte("init")) //any non-nil, non-empty, constant array
+	p.relayState.MessageHistory = config.CryptoSuite.XOF([]byte("init")) //any non-nil, non-empty, constant array
 	p.relayState.VerifiableDCNetKeys = make([][]byte, nTrustees)
 	p.relayState.nVkeysCollected = 0
 	p.relayState.roundManager = NewBufferableRoundManager(nClients, nTrustees, windowSize)
@@ -139,14 +143,8 @@ func (p *PriFiLibRelayInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARA
 	p.relayState.OpenClosedSlotsRequestsRoundID = make(map[int32]bool)
 
 	switch dcNetType {
-	case "Simple":
-		p.relayState.DCNet = dcnet.NewSimpleDCNet(equivocationProtectionEnabled)
 	case "Verifiable":
-		p.relayState.DCNet = dcnet.NewVerifiableDCNet(equivocationProtectionEnabled)
-	default:
-		e := "DCNetType must be Simple or Verifiable"
-		log.Error(e)
-		return errors.New(e)
+		panic("Verifiable DCNet not implemented yet")
 	}
 
 	//this should be in NewRelayState, but we need p
@@ -190,7 +188,7 @@ func (p *PriFiLibRelayInstance) BroadcastParameters() error {
 	msg.Add("NTrustees", p.relayState.nTrustees)
 	msg.Add("UseUDP", p.relayState.UseUDP)
 	msg.Add("StartNow", true)
-	msg.Add("UpstreamCellSize", p.relayState.UpstreamCellSize)
+	msg.Add("PayloadSize", p.relayState.PayloadSize)
 	msg.Add("DCNetType", p.relayState.dcNetType)
 	msg.Add("DisruptionProtectionEnabled", p.relayState.DisruptionProtectionEnabled)
 	msg.Add("EquivocationProtectionEnabled", p.relayState.EquivocationProtectionEnabled)
@@ -317,10 +315,10 @@ func (p *PriFiLibRelayInstance) upstreamPhase2a_extractOCMap(roundID int32) erro
 		return err
 	}
 	for _, s := range clientSlices {
-		p.relayState.DCNet.DecodeClient(s)
+		p.relayState.DCNet.DecodeClient(roundID, s)
 	}
 	for _, s := range trusteesSlices {
-		p.relayState.DCNet.DecodeTrustee(s)
+		p.relayState.DCNet.DecodeTrustee(roundID, s)
 	}
 
 	//here we have the plaintext map
@@ -356,6 +354,7 @@ func (p *PriFiLibRelayInstance) upstreamPhase2a_extractOCMap(roundID int32) erro
 func (p *PriFiLibRelayInstance) upstreamPhase2b_extractPayload() error {
 
 	// we decode the DC-net cell
+	roundID := p.relayState.roundManager.CurrentRound()
 	clientSlices, trusteesSlices, err := p.relayState.roundManager.CollectRoundData()
 	if err != nil {
 		return err
@@ -363,10 +362,10 @@ func (p *PriFiLibRelayInstance) upstreamPhase2b_extractPayload() error {
 
 	//decode all clients and trustees
 	for _, s := range clientSlices {
-		p.relayState.DCNet.DecodeClient(s)
+		p.relayState.DCNet.DecodeClient(roundID, s)
 	}
 	for _, s := range trusteesSlices {
-		p.relayState.DCNet.DecodeTrustee(s)
+		p.relayState.DCNet.DecodeTrustee(roundID, s)
 	}
 	upstreamPlaintext := p.relayState.DCNet.DecodeCell()
 
@@ -384,7 +383,7 @@ func (p *PriFiLibRelayInstance) upstreamPhase2b_extractPayload() error {
 
 		if !valid {
 			// start blame
-			//log.Error("Warning: Disruption Protection check failed")
+			log.Error("Warning: Disruption Protection check failed")
 		}
 	}
 
@@ -442,12 +441,12 @@ func (p *PriFiLibRelayInstance) upstreamPhase2b_extractPayload() error {
 
 	if upstreamPlaintext != nil {
 		// verify that the decoded payload has the correct size
-		expectedSize := p.relayState.UpstreamCellSize
+		expectedSize := p.relayState.PayloadSize
 		if p.relayState.DisruptionProtectionEnabled {
 			expectedSize -= 32
 		}
 		if len(upstreamPlaintext) != expectedSize {
-			e := "Relay : DecodeCell produced wrong-size payload, " + strconv.Itoa(len(upstreamPlaintext)) + "!=" + strconv.Itoa(p.relayState.UpstreamCellSize)
+			e := "Relay : DecodeCell produced wrong-size payload, " + strconv.Itoa(len(upstreamPlaintext)) + "!=" + strconv.Itoa(p.relayState.PayloadSize)
 			log.Error(e)
 			return errors.New(e)
 		}
@@ -494,8 +493,10 @@ func (p *PriFiLibRelayInstance) upstreamPhase3_finalizeRound(roundID int32) erro
 
 	p.relayState.roundManager.CloseRound()
 
-	//prepare for the next round (this empties the dc-net buffer, making them ready for a new round)
-	p.relayState.DCNet.DecodeStart(p.relayState.UpstreamCellSize, p.relayState.MessageHistory)
+	// we just closed that round. If there is any other round opened (window > 1), directly prepare to decode it
+	if roundOpened, nextRoundID := p.relayState.roundManager.currentRound(); roundOpened {
+		p.relayState.DCNet.DecodeStart(nextRoundID)
+	}
 
 	return nil
 }
@@ -569,6 +570,11 @@ func (p *PriFiLibRelayInstance) downstreamPhase1_openRoundAndSendData() error {
 		FlagResync:            flagResync,
 		FlagOpenClosedRequest: flagOpenClosedRequest}
 
+	if roundOpened, _ := p.relayState.roundManager.currentRound(); !roundOpened {
+		//prepare for the next round (this empties the dc-net buffer, making them ready for a new round)
+		p.relayState.DCNet.DecodeStart(nextDownstreamRoundID)
+	}
+
 	p.relayState.roundManager.OpenNextRound()
 	p.relayState.roundManager.SetDataAlreadySent(nextDownstreamRoundID, toSend)
 
@@ -598,9 +604,7 @@ func (p *PriFiLibRelayInstance) downstreamPhase1_openRoundAndSendData() error {
 	//now relay enters a waiting state (collecting all ciphers from clients/trustees)
 	timing.StartMeasure("waiting-on-someone")
 
-	p.relayState.numberOfNonAckedDownstreamPacketsLock.Lock()
 	p.relayState.numberOfNonAckedDownstreamPackets++
-	p.relayState.numberOfNonAckedDownstreamPacketsLock.Unlock()
 
 	return nil
 }
@@ -620,7 +624,7 @@ func (p *PriFiLibRelayInstance) Received_TRU_REL_TELL_PK(msg net.TRU_REL_TELL_PK
 	if p.relayState.nTrusteesPkCollected == p.relayState.nTrustees {
 
 		// prepare the message for the clients
-		trusteesPk := make([]abstract.Point, p.relayState.nTrustees)
+		trusteesPk := make([]kyber.Point, p.relayState.nTrustees)
 		for i := 0; i < p.relayState.nTrustees; i++ {
 			trusteesPk[i] = p.relayState.trustees[i].PublicKey
 		}
@@ -631,9 +635,10 @@ func (p *PriFiLibRelayInstance) Received_TRU_REL_TELL_PK(msg net.TRU_REL_TELL_PK
 		toSend.Add("NTrustees", p.relayState.nTrustees)
 		toSend.Add("UseUDP", p.relayState.UseUDP)
 		toSend.Add("StartNow", true)
-		toSend.Add("UpstreamCellSize", p.relayState.UpstreamCellSize)
+		toSend.Add("PayloadSize", p.relayState.PayloadSize)
 		toSend.Add("DCNetType", p.relayState.dcNetType)
 		toSend.Add("DisruptionProtectionEnabled", p.relayState.DisruptionProtectionEnabled)
+		toSend.Add("EquivocationProtectionEnabled", p.relayState.EquivocationProtectionEnabled)
 		toSend.TrusteesPks = trusteesPk
 
 		// Send those parameters to all clients
@@ -682,7 +687,7 @@ func (p *PriFiLibRelayInstance) Received_CLI_REL_TELL_PK_AND_EPH_PK(msg net.CLI_
 		toSend := msg.(*net.REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE)
 
 		//todo: fix this. The neff shuffle now stores twices the ephemeral public keys
-		toSend.Pks = make([]abstract.Point, p.relayState.nClients)
+		toSend.Pks = make([]kyber.Point, p.relayState.nClients)
 		for i := 0; i < p.relayState.nClients; i++ {
 			toSend.Pks[i] = p.relayState.clients[i].PublicKey
 		}
@@ -727,7 +732,7 @@ func (p *PriFiLibRelayInstance) Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS(msg n
 		toSend := msg.(*net.REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_AND_BASE)
 
 		//todo: fix this. The neff shuffle now stores twices the ephemeral public keys
-		toSend.Pks = make([]abstract.Point, p.relayState.nClients)
+		toSend.Pks = make([]kyber.Point, p.relayState.nClients)
 		for i := 0; i < p.relayState.nClients; i++ {
 			toSend.Pks[i] = p.relayState.clients[i].PublicKey
 		}
@@ -756,10 +761,11 @@ func (p *PriFiLibRelayInstance) Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS(msg n
 			p.messageSender.SendToTrusteeWithLog(j, toSend, "(trustee "+strconv.Itoa(j+1)+")")
 		}
 
-		p.relayState.DCNet.RelaySetup(config.CryptoSuite, p.relayState.VerifiableDCNetKeys)
+		p.relayState.DCNet = dcnet.NewDCNetEntity(0, dcnet.DCNET_RELAY, p.relayState.PayloadSize,
+			p.relayState.EquivocationProtectionEnabled, nil)
 
 		// prepare to collect the ciphers
-		p.relayState.DCNet.DecodeStart(p.relayState.UpstreamCellSize, p.relayState.MessageHistory)
+		p.relayState.DCNet.DecodeStart(0)
 
 		p.stateMachine.ChangeState("COLLECTING_SHUFFLE_SIGNATURES")
 
@@ -786,7 +792,7 @@ func (p *PriFiLibRelayInstance) Received_TRU_REL_SHUFFLE_SIG(msg net.TRU_REL_SHU
 
 	// if we have all the signatures
 	if done {
-		trusteesPks := make([]abstract.Point, p.relayState.nTrustees)
+		trusteesPks := make([]kyber.Point, p.relayState.nTrustees)
 		i := 0
 		for _, v := range p.relayState.trustees {
 			trusteesPks[i] = v.PublicKey

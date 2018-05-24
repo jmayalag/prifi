@@ -15,7 +15,6 @@ package client
  *
  * local functions :
  *
- *
  * ProcessDownStreamData() <- is called by Received_REL_CLI_DOWNSTREAM_DATA; it handles the raw data received
  * SendUpstreamData() <- it is called at the end of ProcessDownStreamData(). Hence, after getting some data down, we send some data up.
  *
@@ -30,8 +29,8 @@ import (
 	"github.com/lbarman/prifi/prifi-lib/crypto"
 	prifilog "github.com/lbarman/prifi/prifi-lib/log"
 	"github.com/lbarman/prifi/prifi-lib/net"
-	"gopkg.in/dedis/crypto.v0/abstract"
-	"gopkg.in/dedis/onet.v1/log"
+	"gopkg.in/dedis/kyber.v2"
+	"gopkg.in/dedis/onet.v2/log"
 
 	"crypto/hmac"
 	"crypto/sha256"
@@ -62,7 +61,7 @@ func (p *PriFiLibClientInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PAR
 	p.messageSender.SetEntity(e)
 	nTrustees := msg.IntValueOrElse("NTrustees", p.clientState.nTrustees)
 	nClients := msg.IntValueOrElse("NClients", p.clientState.nClients)
-	upCellSize := msg.IntValueOrElse("UpstreamCellSize", p.clientState.PayloadLength) //todo: change this name
+	payloadSize := msg.IntValueOrElse("PayloadSize", p.clientState.PayloadSize)
 	useUDP := msg.BoolValueOrElse("UseUDP", p.clientState.UseUDP)
 	dcNetType := msg.StringValueOrElse("DCNetType", "not initialized")
 	disruptionProtection := msg.BoolValueOrElse("DisruptionProtectionEnabled", false)
@@ -78,17 +77,13 @@ func (p *PriFiLibClientInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PAR
 	if nClients < 1 {
 		return errors.New("nClients cannot be smaller than 1")
 	}
-	if upCellSize < 1 {
-		return errors.New("UpCellSize cannot be 0")
+	if payloadSize < 1 {
+		return errors.New("PayloadSize cannot be 0")
 	}
 
 	switch dcNetType {
-	case "Simple":
-		p.clientState.DCNet_RoundManager.DCNet = dcnet.NewSimpleDCNet(equivProtection)
 	case "Verifiable":
-		p.clientState.DCNet_RoundManager.DCNet = dcnet.NewVerifiableDCNet(equivProtection)
-	default:
-		log.Fatal("DCNetType must be Simple or Verifiable")
+		panic("verifiable not supported yet")
 	}
 
 	//set the received parameters
@@ -97,20 +92,20 @@ func (p *PriFiLibClientInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PAR
 	p.clientState.MySlot = -1
 	p.clientState.nClients = nClients
 	p.clientState.nTrustees = nTrustees
-	p.clientState.PayloadLength = upCellSize
+	p.clientState.PayloadSize = payloadSize
 	p.clientState.UseUDP = useUDP
-	p.clientState.TrusteePublicKey = make([]abstract.Point, nTrustees)
-	p.clientState.sharedSecrets = make([]abstract.Point, nTrustees)
+	p.clientState.TrusteePublicKey = make([]kyber.Point, nTrustees)
+	p.clientState.sharedSecrets = make([]kyber.Point, nTrustees)
 	p.clientState.RoundNo = int32(0)
 	p.clientState.BufferedRoundData = make(map[int32]net.REL_CLI_DOWNSTREAM_DATA)
-	p.clientState.MessageHistory = config.CryptoSuite.Cipher([]byte("init")) //any non-nil, non-empty, constant array
+	p.clientState.MessageHistory = config.CryptoSuite.XOF([]byte("init")) //any non-nil, non-empty, constant array
 	p.clientState.DisruptionProtectionEnabled = disruptionProtection
 	p.clientState.EquivocationProtectionEnabled = equivProtection
 
 	//we know our client number, if needed, parse the pcap for replay
 	if p.clientState.pcapReplay.Enabled {
 		p.clientState.pcapReplay.PCAPFile = p.clientState.pcapReplay.PCAPFolder + "client" + strconv.Itoa(clientID) + ".pcap"
-		packets, err := utils.ParsePCAP(p.clientState.pcapReplay.PCAPFile, p.clientState.PayloadLength)
+		packets, err := utils.ParsePCAP(p.clientState.pcapReplay.PCAPFile, p.clientState.PayloadSize)
 		if err != nil {
 			log.Lvl2("Client", clientID, "Requested PCAP Replay, but could not parse;", err)
 		}
@@ -258,7 +253,8 @@ func (p *PriFiLibClientInstance) ProcessDownStreamData(msg net.REL_CLI_DOWNSTREA
 		contribution := bmc.Client_GetOpenScheduleContribution()
 
 		//produce the next upstream cell
-		upstreamCell := p.clientState.DCNet_RoundManager.ClientEncodeForRound(p.clientState.RoundNo, contribution, p.clientState.PayloadLength, p.clientState.MessageHistory)
+
+		upstreamCell := p.clientState.DCNet.EncodeForRound(p.clientState.RoundNo, false, contribution)
 
 		//send the data to the relay
 		toSend := &net.CLI_REL_OPENCLOSED_DATA{
@@ -349,16 +345,20 @@ func (p *PriFiLibClientInstance) SendUpstreamData(ownerSlotID int) error {
 	var upstreamCellContent []byte
 
 	//how much data we can send
-	payloadLength := p.clientState.PayloadLength
+	actualPayloadSize := p.clientState.PayloadSize
 	if p.clientState.DisruptionProtectionEnabled {
-		payloadLength -= 32
-		if payloadLength <= 0 {
+		actualPayloadSize -= 32
+		if actualPayloadSize <= 0 {
 			log.Fatal("Client", p.clientState.ID, "Cannot have disruption protection with less than 32 bytes payload")
 		}
 	}
 
 	//if we can send data
+	slotOwner := false
 	if ownerSlotID == p.clientState.MySlot {
+		slotOwner = true
+	}
+	if slotOwner {
 
 		//this data has already been polled out of the DataForDCNet chan, so send it first
 		//this is non-nil when OpenClosedSlot is true, and that it had to poll data out
@@ -383,7 +383,7 @@ func (p *PriFiLibClientInstance) SendUpstreamData(ownerSlotID int) error {
 				//all packets >= currentPacket AND <= relativeNow should be sent
 				basePacketID := p.clientState.pcapReplay.currentPacket
 				lastPacketID := p.clientState.pcapReplay.currentPacket
-				for currentPacket.MsSinceBeginningOfCapture <= relativeNow && payloadRealLength+currentPacket.RealLength <= payloadLength {
+				for currentPacket.MsSinceBeginningOfCapture <= relativeNow && payloadRealLength+currentPacket.RealLength <= actualPayloadSize {
 
 					// add this packet
 					payload = append(payload, currentPacket.Header...)
@@ -409,7 +409,7 @@ func (p *PriFiLibClientInstance) SendUpstreamData(ownerSlotID int) error {
 
 				//or, if we have nothing to send, and we are doing Latency tests, embed a pre-crafted message that we will recognize later on
 				default:
-					upstreamCellContent = make([]byte, payloadLength)
+					upstreamCellContent = make([]byte, actualPayloadSize)
 
 					if len(p.clientState.LatencyTest.LatencyTestsToSend) > 0 {
 
@@ -419,7 +419,7 @@ func (p *PriFiLibClientInstance) SendUpstreamData(ownerSlotID int) error {
 						}
 
 						bytes, outMsgs := prifilog.LatencyMessagesToBytes(p.clientState.LatencyTest.LatencyTestsToSend,
-							p.clientState.ID, p.clientState.RoundNo, payloadLength, logFn)
+							p.clientState.ID, p.clientState.RoundNo, actualPayloadSize, logFn)
 
 						p.clientState.LatencyTest.LatencyTestsToSend = outMsgs
 						upstreamCellContent = bytes
@@ -434,12 +434,12 @@ func (p *PriFiLibClientInstance) SendUpstreamData(ownerSlotID int) error {
 	}
 
 	//produce the next upstream cell
+	var hmac []byte
 	if p.clientState.DisruptionProtectionEnabled {
-		hmac := p.computeHmac256(upstreamCellContent)
-		upstreamCellContent = append(hmac, upstreamCellContent...) // TODO ... might be slow !
+		hmac = p.computeHmac256(upstreamCellContent)
 	}
-
-	upstreamCell := p.clientState.DCNet_RoundManager.ClientEncodeForRound(p.clientState.RoundNo, upstreamCellContent, p.clientState.PayloadLength, p.clientState.MessageHistory)
+	payload := append(hmac, upstreamCellContent...)
+	upstreamCell := p.clientState.DCNet.EncodeForRound(p.clientState.RoundNo, slotOwner, payload)
 
 	//send the data to the relay
 	toSend := &net.CLI_REL_UPSTREAM_DATA{
@@ -467,7 +467,7 @@ Of course, there should be check on those public keys (each client need to trust
 and that clients have agreed on the set of trustees.
 Once we receive this message, we need to reply with our Public Key (Used to derive DC-net secrets), and our Ephemeral Public Key (used for the Shuffle protocol)
 */
-func (p *PriFiLibClientInstance) Received_REL_CLI_TELL_TRUSTEES_PK(trusteesPks []abstract.Point) error {
+func (p *PriFiLibClientInstance) Received_REL_CLI_TELL_TRUSTEES_PK(trusteesPks []kyber.Point) error {
 
 	//sanity check
 	if len(trusteesPks) < 1 {
@@ -476,24 +476,16 @@ func (p *PriFiLibClientInstance) Received_REL_CLI_TELL_TRUSTEES_PK(trusteesPks [
 		return errors.New(e)
 	}
 
-	p.clientState.TrusteePublicKey = make([]abstract.Point, p.clientState.nTrustees)
-	p.clientState.sharedSecrets = make([]abstract.Point, p.clientState.nTrustees)
+	p.clientState.TrusteePublicKey = make([]kyber.Point, p.clientState.nTrustees)
+	p.clientState.sharedSecrets = make([]kyber.Point, p.clientState.nTrustees)
 
 	for i := 0; i < len(trusteesPks); i++ {
 		p.clientState.TrusteePublicKey[i] = trusteesPks[i]
-		p.clientState.sharedSecrets[i] = config.CryptoSuite.Point().Mul(trusteesPks[i], p.clientState.privateKey)
+		p.clientState.sharedSecrets[i] = config.CryptoSuite.Point().Mul(p.clientState.privateKey, trusteesPks[i])
 	}
 
-	//set up the DC-nets
-	sharedPRNGs := make([]abstract.Cipher, p.clientState.nTrustees)
-	for i := 0; i < p.clientState.nTrustees; i++ {
-		bytes, err := p.clientState.sharedSecrets[i].MarshalBinary()
-		if err != nil {
-			return errors.New("Could not marshal point !")
-		}
-		sharedPRNGs[i] = config.CryptoSuite.Cipher(bytes)
-	}
-	p.clientState.DCNet_RoundManager.DCNet.ClientSetup(config.CryptoSuite, sharedPRNGs)
+	p.clientState.DCNet = dcnet.NewDCNetEntity(p.clientState.ID,
+		dcnet.DCNET_CLIENT, p.clientState.PayloadSize, p.clientState.EquivocationProtectionEnabled, p.clientState.sharedSecrets)
 
 	//then, generate our ephemeral keys (used for shuffling)
 	p.clientState.EphemeralPublicKey, p.clientState.ephemeralPrivateKey = crypto.NewKeyPair()
@@ -554,14 +546,22 @@ func (p *PriFiLibClientInstance) Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(
 	log.Lvl3("Client", p.clientState.ID, "ready to communicate.")
 
 	//produce a blank cell (we could embed data, but let's keep the code simple, one wasted message is not much)
-	data := make([]byte, p.clientState.PayloadLength)
+	data := make([]byte, p.clientState.PayloadSize)
+	slotOwner := false
 	if p.clientState.DisruptionProtectionEnabled {
-		blank := make([]byte, p.clientState.PayloadLength-32)
-		hmac := p.computeHmac256(blank)
-		copy(data[0:32], hmac[0:32])
+		if p.clientState.PayloadSize < 32 {
+			log.Fatal("Client", p.clientState.ID, "Cannot have disruption protection with less than 32 bytes payload")
+		}
+		data2 := make([]byte, p.clientState.PayloadSize-32)
+		hmac := p.computeHmac256(data2)
+
+		data = append(hmac, data2...)
+	}
+	if p.clientState.ID == 0 {
+		slotOwner = true // we need one guy that takes the responsability for this first slot
 	}
 
-	upstreamCell := p.clientState.DCNet_RoundManager.ClientEncodeForRound(0, data, p.clientState.PayloadLength, p.clientState.MessageHistory)
+	upstreamCell := p.clientState.DCNet.EncodeForRound(0, slotOwner, data)
 
 	//send the data to the relay
 	toSend := &net.CLI_REL_UPSTREAM_DATA{

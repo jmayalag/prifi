@@ -3,9 +3,9 @@ package scheduler
 import (
 	"errors"
 	"github.com/lbarman/prifi/prifi-lib/config"
-	"github.com/lbarman/prifi/prifi-lib/crypto"
 	"github.com/lbarman/prifi/prifi-lib/net"
-	"gopkg.in/dedis/crypto.v0/abstract"
+	"gopkg.in/dedis/kyber.v2"
+	"gopkg.in/dedis/kyber.v2/sign/schnorr"
 	"strconv"
 )
 
@@ -14,18 +14,18 @@ import (
  */
 type NeffShuffleRelay struct {
 	NTrustees   int
-	InitialBase abstract.Point
+	InitialBase kyber.Point
 
 	//this is the transcript, i.e. we keep everything
-	Bases              []abstract.Point
+	Bases              []kyber.Point
 	ShuffledPublicKeys []net.PublicKeyArray
 	Proofs             []net.ByteArray
 	Signatures         []net.ByteArray
 	SignatureCount     int
 
 	//this is the mutable state, i.e. it change with every shuffling from trustee
-	PublicKeyBeingShuffled  []abstract.Point
-	LastBase                abstract.Point
+	PublicKeyBeingShuffled  []kyber.Point
+	LastBase                kyber.Point
 	currentTrusteeShuffling int
 	CannotAddNewKeys        bool
 }
@@ -40,7 +40,7 @@ func (r *NeffShuffleRelay) Init(nTrustees int) error {
 	}
 
 	// prepare the empty transcript
-	r.Bases = make([]abstract.Point, nTrustees)
+	r.Bases = make([]kyber.Point, nTrustees)
 	r.ShuffledPublicKeys = make([]net.PublicKeyArray, nTrustees)
 	r.Proofs = make([]net.ByteArray, nTrustees)
 	r.Signatures = make([]net.ByteArray, nTrustees)
@@ -59,7 +59,7 @@ func (r *NeffShuffleRelay) Init(nTrustees int) error {
 /**
  * Adds a (ephemeral if possible) public key to the shuffle pool.
  */
-func (r *NeffShuffleRelay) AddClient(publicKey abstract.Point) error {
+func (r *NeffShuffleRelay) AddClient(publicKey kyber.Point) error {
 
 	if publicKey == nil {
 		return errors.New("Cannot shuffle a nil key, refusing to add public key.")
@@ -69,7 +69,7 @@ func (r *NeffShuffleRelay) AddClient(publicKey abstract.Point) error {
 	}
 
 	if r.PublicKeyBeingShuffled == nil {
-		r.PublicKeyBeingShuffled = make([]abstract.Point, 0)
+		r.PublicKeyBeingShuffled = make([]kyber.Point, 0)
 	}
 	r.PublicKeyBeingShuffled = append(r.PublicKeyBeingShuffled, publicKey)
 
@@ -101,7 +101,7 @@ func (r *NeffShuffleRelay) SendToNextTrustee() (interface{}, int, error) {
 /**
  * Simply holds the new shares and public keys, so we can use this in the next call to SendToNextTrustee()
  */
-func (r *NeffShuffleRelay) ReceivedShuffleFromTrustee(newBase abstract.Point, newPublicKeys []abstract.Point, proof []byte) (bool, error) {
+func (r *NeffShuffleRelay) ReceivedShuffleFromTrustee(newBase kyber.Point, newPublicKeys []kyber.Point, proof []byte) (bool, error) {
 
 	if newBase == nil {
 		return false, errors.New("Received a shuffle from the trustee, but newShares is nil")
@@ -173,7 +173,7 @@ func (r *NeffShuffleRelay) ReceivedSignatureFromTrustee(trusteeID int, signature
  * Packages the shares, the shuffledPublicKeys in a byte array, and test the signatures from the trustees.
  * Fails if any one signature is invalid
  */
-func multiSigVerify(trusteesPublicKeys []abstract.Point, lastBase abstract.Point, shuffledPublicKeys []abstract.Point, signatures [][]byte) (bool, error) {
+func multiSigVerify(trusteesPublicKeys []kyber.Point, lastBase kyber.Point, shuffledPublicKeys []kyber.Point, signatures [][]byte) (bool, error) {
 
 	nTrustees := len(trusteesPublicKeys)
 
@@ -212,7 +212,7 @@ func multiSigVerify(trusteesPublicKeys []abstract.Point, lastBase abstract.Point
 
 	//we test the signatures
 	for j := 0; j < nTrustees; j++ {
-		err := crypto.SchnorrVerify(config.CryptoSuite, M, trusteesPublicKeys[j], signatures[j])
+		err := schnorr.Verify(config.CryptoSuite, trusteesPublicKeys[j], M, signatures[j])
 
 		if err != nil {
 			return false, errors.New("Can't verify sig n°" + strconv.Itoa(j) + "; " + err.Error())
@@ -225,7 +225,7 @@ func multiSigVerify(trusteesPublicKeys []abstract.Point, lastBase abstract.Point
 /**
  * Verify all signatures, and sends to client the last shuffle (and the signatures)
  */
-func (r *NeffShuffleRelay) VerifySigsAndSendToClients(trusteesPublicKeys []abstract.Point) (interface{}, error) {
+func (r *NeffShuffleRelay) VerifySigsAndSendToClients(trusteesPublicKeys []kyber.Point) (interface{}, error) {
 
 	if trusteesPublicKeys == nil {
 		return nil, errors.New("shuffledPublicKeys is nil")

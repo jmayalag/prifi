@@ -3,7 +3,7 @@ package relay
 import (
 	"errors"
 	"github.com/lbarman/prifi/prifi-lib/net"
-	"gopkg.in/dedis/onet.v1/log"
+	"gopkg.in/dedis/onet.v2/log"
 	"runtime/debug"
 	"sort"
 	"strconv"

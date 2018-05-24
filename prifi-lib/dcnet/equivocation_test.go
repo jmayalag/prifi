@@ -4,86 +4,69 @@ import (
 	"bytes"
 	"github.com/lbarman/prifi/prifi-lib/config"
 	"github.com/lbarman/prifi/prifi-lib/crypto"
-	"gopkg.in/dedis/crypto.v0/abstract"
-	"gopkg.in/dedis/onet.v1/log"
+	"gopkg.in/dedis/kyber.v2"
+	"gopkg.in/dedis/onet.v2/log"
 	"testing"
 )
 
 func TestEquivocation(t *testing.T) {
 
 	rangeTest := []int{100, 1000, 10000}
+	repeat := 100
 
 	for _, dataLen := range rangeTest {
 		log.Lvl1("Testing for data length", dataLen)
-		equivocationTestForDataLength(t, dataLen)
+		for i := 0; i < repeat; i++ {
+			equivocationTestForDataLength(t, dataLen)
+		}
 	}
 }
 
-func equivocationTestForDataLength(t *testing.T, cellSize int) {
-
-	history := config.CryptoSuite.Cipher([]byte("init"))
+func equivocationTestForDataLength(t *testing.T, payloadSize int) {
 
 	// set up the Shared secrets
 	tpub, _ := crypto.NewKeyPair()
 	_, c1priv := crypto.NewKeyPair()
 	_, c2priv := crypto.NewKeyPair()
 
-	sharedSecret_c1 := config.CryptoSuite.Point().Mul(tpub, c1priv)
-	sharedSecret_c2 := config.CryptoSuite.Point().Mul(tpub, c2priv)
+	sharedSecret_c1 := make([]kyber.Point, 1)
+	sharedSecret_c1[0] = config.CryptoSuite.Point().Mul(c1priv, tpub)
+	sharedSecret_c2 := make([]kyber.Point, 1)
+	sharedSecret_c2[0] = config.CryptoSuite.Point().Mul(c2priv, tpub)
 
-	sharedPRNGs_t := make([]abstract.Cipher, 2)
-	sharedPRNGs_c1 := make([]abstract.Cipher, 1)
-	sharedPRNGs_c2 := make([]abstract.Cipher, 1)
+	sharedSecrets_t := make([]kyber.Point, 2)
+	sharedSecrets_t[0] = config.CryptoSuite.Point().Mul(c1priv, tpub)
+	sharedSecrets_t[1] = config.CryptoSuite.Point().Mul(c2priv, tpub)
 
-	ssBytes, err := sharedSecret_c1.MarshalBinary()
-	if err != nil {
-		t.Error("Could not marshal point !")
-	}
-	sharedPRNGs_c1[0] = config.CryptoSuite.Cipher(ssBytes)
-	sharedPRNGs_t[0] = config.CryptoSuite.Cipher(ssBytes)
-	ssBytes, err = sharedSecret_c2.MarshalBinary()
-	if err != nil {
-		t.Error("Could not marshal point !")
-	}
-	sharedPRNGs_c2[0] = config.CryptoSuite.Cipher(ssBytes)
-	sharedPRNGs_t[1] = config.CryptoSuite.Cipher(ssBytes)
+	// set up the DC-nets
+	dcnet_Trustee := NewDCNetEntity(0, DCNET_TRUSTEE, payloadSize, false, sharedSecrets_t)
+	dcnet_Client1 := NewDCNetEntity(0, DCNET_CLIENT, payloadSize, false, sharedSecret_c1)
+	dcnet_Client2 := NewDCNetEntity(1, DCNET_CLIENT, payloadSize, false, sharedSecret_c2)
 
-	// set up the CellCoders
-	cellCodert := NewSimpleDCNet(false)
-	cellCodert.TrusteeSetup(config.CryptoSuite, sharedPRNGs_t)
-
-	cellCoderc1 := NewSimpleDCNet(false)
-	cellCoderc1.ClientSetup(config.CryptoSuite, sharedPRNGs_c1)
-
-	cellCoderc2 := NewSimpleDCNet(false)
-	cellCoderc2.ClientSetup(config.CryptoSuite, sharedPRNGs_c2)
-
-	data := make([]byte, 0) // data is zero for both, none transmitting
+	data := randomBytes(payloadSize)
 
 	// get the pads
-	padRound1_c1 := cellCoderc1.ClientEncode(data, cellSize, history)
-	padRound1_c2 := cellCoderc2.ClientEncode(data, cellSize, history)
-	padRound2_t := cellCodert.TrusteeEncode(cellSize)
+	padRound2_t := DCNetCipherFromBytes(dcnet_Trustee.TrusteeEncodeForRound(0))
+	padRound1_c1 := DCNetCipherFromBytes(dcnet_Client1.EncodeForRound(0, true, data))
+	padRound1_c2 := DCNetCipherFromBytes(dcnet_Client2.EncodeForRound(0, false, nil))
 
-	res := make([]byte, cellSize)
-	for i := range padRound1_c2 {
-		v := padRound1_c1[i]
-		v ^= padRound1_c2[i] ^ padRound2_t[i]
+	res := make([]byte, payloadSize)
+	for i := range padRound1_c2.Payload {
+		v := padRound1_c1.Payload[i]
+		v ^= padRound1_c2.Payload[i] ^ padRound2_t.Payload[i]
 		res[i] = v
 	}
 
 	// assert that the pads works
-	for _, v := range res {
-		if v != 0 {
-			t.Fatal("Res is non zero, DC-nets did not cancel out! go test dcnet/")
+	for i, v := range res {
+		if v != data[i] {
+			t.Fatal("Res is not equal to data, DC-nets did not cancel out! go test dcnet/")
 		}
 	}
 
 	// prepare for equivocation
 
-	payload := make([]byte, cellSize)
-	payload[0] = 0
-	payload[1] = 1
+	payload := randomBytes(payloadSize)
 
 	e_client0 := NewEquivocation()
 	e_client1 := NewEquivocation()
@@ -103,16 +86,16 @@ func equivocationTestForDataLength(t *testing.T, cellSize int) {
 	// start the actual equivocation
 
 	pads1 := make([][]byte, 1)
-	pads1[0] = padRound1_c1
-	x_prim1, kappa1 := e_client0.ClientEncryptPayload(payload, pads1)
+	pads1[0] = padRound1_c1.Payload
+	x_prim1, kappa1 := e_client0.ClientEncryptPayload(true, payload, pads1)
 
 	pads2 := make([][]byte, 1)
-	pads2[0] = padRound1_c2
-	_, kappa2 := e_client1.ClientEncryptPayload(nil, pads2)
+	pads2[0] = padRound1_c2.Payload
+	_, kappa2 := e_client1.ClientEncryptPayload(false, nil, pads2)
 
 	pads3 := make([][]byte, 2)
-	pads3[0] = padRound1_c1
-	pads3[1] = padRound1_c2
+	pads3[0] = padRound1_c1.Payload
+	pads3[1] = padRound1_c2.Payload
 	sigma := e_trustee.TrusteeGetContribution(pads3)
 
 	// relay decodes
