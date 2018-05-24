@@ -42,10 +42,10 @@ test_go(){
 
 # tests if the cothority exists and is on the correct branch
 test_cothority() {
-    branchOk=$(cd "$GOPATH/src/gopkg.in/dedis/onet.v1"; git status | grep "On branch $cothorityBranchRequired" | wc -l)
+    branchOk=$(cd "$GOPATH/src/gopkg.in/dedis/onet.v2"; git status | grep "On branch $cothorityBranchRequired" | wc -l)
 
     if [ "$branchOk" -ne 1 ]; then
-        echo -e "$errorMsg Make sure \"$GOPATH/src/gopkg.in/dedis/onet.v1\" is a git repo, on branch \"$cothorityBranchRequired\". Try running \"./prifi.sh install\""
+        echo -e "$errorMsg Make sure \"$GOPATH/src/gopkg.in/dedis/onet.v2\" is a git repo, on branch \"$cothorityBranchRequired\". Try running \"./prifi.sh install\""
         exit 1
     fi
 }
