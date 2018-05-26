@@ -4,7 +4,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"github.com/Lukasa/gopcap"
-	"gopkg.in/dedis/onet.v1/log"
+	"gopkg.in/dedis/onet.v2/log"
 	"math/rand"
 	"os"
 	"time"
@@ -49,7 +49,7 @@ func ParsePCAP(path string, maxPayloadLength int) ([]Packet, error) {
 		t := uint64((pkt.Timestamp.Nanoseconds()-time0)/1000000) + random_offset
 		remainingLen := int(pkt.IncludedLen)
 
-		//maybe this packet is bigger than the payloadlength. Then, generate many packets
+		//maybe this packet is bigger than the payload size. Then, generate many packets
 		for remainingLen > maxPayloadLength {
 			p2 := Packet{
 				ID:     uint32(id),

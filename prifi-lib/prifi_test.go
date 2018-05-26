@@ -3,7 +3,7 @@ package prifi_lib
 import (
 	"errors"
 	"github.com/lbarman/prifi/prifi-lib/net"
-	"gopkg.in/dedis/onet.v1/log"
+	"gopkg.in/dedis/onet.v2/log"
 	"testing"
 )
 
@@ -56,7 +56,7 @@ func TestPrifi(t *testing.T) {
 	msg.Add("StartNow", true)
 	msg.Add("NTrustees", 2)
 	msg.Add("NClients", 2)
-	msg.Add("UpstreamCellSize", 1000)
+	msg.Add("PayloadSize", 1000)
 	msg.Add("DownstreamCellSize", 1000)
 	msg.Add("WindowSize", 1)
 	msg.Add("UseDummyDataDown", true)

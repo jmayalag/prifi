@@ -7,9 +7,10 @@ import (
 	"github.com/lbarman/prifi/prifi-lib/client"
 	"github.com/lbarman/prifi/prifi-lib/config"
 	"github.com/lbarman/prifi/prifi-lib/crypto"
+	"github.com/lbarman/prifi/prifi-lib/dcnet"
 	"github.com/lbarman/prifi/prifi-lib/net"
-	"gopkg.in/dedis/crypto.v0/random"
-	"gopkg.in/dedis/onet.v1/log"
+	"gopkg.in/dedis/kyber.v2/sign/schnorr"
+	"gopkg.in/dedis/onet.v2/log"
 	"strconv"
 	"sync"
 	"testing"
@@ -143,7 +144,7 @@ func TestRelayRun1(t *testing.T) {
 	msg.Add("StartNow", true)
 	msg.Add("NClients", nClients)
 	msg.Add("NTrustees", nTrustees)
-	msg.Add("UpstreamCellSize", upCellSize)
+	msg.Add("PayloadSize", upCellSize)
 	msg.Add("DownstreamCellSize", 10*upCellSize)
 	msg.Add("WindowSize", 1)
 	msg.Add("UseUDP", true)
@@ -181,11 +182,8 @@ func TestRelayRun1(t *testing.T) {
 	if rs.ExperimentRoundLimit != 2 {
 		t.Error("ExperimentRoundLimit was not set correctly")
 	}
-	if rs.DCNet == nil {
-		t.Error("CellCoder should have been created")
-	}
-	if rs.UpstreamCellSize != upCellSize {
-		t.Error("UpstreamCellSize was not set correctly")
+	if rs.PayloadSize != upCellSize {
+		t.Error("PayloadSize was not set correctly")
 	}
 	if rs.DownstreamCellSize != 10*upCellSize {
 		t.Error("DownstreamCellSize was not set correctly")
@@ -258,8 +256,8 @@ func TestRelayRun1(t *testing.T) {
 	if msg3.ParamsBool["StartNow"] != true {
 		t.Error("StartNow not set correctly")
 	}
-	if msg3.ParamsInt["UpstreamCellSize"] != upCellSize {
-		t.Error("UpstreamCellSize not set correctly")
+	if msg3.ParamsInt["PayloadSize"] != upCellSize {
+		t.Error("PayloadSize not set correctly")
 	}
 	if msg3.ParamsInt["NextFreeClientID"] != 0 {
 		t.Error("NextFreeTrusteeID not set correctly")
@@ -298,8 +296,8 @@ func TestRelayRun1(t *testing.T) {
 	if msg5.ParamsBool["StartNow"] != true {
 		t.Error("StartNow not set correctly")
 	}
-	if msg5.ParamsInt["UpstreamCellSize"] != upCellSize {
-		t.Error("UpstreamCellSize not set correctly")
+	if msg5.ParamsInt["PayloadSize"] != upCellSize {
+		t.Error("PayloadSize not set correctly")
 	}
 	if msg5.ParamsInt["NextFreeTrusteeID"] != 0 {
 		t.Error("NextFreeTrusteeID not set correctly")
@@ -388,7 +386,11 @@ func TestRelayRun1(t *testing.T) {
 		}
 		blob = append(blob, pkBytes...)
 	}
-	signature := crypto.SchnorrSign(config.CryptoSuite, random.Stream, blob, trusteePriv)
+	signature, err := schnorr.Sign(config.CryptoSuite, trusteePriv, blob)
+
+	if err != nil {
+		log.Fatal("Couldn't Schnorr sign")
+	}
 
 	msg15 := net.TRU_REL_SHUFFLE_SIG{
 		TrusteeID: 0,
@@ -407,11 +409,15 @@ func TestRelayRun1(t *testing.T) {
 	}
 	_ = msg16.(*net.REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG)
 
+	emptyData := dcnet.DCNetCipher{
+		Payload: make([]byte, upCellSize),
+	}
+
 	// should receive a CLI_REL_DATA_UPSTREAM
 	msg17 := net.CLI_REL_UPSTREAM_DATA{
 		ClientID: 0,
 		RoundID:  0,
-		Data:     make([]byte, upCellSize),
+		Data:     emptyData.ToBytes(),
 	}
 	if err := relay.ReceivedMessage(msg17); err != nil {
 		t.Error("Relay should be able to receive this message, but", err)
@@ -421,11 +427,10 @@ func TestRelayRun1(t *testing.T) {
 	if rs.roundManager.CurrentRound() != 0 {
 		t.Error("Should still be in round 0, no data from trustee")
 	}
-
 	msg18 := net.TRU_REL_DC_CIPHER{
 		TrusteeID: 0,
 		RoundID:   0,
-		Data:      make([]byte, upCellSize),
+		Data:      emptyData.ToBytes(),
 	}
 	if err := relay.ReceivedMessage(msg18); err != nil {
 		t.Error("Relay should be able to receive this message, but", err)
@@ -469,7 +474,7 @@ func TestRelayRun2(t *testing.T) {
 	msg.Add("StartNow", true)
 	msg.Add("NClients", nClients)
 	msg.Add("NTrustees", nTrustees)
-	msg.Add("UpstreamCellSize", upCellSize)
+	msg.Add("PayloadSize", upCellSize)
 	msg.Add("DownstreamCellSize", 10*upCellSize)
 	msg.Add("WindowSize", 1)
 	msg.Add("UseUDP", true)
@@ -569,7 +574,10 @@ func TestRelayRun2(t *testing.T) {
 		}
 		blob = append(blob, pkBytes...)
 	}
-	signature := crypto.SchnorrSign(config.CryptoSuite, random.Stream, blob, trusteePriv)
+	signature, err := schnorr.Sign(config.CryptoSuite, trusteePriv, blob)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	//should receive a TRU_REL_SHUFFLE_SIG
 	msg15 := net.TRU_REL_SHUFFLE_SIG{
@@ -588,10 +596,14 @@ func TestRelayRun2(t *testing.T) {
 	_ = msg16.(*net.REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG)
 
 	// should receive a TRU_REL_DC_CIPHER
+	emptyData := dcnet.DCNetCipher{
+		Payload: make([]byte, upCellSize),
+	}
+
 	msg17 := net.TRU_REL_DC_CIPHER{
 		TrusteeID: 0,
 		RoundID:   0,
-		Data:      make([]byte, upCellSize),
+		Data:      emptyData.ToBytes(),
 	}
 	if err := relay.ReceivedMessage(msg17); err != nil {
 		t.Error("Relay should be able to receive this message, but", err)
@@ -605,7 +617,7 @@ func TestRelayRun2(t *testing.T) {
 	msg18 := net.CLI_REL_UPSTREAM_DATA{
 		ClientID: 0,
 		RoundID:  0,
-		Data:     make([]byte, upCellSize),
+		Data:     emptyData.ToBytes(),
 	}
 	if err := relay.ReceivedMessage(msg18); err != nil {
 		t.Error("Relay should be able to receive this message, but", err)
@@ -615,7 +627,7 @@ func TestRelayRun2(t *testing.T) {
 	msg19 := net.TRU_REL_DC_CIPHER{
 		TrusteeID: 0,
 		RoundID:   1,
-		Data:      make([]byte, upCellSize),
+		Data:      emptyData.ToBytes(),
 	}
 	if err := relay.ReceivedMessage(msg19); err != nil {
 		t.Error("Relay should be able to receive this message, but", err)
@@ -625,7 +637,7 @@ func TestRelayRun2(t *testing.T) {
 	msg20 := net.CLI_REL_UPSTREAM_DATA{
 		ClientID: 0,
 		RoundID:  1,
-		Data:     make([]byte, upCellSize),
+		Data:     emptyData.ToBytes(),
 	}
 	if err := relay.ReceivedMessage(msg20); err != nil {
 		t.Error("Relay should be able to receive this message, but", err)
@@ -662,7 +674,7 @@ func TestRelayRun3(t *testing.T) {
 	msg.Add("StartNow", true)
 	msg.Add("NClients", nClients)
 	msg.Add("NTrustees", nTrustees)
-	msg.Add("UpstreamCellSize", upCellSize)
+	msg.Add("PayloadSize", upCellSize)
 	msg.Add("DownstreamCellSize", 10*upCellSize)
 	msg.Add("WindowSize", 1)
 	msg.Add("UseUDP", false)
@@ -791,7 +803,10 @@ func TestRelayRun3(t *testing.T) {
 		}
 		blob = append(blob, pkBytes...)
 	}
-	signature := crypto.SchnorrSign(config.CryptoSuite, random.Stream, blob, trusteePriv)
+	signature, err := schnorr.Sign(config.CryptoSuite, trusteePriv, blob)
+	if err != nil {
+		log.Fatal("Couldn't schnorr sign")
+	}
 
 	//should receive two TRU_REL_SHUFFLE_SIG
 	msg15 := net.TRU_REL_SHUFFLE_SIG{
@@ -814,11 +829,15 @@ func TestRelayRun3(t *testing.T) {
 	}
 	_ = msg16.(*net.REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG)
 
+	emptyMessage := dcnet.DCNetCipher{
+		Payload: make([]byte, upCellSize),
+	}
+
 	// should receive a TRU_REL_DC_CIPHER
 	msg17 := net.TRU_REL_DC_CIPHER{
 		TrusteeID: 0,
 		RoundID:   0,
-		Data:      make([]byte, upCellSize),
+		Data:      emptyMessage.ToBytes(),
 	}
 
 	if err := relay.ReceivedMessage(msg17); err != nil {
@@ -827,7 +846,7 @@ func TestRelayRun3(t *testing.T) {
 	msg17 = net.TRU_REL_DC_CIPHER{
 		TrusteeID: 1,
 		RoundID:   0,
-		Data:      make([]byte, upCellSize),
+		Data:      emptyMessage.ToBytes(),
 	}
 	if err := relay.ReceivedMessage(msg17); err != nil {
 		t.Error("Relay should be able to receive this message, but", err)
@@ -836,10 +855,15 @@ func TestRelayRun3(t *testing.T) {
 	currentTime := client.MsTimeStampNow()
 	latencyMessage := []byte{170, 170, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0}
 	binary.BigEndian.PutUint64(latencyMessage[4:12], uint64(currentTime))
+
+	latencyMessage2 := dcnet.DCNetCipher{
+		Payload: latencyMessage,
+	}
+
 	msg18 := net.CLI_REL_UPSTREAM_DATA{
 		ClientID: 0,
 		RoundID:  0,
-		Data:     latencyMessage,
+		Data:     latencyMessage2.ToBytes(),
 	}
 	//error here !
 	if err := relay.ReceivedMessage(msg18); err != nil {
@@ -871,6 +895,8 @@ func TestRelayRun3(t *testing.T) {
 
 func TestRelayRun4(t *testing.T) {
 
+	t.Skip() //Verifiable DC-net disabled for now
+
 	timeoutHandler := func(clients, trustees []int) { log.Error(clients, trustees) }
 	resultChan := make(chan interface{}, 1)
 
@@ -893,7 +919,7 @@ func TestRelayRun4(t *testing.T) {
 	msg.Add("StartNow", true)
 	msg.Add("NClients", nClients)
 	msg.Add("NTrustees", nTrustees)
-	msg.Add("UpstreamCellSize", upCellSize)
+	msg.Add("PayloadSize", upCellSize)
 	msg.Add("DownstreamCellSize", 10*upCellSize)
 	msg.Add("WindowSize", 1)
 	msg.Add("UseUDP", false)
@@ -967,7 +993,7 @@ func TestRelayRun4(t *testing.T) {
 	msg21.Add("StartNow", true)
 	msg21.Add("NClients", nClients)
 	msg21.Add("NTrustees", nTrustees)
-	msg21.Add("UpstreamCellSize", upCellSize)
+	msg21.Add("PayloadSize", upCellSize)
 	msg21.Add("DownstreamCellSize", 10*upCellSize)
 	msg21.Add("WindowSize", 1)
 	msg21.Add("UseUDP", false)

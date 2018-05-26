@@ -18,8 +18,8 @@ import (
 	"github.com/lbarman/prifi/prifi-lib/config"
 	"github.com/lbarman/prifi/prifi-lib/dcnet"
 	"github.com/lbarman/prifi/prifi-lib/net"
-	"gopkg.in/dedis/crypto.v0/abstract"
-	"gopkg.in/dedis/onet.v1/log"
+	"gopkg.in/dedis/kyber.v2"
+	"gopkg.in/dedis/onet.v2/log"
 	"strconv"
 	"time"
 )
@@ -52,7 +52,7 @@ func (p *PriFiLibTrusteeInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PA
 	p.messageSender.SetEntity(e)
 	nTrustees := msg.IntValueOrElse("NTrustees", p.trusteeState.nTrustees)
 	nClients := msg.IntValueOrElse("NClients", p.trusteeState.nClients)
-	cellSize := msg.IntValueOrElse("UpstreamCellSize", p.trusteeState.PayloadLength)
+	payloadSize := msg.IntValueOrElse("PayloadSize", p.trusteeState.PayloadSize)
 	dcNetType := msg.StringValueOrElse("DCNetType", "not initilaized")
 	equivProtection := msg.BoolValueOrElse("EquivocationProtectionEnabled", false)
 
@@ -66,31 +66,27 @@ func (p *PriFiLibTrusteeInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PA
 	if nClients < 1 {
 		return errors.New("nClients cannot be smaller than 1")
 	}
-	if cellSize < 1 {
-		return errors.New("UpCellSize cannot be 0")
+	if payloadSize < 1 {
+		return errors.New("payloadSize cannot be 0")
 	}
 
 	switch dcNetType {
-	case "Simple":
-		p.trusteeState.DCNet_RoundManager.DCNet = dcnet.NewSimpleDCNet(equivProtection)
 	case "Verifiable":
-		p.trusteeState.DCNet_RoundManager.DCNet = dcnet.NewVerifiableDCNet(equivProtection)
-	default:
-		log.Fatal("DCNetType must be Simple or Verifiable")
+		panic("not supported yet")
 	}
 
 	p.trusteeState.ID = trusteeID
 	p.trusteeState.Name = "Trustee-" + strconv.Itoa(trusteeID)
 	p.trusteeState.nClients = nClients
 	p.trusteeState.nTrustees = nTrustees
-	p.trusteeState.PayloadLength = cellSize
+	p.trusteeState.PayloadSize = payloadSize
 	p.trusteeState.TrusteeID = trusteeID
 	p.trusteeState.EquivocationProtectionEnabled = equivProtection
 	p.trusteeState.neffShuffle.Init(trusteeID, p.trusteeState.privateKey, p.trusteeState.PublicKey)
 
 	//placeholders for pubkeys and secrets
-	p.trusteeState.ClientPublicKeys = make([]abstract.Point, nClients)
-	p.trusteeState.sharedSecrets = make([]abstract.Point, nClients)
+	p.trusteeState.ClientPublicKeys = make([]kyber.Point, nClients)
+	p.trusteeState.sharedSecrets = make([]kyber.Point, nClients)
 
 	if startNow {
 		// send our public key to the relay
@@ -197,7 +193,7 @@ sendData is an auxiliary function used by Send_TRU_REL_DC_CIPHER. It computes th
 It returns the new round number (previous + 1).
 */
 func sendData(p *PriFiLibTrusteeInstance, roundID int32) (int32, error) {
-	data := p.trusteeState.DCNet_RoundManager.TrusteeEncode(p.trusteeState.PayloadLength)
+	data := p.trusteeState.DCNet.TrusteeEncodeForRound(roundID)
 
 	//send the data
 	toSend := &net.TRU_REL_DC_CIPHER{
@@ -245,25 +241,14 @@ func (p *PriFiLibTrusteeInstance) Received_REL_TRU_TELL_CLIENTS_PKS_AND_EPH_PKS_
 	//fill in the clients keys
 	for i := 0; i < len(clientsPks); i++ {
 		p.trusteeState.ClientPublicKeys[i] = clientsPks[i]
-		p.trusteeState.sharedSecrets[i] = config.CryptoSuite.Point().Mul(clientsPks[i], p.trusteeState.privateKey)
+		p.trusteeState.sharedSecrets[i] = config.CryptoSuite.Point().Mul(p.trusteeState.privateKey, clientsPks[i])
 	}
 
-	//set up the DC-nets
-	sharedPRNGs := make([]abstract.Cipher, p.trusteeState.nClients)
-	for i := 0; i < p.trusteeState.nClients; i++ {
-		bytes, err := p.trusteeState.sharedSecrets[i].MarshalBinary()
-		if err != nil {
-			return errors.New("Could not marshal point !")
-		}
-		sharedPRNGs[i] = config.CryptoSuite.Cipher(bytes)
-	}
+	p.trusteeState.DCNet = dcnet.NewDCNetEntity(p.trusteeState.ID, dcnet.DCNET_TRUSTEE,
+		p.trusteeState.PayloadSize, p.trusteeState.EquivocationProtectionEnabled, p.trusteeState.sharedSecrets)
 
-	p.trusteeState.DCNet_RoundManager.TrusteeSetup(p.trusteeState.sharedSecrets)
-	vkey := p.trusteeState.DCNet_RoundManager.DCNet.TrusteeSetup(config.CryptoSuite, sharedPRNGs)
 	//In case we use the simple dcnet, vkey isn't needed
-	if vkey == nil {
-		vkey = make([]byte, 1)
-	}
+	vkey := make([]byte, 1)
 
 	toSend, err := p.trusteeState.neffShuffle.ReceivedShuffleFromRelay(msg.Base, msg.EphPks, true, vkey)
 	if err != nil {
@@ -310,15 +295,17 @@ func (p *PriFiLibTrusteeInstance) Received_REL_TRU_TELL_TRANSCRIPT(msg net.REL_T
 Received_REL_ALL_REVEAL handles REL_ALL_REVEAL messages.
 We send back one bit per client, from the shared cipher, at bitPos
 */
+/*
 func (p *PriFiLibTrusteeInstance) Received_REL_ALL_REVEAL(msg net.REL_ALL_DISRUPTION_REVEAL) error {
 	p.stateMachine.ChangeState("BLAMING")
-	bits := p.trusteeState.DCNet_RoundManager.RevealBits(msg.RoundID, msg.BitPos, p.trusteeState.PayloadLength)
+	bits := p.trusteeState.DCNet.RevealBits(msg.RoundID, msg.BitPos, p.trusteeState.PayloadSize)
 	toSend := &net.TRU_REL_DISRUPTION_REVEAL{
 		TrusteeID: p.trusteeState.ID,
 		Bits:      bits}
 	p.messageSender.SendToRelayWithLog(toSend, "Revealed bits")
 	return nil
 }
+*/
 
 /*
 Received_REL_ALL_SECRET handles REL_ALL_SECRET messages.

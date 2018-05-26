@@ -27,9 +27,9 @@ import (
 
 	prifi_lib "github.com/lbarman/prifi/prifi-lib"
 	"github.com/lbarman/prifi/prifi-lib/net"
-	"gopkg.in/dedis/onet.v1"
-	"gopkg.in/dedis/onet.v1/log"
-	"gopkg.in/dedis/onet.v1/network"
+	"gopkg.in/dedis/onet.v2"
+	"gopkg.in/dedis/onet.v2/log"
+	"gopkg.in/dedis/onet.v2/network"
 )
 
 // ProtocolName is the name used to register the SDA wrapper protocol with SDA.
@@ -66,7 +66,7 @@ func (p *PriFiSDAProtocol) Start() error {
 	msg.Add("StartNow", true)
 	msg.Add("NTrustees", len(p.ms.trustees))
 	msg.Add("NClients", len(p.ms.clients))
-	msg.Add("UpstreamCellSize", p.config.Toml.CellSizeUp)
+	msg.Add("PayloadSize", p.config.Toml.PayloadSize)
 	msg.Add("DownstreamCellSize", p.config.Toml.CellSizeDown)
 	msg.Add("WindowSize", p.config.Toml.RelayWindowSize)
 	msg.Add("UseOpenClosedSlots", p.config.Toml.RelayUseOpenClosedSlots)

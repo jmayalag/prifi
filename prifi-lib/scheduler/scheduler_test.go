@@ -5,14 +5,14 @@ import (
 	"github.com/lbarman/prifi/prifi-lib/config"
 	"github.com/lbarman/prifi/prifi-lib/crypto"
 	"github.com/lbarman/prifi/prifi-lib/net"
-	"gopkg.in/dedis/crypto.v0/abstract"
+	"gopkg.in/dedis/kyber.v2"
 	"strconv"
 	"testing"
 )
 
 type PrivatePublicPair struct {
-	Private abstract.Scalar
-	Public  abstract.Point
+	Private kyber.Scalar
+	Public  kyber.Point
 }
 
 /*
@@ -106,7 +106,7 @@ func NeffShuffleTestHelper(t *testing.T, nClients int, nTrustees int, shuffleKey
 			B_i_minus_1 = n.RelayView.Bases[i-1]
 		}
 		c_i := trustees[i].TrusteeView.SecretCoeff
-		B_i := config.CryptoSuite.Point().Mul(B_i_minus_1, c_i)
+		B_i := config.CryptoSuite.Point().Mul(c_i, B_i_minus_1)
 
 		if !parsed2.NewBase.Equal(B_i) {
 			t.Error("B[" + strconv.Itoa(i+1) + "] is computed incorrectly")
@@ -125,7 +125,7 @@ func NeffShuffleTestHelper(t *testing.T, nClients int, nTrustees int, shuffleKey
 				}
 				B := config.CryptoSuite.Point().Base()
 				p1_c_s := config.CryptoSuite.Scalar().Mul(p1, c_s)
-				LHS := config.CryptoSuite.Point().Mul(B, p1_c_s)
+				LHS := config.CryptoSuite.Point().Mul(p1_c_s, B)
 
 				if !parsed2.NewEphPks[clientID].Equal(LHS) {
 					t.Error("P" + strconv.Itoa(clientID) + "'[" + strconv.Itoa(i+1) + "] is computed incorrectly")
@@ -137,14 +137,14 @@ func NeffShuffleTestHelper(t *testing.T, nClients int, nTrustees int, shuffleKey
 				// Trustee 1 compute B1 = B * c1
 				B := n.RelayView.InitialBase
 				c1 := trustees[0].TrusteeView.SecretCoeff
-				if !parsed2.NewBase.Equal(config.CryptoSuite.Point().Mul(B, c1)) {
+				if !parsed2.NewBase.Equal(config.CryptoSuite.Point().Mul(c1, B)) {
 					t.Error("B1 is computed incorrectly")
 				}
 
 				// Trustee 1 compute P1' = P1 * c1 = p1 * c1 * B
 				for clientID := 0; clientID < nClients; clientID++ {
 					p1prime := config.CryptoSuite.Scalar().Mul(clients[clientID].Private, c1)
-					if !parsed2.NewEphPks[clientID].Equal(config.CryptoSuite.Point().Mul(B, p1prime)) {
+					if !parsed2.NewEphPks[clientID].Equal(config.CryptoSuite.Point().Mul(p1prime, B)) {
 						t.Error("P" + strconv.Itoa(clientID) + "' is computed incorrectly")
 					}
 				}
@@ -158,14 +158,14 @@ func NeffShuffleTestHelper(t *testing.T, nClients int, nTrustees int, shuffleKey
 				c1 := trustees[0].TrusteeView.SecretCoeff
 				c2 := trustees[1].TrusteeView.SecretCoeff
 				c1c2 := config.CryptoSuite.Scalar().Mul(c1, c2)
-				if !parsed2.NewBase.Equal(config.CryptoSuite.Point().Mul(B, c1c2)) {
+				if !parsed2.NewBase.Equal(config.CryptoSuite.Point().Mul(c1c2, B)) {
 					t.Error("B2 is computed incorrectly (2)")
 				}
 
 				//* Trustee 2 compute P1'' = P1' * c2 = p1 * c1 * c2 * B
 				for clientID := 0; clientID < nClients; clientID++ {
 					p1prime2 := config.CryptoSuite.Scalar().Mul(clients[clientID].Private, c1c2)
-					if !parsed2.NewEphPks[clientID].Equal(config.CryptoSuite.Point().Mul(B, p1prime2)) {
+					if !parsed2.NewEphPks[clientID].Equal(config.CryptoSuite.Point().Mul(p1prime2, B)) {
 						t.Error("P" + strconv.Itoa(clientID) + "'' is computed incorrectly")
 					}
 				}
@@ -208,7 +208,7 @@ func NeffShuffleTestHelper(t *testing.T, nClients int, nTrustees int, shuffleKey
 		}
 	}
 
-	trusteesPks := make([]abstract.Point, nTrustees)
+	trusteesPks := make([]kyber.Point, nTrustees)
 	for j := 0; j < nTrustees; j++ {
 		trusteesPks[j] = trustees[j].TrusteeView.PublicKey
 	}
@@ -258,7 +258,7 @@ func TestWholeNeffShuffleClientErrors(t *testing.T) {
 
 	//init the trustees
 	nTrustees := 2
-	trusteesPks := make([]abstract.Point, nTrustees)
+	trusteesPks := make([]kyber.Point, nTrustees)
 	for i := 0; i < nTrustees; i++ {
 		pub, _ := crypto.NewKeyPair()
 		trusteesPks[i] = pub
@@ -266,7 +266,7 @@ func TestWholeNeffShuffleClientErrors(t *testing.T) {
 
 	//init the ephemeral keys
 	nClients := 4
-	ephPks := make([]abstract.Point, nClients)
+	ephPks := make([]kyber.Point, nClients)
 	for i := 0; i < nTrustees; i++ {
 		pub, _ := crypto.NewKeyPair()
 		ephPks[i] = pub
@@ -300,7 +300,7 @@ func TestWholeNeffShuffleClientErrors(t *testing.T) {
 	if err == nil {
 		t.Error("ClientVerifySigAndRecognizeSlot should fail without signatures from trustees")
 	}
-	_, err = n.ClientVerifySigAndRecognizeSlot(priv, trusteesPks, base, make([]abstract.Point, 0), trusteesSigs)
+	_, err = n.ClientVerifySigAndRecognizeSlot(priv, trusteesPks, base, make([]kyber.Point, 0), trusteesSigs)
 	if err == nil {
 		t.Error("ClientVerifySigAndRecognizeSlot should fail with 0 ephemeral keys")
 	}
@@ -328,7 +328,7 @@ func TestWholeNeffShuffleRelayErrors(t *testing.T) {
 	if err == nil {
 		t.Error("Should not be able to start without any keys")
 	}
-	n.RelayView.PublicKeyBeingShuffled = make([]abstract.Point, 0)
+	n.RelayView.PublicKeyBeingShuffled = make([]kyber.Point, 0)
 	_, _, err = n.RelayView.SendToNextTrustee()
 	if err == nil {
 		t.Error("Should not be able to start without any keys")
@@ -350,7 +350,7 @@ func TestWholeNeffShuffleRelayErrors(t *testing.T) {
 	base := config.CryptoSuite.Point().Base()
 	//init the ephemeral keys
 	nClients := 4
-	ephPks := make([]abstract.Point, nClients)
+	ephPks := make([]kyber.Point, nClients)
 	for i := 0; i < nClients; i++ {
 		pub, _ := crypto.NewKeyPair()
 		ephPks[i] = pub
@@ -369,20 +369,20 @@ func TestWholeNeffShuffleRelayErrors(t *testing.T) {
 	if err == nil {
 		t.Error("shouldn't accept a shuffle from a trustee if proof is nil")
 	}
-	_, err = n.RelayView.ReceivedShuffleFromTrustee(base, make([]abstract.Point, 0), proof)
+	_, err = n.RelayView.ReceivedShuffleFromTrustee(base, make([]kyber.Point, 0), proof)
 	if err == nil {
 		t.Error("shouldn't accept a shuffle from a trustee if it contains 0 public keys")
 	}
 
 	// cannot send transcript when inner state is invalid
-	n.RelayView.Bases = make([]abstract.Point, 1)
+	n.RelayView.Bases = make([]kyber.Point, 1)
 	n.RelayView.ShuffledPublicKeys = make([]net.PublicKeyArray, 0)
 	n.RelayView.Proofs = make([]net.ByteArray, 2)
 	_, err = n.RelayView.SendTranscript()
 	if err == nil {
 		t.Error("Relay shouldn't try to send obviously wrong transcript")
 	}
-	n.RelayView.Bases = make([]abstract.Point, 0)
+	n.RelayView.Bases = make([]kyber.Point, 0)
 	n.RelayView.ShuffledPublicKeys = make([]net.PublicKeyArray, 0)
 	n.RelayView.Proofs = make([]net.ByteArray, 0)
 	_, err = n.RelayView.SendTranscript()
@@ -407,7 +407,7 @@ func TestWholeNeffShuffleRelayErrors(t *testing.T) {
 	}
 	n.RelayView.ShuffledPublicKeys = make([]net.PublicKeyArray, 1)
 	n.RelayView.Signatures = make([]net.ByteArray, 2)
-	_, err = n.RelayView.VerifySigsAndSendToClients(make([]abstract.Point, 3))
+	_, err = n.RelayView.VerifySigsAndSendToClients(make([]kyber.Point, 3))
 	if err == nil {
 		t.Error("Relay shouldn't accept to verify when sizes are mismatching")
 	}
@@ -436,7 +436,7 @@ func TestWholeNeffShuffleTrusteeErrors(t *testing.T) {
 	//sanity check on receivedshuffle
 	base := config.CryptoSuite.Point().Base()
 	nClients := 4
-	ephPks := make([]abstract.Point, nClients)
+	ephPks := make([]kyber.Point, nClients)
 	for i := 0; i < nClients; i++ {
 		pub, _ := crypto.NewKeyPair()
 		ephPks[i] = pub
@@ -449,14 +449,14 @@ func TestWholeNeffShuffleTrusteeErrors(t *testing.T) {
 	if err == nil {
 		t.Error("Shouldn't accept a shuffle from the relay when ephPks is nil")
 	}
-	_, err = n.TrusteeView.ReceivedShuffleFromRelay(base, make([]abstract.Point, 0), true, make([]byte, 1))
+	_, err = n.TrusteeView.ReceivedShuffleFromRelay(base, make([]kyber.Point, 0), true, make([]byte, 1))
 	if err == nil {
 		t.Error("Shouldn't accept a shuffle from the relay with no keys to shuffle")
 	}
 
 	//sanity check on ReceivedTranscriptFromRelay
-	bases := make([]abstract.Point, 2)
-	shuffledPublicKeys := make([][]abstract.Point, 3)
+	bases := make([]kyber.Point, 2)
+	shuffledPublicKeys := make([][]kyber.Point, 3)
 	proofs := make([][]byte, 4)
 	_, err = n.TrusteeView.ReceivedTranscriptFromRelay(nil, shuffledPublicKeys, proofs)
 	if err == nil {
@@ -476,7 +476,7 @@ func TestWholeNeffShuffleTrusteeErrors(t *testing.T) {
 	}
 
 	//more in-depth checks
-	bases = make([]abstract.Point, 1)
+	bases = make([]kyber.Point, 1)
 	bases[0] = config.CryptoSuite.Point().Base()
 	n.TrusteeView.NewBase = bases[0] //base match
 
@@ -487,9 +487,9 @@ func TestWholeNeffShuffleTrusteeErrors(t *testing.T) {
 	n.TrusteeView.EphemeralKeys = ephPks
 
 	newPub, _ := crypto.NewKeyPair()
-	ephPks_s := make([][]abstract.Point, 1)
+	ephPks_s := make([][]kyber.Point, 1)
 	for i := 0; i < len(ephPks_s); i++ {
-		ephPks_s[i] = make([]abstract.Point, len(ephPks))
+		ephPks_s[i] = make([]kyber.Point, len(ephPks))
 	}
 	for i := 0; i < len(ephPks); i++ {
 		ephPks_s[0][i] = ephPks[i]

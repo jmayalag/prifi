@@ -2,54 +2,12 @@ package crypto
 
 import (
 	"github.com/lbarman/prifi/prifi-lib/config"
-	"gopkg.in/dedis/crypto.v0/abstract"
+	"gopkg.in/dedis/kyber.v2"
 	"testing"
 
 	"fmt"
-	"gopkg.in/dedis/crypto.v0/random"
 	"strconv"
 )
-
-func TestSchnorr(t *testing.T) {
-
-	pub, priv := NewKeyPair()
-	pub2, priv2 := NewKeyPair()
-
-	//with empty data
-	data := make([]byte, 0)
-	sig := SchnorrSign(config.CryptoSuite, random.Stream, data, priv)
-	err := SchnorrVerify(config.CryptoSuite, data, pub, sig)
-
-	if err != nil {
-		t.Error("Should validate with nil message, err is " + err.Error())
-	}
-
-	//with empty data
-	data = random.Bits(100, false, random.Stream)
-	sig = SchnorrSign(config.CryptoSuite, random.Stream, data, priv)
-	err = SchnorrVerify(config.CryptoSuite, data, pub, sig)
-
-	if err != nil {
-		t.Error("Should validate with random message, err is " + err.Error())
-	}
-
-	//should trivially not validate with other keys
-	data = random.Bits(100, false, random.Stream)
-	sig = SchnorrSign(config.CryptoSuite, random.Stream, data, priv2)
-	err = SchnorrVerify(config.CryptoSuite, data, pub, sig)
-
-	if err == nil {
-		t.Error("Should not validate with wrong keys")
-	}
-	data = random.Bits(100, false, random.Stream)
-	sig = SchnorrSign(config.CryptoSuite, random.Stream, data, priv)
-	err = SchnorrVerify(config.CryptoSuite, data, pub2, sig)
-
-	if err == nil {
-		t.Error("Should not validate with wrong keys")
-	}
-
-}
 
 func TestNeffErrors(t *testing.T) {
 
@@ -57,8 +15,8 @@ func TestNeffErrors(t *testing.T) {
 	base := config.CryptoSuite.Point().Base()
 
 	//build the client's public key array
-	clientPks := make([]abstract.Point, nClients)
-	clientPrivKeys := make([]abstract.Scalar, nClients)
+	clientPks := make([]kyber.Point, nClients)
+	clientPrivKeys := make([]kyber.Scalar, nClients)
 	for i := 0; i < nClients; i++ {
 		pub, priv := NewKeyPair()
 		clientPks[i] = pub
@@ -66,34 +24,19 @@ func TestNeffErrors(t *testing.T) {
 	}
 
 	//each of those call should fail
-	_, _, _, _, err := NeffShuffle(nil, base, config.CryptoSuite, true)
+	_, _, _, _, err := NeffShuffle(nil, base, true)
 	if err == nil {
 		t.Error("NeffShuffle without a public key array should fail")
 	}
-	_, _, _, _, err = NeffShuffle(clientPks, nil, config.CryptoSuite, true)
+	_, _, _, _, err = NeffShuffle(clientPks, nil, true)
 	if err == nil {
 		t.Error("NeffShuffle without a base should fail")
 	}
-	_, _, _, _, err = NeffShuffle(clientPks, base, nil, true)
-	if err == nil {
-		t.Error("NeffShuffle without a suite should fail")
-	}
-	_, _, _, _, err = NeffShuffle(make([]abstract.Point, 0), base, config.CryptoSuite, true)
+	_, _, _, _, err = NeffShuffle(make([]kyber.Point, 0), base, true)
 	if err == nil {
 		t.Error("NeffShuffle with 0 public keys should fail")
 	}
 
-}
-
-func TestSchnorrHash(t *testing.T) {
-
-	pub, _ := NewKeyPair()
-	data := random.Bits(100, false, random.Stream)
-	secret := hashSchnorr(config.CryptoSuite, data, pub)
-
-	if secret == nil {
-		t.Error("Secret should not be nil")
-	}
 }
 
 func TestNeffShuffle(t *testing.T) {
@@ -108,8 +51,8 @@ func TestNeffShuffle(t *testing.T) {
 		fmt.Println("Testing shuffle for ", nClients, " clients.")
 
 		//build the client's public key array
-		clientPks := make([]abstract.Point, nClients)
-		clientPrivKeys := make([]abstract.Scalar, nClients)
+		clientPks := make([]kyber.Point, nClients)
+		clientPrivKeys := make([]kyber.Scalar, nClients)
 		for i := 0; i < nClients; i++ {
 			pub, priv := NewKeyPair()
 			clientPks[i] = pub
@@ -117,7 +60,7 @@ func TestNeffShuffle(t *testing.T) {
 		}
 
 		//shuffle
-		shuffledKeys, newBase, secretCoeff, proof, err := NeffShuffle(clientPks, base, config.CryptoSuite, true)
+		shuffledKeys, newBase, secretCoeff, proof, err := NeffShuffle(clientPks, base, true)
 
 		if err != nil {
 			t.Error(err)
@@ -136,9 +79,9 @@ func TestNeffShuffle(t *testing.T) {
 		}
 
 		//now test that the shuffled keys are indeed the old keys in the new base
-		transformedKeys := make([]abstract.Point, nClients)
+		transformedKeys := make([]kyber.Point, nClients)
 		for i := 0; i < nClients; i++ {
-			transformedKeys[i] = config.CryptoSuite.Point().Mul(newBase, clientPrivKeys[i])
+			transformedKeys[i] = config.CryptoSuite.Point().Mul(clientPrivKeys[i], newBase)
 		}
 
 		//for every key, check that it exists in the remaining array
@@ -162,7 +105,7 @@ func TestNeffShuffle(t *testing.T) {
 		}
 		fmt.Print("Testing distribution for ", nClients, " clients.")
 		for i := 0; i < repetition; i++ {
-			shuffledKeys, newBase, secretCoeff, proof, err = NeffShuffle(clientPks, base, config.CryptoSuite, true)
+			shuffledKeys, newBase, secretCoeff, proof, err = NeffShuffle(clientPks, base, true)
 
 			if err != nil {
 				t.Error("Shouldn't have an error here," + err.Error())
@@ -173,9 +116,9 @@ func TestNeffShuffle(t *testing.T) {
 			_ = secretCoeff
 
 			mapping := make([]int, nClients)
-			transformedKeys := make([]abstract.Point, nClients)
+			transformedKeys := make([]kyber.Point, nClients)
 			for i := 0; i < nClients; i++ {
-				transformedKeys[i] = config.CryptoSuite.Point().Mul(newBase, clientPrivKeys[i])
+				transformedKeys[i] = config.CryptoSuite.Point().Mul(clientPrivKeys[i], newBase)
 			}
 			for k, v := range transformedKeys {
 				for i := 0; i < nClients; i++ {

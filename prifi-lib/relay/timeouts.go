@@ -1,7 +1,7 @@
 package relay
 
 import (
-	"gopkg.in/dedis/onet.v1/log"
+	"gopkg.in/dedis/onet.v2/log"
 	"time"
 )
 
@@ -15,9 +15,9 @@ func (p *PriFiLibRelayInstance) checkIfRoundHasEndedAfterTimeOut_Phase1(roundID 
 
 	time.Sleep(time.Duration(p.relayState.RoundTimeOut) * time.Millisecond)
 
-	// never start treating two timeout concurrently
-	p.relayState.timeoutMutex.Lock()
-	defer p.relayState.timeoutMutex.Unlock()
+	// never start treating two timeout concurrently (or receiving a message)
+	p.relayState.processingLock.Lock()
+	defer p.relayState.processingLock.Unlock()
 
 	if !p.relayState.roundManager.IsRoundOpenend(roundID) {
 		return //everything went dwell, it's great !
@@ -51,11 +51,13 @@ func (p *PriFiLibRelayInstance) checkIfRoundHasEndedAfterTimeOut_Phase1(roundID 
 		p.relayState.roundManager.ForceCloseRound()
 		p.relayState.roundManager.Dump()
 
-		p.relayState.numberOfNonAckedDownstreamPacketsLock.Lock()
 		p.relayState.numberOfNonAckedDownstreamPackets-- // packet is not "in-flight" because it is lost
-		p.relayState.numberOfNonAckedDownstreamPacketsLock.Unlock()
 
-		p.relayState.DCNet.DecodeStart(p.relayState.UpstreamCellSize, p.relayState.MessageHistory)
+		// if we still have open rounds (after closing this one), we need to tell the DC-net to move to this new round
+		if roundOpened, roundID := p.relayState.roundManager.currentRound(); roundOpened {
+			//prepare for the next round (this empties the dc-net buffer, making them ready for a new round)
+			p.relayState.DCNet.DecodeStart(roundID)
+		}
 
 		// if we can, open new rounds
 		p.downstreamPhase_sendMany()

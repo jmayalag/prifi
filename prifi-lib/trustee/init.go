@@ -3,11 +3,12 @@ package trustee
 import (
 	"errors"
 	"github.com/lbarman/prifi/prifi-lib/crypto"
+	"github.com/lbarman/prifi/prifi-lib/dcnet"
 	"github.com/lbarman/prifi/prifi-lib/net"
 	"github.com/lbarman/prifi/prifi-lib/scheduler"
 	"github.com/lbarman/prifi/prifi-lib/utils"
-	"gopkg.in/dedis/crypto.v0/abstract"
-	"gopkg.in/dedis/onet.v1/log"
+	"gopkg.in/dedis/kyber.v2"
+	"gopkg.in/dedis/onet.v2/log"
 	"reflect"
 	"strings"
 )
@@ -33,7 +34,6 @@ func NewTrustee(neverSlowDown bool, alwaysSlowDown bool, baseSleepTime int, msgS
 
 	//init the static stuff
 	trusteeState.sendingRate = make(chan int16, 10)
-	trusteeState.DCNet_RoundManager = new(DCNet_RoundManager)
 	trusteeState.PublicKey, trusteeState.privateKey = crypto.NewKeyPair()
 	neffShuffle := new(scheduler.NeffShuffle)
 	neffShuffle.Init()
@@ -72,19 +72,19 @@ func NewTrustee(neverSlowDown bool, alwaysSlowDown bool, baseSleepTime int, msgS
 
 // TrusteeState contains the mutable state of the trustee.
 type TrusteeState struct {
-	DCNet_RoundManager            *DCNet_RoundManager
-	ClientPublicKeys              []abstract.Point
+	DCNet                         *dcnet.DCNetEntity
+	ClientPublicKeys              []kyber.Point
 	ID                            int
-	MessageHistory                abstract.Cipher
+	MessageHistory                kyber.XOF
 	Name                          string
 	nClients                      int
 	neffShuffle                   *scheduler.NeffShuffleTrustee
 	nTrustees                     int
-	PayloadLength                 int
-	privateKey                    abstract.Scalar
-	PublicKey                     abstract.Point
+	PayloadSize                   int
+	privateKey                    kyber.Scalar
+	PublicKey                     kyber.Point
 	sendingRate                   chan int16
-	sharedSecrets                 []abstract.Point
+	sharedSecrets                 []kyber.Point
 	TrusteeID                     int
 	BaseSleepTime                 int
 	AlwaysSlowDown                bool //enforce the sleep in the sending function even if rate is FULL
@@ -95,8 +95,8 @@ type TrusteeState struct {
 // NeffShuffleResult holds the result of the NeffShuffle,
 // since it needs to be verified when we receive REL_TRU_TELL_TRANSCRIPT.
 type NeffShuffleResult struct {
-	base  abstract.Point
-	pks   []abstract.Point
+	base  kyber.Point
+	pks   []kyber.Point
 	proof []byte
 }
 

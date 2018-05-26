@@ -8,7 +8,8 @@ import (
 	"bytes"
 	"crypto/rand"
 	"encoding/binary"
-	"gopkg.in/dedis/onet.v1/log"
+	"encoding/hex"
+	"gopkg.in/dedis/onet.v2/log"
 	"io"
 	"sync"
 	"time"
@@ -34,24 +35,29 @@ type IngressServer struct {
 	activeConnectionsLock sync.Locker
 	activeConnections     []*MultiplexedConnection
 	socketListener        *net.TCPListener
-	maxMessageLength      int
-	maxPayloadLength      int
+	maxMessageSize        int
+	maxPayloadSize        int
 	upstreamChan          chan []byte
 	downstreamChan        chan []byte
 	stopChan              chan bool
+	verbose               bool
 }
 
 // StartIngressServer creates (and block) an Ingress Server
-func StartIngressServer(port int, maxMessageLength int, upstreamChan chan []byte, downstreamChan chan []byte, stopChan chan bool) {
+func StartIngressServer(port int, maxMessageSize int, upstreamChan chan []byte, downstreamChan chan []byte, stopChan chan bool, verbose bool) {
 
 	ig := new(IngressServer)
-	ig.maxMessageLength = maxMessageLength
+	ig.maxMessageSize = maxMessageSize
 	ig.upstreamChan = upstreamChan
 	ig.downstreamChan = downstreamChan
 	ig.stopChan = stopChan
-	ig.maxPayloadLength = maxMessageLength - MULTIPLEXER_HEADER_SIZE //we use 8 bytes for the multiplexing
+	ig.maxPayloadSize = maxMessageSize - MULTIPLEXER_HEADER_SIZE //we use 8 bytes for the multiplexing
 	ig.activeConnectionsLock = new(sync.Mutex)
 	ig.activeConnections = make([]*MultiplexedConnection, 0)
+	ig.verbose = verbose
+	if verbose {
+		log.Lvl1("Ingress Server in verbose mode")
+	}
 
 	var err error
 	s, err := net.Listen("tcp", ":"+strconv.Itoa(port))
@@ -108,7 +114,7 @@ func StartIngressServer(port int, maxMessageLength int, upstreamChan chan []byte
 		ID_bytes := []byte(id)
 		mc.ID_bytes = ID_bytes[0:4]
 		mc.stopChan = make(chan bool, 1)
-		mc.maxMessageLength = ig.maxMessageLength
+		mc.maxMessageLength = ig.maxMessageSize
 
 		// lock the list before editing it
 		ig.activeConnectionsLock.Lock()
@@ -129,6 +135,10 @@ func (ig *IngressServer) multiplexedChannelReader() {
 		if len(slice) < MULTIPLEXER_HEADER_SIZE {
 			// we cannot de-multiplex data without the header, just ignore
 			continue
+		}
+
+		if ig.verbose {
+			log.Lvl1("Ingress Server <- DCNet: \n", hex.Dump(slice))
 		}
 
 		ID := slice[0:4]
@@ -163,7 +173,7 @@ func (ig *IngressServer) ingressConnectionReader(mc *MultiplexedConnection) {
 		}
 
 		// Read data from the connection
-		buffer := make([]byte, ig.maxPayloadLength)
+		buffer := make([]byte, ig.maxPayloadSize)
 		mc.conn.SetReadDeadline(time.Now().Add(time.Second))
 		n, err := mc.conn.Read(buffer)
 
@@ -187,6 +197,10 @@ func (ig *IngressServer) ingressConnectionReader(mc *MultiplexedConnection) {
 		copy(slice[0:4], mc.ID_bytes[:])
 		binary.BigEndian.PutUint32(slice[4:8], uint32(n))
 		copy(slice[MULTIPLEXER_HEADER_SIZE:], buffer[:n])
+
+		if ig.verbose {
+			log.Lvl1("Ingress Server -> DCNet:\n", hex.Dump(slice))
+		}
 
 		ig.upstreamChan <- slice
 	}

@@ -4,11 +4,12 @@ import (
 	"errors"
 	"fmt"
 	"github.com/BurntSushi/toml"
-	"gopkg.in/dedis/crypto.v0/abstract"
-	"gopkg.in/dedis/crypto.v0/config"
-	"gopkg.in/dedis/onet.v1"
-	"gopkg.in/dedis/onet.v1/log"
-	"gopkg.in/dedis/onet.v1/network"
+	"gopkg.in/dedis/kyber.v2"
+	"gopkg.in/dedis/kyber.v2/suites"
+	"gopkg.in/dedis/kyber.v2/util/key"
+	"gopkg.in/dedis/onet.v2"
+	"gopkg.in/dedis/onet.v2/log"
+	"gopkg.in/dedis/onet.v2/network"
 	"net"
 	"os"
 	"strconv"
@@ -26,6 +27,7 @@ type SimulationManualAssignment struct {
 	Hosts      int
 	SingleHost bool
 	Depth      int
+	Suite      string
 }
 
 // HostMapping contains a mapping of ID (0 to n_hosts) and IP on which they need to run
@@ -66,7 +68,7 @@ func (s *SimulationManualAssignment) CreateRoster(sc *onet.SimulationConfig, add
 	start := time.Now()
 	nbrAddr := len(addresses)
 	if sc.PrivateKeys == nil {
-		sc.PrivateKeys = make(map[network.Address]abstract.Scalar)
+		sc.PrivateKeys = make(map[network.Address]kyber.Scalar)
 	}
 	hosts := s.Hosts
 	if s.SingleHost {
@@ -86,7 +88,9 @@ func (s *SimulationManualAssignment) CreateRoster(sc *onet.SimulationConfig, add
 	}
 	entities := make([]*network.ServerIdentity, hosts)
 	log.Lvl3("Doing", hosts, "hosts")
-	key := config.NewKeyPair(network.Suite)
+
+	suite := suites.MustFind(s.Suite)
+	key := key.NewKeyPair(suite)
 
 	//replaces linus automatic assignement by the one read in hosts_mapping.toml
 	mapping, err := decodeHostsMapping(HostsMappingFile)
@@ -101,8 +105,8 @@ func (s *SimulationManualAssignment) CreateRoster(sc *onet.SimulationConfig, add
 	}
 
 	for c := 0; c < hosts; c++ {
-		key.Secret.Add(key.Secret, key.Suite.Scalar().One())
-		key.Public.Add(key.Public, key.Suite.Point().Base())
+		key.Private.Add(key.Private, suite.Scalar().One())
+		key.Public.Add(key.Public, suite.Point().Base())
 
 		address := ""
 		for _, hostMapping := range mapping.Hosts {
@@ -144,12 +148,12 @@ func (s *SimulationManualAssignment) CreateRoster(sc *onet.SimulationConfig, add
 		}
 		log.Lvl3("Adding server", address, "to Roster")
 		entities[c] = network.NewServerIdentity(key.Public.Clone(), add)
-		sc.PrivateKeys[entities[c].Address] = key.Secret.Clone()
+		sc.PrivateKeys[entities[c].Address] = key.Private.Clone()
 	}
 	if hosts > 1 {
 		if sc.PrivateKeys[entities[0].Address].Equal(
 			sc.PrivateKeys[entities[1].Address]) {
-			log.Fatal("Please update dedis/crypto with\n go get -u gopkg.in/dedis/crypto.v0")
+			log.Fatal("Something went terribly wrong.")
 		}
 	}
 

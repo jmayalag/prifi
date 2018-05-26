@@ -12,17 +12,16 @@ import (
 	"path"
 	"runtime"
 
-	"bytes"
 	"github.com/BurntSushi/toml"
 	prifi_protocol "github.com/lbarman/prifi/sda/protocols"
 	prifi_service "github.com/lbarman/prifi/sda/services"
-	"gopkg.in/dedis/crypto.v0/abstract"
-	cryptoconfig "gopkg.in/dedis/crypto.v0/config"
-	"gopkg.in/dedis/onet.v1"
-	"gopkg.in/dedis/onet.v1/app"
-	"gopkg.in/dedis/onet.v1/crypto"
-	"gopkg.in/dedis/onet.v1/log"
-	"gopkg.in/dedis/onet.v1/network"
+	"gopkg.in/dedis/kyber.v2/suites"
+	"gopkg.in/dedis/kyber.v2/util/encoding"
+	"gopkg.in/dedis/kyber.v2/util/key"
+	"gopkg.in/dedis/onet.v2"
+	"gopkg.in/dedis/onet.v2/app"
+	"gopkg.in/dedis/onet.v2/log"
+	"gopkg.in/dedis/onet.v2/network"
 	"gopkg.in/urfave/cli.v1"
 	"net"
 	"os/exec"
@@ -284,9 +283,20 @@ func checkOverwrite(file string) bool {
 
 func createNewIdentityToml(c *cli.Context) error {
 
+	log.Fatal("Not implemented")
+
 	log.Print("Generating public/private keys...")
 
-	privStr, pubStr := createKeyPair()
+	suite := suites.MustFind("Ed25519") //TODO Nikko wants to change this
+	key := key.NewKeyPair(suite)
+	pubStr, err := encoding.PointToStringHex(suite, key.Public)
+	if err != nil {
+		panic(err)
+	}
+	privStr, err := encoding.ScalarToStringHex(suite, key.Private)
+	if err != nil {
+		panic(err)
+	}
 
 	addrPort := app.Inputf(":"+strconv.Itoa(DefaultPort)+"", "Which port do you want PriFi to use locally ?")
 
@@ -347,27 +357,6 @@ func createNewIdentityToml(c *cli.Context) error {
 	if err := identity.Save(identityFilePath); err != nil {
 		log.Fatal("Unable to write the config to file:", err)
 	}
-
-	//now since cothority is smart enough to write only the decimal format of the key, AND require the base64 format for group.toml, let's add it as a comment
-
-	public, err := crypto.StringHexToPub(network.Suite, pubStr)
-	if err != nil {
-		log.Fatal("Impossible to parse public key:", err)
-	}
-	var buff bytes.Buffer
-	if err := crypto.Write64Pub(network.Suite, &buff, public); err != nil {
-		log.Error("Can't convert public key to base 64")
-		return nil
-	}
-
-	f, err := os.OpenFile(identityFilePath, os.O_RDWR|os.O_APPEND, 0660)
-
-	if err != nil {
-		log.Fatal("Unable to write the config to file (2):", err)
-	}
-	publicKeyBase64String := string(buff.Bytes())
-	f.WriteString("# Public (base64) = " + publicKeyBase64String + "\n")
-	f.Close()
 
 	log.Info("Identity file saved.")
 
@@ -474,6 +463,7 @@ func readCothorityGroupConfig(c *cli.Context) *app.Group {
 
 	if err != nil {
 		log.Error("Could not parse toml file \"", gfile, "\"")
+		log.Fatal(err)
 		return nil
 	}
 
@@ -482,23 +472,4 @@ func readCothorityGroupConfig(c *cli.Context) *app.Group {
 		return nil
 	}
 	return groups
-}
-
-// createKeyPair returns the private and public key in hexadecimal representation.
-func createKeyPair() (string, string) {
-	kp := cryptoconfig.NewKeyPair(network.Suite)
-	privStr, err := crypto.ScalarToStringHex(network.Suite, kp.Secret)
-	if err != nil {
-		log.Fatal("Error formating private key to hexadecimal. Abort.")
-	}
-	var point abstract.Point
-	// use the transformation for EdDSA signatures
-	//point = cosi.Ed25519Public(network.Suite, kp.Secret)
-	point = kp.Public
-	pubStr, err := crypto.PubToStringHex(network.Suite, point)
-	if err != nil {
-		log.Fatal("Could not parse public key. Abort.")
-	}
-
-	return privStr, pubStr
 }
