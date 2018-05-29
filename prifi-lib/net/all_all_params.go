@@ -8,7 +8,7 @@ import (
 type ALL_ALL_PARAMETERS struct {
 	TrusteesPks []kyber.Point // only filled when the relay sends this to the clients
 	ForceParams bool
-	ParamsInt   map[string]int
+	ParamsInt   map[string]int32
 	ParamsStr   map[string]string
 	ParamsBool  map[string]bool
 }
@@ -20,9 +20,9 @@ func (m *ALL_ALL_PARAMETERS) Add(key string, val interface{}) {
 	switch typedVal := val.(type) {
 	case int:
 		if m.ParamsInt == nil {
-			m.ParamsInt = make(map[string]int)
+			m.ParamsInt = make(map[string]int32)
 		}
-		m.ParamsInt[key] = typedVal
+		m.ParamsInt[key] = int32(typedVal)
 	case string:
 		if m.ParamsStr == nil {
 			m.ParamsStr = make(map[string]string)
@@ -52,7 +52,7 @@ func (m *ALL_ALL_PARAMETERS) BoolValueOrElse(key string, elseVal bool) bool {
  */
 func (m *ALL_ALL_PARAMETERS) IntValueOrElse(key string, elseVal int) int {
 	if val, ok := m.ParamsInt[key]; ok {
-		return val
+		return int(val)
 	}
 	return elseVal
 }

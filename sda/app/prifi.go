@@ -283,8 +283,6 @@ func checkOverwrite(file string) bool {
 
 func createNewIdentityToml(c *cli.Context) error {
 
-	log.Fatal("Not implemented")
-
 	log.Print("Generating public/private keys...")
 
 	suite := suites.MustFind("Ed25519") //TODO Nikko wants to change this
