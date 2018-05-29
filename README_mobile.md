@@ -27,37 +27,61 @@ Make sure that the target SDK tools are installed before calling `gomobile init`
 
 Normally, the generated AAR can be directly used in any Android apps. Unfortunately in our case, there is one more step to do.
 
-We know that PriFi uses [ONet](https://github.com/dedis/onet) as a network framework, and `ONet` has an OS check at launch. Unfortunately, `ONet.v1` (25 April 2018) currently doesn't support Android, which results a crash on Android.
+We know that PriFi uses [ONet](https://github.com/dedis/onet) as a network framework, and `ONet` has an OS check at launch. Unfortunately, `ONet.v2` (29 May 2018) currently doesn't support Android, which results an instant crash on Android.
 
-We need to modify the checking mechanism in `gopkg.in/dedis/onet.v1/context.go`.
+We need to modify the system checking mechanism in `gopkg.in/dedis/onet.v2/cfgpath/cfgpath.go`.
 ```
-// Returns the path to the file for storage/retrieval of the service-state.
-func initContextDataPath() {
-	p := os.Getenv(ENVServiceData)
-	if p == "" {
+func GetConfigPath(appName string) string {
+	if len(appName) == 0 {
+		log.Panic("appName cannot be empty")
+	}
+
+	home := os.Getenv("HOME")
+	if home == "" {
 		u, err := user.Current()
 		if err != nil {
-			log.Fatal("Couldn't get current user's environment:", err)
+			log.Warn("Could not find the home directory. Switching back to current dir.")
+			return getCurrentDir(appName)
 		}
-		switch runtime.GOOS {
-		case "darwin":
-			p = path.Join(u.HomeDir, "Library", "Conode", "Services")
-		case "freebsd", "linux", "netbsd", "openbsd", "plan9", "solaris":
-			p = path.Join(u.HomeDir, ".local", "share", "conode")
-		case "windows":
-			p = path.Join(u.HomeDir, "AppData", "Local", "Conode")
-		// New
-		case "android":
-			p = path.Join("/data/data/ch.epfl.prifiproxy/files", "conode")
-		default:
-			log.Fatal("Couldn't find OS")
-		}
+		home = u.HomeDir
 	}
-	log.ErrFatal(os.MkdirAll(p, 0750))
-	setContextDataPath(p)
+
+	switch runtime.GOOS {
+	case "darwin":
+		return path.Join(home, "Library", "Application Support", appName)
+	case "windows":
+		return path.Join(os.Getenv("APPDATA"), appName)
+	case "linux", "freebsd":
+		xdg := os.Getenv("XDG_CONFIG_HOME")
+		if xdg != "" {
+			return path.Join(xdg, appName)
+		}
+		return path.Join(home, ".config", appName)
+	case "android":
+		return path.Join("/data/data/ch.epfl.prifiproxy/files", appName, "config")
+	default:
+		return getCurrentDir(appName)
+	}
 }
+
+func GetDataPath(appName string) string {
+	switch runtime.GOOS {
+	case "linux", "freebsd":
+		xdg := os.Getenv("XDG_DATA_HOME")
+		if xdg != "" {
+			return path.Join(xdg, appName)
+		}
+		return path.Join(os.Getenv("HOME"), ".local", "share", appName)
+	case "android":
+		return path.Join("/data/data/ch.epfl.prifiproxy/files", appName, "data")
+	default:
+		p := GetConfigPath(appName)
+		return path.Join(p, "data")
+	}
+}
+
 ```
-Adding `case "android": p = path.Join("/data/data/ch.epfl.prifiproxy/files", "conode")` will solve the problem for our PriFi demo app (ackage name: `ch.epfl.prifiproxy`). If you want to generate an AAR for another app, please put the corresponding package name instead of `ch.epfl.prifiproxy`.
+Adding `case "android": p = path.Join("/data/data/ch.epfl.prifiproxy/files", ...)` will solve the problem for our PriFi demo app (package name: `ch.epfl.prifiproxy`). If you want to generate an AAR for your own app, please put the corresponding package name instead of `ch.epfl.prifiproxy`.
 
 ### Generate a library from prifiMobile for iOS
 
@@ -109,9 +133,9 @@ dependencies{
 
 The steps described above are complicated, so we provide the AAR and the APK of our demo app that we are currently using.
 
-[prifiMobile.aar](https://drive.google.com/file/d/1Pck2us_HcVQHeMkWvHp7w4nR-loVpknZ/view?usp=sharing) (9 May 2018)
+[prifiMobile.aar](https://drive.google.com/file/d/1Pck2us_HcVQHeMkWvHp7w4nR-loVpknZ/view?usp=sharing) (29 May 2018)
 
-[PrifiProxy.apk](https://drive.google.com/file/d/1ABPJ5cSVmpP8_a6U0s-9sjlyM3HqduiE/view?usp=sharing) (9 May 2018)
+[PrifiProxy.apk](https://drive.google.com/file/d/1ABPJ5cSVmpP8_a6U0s-9sjlyM3HqduiE/view?usp=sharing) (29 May 2018)
 
 
 [back to main README](README.md)
