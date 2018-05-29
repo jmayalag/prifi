@@ -189,7 +189,7 @@ func (t *NeffShuffleTrustee) ReceivedTranscriptFromRelay(bases []kyber.Point, sh
 
 	//send the answer
 	msg := &net.TRU_REL_SHUFFLE_SIG{
-		TrusteeID: t.TrusteeID,
+		TrusteeID: int32(t.TrusteeID),
 		Sig:       signature}
 
 	return msg, nil

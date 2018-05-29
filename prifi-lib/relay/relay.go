@@ -214,7 +214,7 @@ If we finished a round (we had collected all data, and called DecodeCell()), we 
 Either we send something from the SOCKS/VPN buffer, or we answer the latency-test message if we received any, or we send 1 bit.
 */
 func (p *PriFiLibRelayInstance) Received_CLI_REL_UPSTREAM_DATA(msg net.CLI_REL_UPSTREAM_DATA) error {
-	p.relayState.roundManager.AddClientCipher(msg.RoundID, msg.ClientID, msg.Data)
+	p.relayState.roundManager.AddClientCipher(msg.RoundID, int(msg.ClientID), msg.Data)
 	if p.relayState.roundManager.HasAllCiphersForCurrentRound() {
 		p.upstreamPhase1_processCiphers(true)
 	}
@@ -228,7 +228,7 @@ If it's for this round, we call decode on it, and remember we received it.
 If for a future round we need to Buffer it.
 */
 func (p *PriFiLibRelayInstance) Received_TRU_REL_DC_CIPHER(msg net.TRU_REL_DC_CIPHER) error {
-	p.relayState.roundManager.AddTrusteeCipher(msg.RoundID, msg.TrusteeID, msg.Data)
+	p.relayState.roundManager.AddTrusteeCipher(msg.RoundID, int(msg.TrusteeID), msg.Data)
 	if p.relayState.roundManager.HasAllCiphersForCurrentRound() {
 		p.upstreamPhase1_processCiphers(true)
 	}
@@ -239,7 +239,7 @@ func (p *PriFiLibRelayInstance) Received_TRU_REL_DC_CIPHER(msg net.TRU_REL_DC_CI
 // Received_CLI_REL_OPENCLOSED_DATA handles the reception of the OpenClosed map, which details which
 // pseudonymous clients want to transmit in a given round
 func (p *PriFiLibRelayInstance) Received_CLI_REL_OPENCLOSED_DATA(msg net.CLI_REL_OPENCLOSED_DATA) error {
-	p.relayState.roundManager.AddClientCipher(msg.RoundID, msg.ClientID, msg.OpenClosedData)
+	p.relayState.roundManager.AddClientCipher(msg.RoundID, int(msg.ClientID), msg.OpenClosedData)
 	if p.relayState.roundManager.HasAllCiphersForCurrentRound() {
 		p.upstreamPhase1_processCiphers(false)
 	}
@@ -565,7 +565,7 @@ func (p *PriFiLibRelayInstance) downstreamPhase1_openRoundAndSendData() error {
 
 	toSend := &net.REL_CLI_DOWNSTREAM_DATA{
 		RoundID:               nextDownstreamRoundID,
-		OwnershipID:           nextOwner,
+		OwnershipID:           int32(nextOwner),
 		Data:                  downstreamCellContent,
 		FlagResync:            flagResync,
 		FlagOpenClosedRequest: flagOpenClosedRequest}
@@ -615,7 +615,7 @@ We do nothing, until we have received one per trustee; Then, we pack them in one
 */
 func (p *PriFiLibRelayInstance) Received_TRU_REL_TELL_PK(msg net.TRU_REL_TELL_PK) error {
 
-	p.relayState.trustees[msg.TrusteeID] = NodeRepresentation{msg.TrusteeID, true, msg.Pk, msg.Pk}
+	p.relayState.trustees[msg.TrusteeID] = NodeRepresentation{int(msg.TrusteeID), true, msg.Pk, msg.Pk}
 	p.relayState.nTrusteesPkCollected++
 
 	log.Lvl2("Relay : received TRU_REL_TELL_PK (" + strconv.Itoa(p.relayState.nTrusteesPkCollected) + "/" + strconv.Itoa(p.relayState.nTrustees) + ")")
@@ -661,7 +661,7 @@ and send them to the first trustee for it to Neff-Shuffle them.
 */
 func (p *PriFiLibRelayInstance) Received_CLI_REL_TELL_PK_AND_EPH_PK(msg net.CLI_REL_TELL_PK_AND_EPH_PK) error {
 
-	p.relayState.clients[msg.ClientID] = NodeRepresentation{msg.ClientID, true, msg.Pk, msg.EphPk}
+	p.relayState.clients[msg.ClientID] = NodeRepresentation{int(msg.ClientID), true, msg.Pk, msg.EphPk}
 	p.relayState.nClientsPkCollected++
 
 	log.Lvl2("Relay : received CLI_REL_TELL_PK_AND_EPH_PK (" + strconv.Itoa(p.relayState.nClientsPkCollected) + "/" + strconv.Itoa(p.relayState.nClients) + ")")
@@ -783,7 +783,7 @@ When this is done, we are finally ready to communicate. We wait for the client's
 */
 func (p *PriFiLibRelayInstance) Received_TRU_REL_SHUFFLE_SIG(msg net.TRU_REL_SHUFFLE_SIG) error {
 
-	done, err := p.relayState.neffShuffle.ReceivedSignatureFromTrustee(msg.TrusteeID, msg.Sig)
+	done, err := p.relayState.neffShuffle.ReceivedSignatureFromTrustee(int(msg.TrusteeID), msg.Sig)
 	if err != nil {
 		e := "Could not do p.relayState.neffShuffle.ReceivedSignatureFromTrustee(), error is " + err.Error()
 		log.Error(e)

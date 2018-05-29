@@ -5,9 +5,9 @@ package prifiMobile
 
 import (
 	prifi_service "github.com/lbarman/prifi/sda/services"
+	"gopkg.in/dedis/onet.v2"
+	"gopkg.in/dedis/onet.v2/log"
 	"time"
-	"gopkg.in/dedis/onet.v1/log"
-	"gopkg.in/dedis/onet.v1"
 )
 
 var stopChan chan bool
@@ -24,15 +24,14 @@ func StartClient() {
 		errorChan <- run()
 	}()
 
-
 	select {
-		case err := <-errorChan:
-			log.Error("Error occurs", err)
-		case <-stopChan:
-			globalHost.Close()
-			globalService.ShutdownSocks()
-			globalService.ShutdownConnexionToRelay()
-			log.Info("PriFi Shutdown")
+	case err := <-errorChan:
+		log.Error("Error occurs", err)
+	case <-stopChan:
+		globalHost.Close()
+		globalService.ShutdownSocks()
+		globalService.ShutdownConnexionToRelay()
+		log.Info("PriFi Shutdown")
 	}
 }
 

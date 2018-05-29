@@ -106,7 +106,7 @@ Send_TRU_REL_PK tells the relay's public key to the relay
 This is the first action of the trustee.
 */
 func (p *PriFiLibTrusteeInstance) Send_TRU_REL_PK() error {
-	toSend := &net.TRU_REL_TELL_PK{TrusteeID: p.trusteeState.ID, Pk: p.trusteeState.PublicKey}
+	toSend := &net.TRU_REL_TELL_PK{TrusteeID: int32(p.trusteeState.ID), Pk: p.trusteeState.PublicKey}
 	p.messageSender.SendToRelayWithLog(toSend, "")
 	return nil
 }
@@ -198,7 +198,7 @@ func sendData(p *PriFiLibTrusteeInstance, roundID int32) (int32, error) {
 	//send the data
 	toSend := &net.TRU_REL_DC_CIPHER{
 		RoundID:   roundID,
-		TrusteeID: p.trusteeState.ID,
+		TrusteeID: int32(p.trusteeState.ID),
 		Data:      data}
 	if !p.messageSender.SendToRelayWithLog(toSend, "(round "+strconv.Itoa(int(roundID))+")") {
 		return -1, errors.New("Could not send")

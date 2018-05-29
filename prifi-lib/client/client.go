@@ -258,14 +258,14 @@ func (p *PriFiLibClientInstance) ProcessDownStreamData(msg net.REL_CLI_DOWNSTREA
 
 		//send the data to the relay
 		toSend := &net.CLI_REL_OPENCLOSED_DATA{
-			ClientID:       p.clientState.ID,
+			ClientID:       int32(p.clientState.ID),
 			RoundID:        p.clientState.RoundNo,
 			OpenClosedData: upstreamCell}
 		p.messageSender.SendToRelayWithLog(toSend, "(round "+strconv.Itoa(int(p.clientState.RoundNo))+")")
 
 	} else {
 		//send upstream data for next round
-		p.SendUpstreamData(msg.OwnershipID)
+		p.SendUpstreamData(int(msg.OwnershipID))
 	}
 
 	//clean old buffered messages
@@ -443,7 +443,7 @@ func (p *PriFiLibClientInstance) SendUpstreamData(ownerSlotID int) error {
 
 	//send the data to the relay
 	toSend := &net.CLI_REL_UPSTREAM_DATA{
-		ClientID: p.clientState.ID,
+		ClientID: int32(p.clientState.ID),
 		RoundID:  p.clientState.RoundNo,
 		Data:     upstreamCell,
 	}
@@ -492,7 +492,7 @@ func (p *PriFiLibClientInstance) Received_REL_CLI_TELL_TRUSTEES_PK(trusteesPks [
 
 	//send the keys to the relay
 	toSend := &net.CLI_REL_TELL_PK_AND_EPH_PK{
-		ClientID: p.clientState.ID,
+		ClientID: int32(p.clientState.ID),
 		Pk:       p.clientState.PublicKey,
 		EphPk:    p.clientState.EphemeralPublicKey,
 	}
@@ -565,7 +565,7 @@ func (p *PriFiLibClientInstance) Received_REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG(
 
 	//send the data to the relay
 	toSend := &net.CLI_REL_UPSTREAM_DATA{
-		ClientID: p.clientState.ID,
+		ClientID: int32(p.clientState.ID),
 		RoundID:  p.clientState.RoundNo,
 		Data:     upstreamCell,
 	}

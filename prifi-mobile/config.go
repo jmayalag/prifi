@@ -7,8 +7,8 @@ import (
 	"github.com/BurntSushi/toml"
 	prifi_protocol "github.com/lbarman/prifi/sda/protocols"
 	"golang.org/x/mobile/asset"
-	"gopkg.in/dedis/onet.v1/app"
-	"gopkg.in/dedis/onet.v1/log"
+	"gopkg.in/dedis/onet.v2/app"
+	"gopkg.in/dedis/onet.v2/log"
 	"sync"
 )
 
@@ -22,7 +22,6 @@ var groupConfigSingleton *app.Group
 
 var onceClient, onceCothority, onceGroup sync.Once
 var globalErr error
-
 
 func getPrifiConfig() (*prifi_protocol.PrifiTomlConfig, error) {
 	onceClient.Do(func() {

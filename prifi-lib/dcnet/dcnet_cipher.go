@@ -2,6 +2,7 @@ package dcnet
 
 import (
 	"encoding/binary"
+	"math"
 )
 
 // DCNetCipher is the output of a DC-net round
@@ -40,7 +41,8 @@ func DCNetCipherFromBytes(data []byte) *DCNetCipher {
 		panic("DCNetCipherFromBytes: data too short")
 	}
 
-	minusOneInUint32 := 4294967295
+	//minusOneInUint32 := 4294967295
+	minusOneInUint32 := math.MaxInt32
 
 	equivocationTagStart := int(binary.BigEndian.Uint32(data[0:4]))
 	payloadStart := int(binary.BigEndian.Uint32(data[4:8]))

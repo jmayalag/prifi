@@ -3,13 +3,14 @@ package prifiMobile
 // Functions that are needed to initialize a server are all here
 
 import (
-	prifi_service "github.com/lbarman/prifi/sda/services"
 	prifi_protocol "github.com/lbarman/prifi/sda/protocols"
-	"gopkg.in/dedis/onet.v1"
-	"gopkg.in/dedis/onet.v1/app"
-	"gopkg.in/dedis/onet.v1/crypto"
-	"gopkg.in/dedis/onet.v1/log"
-	"gopkg.in/dedis/onet.v1/network"
+	prifi_service "github.com/lbarman/prifi/sda/services"
+	"gopkg.in/dedis/kyber.v2/suites"
+	"gopkg.in/dedis/kyber.v2/util/encoding"
+	"gopkg.in/dedis/onet.v2"
+	"gopkg.in/dedis/onet.v2/app"
+	"gopkg.in/dedis/onet.v2/log"
+	"gopkg.in/dedis/onet.v2/network"
 )
 
 func startCothorityNode() (*onet.Server, *app.Group, *prifi_service.ServiceState, error) {
@@ -60,18 +61,31 @@ func parseCothority() (*onet.Server, error) {
 		return nil, err
 	}
 
-	secret, err := crypto.StringHexToScalar(network.Suite, c.Private)
+	if c.Suite == "" {
+		c.Suite = "Ed25519"
+	}
+	suite, err := suites.Find(c.Suite)
 	if err != nil {
 		return nil, err
 	}
-	point, err := crypto.StringHexToPoint(network.Suite, c.Public)
+
+	secret, err := encoding.StringHexToScalar(suite, c.Private)
+	if err != nil {
+		return nil, err
+	}
+
+	point, err := encoding.StringHexToPoint(suite, c.Public)
 	if err != nil {
 		return nil, err
 	}
 
 	serverIdentity := network.NewServerIdentity(point, c.Address)
+	serverIdentity.SetPrivate(secret)
 	serverIdentity.Description = c.Description
-	server := onet.NewServerTCP(serverIdentity, secret)
+	server := onet.NewServerTCP(serverIdentity, suite)
+
+	// Don't handle Websocket TLC
+
 	return server, nil
 }
 

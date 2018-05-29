@@ -2,19 +2,19 @@ package prifiMobile
 
 import (
 	"github.com/parnurzeal/gorequest"
-	"time"
 	"strconv"
+	"time"
 )
 
 // Used for latency test
 type HttpRequestResult struct {
-	Latency int64
+	Latency    int64
 	StatusCode int
-	BodySize int
+	BodySize   int
 }
 
 func NewHttpRequestResult() *HttpRequestResult {
-	return &HttpRequestResult{0,0,0}
+	return &HttpRequestResult{0, 0, 0}
 }
 
 /*
@@ -35,9 +35,9 @@ func (result *HttpRequestResult) RetrieveHttpResponseThroughPrifi(targetUrlStrin
 	// Construct a request object with proxy and timeout value
 	var request *gorequest.SuperAgent
 	if throughPrifi {
-		request = gorequest.New().Proxy(proxyUrl).Timeout(time.Duration(timeout)*time.Second)
+		request = gorequest.New().Proxy(proxyUrl).Timeout(time.Duration(timeout) * time.Second)
 	} else {
-		request = gorequest.New().Timeout(time.Duration(timeout)*time.Second)
+		request = gorequest.New().Timeout(time.Duration(timeout) * time.Second)
 	}
 
 	// Used for latency test

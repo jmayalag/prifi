@@ -1,8 +1,8 @@
 package prifiMobile
 
 import (
-	"testing"
 	"fmt"
+	"testing"
 )
 
 func TestGetterSetter(t *testing.T) {
@@ -17,7 +17,6 @@ func TestGetterSetter(t *testing.T) {
 	_ = SetRelayPort(1021)
 	fmt.Println("Full Address ", getFullAddress())
 
-
 	// Relay Port
 	p, _ := GetRelayPort()
 	fmt.Println("Relay Port ", p)
@@ -29,7 +28,6 @@ func TestGetterSetter(t *testing.T) {
 	_ = SetRelayPort(7000)
 	p, _ = GetRelayPort()
 	fmt.Println("Full Address ", getFullAddress())
-
 
 	// Relay Socks Port
 	sp, _ := GetRelaySocksPort()

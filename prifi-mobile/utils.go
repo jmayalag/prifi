@@ -1,12 +1,12 @@
 package prifiMobile
 
 import (
-	"strconv"
-	"gopkg.in/dedis/onet.v1/network"
 	"errors"
-	"gopkg.in/dedis/onet.v1/crypto"
-	"gopkg.in/dedis/crypto.v0/abstract"
-	cryptoconfig "gopkg.in/dedis/crypto.v0/config"
+	"gopkg.in/dedis/kyber.v2/suites"
+	"gopkg.in/dedis/kyber.v2/util/encoding"
+	"gopkg.in/dedis/kyber.v2/util/key"
+	"gopkg.in/dedis/onet.v2/network"
+	"strconv"
 )
 
 const relayIndex = 0
@@ -22,7 +22,6 @@ func GetPrifiPort() (int, error) {
 	return c.SocksServerPort, nil
 }
 
-
 // Relay Address
 func GetRelayAddress() (string, error) {
 	c, err := getGroupConfig()
@@ -37,7 +36,7 @@ func SetRelayAddress(host string) error {
 	}
 
 	port := c.Roster.Get(relayIndex).Address.Port()
-	fullAddress := network.NewAddress(network.PlainTCP, host + separatorHostPort + port)
+	fullAddress := network.NewAddress(network.PlainTCP, host+separatorHostPort+port)
 	if fullAddress.Valid() {
 		c.Roster.Get(relayIndex).Address = fullAddress
 		return nil
@@ -45,7 +44,6 @@ func SetRelayAddress(host string) error {
 		return errors.New("not a host:port address")
 	}
 }
-
 
 // Relay Port
 func GetRelayPort() (int, error) {
@@ -63,7 +61,7 @@ func SetRelayPort(port int) error {
 
 	relayAddress := c.Roster.Get(relayIndex).Address.Host()
 	newPort := strconv.Itoa(port)
-	fullAddress := network.NewAddress(network.PlainTCP, relayAddress + separatorHostPort + newPort)
+	fullAddress := network.NewAddress(network.PlainTCP, relayAddress+separatorHostPort+newPort)
 	if fullAddress.Valid() {
 		c.Roster.Get(relayIndex).Address = fullAddress
 		return nil
@@ -71,7 +69,6 @@ func SetRelayPort(port int) error {
 		return errors.New("not a host:port address")
 	}
 }
-
 
 // Relay Socks Port
 func GetRelaySocksPort() (int, error) {
@@ -88,22 +85,20 @@ func SetRelaySocksPort(port int) error {
 	return nil
 }
 
-
 // Keys
 func GenerateNewKeyPairAndAssign() error {
 	// Generate new raw key pair
-	kp := cryptoconfig.NewKeyPair(network.Suite)
+	suite := suites.MustFind("Ed25519") // May crash
+	kp := key.NewKeyPair(suite)
 
 	// Parse private key
-	priStr, err := crypto.ScalarToStringHex(network.Suite, kp.Secret)
+	priStr, err := encoding.ScalarToStringHex(suite, kp.Private)
 	if err != nil {
 		return err
 	}
 
 	// Parse public key
-	var point abstract.Point
-	point = kp.Public
-	pubStr, err := crypto.PointToStringHex(network.Suite, point)
+	pubStr, err := encoding.PointToStringHex(suite, kp.Public)
 	if err != nil {
 		return err
 	}
@@ -151,9 +146,8 @@ func SetPrivateKey(priKey string) error {
 	return nil
 }
 
-
 // Support functions
-func getFullAddress() (string) {
+func getFullAddress() string {
 	c, _ := getGroupConfig()
 	return c.Roster.Get(relayIndex).Address.String()
 }

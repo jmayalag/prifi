@@ -1,9 +1,9 @@
-CellSizeUp = 5000
+PayloadSize = 5000 # CellSizeUp is automatically computed w.r.t to equivocation protection flag
 CellSizeDown = 17500
-RelayWindowSize = 5
+RelayWindowSize = 1
 DCNetType = "Simple"
 EnforceSameVersionOnNodes = false
-OverrideLogLevel = 5
+OverrideLogLevel = 2
 ForceConsoleColor = true
 RelayUseOpenClosedSlots = true
 RelayUseDummyDataDown = false
@@ -31,3 +31,4 @@ RelayRoundTimeOut = 1000
 RelayTrusteeCacheLowBound = 10
 RelayTrusteeCacheHighBound = 15
 EquivocationProtectionEnabled = false
+VerboseIngressEgressServers = false

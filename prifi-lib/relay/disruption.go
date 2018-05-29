@@ -18,7 +18,7 @@ func (p *PriFiLibRelayInstance) Received_CLI_REL_BLAME(msg net.CLI_REL_DISRUPTIO
 		BitPos:  msg.BitPos}
 
 	p.relayState.blamingData[0] = int(msg.RoundID)
-	p.relayState.blamingData[1] = msg.BitPos
+	p.relayState.blamingData[1] = int(msg.BitPos)
 
 	// broadcast to all trustees
 	for j := 0; j < p.relayState.nTrustees; j++ {
@@ -43,7 +43,7 @@ Put bits in maps and find the disruptor if we received everything
 */
 func (p *PriFiLibRelayInstance) Received_CLI_REL_REVEAL(msg net.CLI_REL_DISRUPTION_REVEAL) error {
 
-	p.relayState.clientBitMap[msg.ClientID] = msg.Bits
+	p.relayState.clientBitMap[int(msg.ClientID)] = msg.Bits
 
 	if (len(p.relayState.clientBitMap) == p.relayState.nClients) && (len(p.relayState.trusteeBitMap) == p.relayState.nTrustees) {
 		p.findDisruptor()
@@ -57,7 +57,7 @@ Put bits in maps and find the disruptor if we received everything
 */
 func (p *PriFiLibRelayInstance) Received_TRU_REL_REVEAL(msg net.TRU_REL_DISRUPTION_REVEAL) error {
 
-	p.relayState.trusteeBitMap[msg.TrusteeID] = msg.Bits
+	p.relayState.trusteeBitMap[int(msg.TrusteeID)] = msg.Bits
 
 	if (len(p.relayState.clientBitMap) == p.relayState.nClients) && (len(p.relayState.trusteeBitMap) == p.relayState.nTrustees) {
 		p.findDisruptor()
@@ -81,10 +81,10 @@ func (p *PriFiLibRelayInstance) findDisruptor() error {
 				p.relayState.blamingData[4] = trusteeID
 				p.relayState.blamingData[5] = values[clientID]
 				toSend := &net.REL_ALL_DISRUPTION_SECRET{
-					UserID: clientID}
+					UserID: int32(clientID)}
 				p.messageSender.SendToTrustee(trusteeID, toSend)
 				toSend2 := &net.REL_ALL_DISRUPTION_SECRET{
-					UserID: trusteeID}
+					UserID: int32(trusteeID)}
 				p.messageSender.SendToClient(clientID, toSend2)
 				return nil
 			}

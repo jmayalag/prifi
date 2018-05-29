@@ -1,8 +1,8 @@
 package prifiMobile
 
 import (
-	"testing"
 	"fmt"
+	"testing"
 )
 
 func TestMakeHttpRequestThroughPrifi(t *testing.T) {

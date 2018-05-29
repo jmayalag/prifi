@@ -41,7 +41,7 @@ type ALL_ALL_SHUTDOWN struct {
 // CLI_REL_TELL_PK_AND_EPH_PK message contains the public key and ephemeral key of a client
 // and is sent to the relay.
 type CLI_REL_TELL_PK_AND_EPH_PK struct {
-	ClientID int
+	ClientID int32
 	Pk       kyber.Point
 	EphPk    kyber.Point
 }
@@ -49,14 +49,14 @@ type CLI_REL_TELL_PK_AND_EPH_PK struct {
 // CLI_REL_UPSTREAM_DATA message contains the upstream data of a client for a given round
 // and is sent to the relay.
 type CLI_REL_UPSTREAM_DATA struct {
-	ClientID int
+	ClientID int32
 	RoundID  int32 // rounds increase 1 by 1, only represent ciphers
 	Data     []byte
 }
 
 // CLI_REL_OPENCLOSED_DATA message contains whether slots are gonna be Open or Closed in the next round
 type CLI_REL_OPENCLOSED_DATA struct {
-	ClientID       int
+	ClientID       int32
 	RoundID        int32
 	OpenClosedData []byte
 }
@@ -65,7 +65,7 @@ type CLI_REL_OPENCLOSED_DATA struct {
 // and is sent by the relay to the clients.
 type REL_CLI_DOWNSTREAM_DATA struct {
 	RoundID               int32
-	OwnershipID           int // ownership may vary with open or closed slots
+	OwnershipID           int32 // ownership may vary with open or closed slots
 	Data                  []byte
 	FlagResync            bool
 	FlagOpenClosedRequest bool
@@ -135,20 +135,20 @@ type REL_TRU_TELL_TRANSCRIPT struct {
 // TRU_REL_DC_CIPHER message contains the DC-net cipher of a trustee for a given round and is sent to the relay.
 type TRU_REL_DC_CIPHER struct {
 	RoundID   int32
-	TrusteeID int
+	TrusteeID int32
 	Data      []byte
 }
 
 // TRU_REL_SHUFFLE_SIG contains the signatures shuffled by a trustee and is sent to the relay.
 type TRU_REL_SHUFFLE_SIG struct {
-	TrusteeID int
+	TrusteeID int32
 	Sig       []byte
 }
 
 // REL_TRU_TELL_RATE_CHANGE message asks the trustees to update their window capacity to adapt their
 // sending rate and is sent by the relay.
 type REL_TRU_TELL_RATE_CHANGE struct {
-	WindowCapacity int
+	WindowCapacity int32
 }
 
 // TRU_REL_TELL_NEW_BASE_AND_EPH_PKS message contains the new ephemeral key of a trustee and
@@ -162,7 +162,7 @@ type TRU_REL_TELL_NEW_BASE_AND_EPH_PKS struct {
 
 // TRU_REL_TELL_PK message contains the public key of a trustee and is sent to the relay.
 type TRU_REL_TELL_PK struct {
-	TrusteeID int
+	TrusteeID int32
 	Pk        kyber.Point
 }
 
@@ -217,13 +217,13 @@ func (m *REL_CLI_DOWNSTREAM_DATA_UDP) FromBytes(buffer []byte) (interface{}, err
 
 	//the smallest message is 4 bytes, indicating a length of 0
 	if len(buffer) < 8 { //4 (roundID) + 4 (flagResync)
-		e := "Messages.go : FromBytes() : cannot decode, smaller than 8 bytes"
+		e := "messages.go : FromBytes() : cannot decode, smaller than 8 bytes"
 		return REL_CLI_DOWNSTREAM_DATA_UDP{}, errors.New(e)
 	}
 
 	// [0:4 roundID] [4:end-8 data] [end-8:end-4 resyncFlag] [end-4:end openClosedFlag]
 	roundID := int32(binary.BigEndian.Uint32(buffer[0:4]))
-	ownerShipID := int(binary.BigEndian.Uint32(buffer[4:8]))
+	ownerShipID := int32(binary.BigEndian.Uint32(buffer[4:8]))
 	flagResyncInt := int(binary.BigEndian.Uint32(buffer[len(buffer)-8 : len(buffer)-4]))
 	flagOpenClosedInt := int(binary.BigEndian.Uint32(buffer[len(buffer)-4:]))
 	data := buffer[8 : len(buffer)-8]
@@ -253,30 +253,30 @@ type REL_CLI_DISRUPTED_ROUND struct {
 type CLI_REL_DISRUPTION_BLAME struct {
 	RoundID int32
 	NIZK    []byte
-	BitPos  int
+	BitPos  int32
 }
 
 // REL_ALL_DISRUPTION_REVEAL contains a disrupted roundID and the position where a bit was flipped, and is sent by the relay
 type REL_ALL_DISRUPTION_REVEAL struct {
 	RoundID int32
-	BitPos  int
+	BitPos  int32
 }
 
 // CLI_REL_DISRUPTION_REVEAL contains a map with individual bits to find a disruptor, and is sent to the relay
 type CLI_REL_DISRUPTION_REVEAL struct {
-	ClientID int
+	ClientID int32
 	Bits     map[int]int
 }
 
 // TRU_REL_DISRUPTION_REVEAL contains a map with individual bits to find a disruptor, and is sent to the relay
 type TRU_REL_DISRUPTION_REVEAL struct {
-	TrusteeID int
+	TrusteeID int32
 	Bits      map[int]int
 }
 
 // REL_ALL_DISRUPTION_SECRET contains request ro reveal the shared secret with the specified recipient, and is sent by the relay
 type REL_ALL_DISRUPTION_SECRET struct {
-	UserID int
+	UserID int32
 }
 
 // CLI_REL_DISRUPTION_SECRET contains the shared secret requested by the relay, with a proof we computed it correctly
