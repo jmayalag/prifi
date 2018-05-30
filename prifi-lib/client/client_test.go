@@ -172,7 +172,7 @@ func TestClient(t *testing.T) {
 	}
 	msg3 := sentToRelay[0].(*net.CLI_REL_TELL_PK_AND_EPH_PK)
 	sentToRelay = make([]interface{}, 0)
-	if msg3.ClientID != clientID {
+	if int(msg3.ClientID) != clientID {
 		t.Error("Client sent a wrong client ID")
 	}
 	if !msg3.EphPk.Equal(cs.EphemeralPublicKey) {
@@ -208,7 +208,7 @@ func TestClient(t *testing.T) {
 	for j := 0; j < nTrustees; j++ {
 		toSend4, _ := trustees[j].TrusteeView.ReceivedTranscriptFromRelay(parsed3.Bases, parsed3.GetKeys(), parsed3.GetProofs())
 		parsed4 := toSend4.(*net.TRU_REL_SHUFFLE_SIG)
-		n.RelayView.ReceivedSignatureFromTrustee(parsed4.TrusteeID, parsed4.Sig)
+		n.RelayView.ReceivedSignatureFromTrustee(int(parsed4.TrusteeID), parsed4.Sig)
 	}
 	toSend5, _ := n.RelayView.VerifySigsAndSendToClients(trusteesPubKeys)
 	parsed5 := toSend5.(*net.REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG)
@@ -233,7 +233,7 @@ func TestClient(t *testing.T) {
 	msg6 := sentToRelay[0].(*net.CLI_REL_UPSTREAM_DATA)
 
 	sentToRelay = make([]interface{}, 0)
-	if msg6.ClientID != clientID {
+	if int(msg6.ClientID) != clientID {
 		t.Error("Client sent a wrong ID")
 	}
 	if msg6.RoundID != int32(0) {
@@ -272,7 +272,7 @@ func TestClient(t *testing.T) {
 	}
 	msg8 := sentToRelay[0].(*net.CLI_REL_UPSTREAM_DATA)
 	sentToRelay = make([]interface{}, 0)
-	if msg8.ClientID != clientID {
+	if int(msg8.ClientID) != clientID {
 		t.Error("Client sent a wrong ID")
 	}
 	if msg8.RoundID != int32(1) {
@@ -350,7 +350,7 @@ func TestClient(t *testing.T) {
 	}
 	msg10 := sentToRelay[0].(*net.CLI_REL_UPSTREAM_DATA)
 	sentToRelay = sentToRelay[1:]
-	if msg10.ClientID != clientID {
+	if int(msg10.ClientID) != clientID {
 		t.Error("Client sent a wrong ID")
 	}
 	if msg10.RoundID != int32(4) {
@@ -393,7 +393,7 @@ func TestClient(t *testing.T) {
 	}
 	latencyMsg := sentToRelay[0].(*net.CLI_REL_UPSTREAM_DATA)
 	sentToRelay = make([]interface{}, 0)
-	if latencyMsg.ClientID != clientID {
+	if int(latencyMsg.ClientID) != clientID {
 		t.Error("Client sent a wrong ID")
 	}
 	if latencyMsg.RoundID != int32(5) {
@@ -508,7 +508,7 @@ func TestClient2(t *testing.T) {
 	for j := 0; j < nTrustees; j++ {
 		toSend4, _ := trustees[j].TrusteeView.ReceivedTranscriptFromRelay(parsed3.Bases, parsed3.GetKeys(), parsed3.GetProofs())
 		parsed4 := toSend4.(*net.TRU_REL_SHUFFLE_SIG)
-		n.RelayView.ReceivedSignatureFromTrustee(parsed4.TrusteeID, parsed4.Sig)
+		n.RelayView.ReceivedSignatureFromTrustee(int(parsed4.TrusteeID), parsed4.Sig)
 	}
 	toSend5, _ := n.RelayView.VerifySigsAndSendToClients(trusteesPubKeys)
 	parsed5 := toSend5.(*net.REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG)
@@ -525,7 +525,7 @@ func TestClient2(t *testing.T) {
 	}
 	msg6 := sentToRelay[0].(*net.CLI_REL_UPSTREAM_DATA)
 	sentToRelay = make([]interface{}, 0)
-	if msg6.ClientID != clientID {
+	if int(msg6.ClientID) != clientID {
 		t.Error("Client sent a wrong ID")
 	}
 	if msg6.RoundID != int32(0) {
@@ -644,7 +644,7 @@ func TestDisruptionClient(t *testing.T) {
 	for j := 0; j < nTrustees; j++ {
 		toSend4, _ := trustees[j].TrusteeView.ReceivedTranscriptFromRelay(parsed3.Bases, parsed3.GetKeys(), parsed3.GetProofs())
 		parsed4 := toSend4.(*net.TRU_REL_SHUFFLE_SIG)
-		n.RelayView.ReceivedSignatureFromTrustee(parsed4.TrusteeID, parsed4.Sig)
+		n.RelayView.ReceivedSignatureFromTrustee(int(parsed4.TrusteeID), parsed4.Sig)
 	}
 	toSend5, _ := n.RelayView.VerifySigsAndSendToClients(trusteesPubKeys)
 	parsed5 := toSend5.(*net.REL_CLI_TELL_EPH_PKS_AND_TRUSTEES_SIG)
@@ -665,7 +665,7 @@ func TestDisruptionClient(t *testing.T) {
 	}
 	msg6 := sentToRelay[0].(*net.CLI_REL_UPSTREAM_DATA)
 	sentToRelay = make([]interface{}, 0)
-	if msg6.ClientID != clientID {
+	if int(msg6.ClientID) != clientID {
 		t.Error("Client sent a wrong ID")
 	}
 	if msg6.RoundID != int32(0) {

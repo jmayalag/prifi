@@ -247,16 +247,16 @@ func TestRelayRun1(t *testing.T) {
 	}
 	msg3 := msg2.(*net.ALL_ALL_PARAMETERS)
 
-	if msg3.ParamsInt["NClients"] != nClients {
+	if int(msg3.ParamsInt["NClients"]) != nClients {
 		t.Error("nClients not set correctly")
 	}
-	if msg3.ParamsInt["NTrustees"] != nTrustees {
+	if int(msg3.ParamsInt["NTrustees"]) != nTrustees {
 		t.Error("nTrustees not set correctly")
 	}
 	if msg3.ParamsBool["StartNow"] != true {
 		t.Error("StartNow not set correctly")
 	}
-	if msg3.ParamsInt["PayloadSize"] != upCellSize {
+	if int(msg3.ParamsInt["PayloadSize"]) != upCellSize {
 		t.Error("PayloadSize not set correctly")
 	}
 	if msg3.ParamsInt["NextFreeClientID"] != 0 {
@@ -287,16 +287,16 @@ func TestRelayRun1(t *testing.T) {
 	}
 	msg5 := msg4.(*net.ALL_ALL_PARAMETERS)
 
-	if msg5.ParamsInt["NClients"] != nClients {
+	if int(msg5.ParamsInt["NClients"]) != nClients {
 		t.Error("nClients not set correctly")
 	}
-	if msg5.ParamsInt["NTrustees"] != nTrustees {
+	if int(msg5.ParamsInt["NTrustees"]) != nTrustees {
 		t.Error("nTrustees not set correctly")
 	}
 	if msg5.ParamsBool["StartNow"] != true {
 		t.Error("StartNow not set correctly")
 	}
-	if msg5.ParamsInt["PayloadSize"] != upCellSize {
+	if int(msg5.ParamsInt["PayloadSize"]) != upCellSize {
 		t.Error("PayloadSize not set correctly")
 	}
 	if msg5.ParamsInt["NextFreeTrusteeID"] != 0 {

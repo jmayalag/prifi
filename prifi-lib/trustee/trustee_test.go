@@ -146,7 +146,7 @@ func TestTrustee(t *testing.T) {
 	select {
 	case msg3 := <-msgSender.sentToRelay:
 		msg3_parsed := msg3.(*net.TRU_REL_TELL_PK)
-		if msg3_parsed.TrusteeID != trusteeID {
+		if int(msg3_parsed.TrusteeID) != trusteeID {
 			t.Error("Trustee sent a wrong trustee ID")
 		}
 		if !msg3_parsed.Pk.Equal(ts.PublicKey) {
@@ -248,7 +248,7 @@ func TestTrustee(t *testing.T) {
 	case msg8 := <-msgSender.sentToRelay:
 		msg8_parsed := msg8.(*net.TRU_REL_DC_CIPHER)
 
-		if msg8_parsed.TrusteeID != trusteeID {
+		if int(msg8_parsed.TrusteeID) != trusteeID {
 			t.Error("TRU_REL_DC_CIPHER has the wrong trustee ID")
 		}
 		if msg8_parsed.RoundID != 0 {
@@ -299,7 +299,7 @@ func TestTrustee(t *testing.T) {
 	case msg8 := <-msgSender.sentToRelay:
 		msg8_parsed := msg8.(*net.TRU_REL_DC_CIPHER)
 
-		if msg8_parsed.TrusteeID != trusteeID {
+		if int(msg8_parsed.TrusteeID) != trusteeID {
 			t.Error("TRU_REL_DC_CIPHER has the wrong trustee ID")
 		}
 		if len(msg8_parsed.Data) != upCellSize+8 {

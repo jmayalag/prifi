@@ -195,7 +195,7 @@ func NeffShuffleTestHelper(t *testing.T, nClients int, nTrustees int, shuffleKey
 		}
 		parsed4 := toSend4.(*net.TRU_REL_SHUFFLE_SIG)
 
-		done, err := n.RelayView.ReceivedSignatureFromTrustee(parsed4.TrusteeID, parsed4.Sig)
+		done, err := n.RelayView.ReceivedSignatureFromTrustee(int(parsed4.TrusteeID), parsed4.Sig)
 
 		if done && j != nTrustees-1 {
 			t.Error("Relay collecting signature, but is done too early, only received " + strconv.Itoa(j+1) + " signatures out of " + strconv.Itoa(nTrustees))
