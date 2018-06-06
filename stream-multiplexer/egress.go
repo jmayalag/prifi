@@ -65,7 +65,7 @@ func StartEgressHandler(serverAddress string, maxMessageSize int, upstreamChan c
 		}
 
 		// if this a new connection, dial it first
-		if mc, ok := eg.activeConnections[ID]; !ok || mc.conn == nil {
+		if mc, ok := eg.activeConnections[ID]; !ok || mc == nil || mc.conn == nil {
 			c, err := net.Dial("tcp", serverAddress)
 			if err != nil {
 				log.Error("Egress server: Could not connect to server, discarding data. Do you have a SOCKS server running on",
