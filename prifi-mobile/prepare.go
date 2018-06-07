@@ -82,7 +82,7 @@ func parseCothority() (*onet.Server, error) {
 	serverIdentity := network.NewServerIdentity(point, c.Address)
 	serverIdentity.SetPrivate(secret)
 	serverIdentity.Description = c.Description
-	server := onet.NewServerTCP(serverIdentity, suite)
+	server := onet.NewServerTCPWithListenAddr(serverIdentity, suite, c.ListenAddress)
 
 	// Don't handle Websocket TLC
 

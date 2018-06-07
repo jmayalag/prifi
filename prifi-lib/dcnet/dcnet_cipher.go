@@ -41,7 +41,6 @@ func DCNetCipherFromBytes(data []byte) *DCNetCipher {
 		panic("DCNetCipherFromBytes: data too short")
 	}
 
-	//minusOneInUint32 := 4294967295
 	minusOneInUint32 := math.MaxInt32
 
 	equivocationTagStart := int(binary.BigEndian.Uint32(data[0:4]))

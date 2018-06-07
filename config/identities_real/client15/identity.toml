@@ -1,0 +1,10 @@
+# This file contains your private key.
+# Do not give it away lightly!
+Suite = ""
+Public = "6bf0bfb6de5dbbfac14fdb3be93fcbdb1e61d75c4906dcfaa30d6adbbe8cbd74"
+Private = "5742ec54090e924e630add452628e1ba585524fd065e2066bc4f587476ebb409"
+Address = "tcp://127.0.0.1:6034"
+ListenAddress = ""
+Description = ""
+WebSocketTLSCertificate = ""
+WebSocketTLSCertificateKey = ""

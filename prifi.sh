@@ -464,6 +464,73 @@ case $1 in
 		go run index.go &
 		;;
 
+    sim|Sim|SIM)
+
+        if [ "$#" -ne 3 ]; then
+            echo -e "Usage: sim | initial_client_id | total_number_of_clients_to_deploy"
+            #exit 1
+        fi
+
+        # test for proper setup
+		test_go
+		test_cothority
+
+        # begin
+        startClientIndex="$2"
+		numberOfClients="$3"
+        reg='^[0-9]+$' # int regular expression
+
+        if ! [[ ${startClientIndex} =~ $reg ]]; then
+            echo -e "initial client id: not a integer"
+            exit 1
+        fi
+
+        if ! [[ ${numberOfClients} =~ $reg ]]; then
+            echo -e "total number of clients to deploy: not a integer"
+            exit 1
+        fi
+
+        echo -e "Hidden feature: run n clients on localhost"
+
+        if [ "$try_use_real_identities" = "false" ]; then
+			echo -e "please set try_true_identities to true"
+			exit 1
+		fi
+
+        # Check all clients folder exist
+        currentClientIndex=${startClientIndex}
+        while [ ${currentClientIndex} -lt $((startClientIndex + $numberOfClients)) ]
+        do
+            if [ ! -d "$configdir/$realIdentitiesDir/client$currentClientIndex" ]; then
+                echo -e "exit: some clients are missing"
+                exit 1
+            fi
+
+            if [ ! -f "$configdir/$realIdentitiesDir/client$currentClientIndex/$identity_file" ] || [ ! -f "$configdir/$realIdentitiesDir/client$currentClientIndex/$group_file" ]; then
+                echo -e "exit: the identity or group file of some clients are missing"
+                exit 1
+            fi
+
+            currentClientIndex=`expr ${currentClientIndex} + 1`
+        done
+
+        currentClientIndex=${startClientIndex}
+        port=${socksServer1Port}
+        while [ ${currentClientIndex} -lt $((startClientIndex + $numberOfClients)) ]
+        do
+            echo -n "Starting client $currentClientIndex"
+			"$0" client "$currentClientIndex" "$port" > /dev/null 2>&1 &
+			echo -e " $okMsg"
+
+			sleep "$sleeptime_between_spawns"
+            currentClientIndex=`expr ${currentClientIndex} + 1`
+            port=`expr ${port} + 1`
+        done
+
+        read -p "Clients deployed. Press any key to kill all..." key
+        THISPGID=$(ps -o pgid= "$!" | sed -e "s/^ //")
+        kill -TERM -- -"$THISPGID"
+        ;;
 
 	clean|Clean|CLEAN)
 		echo -n "Cleaning local log files... 			"
