@@ -133,9 +133,9 @@ dependencies{
 
 The steps described above are complicated, so we provide the AAR and the APK of our demo app that we are currently using.
 
-[prifiMobile.aar](https://drive.google.com/file/d/1Pck2us_HcVQHeMkWvHp7w4nR-loVpknZ/view?usp=sharing) (29 May 2018)
+[prifiMobile.aar](https://drive.google.com/file/d/1Pck2us_HcVQHeMkWvHp7w4nR-loVpknZ/view?usp=sharing) (7 June 2018)
 
-[PrifiProxy.apk](https://drive.google.com/file/d/1ABPJ5cSVmpP8_a6U0s-9sjlyM3HqduiE/view?usp=sharing) (29 May 2018)
+[PrifiProxy.apk](https://drive.google.com/file/d/1ABPJ5cSVmpP8_a6U0s-9sjlyM3HqduiE/view?usp=sharing) (7 June 2018)
 
 
 [back to main README](README.md)
