@@ -65,6 +65,7 @@ type ClientState struct {
 	DisruptionProtectionEnabled   bool
 	LastWantToSend                time.Time
 	EquivocationProtectionEnabled bool
+	DownstreamTrafficEncrypted    bool
 
 	//concurrent stuff
 	RoundNo           int32

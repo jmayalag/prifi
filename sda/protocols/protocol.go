@@ -82,6 +82,7 @@ func (p *PriFiSDAProtocol) Start() error {
 	msg.Add("RelayTrusteeCacheLowBound", p.config.Toml.RelayTrusteeCacheLowBound)
 	msg.Add("RelayTrusteeCacheHighBound", p.config.Toml.RelayTrusteeCacheHighBound)
 	msg.Add("EquivocationProtectionEnabled", p.config.Toml.EquivocationProtectionEnabled)
+	msg.Add("DownstreamTrafficEncrypted", p.config.Toml.DownstreamTrafficEncrypted)
 	msg.ForceParams = true
 
 	p.SendTo(p.TreeNode(), msg)

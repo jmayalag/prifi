@@ -66,6 +66,7 @@ func (p *PriFiLibClientInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PAR
 	dcNetType := msg.StringValueOrElse("DCNetType", "not initialized")
 	disruptionProtection := msg.BoolValueOrElse("DisruptionProtectionEnabled", false)
 	equivProtection := msg.BoolValueOrElse("EquivocationProtectionEnabled", false)
+	downstreamTrafficEncrypted := msg.BoolValueOrElse("DownstreamTrafficEncrypted", false)
 
 	//sanity checks
 	if clientID < -1 {
@@ -101,6 +102,7 @@ func (p *PriFiLibClientInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PAR
 	p.clientState.MessageHistory = config.CryptoSuite.XOF([]byte("init")) //any non-nil, non-empty, constant array
 	p.clientState.DisruptionProtectionEnabled = disruptionProtection
 	p.clientState.EquivocationProtectionEnabled = equivProtection
+	p.clientState.DownstreamTrafficEncrypted = downstreamTrafficEncrypted
 
 	//we know our client number, if needed, parse the pcap for replay
 	if p.clientState.pcapReplay.Enabled {
@@ -182,6 +184,15 @@ func (p *PriFiLibClientInstance) Received_REL_CLI_UDP_DOWNSTREAM_DATA(msg net.RE
 	return p.Received_REL_CLI_DOWNSTREAM_DATA(msg.REL_CLI_DOWNSTREAM_DATA)
 }
 
+func (p *PriFiLibClientInstance) decryptDownstreamData(data []byte) []byte {
+	if !p.clientState.DownstreamTrafficEncrypted {
+		return data
+	}
+
+	// TODO: decrypt
+	return data
+}
+
 /*
 ProcessDownStreamData handles the downstream data. After determining if the data is for us (this is not done yet), we test if it's a
 latency-test message, test if the resync flag is on (which triggers a re-setup).
@@ -195,22 +206,24 @@ func (p *PriFiLibClientInstance) ProcessDownStreamData(msg net.REL_CLI_DOWNSTREA
 	 * HANDLE THE DOWNSTREAM DATA
 	 */
 
-	//if it's just one byte, no data
+	//if it's just one byte, no data. Otherwise, process
 	if len(msg.Data) > 1 {
+
+		decrypted := p.decryptDownstreamData(msg.Data)
 
 		//pass the data to the VPN/SOCKS5 proxy, if enabled
 		if p.clientState.DataOutputEnabled {
-			p.clientState.DataFromDCNet <- msg.Data
+			p.clientState.DataFromDCNet <- decrypted
 		}
 		//test if it is the answer from our ping (for latency test)
-		if p.clientState.LatencyTest.DoLatencyTests && len(msg.Data) > 2 {
+		if p.clientState.LatencyTest.DoLatencyTests && len(decrypted) > 2 {
 
 			actionFunction := func(roundRec int32, roundDiff int32, timeDiff int64) {
 				log.Lvl3("Measured latency is", timeDiff, ", for client", p.clientState.ID, ", roundDiff", roundDiff, ", received on round", msg.RoundID)
 				p.clientState.timeStatistics["measured-latency"].AddTime(timeDiff)
 				p.clientState.timeStatistics["measured-latency"].ReportWithInfo("measured-latency")
 			}
-			prifilog.DecodeLatencyMessages(msg.Data, p.clientState.ID, msg.RoundID, actionFunction)
+			prifilog.DecodeLatencyMessages(decrypted, p.clientState.ID, msg.RoundID, actionFunction)
 		}
 	}
 

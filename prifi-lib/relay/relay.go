@@ -103,6 +103,7 @@ func (p *PriFiLibRelayInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARA
 	trusteeCacheLowBound := msg.IntValueOrElse("RelayTrusteeCacheLowBound", p.relayState.TrusteeCacheLowBound)
 	trusteeCacheHighBound := msg.IntValueOrElse("RelayTrusteeCacheHighBound", p.relayState.TrusteeCacheHighBound)
 	equivocationProtectionEnabled := msg.BoolValueOrElse("EquivocationProtectionEnabled", p.relayState.EquivocationProtectionEnabled)
+	downstreamTrafficEncrypted := msg.BoolValueOrElse("DownstreamTrafficEncrypted", p.relayState.DownstreamTrafficEncrypted)
 
 	if payloadSize < 1 {
 		return errors.New("payloadSize cannot be 0")
@@ -141,6 +142,7 @@ func (p *PriFiLibRelayInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PARA
 	p.relayState.trusteeBitMap = make(map[int]map[int]int)
 	p.relayState.blamingData = make([]int, 6)
 	p.relayState.OpenClosedSlotsRequestsRoundID = make(map[int32]bool)
+	p.relayState.DownstreamTrafficEncrypted = downstreamTrafficEncrypted
 
 	switch dcNetType {
 	case "Verifiable":
@@ -501,6 +503,16 @@ func (p *PriFiLibRelayInstance) upstreamPhase3_finalizeRound(roundID int32) erro
 	return nil
 }
 
+func (p *PriFiLibRelayInstance) encryptDownstreamTraffic(data []byte, ownerID int) []byte {
+	if !p.relayState.DownstreamTrafficEncrypted {
+		return data
+	}
+
+	// TODO: encrypt
+
+	return data
+}
+
 /*
 sendDownstreamData is simply called when the Relay has processed the upstream cell from all clients, and is ready to finalize the round by sending the data down.
 If it's a latency-test message, we send it back to the clients.
@@ -563,10 +575,13 @@ func (p *PriFiLibRelayInstance) downstreamPhase1_openRoundAndSendData() error {
 		log.Lvl2("Relay is gonna broadcast messages for round "+strconv.Itoa(int(nextDownstreamRoundID))+" (OCRequest=false), owner=", nextOwner, ", len", len(downstreamCellContent))
 	}
 
+	// Encrypt the downstream data, otherwise everyone can read it
+	encryptedData := p.encryptDownstreamTraffic(downstreamCellContent, nextOwner)
+
 	toSend := &net.REL_CLI_DOWNSTREAM_DATA{
 		RoundID:               nextDownstreamRoundID,
 		OwnershipID:           nextOwner,
-		Data:                  downstreamCellContent,
+		Data:                  encryptedData,
 		FlagResync:            flagResync,
 		FlagOpenClosedRequest: flagOpenClosedRequest}
 
@@ -639,6 +654,7 @@ func (p *PriFiLibRelayInstance) Received_TRU_REL_TELL_PK(msg net.TRU_REL_TELL_PK
 		toSend.Add("DCNetType", p.relayState.dcNetType)
 		toSend.Add("DisruptionProtectionEnabled", p.relayState.DisruptionProtectionEnabled)
 		toSend.Add("EquivocationProtectionEnabled", p.relayState.EquivocationProtectionEnabled)
+		toSend.Add("DownstreamTrafficEncrypted", p.relayState.DownstreamTrafficEncrypted)
 		toSend.TrusteesPks = trusteesPk
 
 		// Send those parameters to all clients
