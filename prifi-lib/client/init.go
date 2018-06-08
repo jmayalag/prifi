@@ -22,6 +22,7 @@ package client
  */
 
 import (
+	"crypto/cipher"
 	"errors"
 	"github.com/lbarman/prifi/prifi-lib/crypto"
 	"github.com/lbarman/prifi/prifi-lib/dcnet"
@@ -65,11 +66,19 @@ type ClientState struct {
 	DisruptionProtectionEnabled   bool
 	LastWantToSend                time.Time
 	EquivocationProtectionEnabled bool
-	DownstreamTrafficEncrypted    bool
+	DownstreamEncryption          *DownstreamEncryptionSettings
 
 	//concurrent stuff
 	RoundNo           int32
 	BufferedRoundData map[int32]net.REL_CLI_DOWNSTREAM_DATA
+}
+
+// DownstreamEncryptionSettings regroups the settings needed to decode the downstream traffic, when it is encrypted
+type DownstreamEncryptionSettings struct {
+	EncryptionEnabled bool
+	Key               []byte
+	IV                []byte
+	Cipher            cipher.Stream
 }
 
 // PCAPReplayer handles the data needed to replay some .pcap file

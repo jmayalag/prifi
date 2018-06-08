@@ -41,9 +41,11 @@ type ALL_ALL_SHUTDOWN struct {
 // CLI_REL_TELL_PK_AND_EPH_PK message contains the public key and ephemeral key of a client
 // and is sent to the relay.
 type CLI_REL_TELL_PK_AND_EPH_PK struct {
-	ClientID int
-	Pk       kyber.Point
-	EphPk    kyber.Point
+	ClientID            int
+	Pk                  kyber.Point
+	EphPk               kyber.Point
+	DownstreamCipherKey []byte
+	DownstreamCipherIV  []byte
 }
 
 // CLI_REL_UPSTREAM_DATA message contains the upstream data of a client for a given round

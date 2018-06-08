@@ -32,13 +32,18 @@ import (
 	"gopkg.in/dedis/kyber.v2"
 	"gopkg.in/dedis/onet.v2/log"
 
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/hmac"
+	"crypto/rand"
 	"crypto/sha256"
+	"encoding/hex"
 	"github.com/lbarman/prifi/prifi-lib/dcnet"
 	"github.com/lbarman/prifi/prifi-lib/scheduler"
 	"github.com/lbarman/prifi/prifi-lib/utils"
 	"github.com/lbarman/prifi/utils"
-	"math/rand"
+	"io"
+	mathrand "math/rand"
 	"time"
 )
 
@@ -102,7 +107,40 @@ func (p *PriFiLibClientInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PAR
 	p.clientState.MessageHistory = config.CryptoSuite.XOF([]byte("init")) //any non-nil, non-empty, constant array
 	p.clientState.DisruptionProtectionEnabled = disruptionProtection
 	p.clientState.EquivocationProtectionEnabled = equivProtection
-	p.clientState.DownstreamTrafficEncrypted = downstreamTrafficEncrypted
+
+	if downstreamTrafficEncrypted {
+		p.clientState.DownstreamEncryption.EncryptionEnabled = true
+
+		// pick a key
+		key := make([]byte, 32)
+		if _, err := io.ReadFull(rand.Reader, key); err != nil {
+			panic(err)
+		}
+
+		// pick an IV
+		iv := make([]byte, aes.BlockSize)
+		if _, err := io.ReadFull(rand.Reader, iv); err != nil {
+			panic(err)
+		}
+
+		block, err := aes.NewCipher(key)
+		if err != nil {
+			log.Fatal("Client: could not instantiate the stream cipher for downstream traffic", err)
+		}
+
+		stream := cipher.NewCTR(block, iv)
+
+		settings := &DownstreamEncryptionSettings{
+			EncryptionEnabled: true,
+			Key:               key,
+			IV:                iv,
+			Cipher:            stream,
+		}
+
+		p.clientState.DownstreamEncryption = settings
+	} else {
+		p.clientState.DownstreamEncryption = &DownstreamEncryptionSettings{EncryptionEnabled: false}
+	}
 
 	//we know our client number, if needed, parse the pcap for replay
 	if p.clientState.pcapReplay.Enabled {
@@ -185,12 +223,21 @@ func (p *PriFiLibClientInstance) Received_REL_CLI_UDP_DOWNSTREAM_DATA(msg net.RE
 }
 
 func (p *PriFiLibClientInstance) decryptDownstreamData(data []byte) []byte {
-	if !p.clientState.DownstreamTrafficEncrypted {
+	if !p.clientState.DownstreamEncryption.EncryptionEnabled {
 		return data
 	}
 
-	// TODO: decrypt
-	return data
+	cipher := p.clientState.DownstreamEncryption.Cipher
+
+	plaintext := make([]byte, len(data))
+	cipher.XORKeyStream(plaintext, data)
+
+	log.Lvl3("Client", p.clientState.ID, "): Decrypting from relay")
+	log.Lvl3(hex.Dump(data))
+	log.Lvl3("---------------------")
+	log.Lvl3(hex.Dump(plaintext))
+
+	return plaintext
 }
 
 /*
@@ -236,7 +283,7 @@ func (p *PriFiLibClientInstance) ProcessDownStreamData(msg net.REL_CLI_DOWNSTREA
 		}
 		p.clientState.LatencyTest.LatencyTestsToSend = append(p.clientState.LatencyTest.LatencyTestsToSend, newLatTest)
 		p.clientState.LatencyTest.NextLatencyTest = now.Add(p.clientState.LatencyTest.LatencyTestsInterval)
-		p.clientState.LatencyTest.NextLatencyTest = p.clientState.LatencyTest.NextLatencyTest.Add(time.Duration(rand.Intn(1000)) * time.Millisecond)
+		p.clientState.LatencyTest.NextLatencyTest = p.clientState.LatencyTest.NextLatencyTest.Add(time.Duration(mathrand.Intn(1000)) * time.Millisecond)
 	}
 
 	//if the flag "Resync" is on, we cannot write data up, but need to resend the keys instead
@@ -482,7 +529,7 @@ Once we receive this message, we need to reply with our Public Key (Used to deri
 */
 func (p *PriFiLibClientInstance) Received_REL_CLI_TELL_TRUSTEES_PK(trusteesPks []kyber.Point) error {
 
-	//sanity check
+	// sanity check
 	if len(trusteesPks) < 1 {
 		e := "Client " + strconv.Itoa(p.clientState.ID) + " : len(msg.Pks) must be >= 1"
 		log.Error(e)
@@ -500,14 +547,25 @@ func (p *PriFiLibClientInstance) Received_REL_CLI_TELL_TRUSTEES_PK(trusteesPks [
 	p.clientState.DCNet = dcnet.NewDCNetEntity(p.clientState.ID,
 		dcnet.DCNET_CLIENT, p.clientState.PayloadSize, p.clientState.EquivocationProtectionEnabled, p.clientState.sharedSecrets)
 
-	//then, generate our ephemeral keys (used for shuffling)
+	// then, generate our ephemeral keys (used for shuffling)
 	p.clientState.EphemeralPublicKey, p.clientState.ephemeralPrivateKey = crypto.NewKeyPair()
 
-	//send the keys to the relay
+	var key []byte
+	var IV []byte
+
+	// if the downstream traffic should be encrypted, transmit the keys
+	if p.clientState.DownstreamEncryption.EncryptionEnabled {
+		key = p.clientState.DownstreamEncryption.Key
+		IV = p.clientState.DownstreamEncryption.IV
+	}
+
+	// send the keys to the relay
 	toSend := &net.CLI_REL_TELL_PK_AND_EPH_PK{
-		ClientID: p.clientState.ID,
-		Pk:       p.clientState.PublicKey,
-		EphPk:    p.clientState.EphemeralPublicKey,
+		ClientID:            p.clientState.ID,
+		Pk:                  p.clientState.PublicKey,
+		EphPk:               p.clientState.EphemeralPublicKey,
+		DownstreamCipherKey: key,
+		DownstreamCipherIV:  IV,
 	}
 	p.messageSender.SendToRelayWithLog(toSend, "")
 

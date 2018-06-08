@@ -32,14 +32,14 @@ considered disconnected
 */
 
 import (
-	"encoding/binary"
-	"errors"
-	"strconv"
-	"time"
-
 	"bytes"
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/hmac"
 	"crypto/sha256"
+	"encoding/binary"
+	"encoding/hex"
+	"errors"
 	"github.com/lbarman/prifi/prifi-lib/config"
 	"github.com/lbarman/prifi/prifi-lib/dcnet"
 	prifilog "github.com/lbarman/prifi/prifi-lib/log"
@@ -48,6 +48,8 @@ import (
 	"github.com/lbarman/prifi/utils"
 	"gopkg.in/dedis/kyber.v2"
 	"gopkg.in/dedis/onet.v2/log"
+	"strconv"
+	"time"
 )
 
 /*
@@ -508,9 +510,22 @@ func (p *PriFiLibRelayInstance) encryptDownstreamTraffic(data []byte, ownerID in
 		return data
 	}
 
-	// TODO: encrypt
+	if p.relayState.clients[ownerID].DownstreamCipher == nil {
+		log.Error("Relay: Tried to downstream encrypt for client", ownerID, "but cipher is nil !")
+		log.Error(p.relayState.clients)
+		log.Fatal("Aborting.")
+	}
 
-	return data
+	cipher := p.relayState.clients[ownerID].DownstreamCipher
+	out := make([]byte, len(data))
+	cipher.XORKeyStream(out, data)
+
+	log.Lvl3("Relay: Encrypting for client", ownerID)
+	log.Lvl3(hex.Dump(data))
+	log.Lvl3("---------------------")
+	log.Lvl3(hex.Dump(out))
+
+	return out
 }
 
 /*
@@ -630,7 +645,7 @@ We do nothing, until we have received one per trustee; Then, we pack them in one
 */
 func (p *PriFiLibRelayInstance) Received_TRU_REL_TELL_PK(msg net.TRU_REL_TELL_PK) error {
 
-	p.relayState.trustees[msg.TrusteeID] = NodeRepresentation{msg.TrusteeID, true, msg.Pk, msg.Pk}
+	p.relayState.trustees[msg.TrusteeID] = NodeRepresentation{msg.TrusteeID, true, msg.Pk, msg.Pk, nil}
 	p.relayState.nTrusteesPkCollected++
 
 	log.Lvl2("Relay : received TRU_REL_TELL_PK (" + strconv.Itoa(p.relayState.nTrusteesPkCollected) + "/" + strconv.Itoa(p.relayState.nTrustees) + ")")
@@ -677,7 +692,36 @@ and send them to the first trustee for it to Neff-Shuffle them.
 */
 func (p *PriFiLibRelayInstance) Received_CLI_REL_TELL_PK_AND_EPH_PK(msg net.CLI_REL_TELL_PK_AND_EPH_PK) error {
 
-	p.relayState.clients[msg.ClientID] = NodeRepresentation{msg.ClientID, true, msg.Pk, msg.EphPk}
+	var cipherTextForClient cipher.Stream
+
+	// if we encrypt the downstream traffic, start the shared ciphers here
+	if p.relayState.DownstreamTrafficEncrypted {
+
+		if msg.DownstreamCipherKey == nil {
+			log.Fatal("Relay: Requested DownstreamTrafficEncrypted, but didn't send us Key")
+		}
+		if msg.DownstreamCipherIV == nil {
+			log.Fatal("Relay: Requested DownstreamTrafficEncrypted, but didn't send us IV")
+		}
+
+		block, err := aes.NewCipher(msg.DownstreamCipherKey)
+		if err != nil {
+			log.Fatal("Relay: couldn't create shared cipher", err.Error())
+		}
+
+		stream := cipher.NewCTR(block, msg.DownstreamCipherIV)
+		// encrypt with stream.XORKeyStream(ciphertext[aes.BlockSize:], plaintext)
+
+		cipherTextForClient = stream
+	}
+
+	p.relayState.clients[msg.ClientID] = NodeRepresentation{
+		msg.ClientID,
+		true,
+		msg.Pk,
+		msg.EphPk,
+		cipherTextForClient,
+	}
 	p.relayState.nClientsPkCollected++
 
 	log.Lvl2("Relay : received CLI_REL_TELL_PK_AND_EPH_PK (" + strconv.Itoa(p.relayState.nClientsPkCollected) + "/" + strconv.Itoa(p.relayState.nClients) + ")")
@@ -784,7 +828,6 @@ func (p *PriFiLibRelayInstance) Received_TRU_REL_TELL_NEW_BASE_AND_EPH_PKS(msg n
 		p.relayState.DCNet.DecodeStart(0)
 
 		p.stateMachine.ChangeState("COLLECTING_SHUFFLE_SIGNATURES")
-
 	}
 
 	return nil
