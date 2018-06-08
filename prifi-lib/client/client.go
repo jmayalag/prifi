@@ -109,8 +109,6 @@ func (p *PriFiLibClientInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PAR
 	p.clientState.EquivocationProtectionEnabled = equivProtection
 
 	if downstreamTrafficEncrypted {
-		p.clientState.DownstreamEncryption.EncryptionEnabled = true
-
 		// pick a key
 		key := make([]byte, 32)
 		if _, err := io.ReadFull(rand.Reader, key); err != nil {
@@ -233,9 +231,9 @@ func (p *PriFiLibClientInstance) decryptDownstreamData(data []byte) []byte {
 	cipher.XORKeyStream(plaintext, data)
 
 	log.Lvl3("Client", p.clientState.ID, "): Decrypting from relay")
-	log.Lvl3(hex.Dump(data))
+	log.Lvlf3("\n%+v", hex.Dump(data))
 	log.Lvl3("---------------------")
-	log.Lvl3(hex.Dump(plaintext))
+	log.Lvlf3("\n%+v", hex.Dump(plaintext))
 
 	return plaintext
 }

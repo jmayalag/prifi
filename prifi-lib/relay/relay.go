@@ -510,7 +510,16 @@ func (p *PriFiLibRelayInstance) encryptDownstreamTraffic(data []byte, ownerID in
 		return data
 	}
 
-	if p.relayState.clients[ownerID].DownstreamCipher == nil {
+	var streamCipher cipher.Stream
+
+	for _, v := range p.relayState.clients {
+		if v.ID == ownerID {
+			streamCipher = v.DownstreamCipher
+			break
+		}
+	}
+
+	if streamCipher == nil {
 		log.Error("Relay: Tried to downstream encrypt for client", ownerID, "but cipher is nil !")
 		log.Error(p.relayState.clients)
 		log.Fatal("Aborting.")
@@ -521,9 +530,9 @@ func (p *PriFiLibRelayInstance) encryptDownstreamTraffic(data []byte, ownerID in
 	cipher.XORKeyStream(out, data)
 
 	log.Lvl3("Relay: Encrypting for client", ownerID)
-	log.Lvl3(hex.Dump(data))
+	log.Lvlf3("\n%+v", hex.Dump(data))
 	log.Lvl3("---------------------")
-	log.Lvl3(hex.Dump(out))
+	log.Lvlf3("\n%+v", hex.Dump(out))
 
 	return out
 }
@@ -567,6 +576,9 @@ func (p *PriFiLibRelayInstance) downstreamPhase1_openRoundAndSendData() error {
 		downstreamCellContent = data
 	}
 
+	// Encrypt the downstream data, otherwise everyone can read it
+	encryptedData := p.encryptDownstreamTraffic(downstreamCellContent, nextOwner)
+
 	nextDownstreamRoundID := p.relayState.roundManager.NextRoundToOpen()
 
 	// TODO : if something went wrong before, this flag should be used to warn the clients that the config has changed
@@ -589,9 +601,6 @@ func (p *PriFiLibRelayInstance) downstreamPhase1_openRoundAndSendData() error {
 	} else {
 		log.Lvl2("Relay is gonna broadcast messages for round "+strconv.Itoa(int(nextDownstreamRoundID))+" (OCRequest=false), owner=", nextOwner, ", len", len(downstreamCellContent))
 	}
-
-	// Encrypt the downstream data, otherwise everyone can read it
-	encryptedData := p.encryptDownstreamTraffic(downstreamCellContent, nextOwner)
 
 	toSend := &net.REL_CLI_DOWNSTREAM_DATA{
 		RoundID:               nextDownstreamRoundID,
