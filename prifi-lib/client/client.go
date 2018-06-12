@@ -37,7 +37,6 @@ import (
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
-	"encoding/hex"
 	"github.com/lbarman/prifi/prifi-lib/dcnet"
 	"github.com/lbarman/prifi/prifi-lib/scheduler"
 	"github.com/lbarman/prifi/prifi-lib/utils"
@@ -114,12 +113,14 @@ func (p *PriFiLibClientInstance) Received_ALL_ALL_PARAMETERS(msg net.ALL_ALL_PAR
 		if _, err := io.ReadFull(rand.Reader, key); err != nil {
 			panic(err)
 		}
+		key = []byte("Some-secret-key-some-secret-key.") // TODO: each client should have its own key
 
 		// pick an IV
 		iv := make([]byte, aes.BlockSize)
 		if _, err := io.ReadFull(rand.Reader, iv); err != nil {
 			panic(err)
 		}
+		iv = make([]byte, aes.BlockSize) // TODO: IV should be random
 
 		block, err := aes.NewCipher(key)
 		if err != nil {
@@ -230,12 +231,12 @@ func (p *PriFiLibClientInstance) decryptDownstreamData(data []byte) []byte {
 	plaintext := make([]byte, len(data))
 	cipher.XORKeyStream(plaintext, data)
 
-	log.Lvl3("Client", p.clientState.ID, "): Decrypting from relay")
-	log.Lvlf3("\n%+v", hex.Dump(data))
-	log.Lvl3("---------------------")
-	log.Lvlf3("\n%+v", hex.Dump(plaintext))
+	//log.Lvl3("Client", p.clientState.ID, "): Decrypting from relay")
+	//log.Lvlf3("\n%+v", hex.Dump(data))
+	//log.Lvl3("---------------------")
+	//log.Lvlf3("\n%+v", hex.Dump(plaintext))
 
-	return plaintext
+	return data
 }
 
 /*

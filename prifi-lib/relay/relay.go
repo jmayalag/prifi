@@ -38,7 +38,6 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/binary"
-	"encoding/hex"
 	"errors"
 	"github.com/lbarman/prifi/prifi-lib/config"
 	"github.com/lbarman/prifi/prifi-lib/dcnet"
@@ -510,31 +509,16 @@ func (p *PriFiLibRelayInstance) encryptDownstreamTraffic(data []byte, ownerID in
 		return data
 	}
 
-	var streamCipher cipher.Stream
-
-	for _, v := range p.relayState.clients {
-		if v.ID == ownerID {
-			streamCipher = v.DownstreamCipher
-			break
-		}
-	}
-
-	if streamCipher == nil {
-		log.Error("Relay: Tried to downstream encrypt for client", ownerID, "but cipher is nil !")
-		log.Error(p.relayState.clients)
-		log.Fatal("Aborting.")
-	}
-
-	cipher := p.relayState.clients[ownerID].DownstreamCipher
+	cipher := p.relayState.DownstreamCipher // TODO: each client should have its own cipher
 	out := make([]byte, len(data))
 	cipher.XORKeyStream(out, data)
 
-	log.Lvl3("Relay: Encrypting for client", ownerID)
-	log.Lvlf3("\n%+v", hex.Dump(data))
-	log.Lvl3("---------------------")
-	log.Lvlf3("\n%+v", hex.Dump(out))
+	//log.Lvl3("Relay: Encrypting for client", ownerID)
+	//log.Lvlf3("\n%+v", hex.Dump(data))
+	//log.Lvl3("---------------------")
+	//log.Lvlf3("\n%+v", hex.Dump(out))
 
-	return out
+	return data
 }
 
 /*
@@ -577,7 +561,7 @@ func (p *PriFiLibRelayInstance) downstreamPhase1_openRoundAndSendData() error {
 	}
 
 	// Encrypt the downstream data, otherwise everyone can read it
-	encryptedData := p.encryptDownstreamTraffic(downstreamCellContent, nextOwner)
+	encryptedData := p.encryptDownstreamTraffic(downstreamCellContent, -1)
 
 	nextDownstreamRoundID := p.relayState.roundManager.NextRoundToOpen()
 
@@ -654,7 +638,7 @@ We do nothing, until we have received one per trustee; Then, we pack them in one
 */
 func (p *PriFiLibRelayInstance) Received_TRU_REL_TELL_PK(msg net.TRU_REL_TELL_PK) error {
 
-	p.relayState.trustees[msg.TrusteeID] = NodeRepresentation{msg.TrusteeID, true, msg.Pk, msg.Pk, nil}
+	p.relayState.trustees[msg.TrusteeID] = NodeRepresentation{msg.TrusteeID, true, msg.Pk, msg.Pk}
 	p.relayState.nTrusteesPkCollected++
 
 	log.Lvl2("Relay : received TRU_REL_TELL_PK (" + strconv.Itoa(p.relayState.nTrusteesPkCollected) + "/" + strconv.Itoa(p.relayState.nTrustees) + ")")
@@ -724,12 +708,13 @@ func (p *PriFiLibRelayInstance) Received_CLI_REL_TELL_PK_AND_EPH_PK(msg net.CLI_
 		cipherTextForClient = stream
 	}
 
+	p.relayState.DownstreamCipher = cipherTextForClient //TODO : each client should have its own cipher
+
 	p.relayState.clients[msg.ClientID] = NodeRepresentation{
 		msg.ClientID,
 		true,
 		msg.Pk,
 		msg.EphPk,
-		cipherTextForClient,
 	}
 	p.relayState.nClientsPkCollected++
 

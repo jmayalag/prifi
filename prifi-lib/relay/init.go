@@ -116,7 +116,6 @@ type NodeRepresentation struct {
 	Connected          bool
 	PublicKey          kyber.Point
 	EphemeralPublicKey kyber.Point
-	DownstreamCipher   cipher.Stream
 }
 
 // RelayState contains the mutable state of the relay.
@@ -168,6 +167,7 @@ type RelayState struct {
 	TrusteeCacheHighBound                  int // Number of ciphertexts buffered by trustees. When >= TRUSTEE_CACHE_HIGHBOUND, stop sending
 	EquivocationProtectionEnabled          bool
 	DownstreamTrafficEncrypted             bool
+	DownstreamCipher                       cipher.Stream
 
 	// sync
 	processingLock sync.Mutex // either we treat a message, or a timeout, never both
