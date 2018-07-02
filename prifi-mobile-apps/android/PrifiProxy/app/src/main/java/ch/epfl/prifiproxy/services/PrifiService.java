@@ -1,15 +1,21 @@
 package ch.epfl.prifiproxy.services;
 
 import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.content.Context;
 import android.content.Intent;
+import android.graphics.Color;
+import android.os.Build;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.IBinder;
 import android.os.Looper;
 import android.os.Message;
 import android.os.Process;
+import android.support.annotation.RequiresApi;
 import android.support.v4.app.NotificationCompat;
 import android.widget.Toast;
 
@@ -38,7 +44,7 @@ public class PrifiService extends Service {
     public static final String PRIFI_STOPPED_BROADCAST_ACTION = "ch.epfl.prifiproxy.PRIFI_STOPPED_BROADCAST_ACTION"; // Broadcast Action Key
 
     private static final String PRIFI_SERVICE_THREAD_NAME = "ch.epfl.prifiproxy.PRIFI_SERVICE_THREAD";
-    private static final String PRIFI_SERVICE_NOTIFICATION_CHANNEL = "ch.epfl.prifiproxy.PRIFI_SERVICE_NOTIFICATION_CHANNEL";
+    private static final String _PRIFI_SERVICE_NOTIFICATION_CHANNEL = "ch.epfl.prifiproxy.PRIFI_SERVICE_NOTIFICATION_CHANNEL";
     private static final int PRIFI_SERVICE_NOTIFICATION_ID = 42;
 
     private Looper mServiceLooper;
@@ -103,8 +109,15 @@ public class PrifiService extends Service {
         PendingIntent pendingIntent =
                 PendingIntent.getActivity(this, 0, notificationIntent, 0);
 
+        String channelId;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            channelId = createNotificationChannel();
+        } else {
+            channelId =  "ch.epfl.prifiproxy.PRIFI_SERVICE_NOTIFICATION_CHANNEL_ID";
+        }
+
         Notification notification =
-                new NotificationCompat.Builder(this, PRIFI_SERVICE_NOTIFICATION_CHANNEL)
+                new NotificationCompat.Builder(this, channelId)
                         .setSmallIcon(R.mipmap.ic_launcher)
                         .setContentTitle(getText(R.string.prifi_service_notification_title))
                         .setContentText(getText(R.string.prifi_service_notification_message))
@@ -112,6 +125,20 @@ public class PrifiService extends Service {
                         .build();
 
         return notification;
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    private String createNotificationChannel() {
+        String channelId = "ch.epfl.prifiproxy.PRIFI_SERVICE_NOTIFICATION_CHANNEL_ID";
+        String channelName = "ch.epfl.prifiproxy.PRIFI_SERVICE_NOTIFICATION_CHANNEL";
+        NotificationChannel chan = new NotificationChannel(channelId, channelName, NotificationManager.IMPORTANCE_NONE);
+        chan.setLightColor(Color.BLUE);
+        chan.setLockscreenVisibility(Notification.VISIBILITY_PRIVATE);
+        NotificationManager service = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        if (service != null) {
+            service.createNotificationChannel(chan);
+        }
+        return channelId;
     }
 
 }
