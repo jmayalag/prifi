@@ -4,12 +4,15 @@ package prifiMobile
 
 import (
 	"bytes"
+	"os"
+	"runtime"
+	"sync"
+
 	"github.com/BurntSushi/toml"
 	prifi_protocol "github.com/lbarman/prifi/sda/protocols"
 	"golang.org/x/mobile/asset"
 	"gopkg.in/dedis/onet.v2/app"
 	"gopkg.in/dedis/onet.v2/log"
-	"sync"
 )
 
 const prifiConfigFilename = "prifi.toml"
@@ -79,9 +82,18 @@ func initCothorityConfig() (*app.CothorityConfig, error) {
 	return config, nil
 }
 
+func readFile(filename string) (asset.File, error) {
+	switch runtime.GOOS {
+	case "android":
+		return asset.Open(filename)
+	default:
+		return os.Open(filename)
+	}
+}
+
 // TODO: less code duplication?
 func initCothorityGroupConfig() (*app.Group, error) {
-	file, err := asset.Open(cothorityGroupConfigFilename)
+	file, err := readFile(cothorityGroupConfigFilename)
 	defer file.Close()
 
 	group, err := app.ReadGroupDescToml(file)
@@ -101,7 +113,8 @@ func initCothorityGroupConfig() (*app.Group, error) {
 
 // TODO: Read from any given paths
 func readTomlFromAssets(filename string) (string, error) {
-	file, err := asset.Open(filename)
+	file, err := readFile(filename)
+
 	defer file.Close()
 
 	if err != nil {
