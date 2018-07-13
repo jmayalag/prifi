@@ -2,8 +2,8 @@ package dcnet
 
 import (
 	"bytes"
-	"github.com/lbarman/prifi/prifi-lib/config"
-	"github.com/lbarman/prifi/prifi-lib/crypto"
+	"github.com/dedis/prifi/prifi-lib/config"
+	"github.com/dedis/prifi/prifi-lib/crypto"
 	"gopkg.in/dedis/kyber.v2"
 	"gopkg.in/dedis/onet.v2/log"
 	"testing"

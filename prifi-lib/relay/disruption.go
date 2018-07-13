@@ -1,7 +1,7 @@
 package relay
 
 import (
-	"github.com/lbarman/prifi/prifi-lib/net"
+	"github.com/dedis/prifi/prifi-lib/net"
 	"gopkg.in/dedis/kyber.v2"
 	"gopkg.in/dedis/onet.v2/log"
 	"strconv"

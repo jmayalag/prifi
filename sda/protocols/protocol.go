@@ -25,8 +25,8 @@ package protocols
 import (
 	"errors"
 
-	prifi_lib "github.com/lbarman/prifi/prifi-lib"
-	"github.com/lbarman/prifi/prifi-lib/net"
+	prifi_lib "github.com/dedis/prifi/prifi-lib"
+	"github.com/dedis/prifi/prifi-lib/net"
 	"gopkg.in/dedis/onet.v2"
 	"gopkg.in/dedis/onet.v2/log"
 	"gopkg.in/dedis/onet.v2/network"

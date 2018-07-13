@@ -2,7 +2,7 @@ package dcnet
 
 import (
 	"fmt"
-	"github.com/lbarman/prifi/prifi-lib/config"
+	"github.com/dedis/prifi/prifi-lib/config"
 	"gopkg.in/dedis/kyber.v2"
 	"gopkg.in/dedis/kyber.v2/suites"
 	"gopkg.in/dedis/onet.v2/log"

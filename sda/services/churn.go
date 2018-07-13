@@ -3,7 +3,7 @@ package services
 // This file contains the logic to handle churn.
 
 import (
-	"github.com/lbarman/prifi/sda/protocols"
+	"github.com/dedis/prifi/sda/protocols"
 	"gopkg.in/dedis/onet.v2"
 	"gopkg.in/dedis/onet.v2/log"
 	"gopkg.in/dedis/onet.v2/network"

@@ -1,8 +1,8 @@
 package services
 
 import (
-	"github.com/lbarman/prifi/prifi-lib/crypto"
-	"github.com/lbarman/prifi/sda/protocols"
+	"github.com/dedis/prifi/prifi-lib/crypto"
+	"github.com/dedis/prifi/sda/protocols"
 	"gopkg.in/dedis/onet.v2"
 	"gopkg.in/dedis/onet.v2/log"
 	"gopkg.in/dedis/onet.v2/network"
