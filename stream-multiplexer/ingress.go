@@ -9,10 +9,11 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"encoding/hex"
-	"gopkg.in/dedis/onet.v2/log"
 	"io"
 	"sync"
 	"time"
+
+	"gopkg.in/dedis/onet.v2/log"
 )
 
 // MULTIPLEXER_HEADER_SIZE is the size of the header for the multiplexed data,
@@ -60,7 +61,8 @@ func StartIngressServer(port int, maxMessageSize int, upstreamChan chan []byte, 
 	}
 
 	var err error
-	s, err := net.Listen("tcp", ":"+strconv.Itoa(port))
+	var proxyAdress = "127.0.0.1" + ":" + strconv.Itoa(port)
+	s, err := net.Listen("tcp", proxyAdress)
 
 	if err != nil {
 		log.Error("Ingress server cannot start listening, shutting down :", err.Error())
