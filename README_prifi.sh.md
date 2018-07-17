@@ -1,4 +1,4 @@
-# PriFi: A Low-Latency, Tracking-Resistant Protocol for Local-Area Anonymity [![Build Status](https://travis-ci.org/lbarman/prifi.svg?branch=master)](https://travis-ci.org/lbarman/prifi)
+# PriFi: A Low-Latency, Tracking-Resistant Protocol for Local-Area Anonymity [![Build Status](https://travis-ci.org/dedis/prifi.svg?branch=master)](https://travis-ci.org/lbarman/prifi) [![Go Report Card](https://goreportcard.com/badge/github.com/lbarman/prifi)](https://goreportcard.com/report/github.com/lbarman/prifi) [![Coverage Status](https://coveralls.io/repos/github/dedis/prifi/badge.svg?branch=master)](https://coveralls.io/github/dedis/prifi?branch=master)
 
 [back to main README](README.md)
 
@@ -50,7 +50,7 @@ Man-page:
 	all-localhost: starts a Prifi relay, a trustee, three clients all on localhost
 	sockstest: starts the PriFi and non-PriFi SOCKS tunnel, without PriFi anonymization
 	gen-id: interactive creation of identity.toml
-	Lost ? read https://github.com/lbarman/prifi/README.md
+	Lost ? read https://github.com/dedis/prifi/README.md
 
 ```
 

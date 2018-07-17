@@ -1,4 +1,4 @@
-# PriFi: A Low-Latency, Tracking-Resistant Protocol for Local-Area Anonymity [![Build Status](https://travis-ci.org/lbarman/prifi.svg?branch=master)](https://travis-ci.org/lbarman/prifi) [![Go Report Card](https://goreportcard.com/badge/github.com/lbarman/prifi)](https://goreportcard.com/report/github.com/lbarman/prifi) [![Coverage Status](https://coveralls.io/repos/github/lbarman/prifi/badge.svg?branch=master)](https://coveralls.io/github/lbarman/prifi?branch=master)
+# PriFi: A Low-Latency, Tracking-Resistant Protocol for Local-Area Anonymity [![Build Status](https://travis-ci.org/dedis/prifi.svg?branch=master)](https://travis-ci.org/lbarman/prifi) [![Go Report Card](https://goreportcard.com/badge/github.com/lbarman/prifi)](https://goreportcard.com/report/github.com/lbarman/prifi) [![Coverage Status](https://coveralls.io/repos/github/dedis/prifi/badge.svg?branch=master)](https://coveralls.io/github/dedis/prifi?branch=master)
 
 ## Introduction
 
@@ -20,8 +20,8 @@ First, [get the Go language](https://golang.org/dl/), >= 1.9. They have some `.t
 Then, get PriFi by doing:
 
 ```
-go get github.com/lbarman/prifi/sda/app
-cd $GOPATH/src/github.com/lbarman/prifi
+go get github.com/dedis/prifi/sda/app
+cd $GOPATH/src/github.com/dedis/prifi
 ./prifi.sh install
 ```
 
