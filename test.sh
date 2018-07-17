@@ -7,7 +7,7 @@
 # author : Ludovic Barman
 # email : ludovic.barman@gmail.com
 # belongs to : the PriFi project
-#           <github.com/lbarman/prifi>
+#           <github.com/dedis/prifi>
 # ************************************
 
 # variables that you might change often
@@ -17,7 +17,7 @@ colors="true"                   # if  "false", the output of PriFi (and this scr
 
 socksServer1Port=8080           # the port for the SOCKS-Server-1 (part of the PriFi client)
 socksServer2Port=8090           # the port to attempt connect to (from the PriFi relay) for the SOCKS-Server-2
-                                # notes : see <https://github.com/lbarman/prifi/blob/master/README_architecture.md>
+                                # notes : see <https://github.com/dedis/prifi/blob/master/README_architecture.md>
 
 socks_test_n_clients=3          # number of clients to start in the "all-localhost" script
 

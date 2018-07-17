@@ -6,7 +6,7 @@
 # ************************************
 # author : Ludovic Barman
 # email : ludovic.barman@gmail.com
-# belongs to : the PriFi project<github.com/lbarman/prifi>
+# belongs to : the PriFi project<github.com/dedis/prifi>
 # ************************************
 
 # variables that you might change often
