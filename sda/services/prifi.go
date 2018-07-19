@@ -1,8 +1,8 @@
 package services
 
 import (
-	prifi_protocol "github.com/lbarman/prifi/sda/protocols"
-	"github.com/lbarman/prifi/utils"
+	prifi_protocol "github.com/dedis/prifi/sda/protocols"
+	"github.com/dedis/prifi/utils"
 	"gopkg.in/dedis/onet.v2/log"
 	"gopkg.in/dedis/onet.v2/network"
 	"time"

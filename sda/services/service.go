@@ -12,8 +12,8 @@ import (
 	"io/ioutil"
 	"strconv"
 
-	prifi_protocol "github.com/lbarman/prifi/sda/protocols"
-	stream_multiplexer "github.com/lbarman/prifi/stream-multiplexer"
+	prifi_protocol "github.com/dedis/prifi/sda/protocols"
+	stream_multiplexer "github.com/dedis/prifi/stream-multiplexer"
 	"gopkg.in/dedis/onet.v2"
 	"gopkg.in/dedis/onet.v2/app"
 	"gopkg.in/dedis/onet.v2/log"

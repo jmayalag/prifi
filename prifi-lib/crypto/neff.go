@@ -4,7 +4,7 @@ import (
 	"math/rand"
 
 	"errors"
-	"github.com/lbarman/prifi/prifi-lib/config"
+	"github.com/dedis/prifi/prifi-lib/config"
 	"gopkg.in/dedis/kyber.v2"
 )
 

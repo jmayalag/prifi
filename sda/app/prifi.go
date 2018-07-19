@@ -13,8 +13,8 @@ import (
 	"runtime"
 
 	"github.com/BurntSushi/toml"
-	prifi_protocol "github.com/lbarman/prifi/sda/protocols"
-	prifi_service "github.com/lbarman/prifi/sda/services"
+	prifi_protocol "github.com/dedis/prifi/sda/protocols"
+	prifi_service "github.com/dedis/prifi/sda/services"
 	"gopkg.in/dedis/kyber.v2/suites"
 	"gopkg.in/dedis/kyber.v2/util/encoding"
 	"gopkg.in/dedis/kyber.v2/util/key"

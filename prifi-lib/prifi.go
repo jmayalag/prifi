@@ -1,10 +1,10 @@
 package prifi_lib
 
 import (
-	"github.com/lbarman/prifi/prifi-lib/client"
-	"github.com/lbarman/prifi/prifi-lib/net"
-	"github.com/lbarman/prifi/prifi-lib/relay"
-	"github.com/lbarman/prifi/prifi-lib/trustee"
+	"github.com/dedis/prifi/prifi-lib/client"
+	"github.com/dedis/prifi/prifi-lib/net"
+	"github.com/dedis/prifi/prifi-lib/relay"
+	"github.com/dedis/prifi/prifi-lib/trustee"
 	"gopkg.in/dedis/onet.v2/log"
 )
 

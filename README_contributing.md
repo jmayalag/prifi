@@ -1,4 +1,4 @@
-# PriFi: A Low-Latency, Tracking-Resistant Protocol for Local-Area Anonymity [![Build Status](https://travis-ci.org/lbarman/prifi.svg?branch=master)](https://travis-ci.org/lbarman/prifi)
+# PriFi: A Low-Latency, Tracking-Resistant Protocol for Local-Area Anonymity [![Build Status](https://travis-ci.org/dedis/prifi.svg?branch=master)](https://travis-ci.org/lbarman/prifi) [![Go Report Card](https://goreportcard.com/badge/github.com/lbarman/prifi)](https://goreportcard.com/report/github.com/lbarman/prifi) [![Coverage Status](https://coveralls.io/repos/github/dedis/prifi/badge.svg?branch=master)](https://coveralls.io/github/dedis/prifi?branch=master)
 
 [back to main README](README.md)
 
@@ -9,13 +9,13 @@ This repository uses Travis CI to check continually that the code is bug-free an
 A typical workflow would be :
 
 ```
-$ git clone github.com/lbarman/prifi
+$ git clone github.com/dedis/prifi
 
 [do great improvements]
 
 $ git commit -am "I did great changes!"
 $ git push
-To github.com:lbarman/prifi.git
+To github.com:dedis/prifi.git
  ! [remote rejected] master -> master (protected branch hook declined)
 ```
 
