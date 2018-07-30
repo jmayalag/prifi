@@ -12,12 +12,14 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
-
         <service
             android:name=".services.PrifiService"
             android:exported="false" />
 
-        <activity android:name=".activities.MainActivity">
+        <activity
+            android:name=".activities.MainActivity"
+            android:label="@string/app_name"
+            android:theme="@style/AppTheme.NoActionBar">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -26,15 +28,24 @@
             </intent-filter>
         </activity>
 
-        <activity android:name=".activities.OnScreenLogActivity"
-            android:parentActivityName=".activities.MainActivity"
-            android:label="@string/on_screen_log_activity_label">
-
+        <activity
+            android:name=".activities.OnScreenLogActivity"
+            android:label="@string/on_screen_log_activity_label"
+            android:parentActivityName=".activities.MainActivity">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value=".activities.MainActivity" />
         </activity>
 
+        <activity
+            android:name=".activities.AppSelectionActivity"
+            android:label="@string/title_activity_app_selection"
+            android:parentActivityName=".activities.MainActivity"
+            android:theme="@style/AppTheme.NoActionBar">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value="ch.epfl.prifiproxy.activities.MainActivity" />
+        </activity>
     </application>
 
 </manifest>

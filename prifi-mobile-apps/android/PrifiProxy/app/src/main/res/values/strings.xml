@@ -52,6 +52,13 @@
     <!--Notification-->
     <string name="prifi_service_notification_title">Prifi</string>
     <string name="prifi_service_notification_message">Service running</string>
+    <string name="title_activity_app_selection">Select Apps</string>
+
+    <!--Menu-->
+    <string name="app_selection">Select apps</string>
+    <string name="toggle_all">Toggle All</string>
+    <string name="on_all">Activate all</string>
+    <string name="off_all">Deactivate all</string>
 
     <!--Others-->
 </resources>

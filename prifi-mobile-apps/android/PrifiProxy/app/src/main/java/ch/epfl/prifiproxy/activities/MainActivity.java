@@ -14,7 +14,10 @@ import android.os.Build;
 import android.os.Bundle;
 import android.support.design.widget.TextInputEditText;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.Toolbar;
 import android.view.KeyEvent;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
@@ -51,12 +54,14 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        Toolbar toolbar = findViewById(R.id.toolbar);
+        setSupportActionBar(toolbar);
 
         // Load Variables from SharedPreferences
         SharedPreferences prifiPrefs = getSharedPreferences(getString(R.string.prifi_config_shared_preferences), MODE_PRIVATE);
-        prifiRelayAddress = prifiPrefs.getString(getString(R.string.prifi_config_relay_address),"");
+        prifiRelayAddress = prifiPrefs.getString(getString(R.string.prifi_config_relay_address), "");
         prifiRelayPort = prifiPrefs.getInt(getString(R.string.prifi_config_relay_port), 0);
-        prifiRelaySocksPort = prifiPrefs.getInt(getString(R.string.prifi_config_relay_socks_port),0);
+        prifiRelaySocksPort = prifiPrefs.getInt(getString(R.string.prifi_config_relay_socks_port), 0);
 
         // Buttons
         startButton = findViewById(R.id.startButton);
@@ -119,6 +124,25 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.menu_main, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        int id = item.getItemId();
+
+        //noinspection SimplifiableIfStatement
+        if (id == R.id.app_selection) {
+            startActivity(new Intent(this, AppSelectionActivity.class));
+            return true;
+        }
+
+        return super.onOptionsItemSelected(item);
+    }
+
+    @Override
     protected void onResume() {
         super.onResume();
 
@@ -141,7 +165,7 @@ public class MainActivity extends AppCompatActivity {
 
     /**
      * Start PriFi "Service" (if not running)
-     *
+     * <p>
      * It will execute an AsyncTask, because the network check can't be on the main thread.
      */
     private void startPrifiService() {
@@ -152,7 +176,7 @@ public class MainActivity extends AppCompatActivity {
 
     /**
      * Stop PriFi "Core" (if running), the service will be shut down by itself.
-     *
+     * <p>
      * The stopping process may take 1-2 seconds, so a ProgressDialog has been added to give users some feedback.
      */
     private void stopPrifiService() {
@@ -198,6 +222,7 @@ public class MainActivity extends AppCompatActivity {
 
     /**
      * Trigger actions if the Done key is pressed
+     *
      * @param view the input field where the Done key is pressed
      */
     private void triggerDoneAction(TextView view) {
@@ -222,8 +247,9 @@ public class MainActivity extends AppCompatActivity {
 
     /**
      * Update input fields and preferences, if the user input is valid.
-     * @param relayAddressText user input relay address
-     * @param relayPortText user input relay port
+     *
+     * @param relayAddressText   user input relay address
+     * @param relayPortText      user input relay port
      * @param relaySocksPortText user input relay socks port
      */
     private void updateInputFieldsAndPrefs(String relayAddressText, String relayPortText, String relaySocksPortText) {
@@ -278,7 +304,7 @@ public class MainActivity extends AppCompatActivity {
 
     /**
      * Reset PriFi Configuration to its default value.
-     *
+     * <p>
      * It sets Preferences.isFirstInit to true and restart the app. The Application class will do the rest.
      */
     private void resetPrifiConfig() {
@@ -293,6 +319,7 @@ public class MainActivity extends AppCompatActivity {
 
     /**
      * Depending on the PriFi Service status, we enable or disable some UI elements.
+     *
      * @param isServiceRunning Is the PriFi Service running?
      */
     private void updateUIInputCapability(boolean isServiceRunning) {
@@ -315,7 +342,7 @@ public class MainActivity extends AppCompatActivity {
 
     /**
      * An enum that describes the network availability.
-     *
+     * <p>
      * None: Both PriFi Relay and Socks Server are not available.
      * RELAY_ONLY: Socks Server is not available.
      * SOCKS_ONLY: PriFi Relay is not available.
@@ -330,7 +357,7 @@ public class MainActivity extends AppCompatActivity {
 
     /**
      * The Async Task that
-     *
+     * <p>
      * 1. Checks network availability
      * 2. Starts PriFi Service
      * 3. Updates UI
@@ -348,7 +375,7 @@ public class MainActivity extends AppCompatActivity {
 
         /**
          * Pre Async Execution
-         *
+         * <p>
          * Show a ProgressDialog, because the network check may take up to 3 seconds.
          */
         @Override
@@ -365,7 +392,7 @@ public class MainActivity extends AppCompatActivity {
 
         /**
          * During Async Execution
-         *
+         * <p>
          * Check the network availability
          *
          * @return relay status: none, relay only, socks only or both
@@ -401,7 +428,7 @@ public class MainActivity extends AppCompatActivity {
 
         /**
          * Post Async Execution
-         *
+         * <p>
          * Start PriFi Service and update UI
          *
          * @param networkStatus relay status
@@ -444,7 +471,7 @@ public class MainActivity extends AppCompatActivity {
 
     /**
      * A custom EditorActionListener
-     *
+     * <p>
      * When the Done key is pressed, execute pre defined actions and hide the virtual keyboard.
      */
     private class DoneEditorActionListener implements TextView.OnEditorActionListener {
@@ -452,7 +479,7 @@ public class MainActivity extends AppCompatActivity {
         public boolean onEditorAction(TextView textView, int actionId, KeyEvent keyEvent) {
             if (actionId == EditorInfo.IME_ACTION_DONE) {
                 triggerDoneAction(textView);
-                InputMethodManager imm = (InputMethodManager)textView.getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
+                InputMethodManager imm = (InputMethodManager) textView.getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
                 if (imm != null) {
                     imm.hideSoftInputFromWindow(textView.getWindowToken(), 0);
                 }
