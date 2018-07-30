@@ -184,6 +184,13 @@ type RelayState struct {
 // It takes care to call the correct message handler function.
 func (p *PriFiLibRelayInstance) ReceivedMessage(msg interface{}) error {
 
+	// this is the exception: this message can be handled concurrently (and needs to be - since it is called
+	// from a timeout)
+	switch typedMsg := msg.(type) {
+		case net.ALL_ALL_SHUTDOWN:
+			p.Received_ALL_ALL_SHUTDOWN(typedMsg)
+		return nil
+	}
 	p.relayState.processingLock.Lock()
 	defer p.relayState.processingLock.Unlock()
 

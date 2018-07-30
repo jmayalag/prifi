@@ -32,7 +32,7 @@ type DisconnectionRequest struct{}
 const DELAY_BEFORE_CONNECT_TO_RELAY = 5 * time.Second
 
 //Delay before the relay re-tried to connect to the trustees
-const DELAY_BEFORE_CONNECT_TO_TRUSTEES = 30 * time.Second
+const DELAY_BEFORE_CONNECT_TO_TRUSTEES = 5 * time.Second
 
 // returns true if the PriFi SDA protocol is running (in any state : init, communicate, etc)
 func (s *ServiceState) IsPriFiProtocolRunning() bool {
@@ -104,7 +104,6 @@ func (s *ServiceState) handleTimeout(lateClients []string, lateTrustees []string
 // but in our case it is useful to know when a network RESET occurred, so we can kill protocols (otherwise they
 // remain in some weird state)
 func (s *ServiceState) NetworkErrorHappened(si *network.ServerIdentity) {
-
 	if s.role != prifi_protocol.Relay {
 		log.Lvl3("A network error occurred with node", si, ", but we're not the relay, nothing to do.")
 		//s.connectToRelayStopChan <- true //"nothing" except stop this goroutine
@@ -192,6 +191,7 @@ func (s *ServiceState) connectToTrustees(trusteesIDs []*network.ServerIdentity, 
 
 	tick := time.Tick(DELAY_BEFORE_CONNECT_TO_TRUSTEES)
 	for range tick {
+		log.Lvl3("connectToTrustees still alive, Protocol running", s.IsPriFiProtocolRunning())
 		if !s.IsPriFiProtocolRunning() {
 			for _, v := range trusteesIDs {
 				s.sendHelloMessage(v)
@@ -215,6 +215,8 @@ func (s *ServiceState) connectToRelay(relayID *network.ServerIdentity, stopChan 
 
 	tick := time.Tick(DELAY_BEFORE_CONNECT_TO_RELAY)
 	for range tick {
+		log.Lvl3("connectToRelay still alive, Protocol running", s.IsPriFiProtocolRunning())
+
 		//log.Info("Service", s, ": Still pinging relay", !s.IsPriFiProtocolRunning())
 		if !s.IsPriFiProtocolRunning() {
 			s.sendConnectionRequest(relayID)
@@ -233,7 +235,7 @@ func (s *ServiceState) connectToRelay(relayID *network.ServerIdentity, stopChan 
 // It is called by the client and trustee services at startup to
 // announce themselves to the relay.
 func (s *ServiceState) sendConnectionRequest(relayID *network.ServerIdentity) {
-	log.Lvl4("Sending connection request", s.role, s)
+	log.Lvl3("Sending connection request (I'm a", s.role, s, ")")
 	err := s.SendRaw(relayID, &ConnectionRequest{ProtocolVersion: s.prifiTomlConfig.ProtocolVersion})
 
 	if err != nil {
@@ -250,7 +252,7 @@ func (s *ServiceState) sendConnectionRequest(relayID *network.ServerIdentity) {
 // It is called by the relay services at startup to
 // announce themselves to the trustees.
 func (s *ServiceState) sendHelloMessage(trusteeID *network.ServerIdentity) {
-	log.Lvl4("Sending hello request", s.role, s)
+	log.Lvl3("Sending hello request (I'm a", s.role, s, ")")
 	err := s.SendRaw(trusteeID, &HelloMsg{})
 
 	if err != nil {
