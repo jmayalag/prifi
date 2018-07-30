@@ -3,7 +3,7 @@ package services
 // This file contains the logic to handle churn.
 
 import (
-	"github.com/lbarman/prifi/sda/protocols"
+	"github.com/dedis/prifi/sda/protocols"
 	"gopkg.in/dedis/onet.v2"
 	"gopkg.in/dedis/onet.v2/log"
 	"gopkg.in/dedis/onet.v2/network"
@@ -217,7 +217,7 @@ func (c *churnHandler) handleConnection(msg *network.Envelope) {
 	}
 
 	if c.waitQueue.contains(ID, isTrustee) {
-		log.Lvl4("Ignored new connection request from", node, ID, "already in the list")
+		log.Lvl3("Ignored new connection request from", node, ID, "already in the list")
 		return
 	}
 
@@ -229,7 +229,7 @@ func (c *churnHandler) handleConnection(msg *network.Envelope) {
 			role:      protocols.Trustee,
 			numericID: c.nextFreeTrusteeID,
 		}
-		log.Lvl3("ID ", ID, " assigned to trustee #", c.nextFreeTrusteeID)
+		log.Lvl2("ID ", ID, " assigned to trustee #", c.nextFreeTrusteeID)
 		c.nextFreeTrusteeID++
 	} else {
 		c.waitQueue.clients[ID] = &waitQueueEntry{
@@ -237,7 +237,7 @@ func (c *churnHandler) handleConnection(msg *network.Envelope) {
 			role:      protocols.Client,
 			numericID: c.nextFreeClientID,
 		}
-		log.Lvl3("ID ", ID, " assigned to client #", c.nextFreeClientID)
+		log.Lvl2("ID ", ID, " assigned to client #", c.nextFreeClientID)
 		c.nextFreeClientID++
 	}
 
@@ -267,7 +267,7 @@ func (c *churnHandler) handleDisconnection(msg *network.Envelope) {
 	isTrustee := c.isATrustee(msg.ServerIdentity)
 
 	if !c.waitQueue.contains(ID, isTrustee) {
-		log.Lvl4("Ignored new disconnection request from", ID, " (isATrustee:", isTrustee, "), not in the list")
+		log.Lvl3("Ignored new disconnection request from", ID, " (isATrustee:", isTrustee, "), not in the list")
 		return
 	}
 
@@ -309,6 +309,7 @@ func (c *churnHandler) tryStartProtocol() {
 			log.Lvl1("Enough participants (", nClients, "clients and", nTrustees, "trustees), but no handler to start.")
 			return
 		}
+		log.Lvl1("Enough participants (", nClients, "clients and", nTrustees, "trustees), starting...")
 		c.startProtocol()
 	} else {
 		log.Lvl1("Too few participants (", nClients, "clients and", nTrustees, "trustees), waiting...")

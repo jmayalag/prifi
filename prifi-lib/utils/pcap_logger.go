@@ -1,7 +1,7 @@
 package utils
 
 import (
-	prifilog "github.com/lbarman/prifi/prifi-lib/log"
+	prifilog "github.com/dedis/prifi/prifi-lib/log"
 	"gopkg.in/dedis/onet.v2/log"
 	"math"
 	"strconv"

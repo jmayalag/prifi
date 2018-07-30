@@ -7,7 +7,7 @@
 # author : Ludovic Barman
 # email : ludovic.barman@gmail.com
 # belongs to : the PriFi project
-# 			<github.com/lbarman/prifi>
+# 			<github.com/dedis/prifi>
 # ************************************
 
 # variables that you might change often
@@ -19,7 +19,7 @@ colors="true"                   # if  "false", the output of PriFi (and this scr
 
 socksServer1Port=8080           # the port for the SOCKS-Server-1 (part of the PriFi client)
 socksServer2Port=8090           # the port to attempt connect to (from the PriFi relay) for the SOCKS-Server-2
-                                # notes : see <https://github.com/lbarman/prifi/blob/master/README_architecture.md>
+                                # notes : see <https://github.com/dedis/prifi/blob/master/README_architecture.md>
 
 all_localhost_n_clients=3      # number of clients to start in the "all-localhost" script
 
@@ -31,7 +31,7 @@ group_file="group.toml"                     # default name for the group file (c
 
 # location of the buildable (go build) prifi file :
 
-bin_file="$GOPATH/src/github.com/lbarman/prifi/sda/app/prifi.go"
+bin_file="$GOPATH/src/github.com/dedis/prifi/sda/app/prifi.go"
 
 # we have two "identities" directory. The second one is empty unless you generate your own keys with "gen-id"
 
@@ -73,7 +73,7 @@ print_usage() {
 	echo -e "	${highlightOn}all-localhost${highlightOff}: starts a Prifi relay, a trustee, three clients all on localhost"
 	echo -e "	${highlightOn}gen-id${highlightOff}: interactive creation of identity.toml"
 	echo -e "	${highlightOn}kill-d${highlightOff}: kills all prifi-deamons (relay-d and trustee-d's)"
-	echo -e "	Lost ? read https://github.com/lbarman/prifi/README.md"
+	echo -e "	Lost ? read https://github.com/dedis/prifi/README.md"
 }
 
 # ------------------------
@@ -103,7 +103,7 @@ case $1 in
 		echo -e "$okMsg"
 
 		echo -n "Re-getting all go packages (since we switched branch)... "
-		cd "$GOPATH/src/github.com/lbarman/prifi/sda/app"; go get ./... 1>/dev/null 2>&1
+		cd "$GOPATH/src/github.com/dedis/prifi/sda/app"; go get ./... 1>/dev/null 2>&1
 		cd ../..
 		cd "$GOPATH/src/gopkg.in/dedis/onet.v2"; go get -u ./... 1>/dev/null 2>&1
 		echo -e "$okMsg"

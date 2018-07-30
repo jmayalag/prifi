@@ -6,7 +6,7 @@
 # ************************************
 # author : Ludovic Barman
 # email : ludovic.barman@gmail.com
-# belongs to : the PriFi project<github.com/lbarman/prifi>
+# belongs to : the PriFi project<github.com/dedis/prifi>
 # ************************************
 
 # variables that you might change often
@@ -39,7 +39,7 @@ group_file="group.toml"                     # default name for the group file (c
 
 # location of the buildable (go build) prifi file :
 
-bin_file="$GOPATH/src/github.com/lbarman/prifi/sda/app/prifi.go"
+bin_file="$GOPATH/src/github.com/dedis/prifi/sda/app/prifi.go"
 
 # we have two "identities" directory. The second one is empty unless you generate your own keys with "gen-id"
 
