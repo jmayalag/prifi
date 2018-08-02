@@ -105,10 +105,12 @@ func (s *ServiceState) handleTimeout(lateClients []string, lateTrustees []string
 // remain in some weird state)
 func (s *ServiceState) NetworkErrorHappened(si *network.ServerIdentity) {
 	if s.role != prifi_protocol.Relay {
-		log.Lvl3("A network error occurred with node", si, ", but we're not the relay, nothing to do.")
-		//s.connectToRelayStopChan <- true //"nothing" except stop this goroutine
+		log.Lvl3("A network error occurred with node", si, ", we're not the relay, hence we stop the protocol, " +
+			"but let the connectToRelay goroutine still running.")
+		s.StopPriFiCommunicateProtocol()
 		return
 	}
+
 	if s.churnHandler == nil {
 		log.Fatal("Can't handle a network error without a churnHandler")
 	}
@@ -208,7 +210,7 @@ func (s *ServiceState) connectToTrustees(trusteesIDs []*network.ServerIdentity, 
 }
 
 // connectToRelay sends a connection request to the relay
-// every 10 seconds if the node is not participating to
+// every 5 seconds if the node is not participating to
 // a PriFi protocol.
 func (s *ServiceState) connectToRelay(relayID *network.ServerIdentity, stopChan chan bool) {
 	s.sendConnectionRequest(relayID)
@@ -243,7 +245,6 @@ func (s *ServiceState) sendConnectionRequest(relayID *network.ServerIdentity) {
 			log.Lvl3("Connection to relay failed. (I'm a trustee at address", s, ")")
 		} else {
 			log.Lvl3("Connection to relay failed. (I'm a client at address", s, ")")
-
 		}
 	}
 }
