@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"crypto/rand"
 	"errors"
-	"github.com/lbarman/prifi/prifi-lib/crypto"
+	"github.com/dedis/prifi/prifi-lib/crypto"
 	"gopkg.in/dedis/kyber.v2"
 	"testing"
 )
@@ -76,6 +76,7 @@ func TestMessageSenderWrapper(t *testing.T) {
 		t.Error("this call should not trigger an error")
 	}
 	var loggingFunctionCalled bool = false
+	_ = loggingFunctionCalled
 	logging := func(e interface{}) { loggingFunctionCalled = true }
 	msw, err = NewMessageSenderWrapper(true, logging, logging, errHandling, msgSender)
 
@@ -94,6 +95,7 @@ func TestMessageSenderWrapperRelay(t *testing.T) {
 	//test the real stuff
 	var errorHandlerCalled bool = false
 	var loggingFunctionCalled bool = false
+	_ = loggingFunctionCalled
 
 	errHandling := func(e error) { errorHandlerCalled = true }
 	logging := func(e interface{}) { loggingFunctionCalled = true }

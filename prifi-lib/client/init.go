@@ -23,11 +23,11 @@ package client
 
 import (
 	"errors"
-	"github.com/lbarman/prifi/prifi-lib/crypto"
-	"github.com/lbarman/prifi/prifi-lib/dcnet"
-	prifilog "github.com/lbarman/prifi/prifi-lib/log"
-	"github.com/lbarman/prifi/prifi-lib/net"
-	"github.com/lbarman/prifi/prifi-lib/utils"
+	"github.com/dedis/prifi/prifi-lib/crypto"
+	"github.com/dedis/prifi/prifi-lib/dcnet"
+	prifilog "github.com/dedis/prifi/prifi-lib/log"
+	"github.com/dedis/prifi/prifi-lib/net"
+	"github.com/dedis/prifi/prifi-lib/utils"
 	"gopkg.in/dedis/kyber.v2"
 	"gopkg.in/dedis/onet.v2/log"
 	"reflect"

@@ -34,15 +34,15 @@ considered disconnected
 import (
 	"errors"
 
-	"github.com/lbarman/prifi/prifi-lib/dcnet"
-	prifilog "github.com/lbarman/prifi/prifi-lib/log"
-	"github.com/lbarman/prifi/prifi-lib/net"
-	"github.com/lbarman/prifi/prifi-lib/scheduler"
-	"github.com/lbarman/prifi/prifi-lib/utils"
+	"github.com/dedis/prifi/prifi-lib/dcnet"
+	prifilog "github.com/dedis/prifi/prifi-lib/log"
+	"github.com/dedis/prifi/prifi-lib/net"
+	"github.com/dedis/prifi/prifi-lib/scheduler"
+	"github.com/dedis/prifi/prifi-lib/utils"
 	"gopkg.in/dedis/kyber.v2"
 	"gopkg.in/dedis/onet.v2/log"
 
-	"github.com/lbarman/prifi/prifi-lib/crypto"
+	"github.com/dedis/prifi/prifi-lib/crypto"
 	"reflect"
 	"strings"
 	"sync"
@@ -184,6 +184,13 @@ type RelayState struct {
 // It takes care to call the correct message handler function.
 func (p *PriFiLibRelayInstance) ReceivedMessage(msg interface{}) error {
 
+	// this is the exception: this message can be handled concurrently (and needs to be - since it is called
+	// from a timeout)
+	switch typedMsg := msg.(type) {
+		case net.ALL_ALL_SHUTDOWN:
+			p.Received_ALL_ALL_SHUTDOWN(typedMsg)
+		return nil
+	}
 	p.relayState.processingLock.Lock()
 	defer p.relayState.processingLock.Unlock()
 

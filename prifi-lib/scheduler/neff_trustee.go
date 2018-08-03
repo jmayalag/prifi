@@ -13,9 +13,9 @@ OUTPUT : list of slots
 import (
 	"bytes"
 	"errors"
-	"github.com/lbarman/prifi/prifi-lib/config"
-	"github.com/lbarman/prifi/prifi-lib/crypto"
-	"github.com/lbarman/prifi/prifi-lib/net"
+	"github.com/dedis/prifi/prifi-lib/config"
+	"github.com/dedis/prifi/prifi-lib/crypto"
+	"github.com/dedis/prifi/prifi-lib/net"
 	"gopkg.in/dedis/kyber.v2"
 	"gopkg.in/dedis/kyber.v2/sign/schnorr"
 	"gopkg.in/dedis/onet.v2/log"
