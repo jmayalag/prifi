@@ -1,12 +1,20 @@
 package ch.epfl.prifiproxy.adapters;
 
+import android.content.Context;
+import android.net.Uri;
 import android.support.annotation.NonNull;
 import android.support.v7.widget.RecyclerView;
+import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.Switch;
 import android.widget.TextView;
+
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.DecodeFormat;
+import com.bumptech.glide.request.RequestOptions;
 
 import java.util.List;
 
@@ -16,12 +24,20 @@ import ch.epfl.prifiproxy.utils.AppInfo;
 
 public class AppSelectionAdapter extends RecyclerView.Adapter<AppSelectionAdapter.ViewHolder> {
     private final OnAppCheckedListener mCheckedListener;
+    private final int iconSize;
     private List<AppInfo> mDataset;
 
-    public AppSelectionAdapter(List<AppInfo> mDataset,
+    public AppSelectionAdapter(Context context, List<AppInfo> mDataset,
                                OnAppCheckedListener checkedListener) {
         this.mDataset = mDataset;
+        TypedValue typedValue = new TypedValue();
+
+        context.getTheme().resolveAttribute(
+                android.R.attr.listPreferredItemHeight, typedValue, true);
         this.mCheckedListener = checkedListener;
+        int height = TypedValue.complexToDimensionPixelSize(typedValue.data,
+                context.getResources().getDisplayMetrics());
+        this.iconSize = Math.round(height * context.getResources().getDisplayMetrics().density + 0.5f);
     }
 
     @NonNull
@@ -39,6 +55,16 @@ public class AppSelectionAdapter extends RecyclerView.Adapter<AppSelectionAdapte
         holder.mAppName.setText(item.label);
         holder.mPackageName.setText(item.packageName);
         holder.mSwitchPrifi.setChecked(item.usePrifi);
+        if (item.icon <= 0)
+            holder.mAppIcon.setImageResource(android.R.drawable.sym_def_app_icon);
+        else {
+            Uri uri = Uri.parse("android.resource://" + item.packageName + "/" + item.icon);
+            Glide.with(holder.itemView.getContext())
+                    .applyDefaultRequestOptions(new RequestOptions().format(DecodeFormat.PREFER_RGB_565))
+                    .load(uri)
+                    .apply(new RequestOptions().override(iconSize, iconSize))
+                    .into(holder.mAppIcon);
+        }
     }
 
     @Override
@@ -47,17 +73,21 @@ public class AppSelectionAdapter extends RecyclerView.Adapter<AppSelectionAdapte
     }
 
     static class ViewHolder extends RecyclerView.ViewHolder {
+        ImageView mAppIcon;
         TextView mAppName;
         TextView mPackageName;
         Switch mSwitchPrifi;
 
         ViewHolder(View itemView, OnAppCheckedListener changeListener) {
             super(itemView);
+            mAppIcon = itemView.findViewById(R.id.appIcon);
             mAppName = itemView.findViewById(R.id.appName);
             mPackageName = itemView.findViewById(R.id.packageName);
             mSwitchPrifi = itemView.findViewById(R.id.switchPrifi);
             mSwitchPrifi.setOnCheckedChangeListener((buttonView, isChecked) ->
                     changeListener.onChecked(getAdapterPosition(), isChecked));
+
+            itemView.setOnClickListener(v -> mSwitchPrifi.toggle());
         }
     }
 }

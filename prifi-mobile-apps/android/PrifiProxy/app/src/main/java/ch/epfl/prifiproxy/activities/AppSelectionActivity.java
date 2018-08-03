@@ -19,6 +19,7 @@ import ch.epfl.prifiproxy.utils.AppInfo;
 import ch.epfl.prifiproxy.utils.AppListHelper;
 
 public class AppSelectionActivity extends AppCompatActivity implements OnAppCheckedListener {
+    private static final String TAG = "PRIFI_APP_SELECTION";
     private RecyclerView mRecyclerView;
     private RecyclerView.Adapter mAdapter;
     private RecyclerView.LayoutManager mLayoutManager;
@@ -41,7 +42,7 @@ public class AppSelectionActivity extends AppCompatActivity implements OnAppChec
         mRecyclerView.setLayoutManager(mLayoutManager);
 
         mAppList = AppListHelper.getApps(this);
-        mAdapter = new AppSelectionAdapter(mAppList, this);
+        mAdapter = new AppSelectionAdapter(this, mAppList, this);
         mRecyclerView.setAdapter(mAdapter);
     }
 
@@ -63,7 +64,6 @@ public class AppSelectionActivity extends AppCompatActivity implements OnAppChec
                 allAppsUsePrifi(false);
                 break;
         }
-        updateListView();
 
         return super.onOptionsItemSelected(item);
     }
@@ -78,13 +78,12 @@ public class AppSelectionActivity extends AppCompatActivity implements OnAppChec
     @Override
     public void onChecked(int position, boolean isChecked) {
         AppInfo info = mAppList.get(position);
-        Log.i("PRIFI_APP_SELECT", info.packageName + " isChecked: " + isChecked);
+        Log.d(TAG, info.packageName + " isChecked: " + isChecked);
         info.usePrifi = isChecked;
     }
 
     private void updateListView() {
-        mAdapter = new AppSelectionAdapter(mAppList, this);
-        mRecyclerView.swapAdapter(mAdapter, false);
+        mAdapter.notifyDataSetChanged();
     }
 
     private void savePrifiApps() {
@@ -94,7 +93,7 @@ public class AppSelectionActivity extends AppCompatActivity implements OnAppChec
                 prifiApps.add(info.packageName);
             }
         }
-        Log.i("PRIFI_APP_SELECT", "Saving " + prifiApps.size() + "apps");
+        Log.i(TAG, "Saving " + prifiApps.size() + " prifi apps in preferences");
         AppListHelper.savePrifiApps(this, prifiApps);
     }
 

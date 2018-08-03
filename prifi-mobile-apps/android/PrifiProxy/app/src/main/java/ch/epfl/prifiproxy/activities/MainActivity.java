@@ -9,12 +9,14 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.net.Uri;
+import android.net.VpnService;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.design.widget.TextInputEditText;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -34,9 +36,25 @@ import ch.epfl.prifiproxy.services.PrifiService;
 import ch.epfl.prifiproxy.utils.HttpThroughPrifiTask;
 import ch.epfl.prifiproxy.utils.NetworkHelper;
 import ch.epfl.prifiproxy.utils.SystemHelper;
+import ch.epfl.prifiproxy.vpn.PrifiVpnService;
+import eu.faircode.netguard.ServiceSinkhole;
+import eu.faircode.netguard.Util;
 import prifiMobile.PrifiMobile;
 
 public class MainActivity extends AppCompatActivity {
+    private static final String TAG = "PRIFI_MAIN";
+    private static final int REQUEST_VPN = 100;
+
+    public static final String ACTION_RULES_CHANGED = "eu.faircode.netguard.ACTION_RULES_CHANGED";
+    public static final String ACTION_QUEUE_CHANGED = "eu.faircode.netguard.ACTION_QUEUE_CHANGED";
+    public static final String EXTRA_REFRESH = "Refresh";
+    public static final String EXTRA_SEARCH = "Search";
+    public static final String EXTRA_RELATED = "Related";
+    public static final String EXTRA_APPROVE = "Approve";
+    public static final String EXTRA_LOGCAT = "Logcat";
+    public static final String EXTRA_CONNECTED = "Connected";
+    public static final String EXTRA_METERED = "Metered";
+    public static final String EXTRA_SIZE = "Size";
 
     private String prifiRelayAddress;
     private int prifiRelayPort;
@@ -96,7 +114,7 @@ public class MainActivity extends AppCompatActivity {
             }
         };
 
-        startButton.setOnClickListener(view -> startPrifiService());
+        startButton.setOnClickListener(view -> prepareVpn());
 
         stopButton.setOnClickListener(view -> stopPrifiService());
 
@@ -135,7 +153,11 @@ public class MainActivity extends AppCompatActivity {
 
         //noinspection SimplifiableIfStatement
         if (id == R.id.app_selection) {
-            startActivity(new Intent(this, AppSelectionActivity.class));
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                startActivity(new Intent(this, AppSelectionActivity.class));
+            } else {
+                Toast.makeText(this, R.string.AppSelectionUnavailable, Toast.LENGTH_LONG).show();
+            }
             return true;
         }
 
@@ -163,15 +185,31 @@ public class MainActivity extends AppCompatActivity {
         unregisterReceiver(mBroadcastReceiver);
     }
 
+    private void prepareVpn() {
+        Intent intent = VpnService.prepare(this);
+        if (intent == null) {
+            Log.i(TAG, "Vpn prepared already");
+            onActivityResult(REQUEST_VPN, RESULT_OK, null);
+        } else {
+            startActivityForResult(intent, REQUEST_VPN);
+        }
+    }
+
     /**
      * Start PriFi "Service" (if not running)
-     * <p>
-     * It will execute an AsyncTask, because the network check can't be on the main thread.
      */
     private void startPrifiService() {
         if (!isPrifiServiceRunning.get()) {
             new StartPrifiAsyncTask(this).execute();
         }
+    }
+
+    private void startVpn() {
+        ServiceSinkhole.start("UI", this);
+    }
+
+    private void stopVpn() {
+        ServiceSinkhole.stop("UI", this, false);
     }
 
     /**
@@ -187,6 +225,25 @@ public class MainActivity extends AppCompatActivity {
                     getString(R.string.prifi_service_stopping_dialog_message)
             );
             PrifiMobile.stopClient(); // StopClient will make the service to shutdown by itself
+            stopVpn();
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        Log.i(TAG, "onActivityResult request=" + requestCode + " result=" + requestCode + " ok=" + (resultCode == RESULT_OK));
+        Util.logExtras(data);
+
+        if (requestCode == REQUEST_VPN) {
+            // Handle VPN Approval
+            if (resultCode == RESULT_OK) {
+                startPrifiService();
+            } else {
+                Toast.makeText(this, getString(R.string.msg_vpn_cancelled), Toast.LENGTH_LONG).show();
+            }
+        } else {
+            Log.w(TAG, "Unknown activity result request=" + requestCode);
+            super.onActivityResult(requestCode, resultCode, data);
         }
     }
 
@@ -459,7 +516,7 @@ public class MainActivity extends AppCompatActivity {
                         activity.isPrifiServiceRunning.set(true);
                         activity.startService(new Intent(activity, PrifiService.class));
                         activity.updateUIInputCapability(true);
-                        activity.showRedirectDialog();
+                        activity.startVpn();
                         break;
 
                     default:

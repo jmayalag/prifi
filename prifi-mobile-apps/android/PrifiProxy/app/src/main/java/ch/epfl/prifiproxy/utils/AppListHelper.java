@@ -15,20 +15,18 @@ import java.util.Set;
 import static android.content.pm.PackageManager.GET_META_DATA;
 
 public class AppListHelper {
-    private static String APP_LIST_KEY = "appList";
+    public static String APP_LIST_KEY = "appList";
 
     public static List<AppInfo> getApps(Context context) {
         List<AppInfo> apps = new ArrayList<>();
         PackageManager packageManager = context.getPackageManager();
         List<ApplicationInfo> installedApps = packageManager.getInstalledApplications(GET_META_DATA);
 
-        Collections.sort(installedApps, (o1, o2) -> o1.packageName.compareTo(o2.packageName));
-
         Set<String> prifiApps = getPrifiApps(context);
 
         for (ApplicationInfo applicationInfo : installedApps) {
-            if (isSystemPackage(applicationInfo))
-                continue;
+//            if (isSystemPackage(applicationInfo))
+//                continue;
 
             AppInfo appInfo = new AppInfo();
             appInfo.name = applicationInfo.name;
@@ -38,6 +36,8 @@ public class AppListHelper {
             appInfo.usePrifi = prifiApps.contains(appInfo.packageName);
             apps.add(appInfo);
         }
+
+        Collections.sort(apps, (o1, o2) -> o1.label.compareTo(o2.label));
 
         return apps;
     }
@@ -56,11 +56,17 @@ public class AppListHelper {
      * Saves the list of apps that use prifi.
      */
     public static void savePrifiApps(Context context, List<String> packageNames) {
+        Set<String> old = getPrifiApps(context);
+        Set<String> newApps = new HashSet<>(packageNames);
+        // Save only if there were changes
+        if (!old.equals(newApps)) {
+            return;
+        }
+
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
         SharedPreferences.Editor editor = prefs.edit();
 
-        Set<String> apps = new HashSet<>(packageNames);
-        editor.putStringSet(APP_LIST_KEY, apps);
+        editor.putStringSet(APP_LIST_KEY, newApps);
         editor.apply();
     }
 
