@@ -5,6 +5,7 @@ import android.graphics.PorterDuff;
 import android.graphics.drawable.Drawable;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
@@ -38,6 +39,7 @@ public class AppSelectionActivity extends AppCompatActivity implements OnAppChec
     private boolean showSystemApps;
 
     private UpdateAppListTask currentUpdate;
+    private SwipeRefreshLayout swipeContainer;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -47,6 +49,10 @@ public class AppSelectionActivity extends AppCompatActivity implements OnAppChec
         setSupportActionBar(toolbar);
 
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+
+
+        swipeContainer = findViewById(R.id.swipe_container);
+        swipeContainer.setOnRefreshListener(this::startListUpdate);
 
         getPreferences();
 
@@ -61,7 +67,7 @@ public class AppSelectionActivity extends AppCompatActivity implements OnAppChec
         mRecyclerView.setAdapter(mAdapter);
 
         getPreferences();
-        updateListView();
+        startListUpdate();
     }
 
     private void getPreferences() {
@@ -138,7 +144,7 @@ public class AppSelectionActivity extends AppCompatActivity implements OnAppChec
         SharedPreferences.Editor editor = prifiPrefs.edit();
         editor.putBoolean(getString(R.string.prifi_ui_show_system_apps), showSystemApps);
         editor.apply();
-        updateListView();
+        startListUpdate();
     }
 
     private void sort(AppListHelper.Sort newSort) {
@@ -158,7 +164,7 @@ public class AppSelectionActivity extends AppCompatActivity implements OnAppChec
 
         invalidateOptionsMenu();
 
-        updateListView();
+        startListUpdate();
     }
 
     private void allAppsUsePrifi(boolean usePrifi) {
@@ -166,7 +172,7 @@ public class AppSelectionActivity extends AppCompatActivity implements OnAppChec
             info.usePrifi = usePrifi;
         }
         savePrifiApps();
-        updateListView();
+        startListUpdate();
     }
 
     @Override
@@ -175,7 +181,8 @@ public class AppSelectionActivity extends AppCompatActivity implements OnAppChec
         info.usePrifi = isChecked;
     }
 
-    private void updateListView() {
+    private void startListUpdate() {
+        swipeContainer.setRefreshing(true);
         if (currentUpdate != null && !currentUpdate.isCancelled()) {
             currentUpdate.cancel(true);
         }
@@ -183,11 +190,12 @@ public class AppSelectionActivity extends AppCompatActivity implements OnAppChec
         currentUpdate.execute();
     }
 
-    protected void executeUpdateListView(List<AppInfo> appInfoList) {
+    protected void listUpdate(List<AppInfo> appInfoList) {
         currentUpdate = null;
         mAppList.clear();
         mAppList.addAll(appInfoList);
         mAdapter.notifyDataSetChanged();
+        swipeContainer.setRefreshing(false);
     }
 
     static class UpdateAppListTask extends AsyncTask<Void, Void, List<AppInfo>> {
@@ -217,7 +225,7 @@ public class AppSelectionActivity extends AppCompatActivity implements OnAppChec
 
         @Override
         protected void onPostExecute(List<AppInfo> appInfos) {
-            activity.get().executeUpdateListView(appInfos);
+            activity.get().listUpdate(appInfos);
         }
     }
 
