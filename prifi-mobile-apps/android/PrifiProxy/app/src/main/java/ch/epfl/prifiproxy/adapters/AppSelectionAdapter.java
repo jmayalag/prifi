@@ -46,6 +46,10 @@ public class AppSelectionAdapter extends RecyclerView.Adapter<AppSelectionAdapte
         this.iconSize = Math.round(height * context.getResources().getDisplayMetrics().density + 0.5f);
     }
 
+    public List<AppInfo> getFiltered() {
+        return filteredApps;
+    }
+
     @NonNull
     @Override
     public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {

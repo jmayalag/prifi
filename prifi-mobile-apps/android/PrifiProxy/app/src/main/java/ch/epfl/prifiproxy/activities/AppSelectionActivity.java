@@ -168,7 +168,7 @@ public class AppSelectionActivity extends AppCompatActivity implements OnAppChec
     }
 
     private void allAppsUsePrifi(boolean usePrifi) {
-        for (AppInfo info : mAppList) {
+        for (AppInfo info : mAdapter.getFiltered()) {
             info.usePrifi = usePrifi;
         }
         savePrifiApps();
