@@ -7,6 +7,7 @@ import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.support.v7.widget.SearchView;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.Menu;
@@ -21,12 +22,13 @@ import ch.epfl.prifiproxy.listeners.OnAppCheckedListener;
 import ch.epfl.prifiproxy.utils.AppInfo;
 import ch.epfl.prifiproxy.utils.AppListHelper;
 
-public class AppSelectionActivity extends AppCompatActivity implements OnAppCheckedListener {
+public class AppSelectionActivity extends AppCompatActivity implements OnAppCheckedListener, SearchView.OnQueryTextListener {
     private static final String TAG = "PRIFI_APP_SELECTION";
     private RecyclerView mRecyclerView;
-    private RecyclerView.Adapter mAdapter;
+    private AppSelectionAdapter mAdapter;
     private RecyclerView.LayoutManager mLayoutManager;
     private List<AppInfo> mAppList;
+    private SearchView searchView;
 
     // Preferences
     private AppListHelper.Sort sortField;
@@ -90,6 +92,11 @@ public class AppSelectionActivity extends AppCompatActivity implements OnAppChec
         arrow.mutate().setColorFilter(accent, PorterDuff.Mode.SRC_IN);
 
         sortMenuItem.setIcon(arrow);
+
+        searchView = (SearchView) menu.findItem(R.id.app_bar_search).getActionView();
+
+
+        searchView.setOnQueryTextListener(this);
 
         return true;
     }
@@ -184,5 +191,17 @@ public class AppSelectionActivity extends AppCompatActivity implements OnAppChec
     protected void onPause() {
         savePrifiApps();
         super.onPause();
+    }
+
+    @Override
+    public boolean onQueryTextSubmit(String query) {
+        mAdapter.getFilter().filter(query);
+        return false;
+    }
+
+    @Override
+    public boolean onQueryTextChange(String newText) {
+        mAdapter.getFilter().filter(newText);
+        return false;
     }
 }

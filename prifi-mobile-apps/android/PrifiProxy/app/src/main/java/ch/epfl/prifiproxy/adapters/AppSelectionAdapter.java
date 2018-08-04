@@ -8,6 +8,8 @@ import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Filter;
+import android.widget.Filterable;
 import android.widget.ImageView;
 import android.widget.Switch;
 import android.widget.TextView;
@@ -16,20 +18,24 @@ import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.DecodeFormat;
 import com.bumptech.glide.request.RequestOptions;
 
+import java.text.Normalizer;
+import java.util.ArrayList;
 import java.util.List;
 
 import ch.epfl.prifiproxy.R;
 import ch.epfl.prifiproxy.listeners.OnAppCheckedListener;
 import ch.epfl.prifiproxy.utils.AppInfo;
 
-public class AppSelectionAdapter extends RecyclerView.Adapter<AppSelectionAdapter.ViewHolder> {
+public class AppSelectionAdapter extends RecyclerView.Adapter<AppSelectionAdapter.ViewHolder> implements Filterable {
     private final OnAppCheckedListener mCheckedListener;
     private final int iconSize;
     private List<AppInfo> mDataset;
+    private List<AppInfo> filteredApps;
 
     public AppSelectionAdapter(Context context, List<AppInfo> mDataset,
                                OnAppCheckedListener checkedListener) {
         this.mDataset = mDataset;
+        this.filteredApps = mDataset;
         TypedValue typedValue = new TypedValue();
 
         context.getTheme().resolveAttribute(
@@ -51,7 +57,7 @@ public class AppSelectionAdapter extends RecyclerView.Adapter<AppSelectionAdapte
 
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-        AppInfo item = mDataset.get(position);
+        AppInfo item = filteredApps.get(position);
         holder.mAppName.setText(item.label);
         holder.mPackageName.setText(item.packageName);
         holder.mSwitchPrifi.setChecked(item.usePrifi);
@@ -69,7 +75,42 @@ public class AppSelectionAdapter extends RecyclerView.Adapter<AppSelectionAdapte
 
     @Override
     public int getItemCount() {
-        return mDataset.size();
+        return filteredApps.size();
+    }
+
+    @Override
+    public Filter getFilter() {
+        return new Filter() {
+            @Override
+            protected FilterResults performFiltering(CharSequence constraint) {
+                String filter = Normalizer.normalize(constraint, Normalizer.Form.NFD).toLowerCase();
+                if (filter.isEmpty()) {
+                    filteredApps = mDataset;
+                } else {
+                    List<AppInfo> filtered = new ArrayList<>();
+                    for (AppInfo info : mDataset) {
+                        if (Normalizer.normalize(info.label, Normalizer.Form.NFD).toLowerCase().contains(filter) ||
+                                Normalizer.normalize(info.label, Normalizer.Form.NFD).toLowerCase().contains(filter)) {
+                            filtered.add(info);
+                        }
+                    }
+                    filteredApps = filtered;
+                }
+
+                FilterResults results = new FilterResults();
+                results.values = filteredApps;
+
+
+                return results;
+            }
+
+            @Override
+            protected void publishResults(CharSequence constraint, FilterResults results) {
+                //noinspection unchecked
+                filteredApps = (List<AppInfo>) results.values;
+                notifyDataSetChanged();
+            }
+        };
     }
 
     static class ViewHolder extends RecyclerView.ViewHolder {

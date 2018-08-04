@@ -8,13 +8,13 @@
         android:icon="@drawable/ic_search_white_24dp"
         android:orderInCategory="10"
         android:title="@string/ui_search"
-        app:actionViewClass="android.widget.SearchView"
-        app:showAsAction="ifRoom" />
+        app:actionViewClass="android.support.v7.widget.SearchView"
+        app:showAsAction="collapseActionView|ifRoom" />
 
     <item
+        android:icon="@drawable/ic_sort_white_24dp"
         android:orderInCategory="20"
         android:title="@string/sort"
-        android:icon="@drawable/ic_sort_white_24dp"
         app:showAsAction="ifRoom">
         <menu>
             <item

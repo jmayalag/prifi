@@ -52,6 +52,10 @@ public class AppListHelper {
         Set<String> prifiApps = getPrifiApps(context);
 
         for (ApplicationInfo applicationInfo : installedApps) {
+            // Exclude our app
+            if (applicationInfo.packageName.equals(context.getPackageName()))
+                continue;
+
             if (!showSystemPackages
                     && !isCommonSystemApp(applicationInfo.packageName)
                     && isSystemPackage(applicationInfo))
