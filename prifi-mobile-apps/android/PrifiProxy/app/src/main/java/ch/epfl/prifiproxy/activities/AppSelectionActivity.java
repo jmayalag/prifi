@@ -3,6 +3,7 @@ package ch.epfl.prifiproxy.activities;
 import android.content.SharedPreferences;
 import android.graphics.PorterDuff;
 import android.graphics.drawable.Drawable;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
@@ -13,6 +14,7 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -35,6 +37,8 @@ public class AppSelectionActivity extends AppCompatActivity implements OnAppChec
     private boolean sortDescending;
     private boolean showSystemApps;
 
+    private UpdateAppListTask currentUpdate;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -52,11 +56,12 @@ public class AppSelectionActivity extends AppCompatActivity implements OnAppChec
         mLayoutManager = new LinearLayoutManager(this);
         mRecyclerView.setLayoutManager(mLayoutManager);
 
-        mAppList = AppListHelper.getApps(this, sortField, sortDescending, showSystemApps);
+        mAppList = new ArrayList<>();
         mAdapter = new AppSelectionAdapter(this, mAppList, this);
         mRecyclerView.setAdapter(mAdapter);
 
         getPreferences();
+        updateListView();
     }
 
     private void getPreferences() {
@@ -171,9 +176,49 @@ public class AppSelectionActivity extends AppCompatActivity implements OnAppChec
     }
 
     private void updateListView() {
+        if (currentUpdate != null && !currentUpdate.isCancelled()) {
+            currentUpdate.cancel(true);
+        }
+        currentUpdate = new UpdateAppListTask(this, showSystemApps, sortField, sortDescending);
+        currentUpdate.execute();
+    }
+
+    protected void executeUpdateListView(List<AppInfo> appInfoList) {
+        currentUpdate = null;
         mAppList.clear();
-        mAppList.addAll(AppListHelper.getApps(this, sortField, sortDescending, showSystemApps));
+        mAppList.addAll(appInfoList);
         mAdapter.notifyDataSetChanged();
+    }
+
+    static class UpdateAppListTask extends AsyncTask<Void, Void, List<AppInfo>> {
+        private final WeakReference<AppSelectionActivity> activity;
+        private final boolean showSystemApps;
+        private final AppListHelper.Sort sortField;
+        private final boolean sortDescending;
+
+        UpdateAppListTask(AppSelectionActivity activity, boolean showSystemApps,
+                          AppListHelper.Sort sortField,
+                          boolean sortDescending) {
+            this.activity = new WeakReference<>(activity);
+            this.showSystemApps = showSystemApps;
+            this.sortField = sortField;
+            this.sortDescending = sortDescending;
+        }
+
+        @Override
+        protected List<AppInfo> doInBackground(Void... objects) {
+            return AppListHelper.getApps(activity.get(), sortField, sortDescending, showSystemApps);
+        }
+
+        @Override
+        protected void onPreExecute() {
+            super.onPreExecute();
+        }
+
+        @Override
+        protected void onPostExecute(List<AppInfo> appInfos) {
+            activity.get().executeUpdateListView(appInfos);
+        }
     }
 
     private void savePrifiApps() {
@@ -191,6 +236,14 @@ public class AppSelectionActivity extends AppCompatActivity implements OnAppChec
     protected void onPause() {
         savePrifiApps();
         super.onPause();
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (currentUpdate != null && !currentUpdate.isCancelled()) {
+            currentUpdate.cancel(true);
+        }
+        super.onDestroy();
     }
 
     @Override
