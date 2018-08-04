@@ -1,5 +1,8 @@
 package ch.epfl.prifiproxy.activities;
 
+import android.content.SharedPreferences;
+import android.graphics.PorterDuff;
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
@@ -25,6 +28,10 @@ public class AppSelectionActivity extends AppCompatActivity implements OnAppChec
     private RecyclerView.LayoutManager mLayoutManager;
     private List<AppInfo> mAppList;
 
+    // Preferences
+    private AppListHelper.Sort sortField;
+    private boolean sortDescending;
+    private boolean showSystemApps;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -35,20 +42,55 @@ public class AppSelectionActivity extends AppCompatActivity implements OnAppChec
 
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
 
+        getPreferences();
+
         mRecyclerView = findViewById(R.id.app_list);
         mRecyclerView.setHasFixedSize(true);
 
         mLayoutManager = new LinearLayoutManager(this);
         mRecyclerView.setLayoutManager(mLayoutManager);
 
-        mAppList = AppListHelper.getApps(this);
+        mAppList = AppListHelper.getApps(this, sortField, sortDescending, showSystemApps);
         mAdapter = new AppSelectionAdapter(this, mAppList, this);
         mRecyclerView.setAdapter(mAdapter);
+
+        getPreferences();
+    }
+
+    private void getPreferences() {
+        SharedPreferences prifiPrefs = getSharedPreferences(getString(R.string.prifi_config_shared_preferences), MODE_PRIVATE);
+        sortField = AppListHelper.Sort.valueOf(prifiPrefs.getString(getString(R.string.prifi_ui_sort_field), String.valueOf(AppListHelper.Sort.LABEL)));
+        sortDescending = prifiPrefs.getBoolean(getString(R.string.prifi_ui_sort_descending), false);
+        showSystemApps = prifiPrefs.getBoolean(getString(R.string.prifi_ui_show_system_apps), false);
     }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.menu_app_selection, menu);
+
+        MenuItem showSystemAppsMenuItem = menu.findItem(R.id.show_system_apps);
+        showSystemAppsMenuItem.setChecked(showSystemApps);
+
+        MenuItem sortMenuItem = null;
+
+        switch (sortField) {
+            case LABEL:
+                sortMenuItem = menu.findItem(R.id.sort_app_name);
+                break;
+            case PACKAGE_NAME:
+                sortMenuItem = menu.findItem(R.id.sort_package_name);
+                break;
+        }
+
+        int accent = getResources().getColor(R.color.colorAccent);
+        Drawable arrow = getResources().getDrawable(sortDescending ?
+                R.drawable.ic_arrow_downward_white_24dp :
+                R.drawable.ic_arrow_upward_white_24dp);
+
+        arrow.mutate().setColorFilter(accent, PorterDuff.Mode.SRC_IN);
+
+        sortMenuItem.setIcon(arrow);
+
         return true;
     }
 
@@ -57,6 +99,16 @@ public class AppSelectionActivity extends AppCompatActivity implements OnAppChec
         int id = item.getItemId();
 
         switch (id) {
+            case R.id.sort_app_name:
+                sort(AppListHelper.Sort.LABEL);
+                break;
+            case R.id.sort_package_name:
+                sort(AppListHelper.Sort.PACKAGE_NAME);
+                break;
+            case R.id.show_system_apps:
+                item.setChecked(!item.isChecked());
+                showSystemApps(item.isChecked());
+                break;
             case R.id.on_all:
                 allAppsUsePrifi(true);
                 break;
@@ -68,21 +120,52 @@ public class AppSelectionActivity extends AppCompatActivity implements OnAppChec
         return super.onOptionsItemSelected(item);
     }
 
+    private void showSystemApps(boolean checked) {
+        showSystemApps = checked;
+        SharedPreferences prifiPrefs = getSharedPreferences(getString(R.string.prifi_config_shared_preferences), MODE_PRIVATE);
+        SharedPreferences.Editor editor = prifiPrefs.edit();
+        editor.putBoolean(getString(R.string.prifi_ui_show_system_apps), showSystemApps);
+        editor.apply();
+        updateListView();
+    }
+
+    private void sort(AppListHelper.Sort newSort) {
+        SharedPreferences prifiPrefs = getSharedPreferences(getString(R.string.prifi_config_shared_preferences), MODE_PRIVATE);
+        SharedPreferences.Editor editor = prifiPrefs.edit();
+        //noinspection SimplifiableIfStatement
+        if (sortField == newSort) {
+            sortDescending = !sortDescending; // Toggle order
+        } else {
+            sortDescending = false;
+        }
+
+        sortField = newSort;
+        editor.putString(getString(R.string.prifi_ui_sort_field), sortField.name());
+        editor.putBoolean(getString(R.string.prifi_ui_sort_descending), sortDescending);
+        editor.apply();
+
+        invalidateOptionsMenu();
+
+        updateListView();
+    }
+
     private void allAppsUsePrifi(boolean usePrifi) {
         for (AppInfo info : mAppList) {
             info.usePrifi = usePrifi;
         }
+        savePrifiApps();
         updateListView();
     }
 
     @Override
     public void onChecked(int position, boolean isChecked) {
         AppInfo info = mAppList.get(position);
-        Log.d(TAG, info.packageName + " isChecked: " + isChecked);
         info.usePrifi = isChecked;
     }
 
     private void updateListView() {
+        mAppList.clear();
+        mAppList.addAll(AppListHelper.getApps(this, sortField, sortDescending, showSystemApps));
         mAdapter.notifyDataSetChanged();
     }
 

@@ -49,6 +49,11 @@
     <string name="prifi_client_private_key">PrifiClientPriKey</string>
     <string name="prifi_relay_public_key">PrifiRelayPubKey</string>
 
+    <string name="prifi_ui_sort_field">UISortField</string>
+    <string name="prifi_ui_sort_descending">UISortDesc</string>
+    <string name="prifi_ui_show_system_apps">UIShowSystemApps</string>
+
+
     <!--Notification-->
     <string name="prifi_service_notification_title">Prifi</string>
     <string name="prifi_service_notification_message">Service running</string>
@@ -128,6 +133,11 @@
     <string name="title_gpsdaemon" translatable="false">GPS daemon</string>
     <string name="title_nobody">nobody</string>
     <string name="title_dontask">Don\'t ask again</string>
+    <string name="sort">Sort by</string>
+    <string name="ui_show_system_apps">Show system apps</string>
+    <string name="ui_search">Search</string>
+    <string name="ui_menu_sort_app_name">App Name</string>
+    <string name="ui_menu_sort_package_name">Package Name</string>
 
     <!--Others-->
 </resources>

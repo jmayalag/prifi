@@ -4,7 +4,6 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
-import android.preference.PreferenceManager;
 
 import java.text.Collator;
 import java.util.ArrayList;
@@ -14,6 +13,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+
+import ch.epfl.prifiproxy.R;
 
 import static android.content.pm.PackageManager.GET_META_DATA;
 
@@ -42,11 +43,7 @@ public class AppListHelper {
         commonSystemApps = new HashSet<>(apps);
     }
 
-    public static List<AppInfo> getApps(Context context) {
-        return getApps(context, Sort.LABEL, Order.ASC, false);
-    }
-
-    public static List<AppInfo> getApps(Context context, Sort sort, Order order,
+    public static List<AppInfo> getApps(Context context, Sort sort, boolean descending,
                                         boolean showSystemPackages) {
         List<AppInfo> apps = new ArrayList<>();
         PackageManager packageManager = context.getPackageManager();
@@ -84,12 +81,8 @@ public class AppListHelper {
                 break;
         }
 
-        switch (order) {
-            case ASC:
-                // already sorted in descending order
-                break;
-            case DESC:
-                Collections.reverse(apps);
+        if (descending) {
+            Collections.reverse(apps);
         }
 
         return apps;
@@ -99,7 +92,7 @@ public class AppListHelper {
      * Get list of apps that use prifi
      */
     public static Set<String> getPrifiApps(Context context) {
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
+        SharedPreferences prefs = context.getSharedPreferences(context.getString(R.string.prifi_config_shared_preferences), Context.MODE_PRIVATE);
         Set<String> apps = prefs.getStringSet(APP_LIST_KEY, new HashSet<>());
         apps = new HashSet<>(apps);
         return apps;
@@ -112,11 +105,11 @@ public class AppListHelper {
         Set<String> old = getPrifiApps(context);
         Set<String> newApps = new HashSet<>(packageNames);
         // Save only if there were changes
-        if (!old.equals(newApps)) {
+        if (old.equals(newApps)) {
             return;
         }
 
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
+        SharedPreferences prefs = context.getSharedPreferences(context.getString(R.string.prifi_config_shared_preferences), Context.MODE_PRIVATE);
         SharedPreferences.Editor editor = prefs.edit();
 
         editor.putStringSet(APP_LIST_KEY, newApps);
