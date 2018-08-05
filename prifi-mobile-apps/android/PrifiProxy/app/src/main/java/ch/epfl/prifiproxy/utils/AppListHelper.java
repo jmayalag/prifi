@@ -37,8 +37,11 @@ public class AppListHelper {
                 "com.google.android.youtube",
                 "com.skype.raider",
                 "com.twitter.android",
-                "com.whatapp",
-                "com.instagram.android"
+                "com.whatsapp",
+                "com.instagram.android",
+                "com.google.android.gm",
+                "com.google.android.talk",
+                "com.google.android.apps.messaging"
         );
         commonSystemApps = new HashSet<>(apps);
     }

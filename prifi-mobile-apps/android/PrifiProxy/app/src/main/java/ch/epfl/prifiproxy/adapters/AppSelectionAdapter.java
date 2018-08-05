@@ -94,7 +94,7 @@ public class AppSelectionAdapter extends RecyclerView.Adapter<AppSelectionAdapte
                     List<AppInfo> filtered = new ArrayList<>();
                     for (AppInfo info : mDataset) {
                         if (Normalizer.normalize(info.label, Normalizer.Form.NFD).toLowerCase().contains(filter) ||
-                                Normalizer.normalize(info.label, Normalizer.Form.NFD).toLowerCase().contains(filter)) {
+                                Normalizer.normalize(info.packageName, Normalizer.Form.NFD).toLowerCase().contains(filter)) {
                             filtered.add(info);
                         }
                     }
