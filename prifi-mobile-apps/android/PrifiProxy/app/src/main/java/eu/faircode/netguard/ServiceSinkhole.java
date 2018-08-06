@@ -97,7 +97,6 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import javax.net.ssl.HttpsURLConnection;
 
 import ch.epfl.prifiproxy.R;
-import ch.epfl.prifiproxy.activities.AppSelectionActivity;
 import ch.epfl.prifiproxy.activities.MainActivity;
 import ch.epfl.prifiproxy.utils.AppInfo;
 import ch.epfl.prifiproxy.utils.AppListHelper;
@@ -326,7 +325,7 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
             }
 
             // Optionally listen for interactive state changes
-            if (prefs.getBoolean("screen_on", true)) {
+            if (prefs.getBoolean("screen_on", false)) {
                 if (!registeredInteractiveState) {
                     Log.i(TAG, "Starting listening for interactive state changes");
                     last_interactive = Util.isInteractive(ServiceSinkhole.this);
@@ -804,9 +803,6 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
 
     private Builder getBuilder(List<Rule> listAllowed, List<Rule> listRule) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
-        boolean subnet = prefs.getBoolean("subnet", false);
-        boolean tethering = prefs.getBoolean("tethering", false);
-        boolean lan = prefs.getBoolean("lan", false);
         boolean ip6 = prefs.getBoolean("ip6", true);
         boolean filter = prefs.getBoolean("filter", true);
         boolean system = prefs.getBoolean("manage_system", false);
@@ -834,124 +830,7 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
                 }
             }
 
-        // Subnet routing
-        if (subnet) {
-            // Exclude IP ranges
-            List<IPUtil.CIDR> listExclude = new ArrayList<>();
-            listExclude.add(new IPUtil.CIDR("127.0.0.0", 8)); // localhost
-
-            if (tethering) {
-                // USB tethering 192.168.42.x
-                // Wi-Fi tethering 192.168.43.x
-                listExclude.add(new IPUtil.CIDR("192.168.42.0", 23));
-                // Bluetooth tethering 192.168.44.x
-                listExclude.add(new IPUtil.CIDR("192.168.44.0", 24));
-                // Wi-Fi direct 192.168.49.x
-                listExclude.add(new IPUtil.CIDR("192.168.49.0", 24));
-            }
-
-            if (lan) {
-                try {
-                    Enumeration<NetworkInterface> nis = NetworkInterface.getNetworkInterfaces();
-                    while (nis.hasMoreElements()) {
-                        NetworkInterface ni = nis.nextElement();
-                        if (ni != null && ni.isUp() && !ni.isLoopback() &&
-                                ni.getName() != null && !ni.getName().startsWith("tun"))
-                            for (InterfaceAddress ia : ni.getInterfaceAddresses())
-                                if (ia.getAddress() instanceof Inet4Address) {
-                                    IPUtil.CIDR local = new IPUtil.CIDR(ia.getAddress(), ia.getNetworkPrefixLength());
-                                    Log.i(TAG, "Excluding " + ni.getName() + " " + local);
-                                    listExclude.add(local);
-                                }
-                    }
-                } catch (SocketException ex) {
-                    Log.e(TAG, ex.toString() + "\n" + Log.getStackTraceString(ex));
-                }
-            }
-
-            // https://en.wikipedia.org/wiki/Mobile_country_code
-            Configuration config = getResources().getConfiguration();
-
-            // T-Mobile Wi-Fi calling
-            if (config.mcc == 310 && (config.mnc == 160 ||
-                    config.mnc == 200 ||
-                    config.mnc == 210 ||
-                    config.mnc == 220 ||
-                    config.mnc == 230 ||
-                    config.mnc == 240 ||
-                    config.mnc == 250 ||
-                    config.mnc == 260 ||
-                    config.mnc == 270 ||
-                    config.mnc == 310 ||
-                    config.mnc == 490 ||
-                    config.mnc == 660 ||
-                    config.mnc == 800)) {
-                listExclude.add(new IPUtil.CIDR("66.94.2.0", 24));
-                listExclude.add(new IPUtil.CIDR("66.94.6.0", 23));
-                listExclude.add(new IPUtil.CIDR("66.94.8.0", 22));
-                listExclude.add(new IPUtil.CIDR("208.54.0.0", 16));
-            }
-
-            // Verizon wireless calling
-            if ((config.mcc == 310 &&
-                    (config.mnc == 4 ||
-                            config.mnc == 5 ||
-                            config.mnc == 6 ||
-                            config.mnc == 10 ||
-                            config.mnc == 12 ||
-                            config.mnc == 13 ||
-                            config.mnc == 350 ||
-                            config.mnc == 590 ||
-                            config.mnc == 820 ||
-                            config.mnc == 890 ||
-                            config.mnc == 910)) ||
-                    (config.mcc == 311 && (config.mnc == 12 ||
-                            config.mnc == 110 ||
-                            (config.mnc >= 270 && config.mnc <= 289) ||
-                            config.mnc == 390 ||
-                            (config.mnc >= 480 && config.mnc <= 489) ||
-                            config.mnc == 590)) ||
-                    (config.mcc == 312 && (config.mnc == 770))) {
-                listExclude.add(new IPUtil.CIDR("66.174.0.0", 16)); // 66.174.0.0 - 66.174.255.255
-                listExclude.add(new IPUtil.CIDR("66.82.0.0", 15)); // 69.82.0.0 - 69.83.255.255
-                listExclude.add(new IPUtil.CIDR("69.96.0.0", 13)); // 69.96.0.0 - 69.103.255.255
-                listExclude.add(new IPUtil.CIDR("70.192.0.0", 11)); // 70.192.0.0 - 70.223.255.255
-                listExclude.add(new IPUtil.CIDR("97.128.0.0", 9)); // 97.128.0.0 - 97.255.255.255
-                listExclude.add(new IPUtil.CIDR("174.192.0.0", 9)); // 174.192.0.0 - 174.255.255.255
-                listExclude.add(new IPUtil.CIDR("72.96.0.0", 9)); // 72.96.0.0 - 72.127.255.255
-                listExclude.add(new IPUtil.CIDR("75.192.0.0", 9)); // 75.192.0.0 - 75.255.255.255
-                listExclude.add(new IPUtil.CIDR("97.0.0.0", 10)); // 97.0.0.0 - 97.63.255.255
-            }
-
-            // Broadcast
-            listExclude.add(new IPUtil.CIDR("224.0.0.0", 3));
-
-            Collections.sort(listExclude);
-
-            try {
-                InetAddress start = InetAddress.getByName("0.0.0.0");
-                for (IPUtil.CIDR exclude : listExclude) {
-                    Log.i(TAG, "Exclude " + exclude.getStart().getHostAddress() + "..." + exclude.getEnd().getHostAddress());
-                    for (IPUtil.CIDR include : IPUtil.toCIDR(start, IPUtil.minus1(exclude.getStart())))
-                        try {
-                            builder.addRoute(include.address, include.prefix);
-                        } catch (Throwable ex) {
-                            Log.e(TAG, ex.toString() + "\n" + Log.getStackTraceString(ex));
-                        }
-                    start = IPUtil.plus1(exclude.getEnd());
-                }
-                String end = (lan ? "255.255.255.254" : "255.255.255.255");
-                for (IPUtil.CIDR include : IPUtil.toCIDR("224.0.0.0", end))
-                    try {
-                        builder.addRoute(include.address, include.prefix);
-                    } catch (Throwable ex) {
-                        Log.e(TAG, ex.toString() + "\n" + Log.getStackTraceString(ex));
-                    }
-            } catch (UnknownHostException ex) {
-                Log.e(TAG, ex.toString() + "\n" + Log.getStackTraceString(ex));
-            }
-        } else
-            builder.addRoute("0.0.0.0", 0);
+        builder.addRoute("0.0.0.0", 0);
 
         Log.i(TAG, "IPv6=" + ip6);
         if (ip6)
@@ -964,33 +843,13 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
 
         // Add list of allowed applications
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-//            try {
-//                builder.addDisallowedApplication(getPackageName());
-//            } catch (PackageManager.NameNotFoundException ex) {
-//                Log.e(TAG, ex.toString() + "\n" + Log.getStackTraceString(ex));
-//            }
-//            if (last_connected && !filter)
-//                for (Rule rule : listAllowed)
-//                    try {
-//                        builder.addDisallowedApplication(rule.packageName);
-//                    } catch (PackageManager.NameNotFoundException ex) {
-//                        Log.e(TAG, ex.toString() + "\n" + Log.getStackTraceString(ex));
-//                    }
-//            else if (filter)
-//                for (Rule rule : listRule)
-//                    if (!rule.apply || (!system && rule.system))
-//                        try {
-//                            Log.i(TAG, "Not routing " + rule.packageName);
-//                            builder.addDisallowedApplication(rule.packageName);
-//                        } catch (PackageManager.NameNotFoundException ex) {
-//                            Log.e(TAG, ex.toString() + "\n" + Log.getStackTraceString(ex));
-//                        }
-            Set<String> allowedApps = AppListHelper.getPrifiApps(this);
-            for (String packageName : allowedApps) {
+            Set<String> prifiApps = AppListHelper.getPrifiApps(this);
+
+            for (String packageName : prifiApps) {
                 try {
                     builder.addAllowedApplication(packageName);
                 } catch (PackageManager.NameNotFoundException e) {
-                    Log.w(TAG, e.toString());
+                    Log.e(TAG, e.toString() + "\n" + Log.getStackTraceString(e));
                 }
             }
         }
@@ -1059,6 +918,7 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
                 Log.i(TAG, "Started tunnel thread");
             }
         }
+        prefs.edit().putBoolean("enabled", true).apply();
     }
 
     private void stopNative(ParcelFileDescriptor vpn, boolean clear) {
@@ -1412,10 +1272,10 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
 
     // Called from native code
     private void dnsResolved(ResourceRecord rr) {
-        if (DatabaseHelper.getInstance(ServiceSinkhole.this).insertDns(rr)) {
-            Log.i(TAG, "New IP " + rr);
-            prepareUidIPFilters(rr.QName);
-        }
+//        if (DatabaseHelper.getInstance(ServiceSinkhole.this).insertDns(rr)) {
+//            Log.i(TAG, "New IP " + rr);
+//            prepareUidIPFilters(rr.QName);
+//        }
     }
 
     // Called from native code
@@ -1547,6 +1407,7 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
         Log.i(TAG, "Create version=" + Util.getSelfVersionName(this) + "/" + Util.getSelfVersionCode(this));
 
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+        SharedPreferences prifiPrefs = getSharedPreferences(getString(R.string.prifi_config_shared_preferences), MODE_PRIVATE);
 
         // Native init
         jni_context = jni_init(Build.VERSION.SDK_INT);
@@ -1554,6 +1415,7 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
         setPcap(pcap, this);
 
         prefs.registerOnSharedPreferenceChangeListener(this);
+        prifiPrefs.registerOnSharedPreferenceChangeListener(this);
 
         super.onCreate();
 
@@ -1569,7 +1431,7 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
     public void onSharedPreferenceChanged(SharedPreferences prefs, String name) {
         if (name.equals(AppListHelper.APP_LIST_KEY)) {
             Log.i(TAG, "reloading because applist changed");
-            reload("changed applist", ServiceSinkhole.this, true);
+            reload("changed applist", ServiceSinkhole.this, false);
         }
     }
 
@@ -1692,7 +1554,9 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
             jni_done(jni_context);
 
             SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+            SharedPreferences prifiPrefs = getSharedPreferences(getString(R.string.prifi_config_shared_preferences), MODE_PRIVATE);
             prefs.unregisterOnSharedPreferenceChangeListener(this);
+            prifiPrefs.unregisterOnSharedPreferenceChangeListener(this);
         }
 
         super.onDestroy();
