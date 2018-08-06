@@ -100,6 +100,7 @@ import ch.epfl.prifiproxy.R;
 import ch.epfl.prifiproxy.activities.MainActivity;
 import ch.epfl.prifiproxy.utils.AppInfo;
 import ch.epfl.prifiproxy.utils.AppListHelper;
+import prifiMobile.PrifiMobile;
 
 public class ServiceSinkhole extends VpnService implements SharedPreferences.OnSharedPreferenceChangeListener {
     private static final String TAG = "NetGuard.Service";
@@ -1527,6 +1528,9 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
         // Feedback
         showDisabledNotification();
 
+        // Prifi
+        PrifiMobile.stopClient();
+
         super.onRevoke();
     }
 
@@ -1600,24 +1604,18 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
         else
             hosts = last_hosts;
 
-        if (allowed >= 0 || blocked >= 0 || hosts >= 0) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                if (Util.isPlayStoreInstall(this))
-                    builder.setContentText(getString(R.string.msg_packages, allowed, blocked));
-                else
-                    builder.setContentText(getString(R.string.msg_hosts, allowed, blocked, hosts));
-                return builder.build();
-            } else {
-                NotificationCompat.BigTextStyle notification = new NotificationCompat.BigTextStyle(builder);
-                notification.bigText(getString(R.string.msg_started));
-                if (Util.isPlayStoreInstall(this))
-                    notification.setSummaryText(getString(R.string.msg_packages, allowed, blocked));
-                else
-                    notification.setSummaryText(getString(R.string.msg_hosts, allowed, blocked, hosts));
-                return notification.build();
-            }
-        } else
+        Set<String> prifiApps = AppListHelper.getPrifiApps(this);
+        allowed = prifiApps.size();
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            builder.setContentText(getString(R.string.msg_packages, allowed));
             return builder.build();
+        } else {
+            NotificationCompat.BigTextStyle notification = new NotificationCompat.BigTextStyle(builder);
+            notification.bigText(getString(R.string.msg_started));
+            notification.setSummaryText(getString(R.string.msg_packages, allowed));
+            return notification.build();
+        }
     }
 
     private void updateEnforcingNotification(int allowed, int total) {
