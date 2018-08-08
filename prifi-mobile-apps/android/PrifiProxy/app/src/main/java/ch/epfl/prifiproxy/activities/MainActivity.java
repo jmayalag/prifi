@@ -1,36 +1,25 @@
 package ch.epfl.prifiproxy.activities;
 
-import android.app.ActivityOptions;
-import android.app.AlertDialog;
 import android.app.ProgressDialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
-import android.net.Uri;
 import android.net.VpnService;
 import android.os.AsyncTask;
-import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.design.widget.NavigationView;
-import android.support.design.widget.TextInputEditText;
 import android.support.v4.view.GravityCompat;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBarDrawerToggle;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
-import android.view.KeyEvent;
 import android.view.MenuItem;
-import android.view.inputmethod.EditorInfo;
-import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
-import android.widget.TextView;
 import android.widget.Toast;
-
-import com.jakewharton.processphoenix.ProcessPhoenix;
 
 import java.lang.ref.WeakReference;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -59,14 +48,10 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     public static final String EXTRA_METERED = "Metered";
     public static final String EXTRA_SIZE = "Size";
 
-    private String prifiRelayAddress;
-    private int prifiRelayPort;
-    private int prifiRelaySocksPort;
+    private Button startButton, stopButton, testPrifiButton;
 
     private AtomicBoolean isPrifiServiceRunning;
 
-    private Button startButton, stopButton, resetButton, testPrifiButton, logButton;
-    private TextInputEditText relayAddressInput, relayPortInput, relaySocksPortInput;
     private ProgressDialog mProgessDialog;
     private DrawerLayout drawer;
 
@@ -79,23 +64,12 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
-        // Load Variables from SharedPreferences
-        SharedPreferences prifiPrefs = getSharedPreferences(getString(R.string.prifi_config_shared_preferences), MODE_PRIVATE);
-        prifiRelayAddress = prifiPrefs.getString(getString(R.string.prifi_config_relay_address), "");
-        prifiRelayPort = prifiPrefs.getInt(getString(R.string.prifi_config_relay_port), 0);
-        prifiRelaySocksPort = prifiPrefs.getInt(getString(R.string.prifi_config_relay_socks_port), 0);
-
         // Buttons
         startButton = findViewById(R.id.startButton);
         stopButton = findViewById(R.id.stopButton);
-        resetButton = findViewById(R.id.resetButton);
         testPrifiButton = findViewById(R.id.testPrifiButton);
-        logButton = findViewById(R.id.logButton);
-        relayAddressInput = findViewById(R.id.relayAddressInput);
-        relayPortInput = findViewById(R.id.relayPortInput);
-        relaySocksPortInput = findViewById(R.id.relaySocksPortInput);
 
-        // Other
+        // Drawer
         drawer = findViewById(R.id.drawer_layout);
         ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(this, drawer, toolbar
                 , R.string.navigation_drawer_open, R.string.navigation_drawer_close);
@@ -133,27 +107,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
         stopButton.setOnClickListener(view -> stopPrifiService());
 
-        resetButton.setOnClickListener(view -> resetPrifiConfig());
-
-        relayAddressInput.setText(prifiRelayAddress);
-        relayAddressInput.setOnEditorActionListener(new DoneEditorActionListener());
-
-        relayPortInput.setText(String.valueOf(prifiRelayPort));
-        relayPortInput.setOnEditorActionListener(new DoneEditorActionListener());
-
-        relaySocksPortInput.setText(String.valueOf(prifiRelaySocksPort));
-        relaySocksPortInput.setOnEditorActionListener(new DoneEditorActionListener());
-
         testPrifiButton.setOnClickListener(view -> new HttpThroughPrifiTask().execute());
-
-        logButton.setOnClickListener(view -> {
-            Intent intent = new Intent(this, OnScreenLogActivity.class);
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                startActivity(intent, ActivityOptions.makeSceneTransitionAnimation(this).toBundle());
-            } else {
-                startActivity(intent);
-            }
-        });
     }
 
     @Override
@@ -248,132 +202,6 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         }
     }
 
-    /**
-     * A Dialog that guides users to launch or install Telegram after enabling PriFi Service
-     */
-    private void showRedirectDialog() {
-        AlertDialog alertDialog = new AlertDialog.Builder(this).create();
-        alertDialog.setTitle(getString(R.string.redirect_dialog_title));
-        alertDialog.setMessage(getString(R.string.redirect_dialog_message));
-        alertDialog.setButton(AlertDialog.BUTTON_NEGATIVE, getString(R.string.redirect_dialog_cancel),
-                (dialog, which) -> dialog.dismiss());
-        alertDialog.setButton(AlertDialog.BUTTON_POSITIVE, getString(R.string.redirect_dialog_confirm),
-                (dialog, which) -> redirectToTelegram());
-        alertDialog.show();
-    }
-
-    /**
-     * Open Telegram if the app is installed, otherwise open Google Play Download Page.
-     */
-    private void redirectToTelegram() {
-        final String appName = "org.telegram.messenger";
-        Intent intent;
-        final boolean isAppInstalled = SystemHelper.isAppAvailable(this, appName);
-        if (isAppInstalled) {
-            intent = getPackageManager().getLaunchIntentForPackage(appName);
-        } else {
-            intent = new Intent(Intent.ACTION_VIEW);
-            intent.setData(Uri.parse("market://details?id=" + appName));
-        }
-        startActivity(intent);
-    }
-
-    /**
-     * Trigger actions if the Done key is pressed
-     *
-     * @param view the input field where the Done key is pressed
-     */
-    private void triggerDoneAction(TextView view) {
-        String text = view.getText().toString();
-        switch (view.getId()) {
-            case R.id.relayAddressInput:
-                updateInputFieldsAndPrefs(text, null, null);
-                break;
-
-            case R.id.relayPortInput:
-                updateInputFieldsAndPrefs(null, text, null);
-                break;
-
-            case R.id.relaySocksPortInput:
-                updateInputFieldsAndPrefs(null, null, text);
-                break;
-
-            default:
-                break;
-        }
-    }
-
-    /**
-     * Update input fields and preferences, if the user input is valid.
-     *
-     * @param relayAddressText   user input relay address
-     * @param relayPortText      user input relay port
-     * @param relaySocksPortText user input relay socks port
-     */
-    private void updateInputFieldsAndPrefs(String relayAddressText, String relayPortText, String relaySocksPortText) {
-        SharedPreferences.Editor editor = getSharedPreferences(getString(R.string.prifi_config_shared_preferences), MODE_PRIVATE).edit();
-
-        try {
-
-            if (relayAddressText != null) {
-                if (NetworkHelper.isValidIpv4Address(relayAddressText)) {
-                    prifiRelayAddress = relayAddressText;
-                    editor.putString(getString(R.string.prifi_config_relay_address), prifiRelayAddress);
-
-                    PrifiMobile.setRelayAddress(prifiRelayAddress);
-                } else {
-                    Toast.makeText(this, getString(R.string.prifi_invalid_address), Toast.LENGTH_SHORT).show();
-                }
-                relayAddressInput.setText(prifiRelayAddress);
-            }
-
-            if (relayPortText != null) {
-                if (NetworkHelper.isValidPort(relayPortText)) {
-                    prifiRelayPort = Integer.parseInt(relayPortText);
-                    editor.putInt(getString(R.string.prifi_config_relay_port), prifiRelayPort);
-
-                    PrifiMobile.setRelayPort((long) prifiRelayPort);
-                } else {
-                    Toast.makeText(this, getString(R.string.prifi_invalid_port), Toast.LENGTH_SHORT).show();
-                }
-                relayPortInput.setText(String.valueOf(prifiRelayPort));
-            }
-
-            if (relaySocksPortText != null) {
-                if (NetworkHelper.isValidPort(relaySocksPortText)) {
-                    prifiRelaySocksPort = Integer.parseInt(relaySocksPortText);
-                    editor.putInt(getString(R.string.prifi_config_relay_socks_port), prifiRelaySocksPort);
-
-                    PrifiMobile.setRelaySocksPort((long) prifiRelaySocksPort);
-                } else {
-                    Toast.makeText(this, getString(R.string.prifi_invalid_port), Toast.LENGTH_SHORT).show();
-                }
-                relaySocksPortInput.setText(String.valueOf(prifiRelaySocksPort));
-            }
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            Toast.makeText(this, getString(R.string.prifi_configuration_failed), Toast.LENGTH_LONG).show();
-        } finally {
-            editor.apply();
-        }
-
-    }
-
-    /**
-     * Reset PriFi Configuration to its default value.
-     * <p>
-     * It sets Preferences.isFirstInit to true and restart the app. The Application class will do the rest.
-     */
-    private void resetPrifiConfig() {
-        if (!isPrifiServiceRunning.get()) {
-            SharedPreferences.Editor editor = getSharedPreferences(getString(R.string.prifi_config_shared_preferences), MODE_PRIVATE).edit();
-            editor.putBoolean(getString(R.string.prifi_config_first_init), true);
-            editor.apply();
-
-            ProcessPhoenix.triggerRebirth(this);
-        }
-    }
 
     /**
      * Depending on the PriFi Service status, we enable or disable some UI elements.
@@ -384,17 +212,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         if (isServiceRunning) {
             startButton.setEnabled(false);
             stopButton.setEnabled(true);
-            resetButton.setEnabled(false);
-            relayAddressInput.setEnabled(false);
-            relayPortInput.setEnabled(false);
-            relaySocksPortInput.setEnabled(false);
         } else {
             startButton.setEnabled(true);
             stopButton.setEnabled(false);
-            resetButton.setEnabled(true);
-            relayAddressInput.setEnabled(true);
-            relayPortInput.setEnabled(true);
-            relaySocksPortInput.setEnabled(true);
         }
     }
 
@@ -458,15 +278,21 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         @Override
         protected NetworkStatus doInBackground(Void... voids) {
             MainActivity activity = activityReference.get();
-
             if (activity != null && !activity.isFinishing()) {
+                SharedPreferences prefs = activity.getSharedPreferences(
+                        activity.getString(R.string.prifi_config_shared_preferences), MODE_PRIVATE);
+
+                String prifiRelayAddress = prefs.getString(activity.getString(R.string.prifi_config_relay_address), "");
+                int prifiRelayPort = prefs.getInt(activity.getString(R.string.prifi_config_relay_port), 0);
+                int prifiRelaySocksPort = prefs.getInt(activity.getString(R.string.prifi_config_relay_socks_port), 0);
+
                 boolean isRelayAvailable = NetworkHelper.isHostReachable(
-                        activity.prifiRelayAddress,
-                        activity.prifiRelayPort,
+                        prifiRelayAddress,
+                        prifiRelayPort,
                         DEFAULT_PING_TIMEOUT);
                 boolean isSocksAvailable = NetworkHelper.isHostReachable(
-                        activity.prifiRelayAddress,
-                        activity.prifiRelaySocksPort,
+                        prifiRelayAddress,
+                        prifiRelaySocksPort,
                         DEFAULT_PING_TIMEOUT);
 
                 if (isRelayAvailable && isSocksAvailable) {
@@ -527,26 +353,6 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         }
     }
 
-    /**
-     * A custom EditorActionListener
-     * <p>
-     * When the Done key is pressed, execute pre defined actions and hide the virtual keyboard.
-     */
-    private class DoneEditorActionListener implements TextView.OnEditorActionListener {
-        @Override
-        public boolean onEditorAction(TextView textView, int actionId, KeyEvent keyEvent) {
-            if (actionId == EditorInfo.IME_ACTION_DONE) {
-                triggerDoneAction(textView);
-                InputMethodManager imm = (InputMethodManager) textView.getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
-                if (imm != null) {
-                    imm.hideSoftInputFromWindow(textView.getWindowToken(), 0);
-                }
-                return true;
-            }
-            return false;
-        }
-    }
-
 
     @Override
     public boolean onNavigationItemSelected(@NonNull MenuItem item) {
@@ -554,18 +360,24 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         item.setChecked(true);
         drawer.closeDrawers();
 
-        switch (id){
+        Intent intent = null;
+
+        switch (id) {
             case R.id.nav_apps:
-                Toast.makeText(this, "Show apps", Toast.LENGTH_SHORT).show();
+                intent = new Intent(this, AppSelectionActivity.class);
                 break;
             case R.id.nav_log:
-                Toast.makeText(this, "Show logs", Toast.LENGTH_SHORT).show();
+                intent = new Intent(this, OnScreenLogActivity.class);
                 break;
             case R.id.nav_settings:
-                Toast.makeText(this, "Show settings", Toast.LENGTH_SHORT).show();
+                intent = new Intent(this, SettingsActivity.class);
                 break;
             default:
                 Toast.makeText(this, "Not implemented", Toast.LENGTH_SHORT).show();
+        }
+
+        if (intent != null) {
+            startActivity(intent);
         }
 
         return true;

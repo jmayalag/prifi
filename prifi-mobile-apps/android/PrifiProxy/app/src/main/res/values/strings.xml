@@ -148,6 +148,7 @@
     <string name="title_log">Logging</string>
     <string name="title_apps">Prifi Apps</string>
     <string name="desc_epfl_logo">epfl_logo</string>
+    <string name="title_settings_activity">Settings</string>
 
     <!--Others-->
 </resources>

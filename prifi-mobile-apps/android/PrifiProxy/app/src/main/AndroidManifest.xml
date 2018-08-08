@@ -22,7 +22,6 @@
         <service
             android:name=".services.PrifiService"
             android:exported="false" />
-
         <service
             android:name="eu.faircode.netguard.ServiceSinkhole"
             android:permission="android.permission.BIND_VPN_SERVICE">
@@ -43,7 +42,6 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-
         <activity
             android:name=".activities.OnScreenLogActivity"
             android:label="@string/on_screen_log_activity_label"
@@ -52,7 +50,6 @@
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value=".activities.MainActivity" />
         </activity>
-
         <activity
             android:name=".activities.AppSelectionActivity"
             android:label="@string/title_activity_app_selection"
@@ -61,7 +58,17 @@
             android:theme="@style/AppTheme.NoActionBar">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
-                android:value="ch.epfl.prifiproxy.activities.MainActivity" />
+                android:value=".activities.MainActivity" />
+        </activity>
+
+        <activity
+            android:name=".activities.SettingsActivity"
+            android:label="@string/title_settings_activity"
+            android:parentActivityName=".activities.MainActivity"
+            android:screenOrientation="portrait">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".activities.MainActivity" />
         </activity>
     </application>
 
