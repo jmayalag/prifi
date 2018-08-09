@@ -9,12 +9,11 @@
 
     <Button
         android:id="@+id/testPrifiButton"
-        android:layout_width="0dp"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="@string/test_prifi_button"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintStart_toStartOf="parent" />
 
     <Button
         android:id="@+id/startButton"
@@ -25,7 +24,7 @@
         app:layout_constraintEnd_toStartOf="@+id/stopButton"
         app:layout_constraintHorizontal_bias="0.5"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/relaySocksPortInputLayout" />
+        app:layout_constraintTop_toBottomOf="@+id/testPrifiButton" />
 
     <Button
         android:id="@+id/stopButton"
