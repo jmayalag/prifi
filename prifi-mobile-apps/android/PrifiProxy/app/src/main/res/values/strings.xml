@@ -149,6 +149,7 @@
     <string name="title_apps">Prifi Apps</string>
     <string name="desc_epfl_logo">epfl_logo</string>
     <string name="title_settings_activity">Settings</string>
+    <string name="msg_stop_settings">Stop Prifi to change settings.</string>
 
     <!--Others-->
 </resources>

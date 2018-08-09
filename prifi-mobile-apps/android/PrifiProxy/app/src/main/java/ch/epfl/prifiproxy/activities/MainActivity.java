@@ -370,6 +370,12 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 intent = new Intent(this, OnScreenLogActivity.class);
                 break;
             case R.id.nav_settings:
+                boolean isRunning = isPrifiServiceRunning.get();
+                if (isRunning) {
+                    Toast.makeText(this, R.string.msg_stop_settings,
+                            Toast.LENGTH_SHORT).show();
+                    return true;
+                }
                 intent = new Intent(this, SettingsActivity.class);
                 break;
             default:
