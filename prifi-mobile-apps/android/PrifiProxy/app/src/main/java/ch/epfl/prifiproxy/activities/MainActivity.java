@@ -6,10 +6,13 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.content.res.ColorStateList;
+import android.content.res.Resources;
 import android.net.VpnService;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
+import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.NavigationView;
 import android.support.v4.view.GravityCompat;
 import android.support.v4.widget.DrawerLayout;
@@ -18,7 +21,9 @@ import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.MenuItem;
+import android.view.View;
 import android.widget.Button;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import java.lang.ref.WeakReference;
@@ -48,7 +53,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     public static final String EXTRA_METERED = "Metered";
     public static final String EXTRA_SIZE = "Size";
 
-    private Button startButton, stopButton, testPrifiButton;
+    private Button testPrifiButton;
 
     private AtomicBoolean isPrifiServiceRunning;
 
@@ -56,6 +61,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private DrawerLayout drawer;
 
     private BroadcastReceiver mBroadcastReceiver;
+    private FloatingActionButton powerButton;
+    private TextView textStatus;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -65,9 +72,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         setSupportActionBar(toolbar);
 
         // Buttons
-        startButton = findViewById(R.id.startButton);
-        stopButton = findViewById(R.id.stopButton);
+        powerButton = findViewById(R.id.powerButton);
         testPrifiButton = findViewById(R.id.testPrifiButton);
+
+        // Text
+        textStatus = findViewById(R.id.textStatus);
 
         // Drawer
         drawer = findViewById(R.id.drawer_layout);
@@ -103,9 +112,14 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             }
         };
 
-        startButton.setOnClickListener(view -> prepareVpn());
-
-        stopButton.setOnClickListener(view -> stopPrifiService());
+        powerButton.setOnClickListener(view -> {
+            boolean isRunning = isPrifiServiceRunning.get();
+            if (!isRunning) {
+                prepareVpn();
+            } else {
+                stopPrifiService();
+            }
+        });
 
         testPrifiButton.setOnClickListener(view -> new HttpThroughPrifiTask().execute());
     }
@@ -209,13 +223,27 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
      * @param isServiceRunning Is the PriFi Service running?
      */
     private void updateUIInputCapability(boolean isServiceRunning) {
+        int colorId;
+        int dp;
+        int elevation;
+        int statusId;
+
         if (isServiceRunning) {
-            startButton.setEnabled(false);
-            stopButton.setEnabled(true);
+            colorId = R.color.colorOn;
+            dp = 6;
+            statusId = R.string.status_connnected;
         } else {
-            startButton.setEnabled(true);
-            stopButton.setEnabled(false);
+            colorId = R.color.colorOff;
+            dp = 20;
+            statusId = R.string.status_disconnnected;
         }
+
+        elevation = (int) (dp * Resources.getSystem().getDisplayMetrics().density);
+        String statusMsg = getString(R.string.status_msg, getString(statusId), Util.getWifiSSID(this));
+
+        textStatus.setText(statusMsg);
+        powerButton.setCompatElevation(elevation);
+        powerButton.setBackgroundTintList(ColorStateList.valueOf(getResources().getColor(colorId)));
     }
 
     /**

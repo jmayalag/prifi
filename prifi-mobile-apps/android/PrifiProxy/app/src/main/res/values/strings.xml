@@ -150,6 +150,8 @@
     <string name="desc_epfl_logo">epfl_logo</string>
     <string name="title_settings_activity">Settings</string>
     <string name="msg_stop_settings">Stop Prifi to change settings.</string>
-
+    <string name="status_msg">Status: %1$s\nNetwork: %2$s</string>
+    <string name="status_connnected">Connected</string>
+    <string name="status_disconnnected">Disconnected</string>
     <!--Others-->
 </resources>
