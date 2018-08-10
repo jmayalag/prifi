@@ -103,7 +103,7 @@ import ch.epfl.prifiproxy.utils.AppListHelper;
 import prifiMobile.PrifiMobile;
 
 public class ServiceSinkhole extends VpnService implements SharedPreferences.OnSharedPreferenceChangeListener {
-    private static final String TAG = "NetGuard.Service";
+    private static final String TAG = "Prifi.VpnService";
 
     private boolean registeredUser = false;
     private boolean registeredIdleState = false;
@@ -842,17 +842,49 @@ public class ServiceSinkhole extends VpnService implements SharedPreferences.OnS
         Log.i(TAG, "MTU=" + mtu);
         builder.setMtu(mtu);
 
+        Set<String> prifiApps = AppListHelper.getPrifiApps(ServiceSinkhole.this);
+        List<AppInfo> listApps = AppListHelper.getApps(ServiceSinkhole.this, AppListHelper.Sort.PACKAGE_NAME, false, true);
+        Set<String> allApps = new HashSet<>();
+
+        for (AppInfo appInfo : listApps) {
+            allApps.add(appInfo.packageName);
+        }
+
+        for (Rule rule : listRule) {
+            allApps.add(rule.packageName);
+        }
+
+        allApps.remove(getPackageName());
+
         // Add list of allowed applications
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            Set<String> prifiApps = AppListHelper.getPrifiApps(this);
-
-            for (String packageName : prifiApps) {
-                try {
-                    builder.addAllowedApplication(packageName);
-                } catch (PackageManager.NameNotFoundException e) {
-                    Log.e(TAG, e.toString() + "\n" + Log.getStackTraceString(e));
+            try {
+                builder.addDisallowedApplication(getPackageName());
+            } catch (PackageManager.NameNotFoundException ex) {
+                Log.e(TAG, ex.toString() + "\n" + Log.getStackTraceString(ex));
+            }
+            if (last_connected && !filter)
+                for (Rule rule : listAllowed)
+                    try {
+                        builder.addDisallowedApplication(rule.packageName);
+                    } catch (PackageManager.NameNotFoundException ex) {
+                        Log.e(TAG, ex.toString() + "\n" + Log.getStackTraceString(ex));
+                    }
+            else if (filter) {
+                for (String packageName : allApps) {
+                    if (prifiApps.contains(packageName)) {
+                        Log.i(TAG, "Will route " + packageName);
+                        continue;
+                    }
+                    try {
+                        builder.addDisallowedApplication(packageName);
+                        Log.i(TAG, "Not routing " + packageName);
+                    } catch (PackageManager.NameNotFoundException ex) {
+                        Log.e(TAG, ex.toString() + "\n" + Log.getStackTraceString(ex));
+                    }
                 }
             }
+
         }
 
         // Build configure intent
