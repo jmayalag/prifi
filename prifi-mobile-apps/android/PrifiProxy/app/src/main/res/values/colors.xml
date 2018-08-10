@@ -5,6 +5,9 @@
     <color name="colorAccent">#FF4081</color>
     <color name="colorLog">#000</color>
 
+    <color name="colorOn">#00867d</color>
+    <color name="colorOff">#af4448</color>
+
     <color name="title">#222222</color>
     <color name="subtitle">#999999</color>
 </resources>
