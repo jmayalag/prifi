@@ -4,6 +4,7 @@ import android.app.Application;
 import android.content.Context;
 import android.content.SharedPreferences;
 
+import ch.epfl.prifiproxy.utils.AppListHelper;
 import prifiMobile.PrifiMobile;
 
 /**
@@ -76,6 +77,8 @@ public class PrifiProxy extends Application {
             editor.putBoolean(getString(R.string.prifi_config_first_init), false);
             // apply
             editor.apply();
+
+            AppListHelper.firstStart(this);
         } else {
             // Set if not
             final String currentPrifiRelayAddress = prifiPrefs.getString(getString(R.string.prifi_config_relay_address),"");

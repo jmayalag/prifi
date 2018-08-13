@@ -53,8 +53,6 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     public static final String EXTRA_METERED = "Metered";
     public static final String EXTRA_SIZE = "Size";
 
-    private Button testPrifiButton;
-
     private AtomicBoolean isPrifiServiceRunning;
 
     private ProgressDialog mProgessDialog;
@@ -73,7 +71,6 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
         // Buttons
         powerButton = findViewById(R.id.powerButton);
-        testPrifiButton = findViewById(R.id.testPrifiButton);
 
         // Text
         textStatus = findViewById(R.id.textStatus);
@@ -120,8 +117,6 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 stopPrifiService();
             }
         });
-
-        testPrifiButton.setOnClickListener(view -> new HttpThroughPrifiTask().execute());
     }
 
     @Override

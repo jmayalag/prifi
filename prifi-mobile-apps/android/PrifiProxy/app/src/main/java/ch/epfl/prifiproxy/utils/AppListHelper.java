@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
+import ch.epfl.prifiproxy.PrifiProxy;
 import ch.epfl.prifiproxy.R;
 
 import static android.content.pm.PackageManager.GET_META_DATA;
@@ -44,6 +45,16 @@ public class AppListHelper {
                 "com.google.android.apps.messaging"
         );
         commonSystemApps = new HashSet<>(apps);
+    }
+
+    public static void firstStart(Context context) {
+        List<String> apps = new ArrayList<>();
+
+        for (AppInfo app : getApps(context, Sort.PACKAGE_NAME, false, false)) {
+            apps.add(app.packageName);
+        }
+
+        savePrifiApps(context, apps);
     }
 
     public static List<AppInfo> getApps(Context context, Sort sort, boolean descending,
