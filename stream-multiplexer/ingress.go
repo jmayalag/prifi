@@ -60,13 +60,14 @@ func StartIngressServer(port int, maxMessageSize int, upstreamChan chan []byte, 
 	}
 
 	var err error
-	s, err := net.Listen("tcp", ":"+strconv.Itoa(port))
+	var proxyAddress = "127.0.0.1" + ":" + strconv.Itoa(port)
+	s, err := net.Listen("tcp", proxyAddress)
 
 	if err != nil {
 		log.Error("Ingress server cannot start listening, shutting down :", err.Error())
 		return
 	}
-	log.Lvl2("Ingress server is listening for connections on port ", port)
+	log.Lvl2("Ingress server is listening for connections on ", proxyAddress)
 
 	// cast as TCPListener to get the SetDeadline method
 	ig.socketListener = s.(*net.TCPListener)
