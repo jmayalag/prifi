@@ -5,10 +5,12 @@ import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.support.design.widget.TextInputEditText;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
+import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -26,8 +28,9 @@ public class SettingsActivity extends AppCompatActivity {
     private String prifiRelayAddress;
     private int prifiRelayPort;
     private int prifiRelaySocksPort;
+    private boolean doDisconnectWhenNetworkError;
     private TextInputEditText relayAddressInput, relayPortInput, relaySocksPortInput;
-    private Button resetButton;
+    private Switch disconnectWhenNetworkErrorSwitch;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -35,28 +38,50 @@ public class SettingsActivity extends AppCompatActivity {
         setContentView(R.layout.activity_settings);
         Objects.requireNonNull(getSupportActionBar()).setDisplayHomeAsUpEnabled(true);
 
-        resetButton = findViewById(R.id.resetButton);
-
-        // Load Variables from SharedPreferences
+        // Load variables from SharedPreferences
         SharedPreferences prifiPrefs = getSharedPreferences(getString(R.string.prifi_config_shared_preferences), MODE_PRIVATE);
         prifiRelayAddress = prifiPrefs.getString(getString(R.string.prifi_config_relay_address), "");
         prifiRelayPort = prifiPrefs.getInt(getString(R.string.prifi_config_relay_port), 0);
         prifiRelaySocksPort = prifiPrefs.getInt(getString(R.string.prifi_config_relay_socks_port), 0);
+        doDisconnectWhenNetworkError = prifiPrefs.getBoolean(getString(R.string.prifi_config_disconnect_when_error), false);
 
+        Button resetButton = findViewById(R.id.resetButton);
         relayAddressInput = findViewById(R.id.relayAddressInput);
         relayPortInput = findViewById(R.id.relayPortInput);
         relaySocksPortInput = findViewById(R.id.relaySocksPortInput);
+        disconnectWhenNetworkErrorSwitch = findViewById(R.id.disconnectWhenNetworkErrorSwitch);
 
         resetButton.setOnClickListener(view -> resetPrifiConfig());
 
-        relayAddressInput.setText(prifiRelayAddress);
         relayAddressInput.setOnEditorActionListener(new DoneEditorActionListener());
-
-        relayPortInput.setText(String.valueOf(prifiRelayPort));
         relayPortInput.setOnEditorActionListener(new DoneEditorActionListener());
-
-        relaySocksPortInput.setText(String.valueOf(prifiRelaySocksPort));
         relaySocksPortInput.setOnEditorActionListener(new DoneEditorActionListener());
+
+        disconnectWhenNetworkErrorSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> applyDisconnectWhenNetworkErrorChange(isChecked));
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+
+        relayAddressInput.setText(prifiRelayAddress);
+        relayPortInput.setText(String.valueOf(prifiRelayPort));
+        relaySocksPortInput.setText(String.valueOf(prifiRelaySocksPort));
+        disconnectWhenNetworkErrorSwitch.setChecked(doDisconnectWhenNetworkError);
+    }
+
+    private void applyDisconnectWhenNetworkErrorChange(boolean isChecked) {
+        try {
+            PrifiMobile.setMobileDisconnectWhenNetworkError(isChecked);
+        } catch (Exception e) {
+            throw new RuntimeException("Can't set PrifiMobile values: disconnectWhenNetworkError");
+        }
+
+        SharedPreferences.Editor editor = getSharedPreferences(getString(R.string.prifi_config_shared_preferences), MODE_PRIVATE).edit();
+        editor.putBoolean(getString(R.string.prifi_config_disconnect_when_error), isChecked);
+        editor.apply();
+
+        doDisconnectWhenNetworkError = isChecked;
     }
 
     /**
@@ -73,7 +98,6 @@ public class SettingsActivity extends AppCompatActivity {
             ProcessPhoenix.triggerRebirth(this);
         }
     }
-
 
     /**
      * Update input fields and preferences, if the user input is valid.
