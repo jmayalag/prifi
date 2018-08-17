@@ -8,6 +8,7 @@ import (
 	"gopkg.in/dedis/onet.v2"
 	"gopkg.in/dedis/onet.v2/log"
 	"time"
+	"gopkg.in/dedis/onet.v2/network"
 )
 
 var stopChan chan bool
@@ -28,10 +29,18 @@ func StartClient() {
 	case err := <-errorChan:
 		log.Error("Error occurs", err)
 	case <-stopChan:
-		globalHost.Close()
-		globalService.ShutdownSocks()
+
+		// Stop goroutines
 		globalService.ShutdownConnexionToRelay()
-		log.Info("PriFi Shutdown")
+		globalService.ShutdownSocks()
+
+		// Change the protocol state to SHUTDOWN
+		globalService.StopPriFiCommunicateProtocol()
+
+		// Clean network-related resources
+		globalHost.Close()
+
+		log.Info("PriFi Session Ended")
 	}
 }
 
@@ -54,9 +63,22 @@ func run() error {
 		return err
 	}
 
-	host.Router.AddErrorHandler(service.NetworkErrorHappened)
+	host.Router.AddErrorHandler(networkErrorHappenedForMobile)
 	host.Start()
 
 	// Never return
 	return nil
+}
+
+func networkErrorHappenedForMobile(si *network.ServerIdentity) {
+	log.Lvl3("Mobile Client: A network error occurred with node", si)
+	globalService.StopPriFiCommunicateProtocol()
+
+	b, err := GetMobileDisconnectWhenNetworkError()
+	if err != nil {
+		log.Error("Error occurs while reading MobileDisconnectWhenNetworkError.")
+	}
+	if b {
+		StopClient()
+	}
 }

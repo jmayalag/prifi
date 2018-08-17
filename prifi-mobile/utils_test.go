@@ -62,3 +62,17 @@ func TestGetPrifiPort(t *testing.T) {
 	port, _ := GetPrifiPort()
 	fmt.Println("Prifi port", port)
 }
+
+func TestGetMobileDisconnectWhenNetworkError(t *testing.T) {
+	b, _ := GetMobileDisconnectWhenNetworkError()
+	fmt.Println(b)
+
+	SetMobileDisconnectWhenNetworkError(true)
+	fmt.Println(GetMobileDisconnectWhenNetworkError())
+
+	SetMobileDisconnectWhenNetworkError(false)
+	fmt.Println(GetMobileDisconnectWhenNetworkError())
+
+	SetMobileDisconnectWhenNetworkError(true)
+	fmt.Println(GetMobileDisconnectWhenNetworkError())
+}

@@ -146,6 +146,26 @@ func SetPrivateKey(priKey string) error {
 	return nil
 }
 
+// Other parameters
+func GetMobileDisconnectWhenNetworkError() (bool, error) {
+	c, err := getPrifiConfig()
+	if err != nil {
+		return false, err
+	}
+
+	return c.MobileDisconnectWhenNetworkError, nil
+}
+
+func SetMobileDisconnectWhenNetworkError(newValue bool) error {
+	c, err := getPrifiConfig()
+	if err != nil {
+		return err
+	}
+
+	c.MobileDisconnectWhenNetworkError = newValue
+	return nil
+}
+
 // Support functions
 func getFullAddress() string {
 	c, _ := getGroupConfig()
