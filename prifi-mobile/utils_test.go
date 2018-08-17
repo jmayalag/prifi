@@ -76,3 +76,24 @@ func TestGetMobileDisconnectWhenNetworkError(t *testing.T) {
 	SetMobileDisconnectWhenNetworkError(true)
 	fmt.Println(GetMobileDisconnectWhenNetworkError())
 }
+
+func TestRelayKeys(t *testing.T) {
+	k, e := GetRelayPublicKey()
+	fmt.Println(k, e)
+
+	e = SetRelayPublicKey("55873114984971f38b63f7ac1b51abdb42e773e1e42a6ef7bf76b")
+	if e != nil {
+		fmt.Println("invalid key")
+	}
+
+	k, e = GetRelayPublicKey()
+	fmt.Println(k, e)
+
+	e = SetRelayPublicKey("55873114984971f38b63f7ac1b51abdb42e773e1e42a6ef7bf762c131ee341db")
+	if e != nil {
+		fmt.Println("invalid key")
+	}
+
+	k, e = GetRelayPublicKey()
+	fmt.Println(k, e)
+}
