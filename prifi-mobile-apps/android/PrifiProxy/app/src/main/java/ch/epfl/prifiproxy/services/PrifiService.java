@@ -21,22 +21,23 @@ import android.widget.Toast;
 
 import ch.epfl.prifiproxy.R;
 import ch.epfl.prifiproxy.activities.MainActivity;
+import eu.faircode.netguard.ServiceSinkhole;
 import prifiMobile.PrifiMobile;
 
 /**
  * This class controls the PriFi Core as Android Service (Foreground Service).
- *
+ * <p>
  * PriFi Service Lifecycle:
- *
+ * <p>
  * 1. onStartCommand triggered by user action
- *
+ * <p>
  * 2. Handler's handleMessage is triggered by the previous action
- *
+ * <p>
  * 3. The blocking PriFi Core runs on a separate thread
- *
+ * <p>
  * 4. The PriFi Core will return when a stopped signal is given (check Golang code).
- *    The finally block will be executed and the service shuts down by itself.
- *
+ * The finally block will be executed and the service shuts down by itself.
+ * <p>
  * 5. While shutting down the service (onDestroy), a broadcast is sent in order to update UI.
  */
 public class PrifiService extends Service {
@@ -64,6 +65,7 @@ public class PrifiService extends Service {
             } finally {
                 stopForeground(true);
                 stopSelf(msg.arg1);
+                ServiceSinkhole.stop("Prifi disconnected", PrifiService.this, false);
             }
         }
     }
@@ -113,7 +115,7 @@ public class PrifiService extends Service {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             channelId = createNotificationChannel();
         } else {
-            channelId =  "ch.epfl.prifiproxy.PRIFI_SERVICE_NOTIFICATION_CHANNEL_ID";
+            channelId = "ch.epfl.prifiproxy.PRIFI_SERVICE_NOTIFICATION_CHANNEL_ID";
         }
 
         Notification notification =
