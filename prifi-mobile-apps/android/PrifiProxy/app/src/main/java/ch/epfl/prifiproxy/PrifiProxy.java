@@ -35,12 +35,14 @@ public class PrifiProxy extends Application {
         final String defaultRelayAddress;
         final int defaultRelayPort;
         final int defaultRelaySocksPort;
+        final boolean defaultDoDisconnectWhenNetworkError;
 
         // Retrieve relay info
         try {
             defaultRelayAddress = PrifiMobile.getRelayAddress();
             defaultRelayPort = longToInt(PrifiMobile.getRelayPort());
             defaultRelaySocksPort = longToInt(PrifiMobile.getRelaySocksPort());
+            defaultDoDisconnectWhenNetworkError = PrifiMobile.getMobileDisconnectWhenNetworkError();
         } catch (Exception e) {
             throw new RuntimeException("Can't read configuration files");
         }
@@ -66,10 +68,12 @@ public class PrifiProxy extends Application {
             editor.putString(getString(R.string.prifi_config_relay_address_default), defaultRelayAddress);
             editor.putInt(getString(R.string.prifi_config_relay_port_default), defaultRelayPort);
             editor.putInt(getString(R.string.prifi_config_relay_socks_port_default), defaultRelaySocksPort);
+            editor.putBoolean(getString(R.string.prifi_config_disconnect_when_error_default), defaultDoDisconnectWhenNetworkError);
             // Copy default values
             editor.putString(getString(R.string.prifi_config_relay_address), defaultRelayAddress);
             editor.putInt(getString(R.string.prifi_config_relay_port), defaultRelayPort);
             editor.putInt(getString(R.string.prifi_config_relay_socks_port), defaultRelaySocksPort);
+            editor.putBoolean(getString(R.string.prifi_config_disconnect_when_error), defaultDoDisconnectWhenNetworkError);
             // Save keys
             editor.putString(getString(R.string.prifi_client_public_key), pubKey);
             editor.putString(getString(R.string.prifi_client_private_key), priKey);
@@ -88,6 +92,8 @@ public class PrifiProxy extends Application {
             final String currentPubKey = prifiPrefs.getString(getString(R.string.prifi_client_public_key),"");
             final String currentPriKey = prifiPrefs.getString(getString(R.string.prifi_client_private_key),"");
 
+            final boolean currentDoDisconnectWhenNetworkError = prifiPrefs.getBoolean(getString(R.string.prifi_config_disconnect_when_error), false);
+
             try {
 
                 if (!currentPrifiRelayAddress.equals(defaultRelayAddress)) {
@@ -100,6 +106,10 @@ public class PrifiProxy extends Application {
 
                 if (currentPrifiRelaySocksPort != defaultRelaySocksPort) {
                     PrifiMobile.setRelaySocksPort((long) currentPrifiRelaySocksPort);
+                }
+
+                if (currentDoDisconnectWhenNetworkError != defaultDoDisconnectWhenNetworkError) {
+                    PrifiMobile.setMobileDisconnectWhenNetworkError(currentDoDisconnectWhenNetworkError);
                 }
 
                 PrifiMobile.setPublicKey(currentPubKey);

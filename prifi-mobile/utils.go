@@ -81,8 +81,37 @@ func SetRelaySocksPort(port int) error {
 	if err != nil {
 		return err
 	}
+
 	c.SocksClientPort = port
 	return nil
+}
+
+// Relay Keys
+func GetRelayPublicKey() (string, error) {
+	c, err := getGroupConfig()
+	if err != nil {
+		return "", err
+	}
+
+	pub := c.Roster.Get(relayIndex).Public
+	return pub.String(), nil
+}
+
+func SetRelayPublicKey(pubKey string) error {
+	c, err := getGroupConfig()
+	if err != nil {
+		return err
+	}
+
+	suite := suites.MustFind("Ed25519") // May crash
+	point, err := encoding.StringHexToPoint(suite, pubKey)
+
+	if err != nil {
+		return err
+	} else {
+		c.Roster.Get(relayIndex).Public = point
+		return nil
+	}
 }
 
 // Keys
@@ -143,6 +172,26 @@ func SetPrivateKey(priKey string) error {
 	}
 
 	c.Private = priKey
+	return nil
+}
+
+// Other parameters
+func GetMobileDisconnectWhenNetworkError() (bool, error) {
+	c, err := getPrifiConfig()
+	if err != nil {
+		return false, err
+	}
+
+	return c.MobileDisconnectWhenNetworkError, nil
+}
+
+func SetMobileDisconnectWhenNetworkError(newValue bool) error {
+	c, err := getPrifiConfig()
+	if err != nil {
+		return err
+	}
+
+	c.MobileDisconnectWhenNetworkError = newValue
 	return nil
 }
 

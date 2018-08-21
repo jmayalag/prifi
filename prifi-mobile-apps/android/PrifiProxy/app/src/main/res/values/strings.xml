@@ -13,6 +13,7 @@
     <string name="relay_address_hint">Relay Address</string>
     <string name="relay_port_hint">Relay Port</string>
     <string name="relay_port_socks_hint">Relay Socks Port</string>
+    <string name="disconnect_when_error_switch">Disconnect PriFi if the relay becomes not reachable</string>
 
     <!--UI Messages-->
     <string name="prifi_service_starting">Service starting</string>
@@ -41,10 +42,12 @@
     <string name="prifi_config_relay_address_default">PrifiConfigRelayAddressDefault</string>
     <string name="prifi_config_relay_port_default">PrifiRelayPortDefault</string>
     <string name="prifi_config_relay_socks_port_default">PrifiRelaySocksPortDefault</string>
+    <string name="prifi_config_disconnect_when_error_default">DisconnectWhenNetworkErrorDefault</string>
 
     <string name="prifi_config_relay_address">PrifiConfigRelayAddress</string>
     <string name="prifi_config_relay_port">PrifiRelayPort</string>
     <string name="prifi_config_relay_socks_port">PrifiRelaySocksPort</string>
+    <string name="prifi_config_disconnect_when_error">DisconnectWhenNetworkError</string>
 
     <string name="prifi_client_public_key">PrifiCLientPubKey</string>
     <string name="prifi_client_private_key">PrifiClientPriKey</string>

@@ -106,7 +106,7 @@ func (p *PriFiSDAProtocol) Stop() {
 	p.HasStopped = true
 
 	p.Shutdown()
-	//TODO : sureley we're missing some allocated resources here...
+	//TODO : surely we're missing some allocated resources here...
 }
 
 /**
