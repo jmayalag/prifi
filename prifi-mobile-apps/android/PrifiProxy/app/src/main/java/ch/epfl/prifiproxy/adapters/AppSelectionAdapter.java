@@ -54,7 +54,7 @@ public class AppSelectionAdapter extends RecyclerView.Adapter<AppSelectionAdapte
     @Override
     public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         View v = LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.app_item, parent, false);
+                .inflate(R.layout.app_list_item, parent, false);
 
         return new ViewHolder(v, mCheckedListener);
     }
