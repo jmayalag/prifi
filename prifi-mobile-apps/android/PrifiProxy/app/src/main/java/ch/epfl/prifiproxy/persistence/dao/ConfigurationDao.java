@@ -40,7 +40,7 @@ public interface ConfigurationDao {
     void insertConfigurationGroup(ConfigurationGroup group);
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    void insertConfigurationGroups(List<ConfigurationGroup> groups);
+    void insertConfigurationGroups(ConfigurationGroup... groups);
 
     @Update
     void updateConfigurations(Configuration... configurations);
