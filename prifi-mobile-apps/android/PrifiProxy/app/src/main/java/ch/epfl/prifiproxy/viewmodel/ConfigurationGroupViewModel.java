@@ -28,4 +28,8 @@ public class ConfigurationGroupViewModel extends AndroidViewModel {
     public void insert(ConfigurationGroup group) {
         repository.insert(group);
     }
+
+    public void updateGroups(List<ConfigurationGroup> groups) {
+        repository.updateGroups(groups);
+    }
 }

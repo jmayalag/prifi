@@ -32,19 +32,38 @@ public class ConfigurationRepository {
     }
 
     public void insert(ConfigurationGroup group) {
-        new insertAsyncTask(configurationDao).execute(group);
+        new InsertAsyncTask(configurationDao).execute(group);
     }
 
-    private static class insertAsyncTask extends AsyncTask<ConfigurationGroup, Void, Void> {
+    public void updateGroups(List<ConfigurationGroup> groups) {
+        new UpdateAsyncTask(configurationDao)
+                .execute(groups.toArray(new ConfigurationGroup[groups.size()]));
+    }
+
+    private static class InsertAsyncTask extends AsyncTask<ConfigurationGroup, Void, Void> {
         private final ConfigurationDao dao;
 
-        insertAsyncTask(ConfigurationDao dao) {
+        InsertAsyncTask(ConfigurationDao dao) {
             this.dao = dao;
         }
 
         @Override
         protected Void doInBackground(final ConfigurationGroup... configurationGroups) {
             dao.insertConfigurationGroups(configurationGroups);
+            return null;
+        }
+    }
+
+    private static class UpdateAsyncTask extends AsyncTask<ConfigurationGroup, Void, Void> {
+        private final ConfigurationDao dao;
+
+        UpdateAsyncTask(ConfigurationDao dao) {
+            this.dao = dao;
+        }
+
+        @Override
+        protected Void doInBackground(ConfigurationGroup... groups) {
+            dao.updateConfigurationGroups(groups);
             return null;
         }
     }

@@ -5,7 +5,7 @@
     <string name="title_activity_app_selection">Select Apps</string>
     <string name="title_activity_groups">Networks</string>
     <string name="title_about">About</string>
-
+    <string name="title_activity_group_add">GroupAddActivity</string>
     <!--UI Elements-->
     <string name="start_button">Start</string>
     <string name="stop_button">Stop</string>
@@ -157,6 +157,6 @@
     <string name="status_msg">Status: %1$s\nNetwork: %2$s</string>
     <string name="status_connnected">Connected</string>
     <string name="status_disconnnected">Disconnected</string>
-    <string name="title_activity_group_add">GroupAddActivity</string>
+    <string name="input_group_name_hint">Network name</string>
     <!--Others-->
 </resources>

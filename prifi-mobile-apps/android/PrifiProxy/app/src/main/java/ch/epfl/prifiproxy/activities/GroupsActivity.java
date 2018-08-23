@@ -1,5 +1,6 @@
 package ch.epfl.prifiproxy.activities;
 
+import android.arch.lifecycle.ViewModelProviders;
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
@@ -7,22 +8,17 @@ import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
-import android.widget.Toast;
-
-import java.util.ArrayList;
-import java.util.List;
 
 import ch.epfl.prifiproxy.R;
 import ch.epfl.prifiproxy.adapters.GroupRecyclerAdapter;
-import ch.epfl.prifiproxy.listeners.OnCheckedListener;
-import ch.epfl.prifiproxy.listeners.OnClickListener;
 import ch.epfl.prifiproxy.persistence.entity.ConfigurationGroup;
+import ch.epfl.prifiproxy.viewmodel.ConfigurationGroupViewModel;
 
-public class GroupsActivity extends AppCompatActivity implements OnCheckedListener, OnClickListener {
+public class GroupsActivity extends AppCompatActivity {
     private RecyclerView recyclerView;
-    private List<ConfigurationGroup> groups;
     private GroupRecyclerAdapter recyclerAdapter;
     private LinearLayoutManager layoutManager;
+    private ConfigurationGroupViewModel groupViewModel;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -35,7 +31,6 @@ public class GroupsActivity extends AppCompatActivity implements OnCheckedListen
         FloatingActionButton fab = findViewById(R.id.fab);
         fab.setOnClickListener(view -> addGroup());
 
-        groups = new ArrayList<>();
 
         recyclerView = findViewById(R.id.recyclerView);
         recyclerView.setHasFixedSize(true);
@@ -43,48 +38,33 @@ public class GroupsActivity extends AppCompatActivity implements OnCheckedListen
         layoutManager = new LinearLayoutManager(this);
         recyclerView.setLayoutManager(layoutManager);
 
-        groups = new ArrayList<>();
-
-        groups.add(new ConfigurationGroup(1, "Home", true));
-        groups.add(new ConfigurationGroup(2, "Work", false));
-        groups.add(new ConfigurationGroup(3, "Lab", false));
-        groups.add(new ConfigurationGroup(4, "Public", false));
-
-        recyclerAdapter = new GroupRecyclerAdapter(this, groups, this, this);
+        recyclerAdapter = new GroupRecyclerAdapter(null, null);
         recyclerView.setAdapter(recyclerAdapter);
+
+        groupViewModel = ViewModelProviders.of(this).get(ConfigurationGroupViewModel.class);
+        groupViewModel.getAllGroups().observe(this, recyclerAdapter::setData);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        if (requestCode == GroupAddEditActivity.NEW_GROUP_REQUEST_CODE && resultCode == RESULT_OK) {
+            String name = data.getStringExtra(GroupAddEditActivity.EXTRA_GROUP_NAME);
+            ConfigurationGroup group = new ConfigurationGroup(0, name, false);
+            groupViewModel.insert(group);
+        }
     }
 
     private void addGroup() {
-        Intent intent = new Intent(this, GroupAddActivity.class);
-        startActivity(intent);
+        Intent intent = new Intent(this, GroupAddEditActivity.class);
+        startActivityForResult(intent, GroupAddEditActivity.NEW_GROUP_REQUEST_CODE);
     }
 
     private void editGroup(ConfigurationGroup group) {
         int groupId = group.getId();
-        Intent intent = new Intent(this, GroupAddActivity.class);
-        intent.putExtra(GroupAddActivity.EXTRA_GROUP_ID, groupId);
+        Intent intent = new Intent(this, GroupAddEditActivity.class);
+        intent.putExtra(GroupAddEditActivity.EXTRA_GROUP_ID, groupId);
         startActivity(intent);
-    }
-
-    private void reloadList() {
-        recyclerAdapter.notifyDataSetChanged();
-    }
-
-    @Override
-    public void onChecked(int position, boolean isChecked) {
-        ConfigurationGroup group = groups.get(position);
-        Toast.makeText(this, "Checked " + group.getName(), Toast.LENGTH_SHORT).show();
-
-        for (ConfigurationGroup g : groups) {
-            g.setActive(false);
-        }
-        group.setActive(isChecked);
-        reloadList();
-    }
-
-    @Override
-    public void onClick(int position) {
-        ConfigurationGroup group = groups.get(position);
-        editGroup(group);
     }
 }

@@ -71,7 +71,7 @@
                 android:value="ch.epfl.prifiproxy.activities.MainActivity" />
         </activity>
         <activity
-            android:name=".activities.GroupAddActivity"
+            android:name=".activities.GroupAddEditActivity"
             android:label="@string/title_activity_group_add"
             android:parentActivityName=".activities.GroupsActivity"
             android:theme="@style/AppTheme.NoActionBar">

@@ -1,6 +1,5 @@
 package ch.epfl.prifiproxy.adapters;
 
-import android.content.Context;
 import android.support.annotation.NonNull;
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
@@ -9,6 +8,7 @@ import android.view.ViewGroup;
 import android.widget.Switch;
 import android.widget.TextView;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import ch.epfl.prifiproxy.R;
@@ -17,14 +17,14 @@ import ch.epfl.prifiproxy.listeners.OnClickListener;
 import ch.epfl.prifiproxy.persistence.entity.ConfigurationGroup;
 
 public class GroupRecyclerAdapter extends RecyclerView.Adapter<GroupRecyclerAdapter.ViewHolder> {
+    @NonNull
     private List<ConfigurationGroup> dataset;
     private final OnCheckedListener checkedListener;
     private final OnClickListener clickListener;
 
-    public GroupRecyclerAdapter(Context context, List<ConfigurationGroup> dataset,
-                                OnCheckedListener checkedListener,
+    public GroupRecyclerAdapter(OnCheckedListener checkedListener,
                                 OnClickListener clickListener) {
-        this.dataset = dataset;
+        this.dataset = new ArrayList<>();
         this.checkedListener = checkedListener;
         this.clickListener = clickListener;
     }
@@ -50,6 +50,10 @@ public class GroupRecyclerAdapter extends RecyclerView.Adapter<GroupRecyclerAdap
         return dataset.size();
     }
 
+    public void setData(@NonNull List<ConfigurationGroup> dataset) {
+        this.dataset = dataset;
+        notifyDataSetChanged();
+    }
 
     static class ViewHolder extends RecyclerView.ViewHolder {
         TextView groupName;

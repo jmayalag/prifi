@@ -31,22 +31,28 @@ public interface ConfigurationDao {
     LiveData<List<ConfigurationGroup>> getAllConfigurationById(int id);
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    void insertConfiguration(Configuration configuration);
+    long insertConfiguration(Configuration configuration);
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    void insertConfigurations(List<Configuration> configuration);
+    long[] insertConfigurations(List<Configuration> configuration);
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    void insertConfigurationGroup(ConfigurationGroup group);
+    long insertConfigurationGroup(ConfigurationGroup group);
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    void insertConfigurationGroups(ConfigurationGroup... groups);
+    long[] insertConfigurationGroups(ConfigurationGroup... groups);
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    long[] insertConfigurationGroups(List<ConfigurationGroup> groups);
 
     @Update
     void updateConfigurations(Configuration... configurations);
 
     @Update
     void updateConfigurationGroups(ConfigurationGroup... groups);
+
+    @Update
+    void updateConfigurationGroups(List<ConfigurationGroup> groups);
 
     @Delete
     void deleteConfigurations(Configuration... configurations);
@@ -56,4 +62,10 @@ public interface ConfigurationDao {
 
     @Query("DELETE FROM Configuration WHERE groupId = :groupId")
     void deleteAllForGroupId(int groupId);
+
+    @Query("DELETE FROM Configuration")
+    void deleteAllConfigurations();
+
+    @Query("DELETE FROM ConfigurationGroup")
+    void deleteAllConfigurationGroups();
 }
