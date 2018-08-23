@@ -23,17 +23,17 @@ import java.util.ArrayList;
 import java.util.List;
 
 import ch.epfl.prifiproxy.R;
-import ch.epfl.prifiproxy.listeners.OnAppCheckedListener;
+import ch.epfl.prifiproxy.listeners.OnCheckedListener;
 import ch.epfl.prifiproxy.utils.AppInfo;
 
 public class AppSelectionAdapter extends RecyclerView.Adapter<AppSelectionAdapter.ViewHolder> implements Filterable {
-    private final OnAppCheckedListener mCheckedListener;
+    private final OnCheckedListener mCheckedListener;
     private final int iconSize;
     private List<AppInfo> mDataset;
     private List<AppInfo> filteredApps;
 
     public AppSelectionAdapter(Context context, List<AppInfo> mDataset,
-                               OnAppCheckedListener checkedListener) {
+                               OnCheckedListener checkedListener) {
         this.mDataset = mDataset;
         this.filteredApps = mDataset;
         TypedValue typedValue = new TypedValue();
@@ -123,14 +123,14 @@ public class AppSelectionAdapter extends RecyclerView.Adapter<AppSelectionAdapte
         TextView mPackageName;
         Switch mSwitchPrifi;
 
-        ViewHolder(View itemView, OnAppCheckedListener changeListener) {
+        ViewHolder(View itemView, OnCheckedListener checkedListener) {
             super(itemView);
             mAppIcon = itemView.findViewById(R.id.appIcon);
             mAppName = itemView.findViewById(R.id.appName);
             mPackageName = itemView.findViewById(R.id.packageName);
             mSwitchPrifi = itemView.findViewById(R.id.switchPrifi);
             mSwitchPrifi.setOnCheckedChangeListener((buttonView, isChecked) ->
-                    changeListener.onChecked(getAdapterPosition(), isChecked));
+                    checkedListener.onChecked(getAdapterPosition(), isChecked));
 
             itemView.setOnClickListener(v -> mSwitchPrifi.toggle());
         }

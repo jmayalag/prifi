@@ -21,11 +21,11 @@ import java.util.List;
 
 import ch.epfl.prifiproxy.R;
 import ch.epfl.prifiproxy.adapters.AppSelectionAdapter;
-import ch.epfl.prifiproxy.listeners.OnAppCheckedListener;
+import ch.epfl.prifiproxy.listeners.OnCheckedListener;
 import ch.epfl.prifiproxy.utils.AppInfo;
 import ch.epfl.prifiproxy.utils.AppListHelper;
 
-public class AppSelectionActivity extends AppCompatActivity implements OnAppCheckedListener, SearchView.OnQueryTextListener {
+public class AppSelectionActivity extends AppCompatActivity implements OnCheckedListener, SearchView.OnQueryTextListener {
     private static final String TAG = "PRIFI_APP_SELECTION";
     private RecyclerView mRecyclerView;
     private AppSelectionAdapter mAdapter;
