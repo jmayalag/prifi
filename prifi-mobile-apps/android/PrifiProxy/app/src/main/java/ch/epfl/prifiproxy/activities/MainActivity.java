@@ -395,6 +395,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             case R.id.nav_apps:
                 intent = new Intent(this, AppSelectionActivity.class);
                 break;
+            case R.id.nav_groups:
+                intent = new Intent(this, GroupsActivity.class);
+                break;
             case R.id.nav_settings:
                 intent = new Intent(this, SettingsActivity.class);
                 break;

@@ -52,7 +52,6 @@
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value=".activities.MainActivity" />
         </activity>
-
         <activity
             android:name=".activities.SettingsActivity"
             android:label="@string/title_settings_activity"
@@ -61,6 +60,24 @@
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value=".activities.MainActivity" />
+        </activity>
+        <activity
+            android:name=".activities.GroupsActivity"
+            android:label="@string/title_activity_groups"
+            android:parentActivityName=".activities.MainActivity"
+            android:theme="@style/AppTheme.NoActionBar">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value="ch.epfl.prifiproxy.activities.MainActivity" />
+        </activity>
+        <activity
+            android:name=".activities.GroupAddActivity"
+            android:label="@string/title_activity_group_add"
+            android:parentActivityName=".activities.GroupsActivity"
+            android:theme="@style/AppTheme.NoActionBar">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value="ch.epfl.prifiproxy.activities.GroupsActivity" />
         </activity>
     </application>
 

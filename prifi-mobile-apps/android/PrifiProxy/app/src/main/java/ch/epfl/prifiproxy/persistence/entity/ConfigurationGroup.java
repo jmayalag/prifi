@@ -13,9 +13,12 @@ public class ConfigurationGroup {
     @NonNull
     private String name;
 
-    public ConfigurationGroup(int id, @NonNull String name) {
+    private boolean isActive;
+
+    public ConfigurationGroup(int id, @NonNull String name, boolean isActive) {
         this.id = id;
         this.name = name;
+        this.isActive = isActive;
     }
 
     public int getId() {
@@ -33,5 +36,17 @@ public class ConfigurationGroup {
 
     public void setName(@NonNull String name) {
         this.name = name;
+    }
+
+    public boolean isActive() {
+        return isActive;
+    }
+
+    public void setActive(boolean active) {
+        isActive = active;
+    }
+
+    public void toggleActive() {
+        isActive = !isActive;
     }
 }
