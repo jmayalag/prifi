@@ -43,14 +43,6 @@
             </intent-filter>
         </activity>
         <activity
-            android:name=".activities.OnScreenLogActivity"
-            android:label="@string/on_screen_log_activity_label"
-            android:parentActivityName=".activities.MainActivity">
-            <meta-data
-                android:name="android.support.PARENT_ACTIVITY"
-                android:value=".activities.MainActivity" />
-        </activity>
-        <activity
             android:name=".activities.AppSelectionActivity"
             android:label="@string/title_activity_app_selection"
             android:parentActivityName=".activities.MainActivity"

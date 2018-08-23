@@ -45,6 +45,17 @@ android {
             path "CMakeLists.txt"
         }
     }
+    flavorDimensions 'version'
+    productFlavors {
+        dev {
+            dimension 'version'
+            applicationIdSuffix ".dev"
+            versionNameSuffix "-dev"
+        }
+        user {
+            dimension 'version'
+        }
+    }
 }
 
 dependencies {

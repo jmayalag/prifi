@@ -21,7 +21,6 @@ import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.MenuItem;
-import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -30,7 +29,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import ch.epfl.prifiproxy.R;
 import ch.epfl.prifiproxy.services.PrifiService;
-import ch.epfl.prifiproxy.utils.HttpThroughPrifiTask;
+import ch.epfl.prifiproxy.ui.MainDrawerRouter;
 import ch.epfl.prifiproxy.utils.NetworkHelper;
 import ch.epfl.prifiproxy.utils.SystemHelper;
 import eu.faircode.netguard.ServiceSinkhole;
@@ -60,6 +59,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private BroadcastReceiver mBroadcastReceiver;
     private FloatingActionButton powerButton;
     private TextView textStatus;
+    private MainDrawerRouter drawerRouter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -83,6 +83,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         toggle.syncState();
 
         NavigationView navigationView = findViewById(R.id.nav_view);
+        drawerRouter = new MainDrawerRouter();
+        drawerRouter.addMenu(navigationView);
         navigationView.setNavigationItemSelectedListener(this);
 
         // Actions
@@ -382,22 +384,18 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         item.setChecked(true);
         drawer.closeDrawers();
 
+        // If select returns true, the action was performed already
+        if (drawerRouter.selected(id, this)) {
+            return true;
+        }
+
         Intent intent = null;
 
         switch (id) {
             case R.id.nav_apps:
                 intent = new Intent(this, AppSelectionActivity.class);
                 break;
-            case R.id.nav_log:
-                intent = new Intent(this, OnScreenLogActivity.class);
-                break;
             case R.id.nav_settings:
-                boolean isRunning = isPrifiServiceRunning.get();
-                if (isRunning) {
-                    Toast.makeText(this, R.string.msg_stop_settings,
-                            Toast.LENGTH_SHORT).show();
-                    return true;
-                }
                 intent = new Intent(this, SettingsActivity.class);
                 break;
             default:
@@ -407,7 +405,6 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         if (intent != null) {
             startActivity(intent);
         }
-
         return true;
     }
 }
