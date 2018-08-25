@@ -12,15 +12,16 @@ import android.util.Log;
 import java.util.ArrayList;
 import java.util.List;
 
+import ch.epfl.prifiproxy.persistence.dao.ConfigurationDao;
+import ch.epfl.prifiproxy.persistence.dao.ConfigurationGroupDao;
 import ch.epfl.prifiproxy.persistence.entity.Configuration;
 import ch.epfl.prifiproxy.persistence.entity.ConfigurationGroup;
-import ch.epfl.prifiproxy.persistence.dao.ConfigurationDao;
 
 @Database(entities = {ConfigurationGroup.class, Configuration.class}, version = 1)
 public abstract class AppDatabase extends RoomDatabase {
     public static final String DATABASE_NAME = "prifi_db";
-    private static AppDatabase sInstance;
 
+    private static AppDatabase sInstance;
 
     public static AppDatabase getDatabase(Context context) {
         if (sInstance == null) {
@@ -38,6 +39,8 @@ public abstract class AppDatabase extends RoomDatabase {
 
     public abstract ConfigurationDao configurationDao();
 
+    public abstract ConfigurationGroupDao configurationGroupDao();
+
     private static RoomDatabase.Callback sRoomDatabaseCallback = new RoomDatabase.Callback() {
         @Override
         public void onOpen(@NonNull SupportSQLiteDatabase db) {
@@ -47,16 +50,18 @@ public abstract class AppDatabase extends RoomDatabase {
     };
 
     private static class PopulateDbAsync extends AsyncTask<Void, Void, Void> {
-        private final ConfigurationDao dao;
+        private final ConfigurationDao configurationDao;
+        private final ConfigurationGroupDao groupDao;
 
         PopulateDbAsync(AppDatabase db) {
-            this.dao = db.configurationDao();
+            this.configurationDao = db.configurationDao();
+            this.groupDao = db.configurationGroupDao();
         }
 
         @Override
         protected Void doInBackground(Void... voids) {
-            dao.deleteAllConfigurations();
-            dao.deleteAllConfigurationGroups();
+            configurationDao.deleteAll();
+            groupDao.deleteAll();
 
             List<ConfigurationGroup> groups = new ArrayList<>();
             groups.add(new ConfigurationGroup(0, "Home", false));
@@ -65,9 +70,17 @@ public abstract class AppDatabase extends RoomDatabase {
             groups.add(new ConfigurationGroup(0, "Classroom", false));
             groups.add(new ConfigurationGroup(0, "Campus", false));
 
-            dao.insertConfigurationGroups(groups);
+            long[] ids = groupDao.insert(groups);
 
-            Log.i("APP_DATABASE", "Home id:" + groups.get(0).getId());
+            int groupId = (int) ids[0];
+            List<Configuration> configurations = new ArrayList<>();
+            for (int i = 1; i <= 5; i++) {
+                String ip = "192.168.0." + (i + 1);
+                String name = "Relay " + i;
+                configurations.add(new Configuration(0, name, ip, 7000, 8090, i, groupId));
+            }
+
+            configurationDao.insert(configurations);
 
             return null;
         }

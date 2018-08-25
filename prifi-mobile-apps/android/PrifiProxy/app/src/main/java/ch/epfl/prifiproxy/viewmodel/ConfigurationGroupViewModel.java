@@ -7,20 +7,20 @@ import android.support.annotation.NonNull;
 
 import java.util.List;
 
-import ch.epfl.prifiproxy.persistence.entity.Configuration;
 import ch.epfl.prifiproxy.persistence.entity.ConfigurationGroup;
+import ch.epfl.prifiproxy.repository.ConfigurationGroupRepository;
 import ch.epfl.prifiproxy.repository.ConfigurationRepository;
 
 public class ConfigurationGroupViewModel extends AndroidViewModel {
-    private ConfigurationRepository repository;
+    private ConfigurationGroupRepository repository;
     private LiveData<List<ConfigurationGroup>> allGroups;
 
     public ConfigurationGroupViewModel(@NonNull Application application) {
         super(application);
-        repository = new ConfigurationRepository(application);
+        repository = new ConfigurationGroupRepository(application);
         allGroups = repository.getAllGroups();
     }
-
+ 
     public LiveData<List<ConfigurationGroup>> getAllGroups() {
         return allGroups;
     }

@@ -1,0 +1,17 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:context=".activities.GroupAddEditActivity">
+    <item
+        android:id="@+id/edit_group"
+        android:icon="@android:drawable/ic_menu_edit"
+        android:orderInCategory="1"
+        android:title="@string/title_group_menu_edit"
+        app:showAsAction="ifRoom" />
+    <item
+        android:id="@+id/delete_group"
+        android:icon="@android:drawable/ic_menu_delete"
+        android:orderInCategory="10"
+        android:title="@string/title_group_menu_delete"
+        app:showAsAction="never" />
+</menu>

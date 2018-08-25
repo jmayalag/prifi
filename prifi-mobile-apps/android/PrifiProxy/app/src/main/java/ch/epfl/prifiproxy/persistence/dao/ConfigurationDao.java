@@ -16,56 +16,29 @@ import ch.epfl.prifiproxy.persistence.entity.ConfigurationGroup;
 @Dao
 public interface ConfigurationDao {
     @Query("SELECT * FROM Configuration WHERE id = :id")
-    Configuration getConfiguration(int id);
-
-    @Query("SELECT * FROM Configuration")
-    LiveData<List<Configuration>> getAllConfigurations();
+    Configuration get(int id);
 
     @Query("SELECT * FROM Configuration WHERE groupId = :groupId ORDER BY priority ASC")
-    LiveData<List<Configuration>> getConfigurations(int groupId);
-
-    @Query("SELECT * FROM ConfigurationGroup ORDER BY name ASC")
-    LiveData<List<ConfigurationGroup>> getAllConfigurationGroups();
-
-    @Query("SELECT * FROM ConfigurationGroup WHERE id = :id ORDER BY name ASC")
-    LiveData<List<ConfigurationGroup>> getAllConfigurationById(int id);
+    LiveData<List<Configuration>> getForGroup(int groupId);
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    long insertConfiguration(Configuration configuration);
+    long[] insert(Configuration... configurations);
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    long[] insertConfigurations(List<Configuration> configuration);
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    long insertConfigurationGroup(ConfigurationGroup group);
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    long[] insertConfigurationGroups(ConfigurationGroup... groups);
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    long[] insertConfigurationGroups(List<ConfigurationGroup> groups);
+    long[] insert(List<Configuration> configurations);
 
     @Update
-    void updateConfigurations(Configuration... configurations);
+    void update(Configuration... configurations);
 
     @Update
-    void updateConfigurationGroups(ConfigurationGroup... groups);
-
-    @Update
-    void updateConfigurationGroups(List<ConfigurationGroup> groups);
+    void update(List<Configuration> configurations);
 
     @Delete
-    void deleteConfigurations(Configuration... configurations);
+    void delete(Configuration... configurations);
 
     @Delete
-    void deleteConfigurationGroups(ConfigurationGroup... groups);
-
-    @Query("DELETE FROM Configuration WHERE groupId = :groupId")
-    void deleteAllForGroupId(int groupId);
+    void delete(List<Configuration> configurations);
 
     @Query("DELETE FROM Configuration")
-    void deleteAllConfigurations();
-
-    @Query("DELETE FROM ConfigurationGroup")
-    void deleteAllConfigurationGroups();
+    void deleteAll();
 }

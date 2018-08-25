@@ -1,6 +1,8 @@
 package ch.epfl.prifiproxy.adapters;
 
+import android.content.Context;
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -14,21 +16,25 @@ import java.util.List;
 import ch.epfl.prifiproxy.R;
 import ch.epfl.prifiproxy.listeners.OnCheckedListener;
 import ch.epfl.prifiproxy.listeners.OnClickListener;
+import ch.epfl.prifiproxy.listeners.OnItemCheckedListener;
+import ch.epfl.prifiproxy.listeners.OnItemClickListener;
 import ch.epfl.prifiproxy.persistence.entity.ConfigurationGroup;
 
 public class GroupRecyclerAdapter extends RecyclerView.Adapter<GroupRecyclerAdapter.ViewHolder> {
+
+    @Nullable
+    private final OnItemCheckedListener<ConfigurationGroup> checkedListener;
+    @Nullable
+    private final OnItemClickListener<ConfigurationGroup> clickListener;
     @NonNull
     private List<ConfigurationGroup> dataset;
-    private final OnCheckedListener checkedListener;
-    private final OnClickListener clickListener;
 
-    public GroupRecyclerAdapter(OnCheckedListener checkedListener,
-                                OnClickListener clickListener) {
+    public GroupRecyclerAdapter(@Nullable OnItemCheckedListener<ConfigurationGroup> checkedListener,
+                                @Nullable OnItemClickListener<ConfigurationGroup> clickListener) {
         this.dataset = new ArrayList<>();
         this.checkedListener = checkedListener;
         this.clickListener = clickListener;
     }
-
 
     @NonNull
     @Override
@@ -59,20 +65,24 @@ public class GroupRecyclerAdapter extends RecyclerView.Adapter<GroupRecyclerAdap
         TextView groupName;
         Switch groupSwitch;
         private boolean isBound;
+        ConfigurationGroup item;
 
-        ViewHolder(View itemView, OnCheckedListener checkedListener, OnClickListener clickListener) {
+        ViewHolder(View itemView,
+                   @Nullable OnItemCheckedListener<ConfigurationGroup> checkedListener,
+                   @Nullable OnItemClickListener<ConfigurationGroup> clickListener) {
             super(itemView);
             groupName = itemView.findViewById(R.id.groupName);
             groupSwitch = itemView.findViewById(R.id.groupSwitch);
+            item = null;
 
             if (clickListener != null) {
-                itemView.setOnClickListener(v -> clickListener.onClick(getAdapterPosition()));
+                itemView.setOnClickListener(v -> clickListener.onClick(item));
             }
             if (checkedListener != null) {
                 groupSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
                     if (isBound) {
                         // Stop circular calls
-                        checkedListener.onChecked(getAdapterPosition(), isChecked);
+                        checkedListener.onChecked(item, isChecked);
                     }
                 });
             }
@@ -80,6 +90,7 @@ public class GroupRecyclerAdapter extends RecyclerView.Adapter<GroupRecyclerAdap
 
         void bind(ConfigurationGroup group) {
             isBound = false;
+            item = group;
             groupName.setText(group.getName());
             groupSwitch.setChecked(group.isActive());
             isBound = true;

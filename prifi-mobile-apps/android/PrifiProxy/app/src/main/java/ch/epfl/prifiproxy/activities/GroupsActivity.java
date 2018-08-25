@@ -11,10 +11,13 @@ import android.support.v7.widget.Toolbar;
 
 import ch.epfl.prifiproxy.R;
 import ch.epfl.prifiproxy.adapters.GroupRecyclerAdapter;
+import ch.epfl.prifiproxy.listeners.OnItemCheckedListener;
+import ch.epfl.prifiproxy.listeners.OnItemClickListener;
 import ch.epfl.prifiproxy.persistence.entity.ConfigurationGroup;
 import ch.epfl.prifiproxy.viewmodel.ConfigurationGroupViewModel;
 
-public class GroupsActivity extends AppCompatActivity {
+public class GroupsActivity extends AppCompatActivity
+        implements OnItemCheckedListener<ConfigurationGroup>, OnItemClickListener<ConfigurationGroup> {
     private RecyclerView recyclerView;
     private GroupRecyclerAdapter recyclerAdapter;
     private LinearLayoutManager layoutManager;
@@ -38,7 +41,7 @@ public class GroupsActivity extends AppCompatActivity {
         layoutManager = new LinearLayoutManager(this);
         recyclerView.setLayoutManager(layoutManager);
 
-        recyclerAdapter = new GroupRecyclerAdapter(null, null);
+        recyclerAdapter = new GroupRecyclerAdapter(this, this);
         recyclerView.setAdapter(recyclerAdapter);
 
         groupViewModel = ViewModelProviders.of(this).get(ConfigurationGroupViewModel.class);
@@ -62,9 +65,19 @@ public class GroupsActivity extends AppCompatActivity {
     }
 
     private void editGroup(ConfigurationGroup group) {
-        int groupId = group.getId();
         Intent intent = new Intent(this, GroupAddEditActivity.class);
-        intent.putExtra(GroupAddEditActivity.EXTRA_GROUP_ID, groupId);
+        intent.putExtra(GroupAddEditActivity.EXTRA_GROUP_ID, group.getId());
+        intent.putExtra(GroupAddEditActivity.EXTRA_GROUP_NAME, group.getName());
         startActivity(intent);
+    }
+
+    @Override
+    public void onChecked(ConfigurationGroup item, boolean isChecked) {
+
+    }
+
+    @Override
+    public void onClick(ConfigurationGroup item) {
+        editGroup(item);
     }
 }

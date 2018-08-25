@@ -8,39 +8,40 @@ import java.util.List;
 
 import ch.epfl.prifiproxy.persistence.AppDatabase;
 import ch.epfl.prifiproxy.persistence.dao.ConfigurationDao;
+import ch.epfl.prifiproxy.persistence.dao.ConfigurationGroupDao;
 import ch.epfl.prifiproxy.persistence.entity.Configuration;
 import ch.epfl.prifiproxy.persistence.entity.ConfigurationGroup;
 
 public class ConfigurationRepository {
     private ConfigurationDao configurationDao;
-    private LiveData<List<ConfigurationGroup>> allGroups;
-    private LiveData<List<Configuration>> allConfigurations;
 
     public ConfigurationRepository(Application application) {
         AppDatabase db = AppDatabase.getDatabase(application);
         configurationDao = db.configurationDao();
-        allGroups = configurationDao.getAllConfigurationGroups();
-        allConfigurations = configurationDao.getAllConfigurations();
     }
 
-    public LiveData<List<ConfigurationGroup>> getAllGroups() {
-        return allGroups;
+    public LiveData<List<Configuration>> getConfigurations(int groupId) {
+        return configurationDao.getForGroup(groupId);
     }
 
-    public LiveData<List<Configuration>> getAllConfigurations() {
-        return allConfigurations;
+    public void insert(Configuration configuration) {
+        new InsertAsyncTask(configurationDao).execute(configuration);
     }
 
-    public void insert(ConfigurationGroup group) {
-        new InsertAsyncTask(configurationDao).execute(group);
+    public void update(Configuration configuration) {
+        new UpdateAsyncTask(configurationDao).execute(configuration);
     }
 
-    public void updateGroups(List<ConfigurationGroup> groups) {
+    public void update(List<Configuration> configurations) {
         new UpdateAsyncTask(configurationDao)
-                .execute(groups.toArray(new ConfigurationGroup[groups.size()]));
+                .execute(configurations.toArray(new Configuration[configurations.size()]));
     }
 
-    private static class InsertAsyncTask extends AsyncTask<ConfigurationGroup, Void, Void> {
+    public void delete(Configuration configuration) {
+        new DeleteAsyncTask(configurationDao).execute(configuration);
+    }
+
+    private static class InsertAsyncTask extends AsyncTask<Configuration, Void, Void> {
         private final ConfigurationDao dao;
 
         InsertAsyncTask(ConfigurationDao dao) {
@@ -48,13 +49,13 @@ public class ConfigurationRepository {
         }
 
         @Override
-        protected Void doInBackground(final ConfigurationGroup... configurationGroups) {
-            dao.insertConfigurationGroups(configurationGroups);
+        protected Void doInBackground(final Configuration... configurations) {
+            dao.insert(configurations);
             return null;
         }
     }
 
-    private static class UpdateAsyncTask extends AsyncTask<ConfigurationGroup, Void, Void> {
+    private static class UpdateAsyncTask extends AsyncTask<Configuration, Void, Void> {
         private final ConfigurationDao dao;
 
         UpdateAsyncTask(ConfigurationDao dao) {
@@ -62,8 +63,22 @@ public class ConfigurationRepository {
         }
 
         @Override
-        protected Void doInBackground(ConfigurationGroup... groups) {
-            dao.updateConfigurationGroups(groups);
+        protected Void doInBackground(Configuration... configurations) {
+            dao.update(configurations);
+            return null;
+        }
+    }
+
+    private static class DeleteAsyncTask extends AsyncTask<Configuration, Void, Void> {
+        private final ConfigurationDao dao;
+
+        DeleteAsyncTask(ConfigurationDao dao) {
+            this.dao = dao;
+        }
+
+        @Override
+        protected Void doInBackground(Configuration... configurations) {
+            dao.delete(configurations);
             return null;
         }
     }

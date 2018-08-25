@@ -158,5 +158,8 @@
     <string name="status_connnected">Connected</string>
     <string name="status_disconnnected">Disconnected</string>
     <string name="input_group_name_hint">Network name</string>
+    <string name="title_group_menu_edit">Edit</string>
+    <string name="title_group_menu_delete">Delete</string>
+    <string name="title_group_menu_save">Save</string>
     <!--Others-->
 </resources>
