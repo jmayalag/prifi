@@ -79,6 +79,15 @@
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value="ch.epfl.prifiproxy.activities.GroupsActivity" />
         </activity>
+        <activity
+            android:name=".activities.ConfigurationAddEditActivity"
+            android:label="@string/title_activity_configuration_add"
+            android:parentActivityName=".activities.GroupAddEditActivity"
+            android:theme="@style/AppTheme.NoActionBar">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value="ch.epfl.prifiproxy.activities.GroupAddEditActivity" />
+        </activity>
     </application>
 
 </manifest>

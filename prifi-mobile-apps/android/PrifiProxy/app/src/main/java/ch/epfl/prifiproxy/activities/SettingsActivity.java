@@ -47,7 +47,7 @@ public class SettingsActivity extends AppCompatActivity {
 
         Button resetButton = findViewById(R.id.resetButton);
         relayAddressInput = findViewById(R.id.relayAddressInput);
-        relayPortInput = findViewById(R.id.relayPortInput);
+        relayPortInput = findViewById(R.id.relay_PortInput);
         relaySocksPortInput = findViewById(R.id.relaySocksPortInput);
         disconnectWhenNetworkErrorSwitch = findViewById(R.id.disconnectWhenNetworkErrorSwitch);
 
@@ -168,7 +168,7 @@ public class SettingsActivity extends AppCompatActivity {
                 updateInputFieldsAndPrefs(text, null, null);
                 break;
 
-            case R.id.relayPortInput:
+            case R.id.relay_PortInput:
                 updateInputFieldsAndPrefs(null, text, null);
                 break;
 

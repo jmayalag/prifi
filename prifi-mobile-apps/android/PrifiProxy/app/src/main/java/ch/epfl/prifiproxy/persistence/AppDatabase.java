@@ -7,7 +7,6 @@ import android.arch.persistence.room.RoomDatabase;
 import android.content.Context;
 import android.os.AsyncTask;
 import android.support.annotation.NonNull;
-import android.util.Log;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -17,7 +16,7 @@ import ch.epfl.prifiproxy.persistence.dao.ConfigurationGroupDao;
 import ch.epfl.prifiproxy.persistence.entity.Configuration;
 import ch.epfl.prifiproxy.persistence.entity.ConfigurationGroup;
 
-@Database(entities = {ConfigurationGroup.class, Configuration.class}, version = 1)
+@Database(entities = {ConfigurationGroup.class, Configuration.class}, version = 2)
 public abstract class AppDatabase extends RoomDatabase {
     public static final String DATABASE_NAME = "prifi_db";
 
@@ -29,6 +28,7 @@ public abstract class AppDatabase extends RoomDatabase {
                 if (sInstance == null) {
                     sInstance = Room.databaseBuilder(context.getApplicationContext(),
                             AppDatabase.class, DATABASE_NAME)
+                            .fallbackToDestructiveMigration()
                             .addCallback(sRoomDatabaseCallback)
                             .build();
                 }
@@ -77,7 +77,7 @@ public abstract class AppDatabase extends RoomDatabase {
             for (int i = 1; i <= 5; i++) {
                 String ip = "192.168.0." + (i + 1);
                 String name = "Relay " + i;
-                configurations.add(new Configuration(0, name, ip, 7000, 8090, i, groupId));
+                configurations.add(new Configuration(0, name, ip, 7000, 8090, i, groupId, false));
             }
 
             configurationDao.insert(configurations);

@@ -10,15 +10,19 @@ import android.arch.persistence.room.Update;
 
 import java.util.List;
 
+import ch.epfl.prifiproxy.persistence.entity.Configuration;
 import ch.epfl.prifiproxy.persistence.entity.ConfigurationGroup;
 
 @Dao
 public interface ConfigurationGroupDao {
     @Query("SELECT * FROM ConfigurationGroup WHERE id = :id")
-    ConfigurationGroup get(int id);
+    LiveData<ConfigurationGroup> get(int id);
 
     @Query("SELECT * FROM ConfigurationGroup ORDER BY name ASC")
     LiveData<List<ConfigurationGroup>> getAll();
+
+    @Query("SELECT * FROM ConfigurationGroup WHERE isActive = 1")
+    ConfigurationGroup getActive();
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     long[] insert(ConfigurationGroup... groups);

@@ -1,6 +1,5 @@
 package ch.epfl.prifiproxy.adapters;
 
-import android.content.Context;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v7.widget.RecyclerView;
@@ -14,8 +13,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import ch.epfl.prifiproxy.R;
-import ch.epfl.prifiproxy.listeners.OnCheckedListener;
-import ch.epfl.prifiproxy.listeners.OnClickListener;
 import ch.epfl.prifiproxy.listeners.OnItemCheckedListener;
 import ch.epfl.prifiproxy.listeners.OnItemClickListener;
 import ch.epfl.prifiproxy.persistence.entity.ConfigurationGroup;

@@ -1,6 +1,7 @@
 package ch.epfl.prifiproxy.persistence.entity;
 
 import android.arch.persistence.room.Entity;
+import android.arch.persistence.room.Ignore;
 import android.arch.persistence.room.Index;
 import android.arch.persistence.room.PrimaryKey;
 import android.support.annotation.NonNull;
@@ -15,10 +16,15 @@ public class ConfigurationGroup {
 
     private boolean isActive;
 
+    @Ignore
     public ConfigurationGroup(int id, @NonNull String name, boolean isActive) {
         this.id = id;
         this.name = name;
         this.isActive = isActive;
+    }
+
+    public ConfigurationGroup() {
+
     }
 
     public int getId() {

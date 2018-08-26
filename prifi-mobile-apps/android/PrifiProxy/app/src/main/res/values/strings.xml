@@ -5,7 +5,7 @@
     <string name="title_activity_app_selection">Select Apps</string>
     <string name="title_activity_groups">Networks</string>
     <string name="title_about">About</string>
-    <string name="title_activity_group_add">GroupAddActivity</string>
+    <string name="title_activity_group_add">Add Network</string>
     <!--UI Elements-->
     <string name="start_button">Start</string>
     <string name="stop_button">Stop</string>
@@ -158,8 +158,23 @@
     <string name="status_connnected">Connected</string>
     <string name="status_disconnnected">Disconnected</string>
     <string name="input_group_name_hint">Network name</string>
-    <string name="title_group_menu_edit">Edit</string>
-    <string name="title_group_menu_delete">Delete</string>
-    <string name="title_group_menu_save">Save</string>
+    <string name="title_menu_edit">Edit</string>
+    <string name="title_menu_delete">Delete</string>
+    <string name="title_menu_save">Save</string>
+    <string name="required">Required</string>
     <!--Others-->
+
+    <string name="dialog_delete_group_title">Delete Network</string>
+    <string name="dialog_delete_group_msg">Are you sure? This will also delete any related configurations.</string>
+
+    <string name="dialog_delete_configuration_title">Delete Configuration</string>
+    <string name="dialog_delete_configuration_msg">Are you sure?</string>
+    <string name="input_configuration_name_hint">Name</string>
+    <string name="input_configuration_host_hint">Host Address</string>
+    <string name="input_configuration_socks_port_hint">Socks port</string>
+    <string name="title_activity_configuration_add">Add Configuration</string>
+    <string name="msg_invalid_ip_address">Invalid IP address</string>
+    <string name="msg_invalid_port">Invalid port</string>
+    <string name="default_socks_port">8090</string>
+    <string name="input_configuration_relay_port_hint_hint">Relay port</string>
 </resources>

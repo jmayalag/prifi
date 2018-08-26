@@ -8,16 +8,34 @@ import java.util.List;
 
 import ch.epfl.prifiproxy.persistence.AppDatabase;
 import ch.epfl.prifiproxy.persistence.dao.ConfigurationDao;
-import ch.epfl.prifiproxy.persistence.dao.ConfigurationGroupDao;
 import ch.epfl.prifiproxy.persistence.entity.Configuration;
-import ch.epfl.prifiproxy.persistence.entity.ConfigurationGroup;
 
 public class ConfigurationRepository {
     private ConfigurationDao configurationDao;
+    private static ConfigurationRepository sInstance;
 
-    public ConfigurationRepository(Application application) {
+    public static ConfigurationRepository getInstance(Application application) {
+        if (sInstance == null) {
+            synchronized (ConfigurationRepository.class) {
+                if (sInstance == null) {
+                    sInstance = new ConfigurationRepository(application);
+                }
+            }
+        }
+        return sInstance;
+    }
+
+    ConfigurationRepository(Application application) {
         AppDatabase db = AppDatabase.getDatabase(application);
         configurationDao = db.configurationDao();
+    }
+
+    public Configuration getActive() {
+        return configurationDao.getActive();
+    }
+
+    public LiveData<Configuration> getConfiguration(int configurationId) {
+        return configurationDao.get(configurationId);
     }
 
     public LiveData<List<Configuration>> getConfigurations(int groupId) {

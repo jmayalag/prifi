@@ -5,38 +5,40 @@ import android.arch.lifecycle.AndroidViewModel;
 import android.arch.lifecycle.LiveData;
 import android.support.annotation.NonNull;
 
-import java.util.Collections;
-import java.util.List;
-
 import ch.epfl.prifiproxy.persistence.entity.Configuration;
 import ch.epfl.prifiproxy.persistence.entity.ConfigurationGroup;
 import ch.epfl.prifiproxy.repository.ConfigurationGroupRepository;
 import ch.epfl.prifiproxy.repository.ConfigurationRepository;
 
-public class ConfigurationViewModel extends AndroidViewModel {
+public class ConfigurationAddEdditViewModel extends AndroidViewModel {
     private ConfigurationRepository configurationRepository;
     private ConfigurationGroupRepository groupRepository;
-
+    private LiveData<Configuration> configuration;
     private LiveData<ConfigurationGroup> group;
-    private LiveData<List<Configuration>> configurations;
+    private int groupId;
 
-    public ConfigurationViewModel(@NonNull Application application) {
+    public ConfigurationAddEdditViewModel(@NonNull Application application) {
         super(application);
         configurationRepository = ConfigurationRepository.getInstance(application);
         groupRepository = ConfigurationGroupRepository.getInstance(application);
     }
 
-    public void init(int groupId) {
+    public void init(int groupId, int configurationId) {
+        this.groupId = groupId;
+        configuration = configurationRepository.getConfiguration(configurationId);
         group = groupRepository.getGroup(groupId);
-        configurations = configurationRepository.getConfigurations(groupId);
+    }
+
+    public int getGroupId() {
+        return groupId;
     }
 
     public LiveData<ConfigurationGroup> getGroup() {
         return group;
     }
 
-    public LiveData<List<Configuration>> getConfigurations() {
-        return configurations;
+    public LiveData<Configuration> getConfiguration() {
+        return configuration;
     }
 
     public void insert(Configuration configuration) {
@@ -51,23 +53,11 @@ public class ConfigurationViewModel extends AndroidViewModel {
         configurationRepository.delete(configuration);
     }
 
-    public void insert(ConfigurationGroup group) {
-        groupRepository.insert(group);
-    }
-
-    public void insertOrUpdate(ConfigurationGroup group) {
-        if (group.getId() == 0) {
-            insert(group);
+    public void insertOrUpdate(Configuration configuration) {
+        if (configuration.getId() == 0) {
+            insert(configuration);
         } else {
-            update(group);
+            update(configuration);
         }
-    }
-
-    public void update(ConfigurationGroup group) {
-        groupRepository.update(Collections.singletonList(group));
-    }
-
-    public void delete(ConfigurationGroup group) {
-        groupRepository.delete(Collections.singletonList(group));
     }
 }

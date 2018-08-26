@@ -2,7 +2,9 @@ package ch.epfl.prifiproxy.persistence.entity;
 
 import android.arch.persistence.room.Entity;
 import android.arch.persistence.room.ForeignKey;
+import android.arch.persistence.room.Ignore;
 import android.arch.persistence.room.PrimaryKey;
+import android.support.annotation.IntDef;
 import android.support.annotation.NonNull;
 
 @Entity
@@ -22,7 +24,13 @@ public class Configuration {
 
     private int priority;
 
-    public Configuration(int id, @NonNull String name, @NonNull String host, int relayPort, int socksPort, int priority, int groupId) {
+    private boolean isActive;
+
+    public Configuration() {
+    }
+
+    @Ignore
+    public Configuration(int id, @NonNull String name, @NonNull String host, int relayPort, int socksPort, int priority, int groupId, boolean isActive) {
         this.id = id;
         this.name = name;
         this.host = host;
@@ -30,9 +38,10 @@ public class Configuration {
         this.socksPort = socksPort;
         this.priority = priority;
         this.groupId = groupId;
+        this.isActive = isActive;
     }
 
-    @ForeignKey(entity = ConfigurationGroup.class, parentColumns = "id", childColumns = "groupId")
+    @ForeignKey(entity = ConfigurationGroup.class, parentColumns = "id", childColumns = "groupId", onDelete = ForeignKey.CASCADE)
     private int groupId;
 
     public int getId() {
@@ -91,5 +100,13 @@ public class Configuration {
 
     public void setPriority(int priority) {
         this.priority = priority;
+    }
+
+    public boolean isActive() {
+        return isActive;
+    }
+
+    public void setActive(boolean active) {
+        isActive = active;
     }
 }

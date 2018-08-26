@@ -48,36 +48,21 @@ public class GroupsActivity extends AppCompatActivity
         groupViewModel.getAllGroups().observe(this, recyclerAdapter::setData);
     }
 
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-
-        if (requestCode == GroupAddEditActivity.NEW_GROUP_REQUEST_CODE && resultCode == RESULT_OK) {
-            String name = data.getStringExtra(GroupAddEditActivity.EXTRA_GROUP_NAME);
-            ConfigurationGroup group = new ConfigurationGroup(0, name, false);
-            groupViewModel.insert(group);
-        }
-    }
-
     private void addGroup() {
-        Intent intent = new Intent(this, GroupAddEditActivity.class);
-        startActivityForResult(intent, GroupAddEditActivity.NEW_GROUP_REQUEST_CODE);
+        startActivity(GroupAddEditActivity.intentAdd(this));
     }
 
-    private void editGroup(ConfigurationGroup group) {
-        Intent intent = new Intent(this, GroupAddEditActivity.class);
-        intent.putExtra(GroupAddEditActivity.EXTRA_GROUP_ID, group.getId());
-        intent.putExtra(GroupAddEditActivity.EXTRA_GROUP_NAME, group.getName());
-        startActivity(intent);
+    private void detailGroup(ConfigurationGroup group) {
+        startActivity(GroupAddEditActivity.intentDetail(this, group));
     }
 
     @Override
     public void onChecked(ConfigurationGroup item, boolean isChecked) {
-
+        groupViewModel.setActiveGroup(item, isChecked);
     }
 
     @Override
     public void onClick(ConfigurationGroup item) {
-        editGroup(item);
+        detailGroup(item);
     }
 }

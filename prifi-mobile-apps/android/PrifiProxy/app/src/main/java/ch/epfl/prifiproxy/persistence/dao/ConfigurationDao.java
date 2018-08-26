@@ -16,10 +16,13 @@ import ch.epfl.prifiproxy.persistence.entity.ConfigurationGroup;
 @Dao
 public interface ConfigurationDao {
     @Query("SELECT * FROM Configuration WHERE id = :id")
-    Configuration get(int id);
+    LiveData<Configuration> get(int id);
 
     @Query("SELECT * FROM Configuration WHERE groupId = :groupId ORDER BY priority ASC")
     LiveData<List<Configuration>> getForGroup(int groupId);
+
+    @Query("SELECT * FROM Configuration WHERE isActive = 1")
+    Configuration getActive();
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     long[] insert(Configuration... configurations);

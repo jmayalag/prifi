@@ -5,11 +5,13 @@ import android.arch.lifecycle.AndroidViewModel;
 import android.arch.lifecycle.LiveData;
 import android.support.annotation.NonNull;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import ch.epfl.prifiproxy.persistence.entity.ConfigurationGroup;
 import ch.epfl.prifiproxy.repository.ConfigurationGroupRepository;
-import ch.epfl.prifiproxy.repository.ConfigurationRepository;
 
 public class ConfigurationGroupViewModel extends AndroidViewModel {
     private ConfigurationGroupRepository repository;
@@ -17,10 +19,10 @@ public class ConfigurationGroupViewModel extends AndroidViewModel {
 
     public ConfigurationGroupViewModel(@NonNull Application application) {
         super(application);
-        repository = new ConfigurationGroupRepository(application);
+        repository = ConfigurationGroupRepository.getInstance(application);
         allGroups = repository.getAllGroups();
     }
- 
+
     public LiveData<List<ConfigurationGroup>> getAllGroups() {
         return allGroups;
     }
@@ -29,7 +31,15 @@ public class ConfigurationGroupViewModel extends AndroidViewModel {
         repository.insert(group);
     }
 
-    public void updateGroups(List<ConfigurationGroup> groups) {
-        repository.updateGroups(groups);
+    public void update(List<ConfigurationGroup> groups) {
+        repository.update(groups);
+    }
+
+    public void delete(List<ConfigurationGroup> groups) {
+        repository.delete(groups);
+    }
+
+    public void setActiveGroup(ConfigurationGroup group, boolean isActive) {
+        repository.setActiveGroup(group, isActive);
     }
 }

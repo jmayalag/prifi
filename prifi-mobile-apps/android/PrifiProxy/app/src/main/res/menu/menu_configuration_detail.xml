@@ -1,15 +1,15 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    tools:context=".activities.GroupAddEditActivity">
+    tools:context="ch.epfl.prifiproxy.activities.ConfigurationAddEditActivity">
     <item
-        android:id="@+id/edit_group"
+        android:id="@+id/edit_configuration"
         android:icon="@android:drawable/ic_menu_edit"
         android:orderInCategory="1"
         android:title="@string/title_menu_edit"
         app:showAsAction="ifRoom" />
     <item
-        android:id="@+id/delete_group"
+        android:id="@+id/delete_configuration"
         android:icon="@android:drawable/ic_menu_delete"
         android:orderInCategory="10"
         android:title="@string/title_menu_delete"
