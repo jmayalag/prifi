@@ -24,9 +24,11 @@ public interface ConfigurationDao {
     @Query("SELECT COUNT(*) FROM Configuration WHERE groupId = :groupId")
     int countConfigurationsForGroups(int groupId);
 
-
     @Query("SELECT * FROM Configuration WHERE isActive = 1")
     Configuration getActive();
+
+    @Query("SELECT * FROM Configuration WHERE isActive = 1")
+    LiveData<Configuration> getActiveLive();
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     long[] insert(Configuration... configurations);

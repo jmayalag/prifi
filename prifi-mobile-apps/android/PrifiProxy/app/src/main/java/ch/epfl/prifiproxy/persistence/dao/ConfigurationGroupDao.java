@@ -24,6 +24,15 @@ public interface ConfigurationGroupDao {
     @Query("SELECT * FROM ConfigurationGroup WHERE isActive = 1")
     ConfigurationGroup getActive();
 
+    @Query("SELECT * FROM ConfigurationGroup WHERE isActive = 1")
+    LiveData<ConfigurationGroup> getActiveLive();
+
+    @Query("UPDATE Configuration SET isActive = 0 WHERE groupId = :groupId")
+    void deactivateConfigurationForGroup(int groupId);
+
+    @Query("UPDATE Configuration SET isActive = 1 WHERE groupId = :groupId AND priority = (SELECT MIN(priority) FROM Configuration WHERE groupId = :groupId)")
+    void activateConfigurationForGroup(int groupId);
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     long[] insert(ConfigurationGroup... groups);
 

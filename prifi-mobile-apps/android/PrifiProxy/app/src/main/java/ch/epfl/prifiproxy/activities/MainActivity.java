@@ -1,6 +1,8 @@
 package ch.epfl.prifiproxy.activities;
 
+import android.app.Application;
 import android.app.ProgressDialog;
+import android.arch.lifecycle.ViewModelProviders;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -27,11 +29,16 @@ import android.widget.Toast;
 import java.lang.ref.WeakReference;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import ch.epfl.prifiproxy.BuildConfig;
+import ch.epfl.prifiproxy.PrifiProxy;
 import ch.epfl.prifiproxy.R;
+import ch.epfl.prifiproxy.persistence.entity.Configuration;
+import ch.epfl.prifiproxy.persistence.entity.ConfigurationGroup;
 import ch.epfl.prifiproxy.services.PrifiService;
 import ch.epfl.prifiproxy.ui.MainDrawerRouter;
 import ch.epfl.prifiproxy.utils.NetworkHelper;
 import ch.epfl.prifiproxy.utils.SystemHelper;
+import ch.epfl.prifiproxy.viewmodel.MainViewModel;
 import eu.faircode.netguard.ServiceSinkhole;
 import eu.faircode.netguard.Util;
 import prifiMobile.PrifiMobile;
@@ -60,6 +67,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private FloatingActionButton powerButton;
     private TextView textStatus;
     private MainDrawerRouter drawerRouter;
+    private MainViewModel viewModel;
+    private ConfigurationGroup activeGroup;
+    private Configuration activeConfiguration;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -118,6 +128,44 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 stopPrifiService();
             }
         });
+
+        viewModel = ViewModelProviders.of(this).get(MainViewModel.class);
+        viewModel.getActiveConfiguration().observe(this, this::configChanged);
+        viewModel.getActiveGroup().observe(this, this::groupChanged);
+    }
+
+    private void groupChanged(ConfigurationGroup group) {
+        activeGroup = group;
+        updateView();
+    }
+
+    private void configChanged(Configuration configuration) {
+        activeConfiguration = configuration;
+        updateView();
+    }
+
+    private void updateView() {
+        if (PrifiProxy.isDevFlavor) {
+            StringBuilder builder = new StringBuilder();
+
+            builder.append("Status: ");
+
+            if (isPrifiServiceRunning.get()) {
+                builder.append("Connected");
+            } else {
+                builder.append("Disconnected");
+            }
+
+            if (activeGroup != null) {
+                builder.append("\nActive Network: ").append(activeGroup.getName());
+            }
+            if (activeConfiguration != null) {
+                builder.append("\nActive Config: ").append(activeConfiguration.getName());
+                builder.append("\nConfiguration: ").append(activeConfiguration.getHost()).append(":")
+                        .append(activeConfiguration.getRelayPort());
+            }
+            textStatus.setText(builder.toString());
+        }
     }
 
     @Override
@@ -222,22 +270,17 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         int colorId;
         int dp;
         int elevation;
-        int statusId;
 
         if (isServiceRunning) {
             colorId = R.color.colorOn;
             dp = 6;
-            statusId = R.string.status_connnected;
         } else {
             colorId = R.color.colorOff;
             dp = 20;
-            statusId = R.string.status_disconnnected;
         }
 
         elevation = (int) (dp * Resources.getSystem().getDisplayMetrics().density);
-        String statusMsg = getString(R.string.status_msg, getString(statusId), Util.getWifiSSID(this));
 
-        textStatus.setText(statusMsg);
         powerButton.setCompatElevation(elevation);
         powerButton.setBackgroundTintList(ColorStateList.valueOf(getResources().getColor(colorId)));
     }

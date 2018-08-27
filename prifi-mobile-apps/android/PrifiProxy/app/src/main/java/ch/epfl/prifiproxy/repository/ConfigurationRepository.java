@@ -4,10 +4,7 @@ import android.app.Application;
 import android.arch.lifecycle.LiveData;
 import android.os.AsyncTask;
 
-import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 import ch.epfl.prifiproxy.persistence.AppDatabase;
 import ch.epfl.prifiproxy.persistence.dao.ConfigurationDao;
@@ -35,6 +32,10 @@ public class ConfigurationRepository {
 
     public Configuration getActive() {
         return configurationDao.getActive();
+    }
+
+    public LiveData<Configuration> getActiveLive() {
+        return configurationDao.getActiveLive();
     }
 
     public LiveData<Configuration> getConfiguration(int configurationId) {

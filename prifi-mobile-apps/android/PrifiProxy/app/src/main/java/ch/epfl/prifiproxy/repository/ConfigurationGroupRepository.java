@@ -2,6 +2,7 @@ package ch.epfl.prifiproxy.repository;
 
 import android.app.Application;
 import android.arch.lifecycle.LiveData;
+import android.arch.persistence.room.Transaction;
 import android.os.AsyncTask;
 import android.support.annotation.NonNull;
 
@@ -44,6 +45,10 @@ public class ConfigurationGroupRepository {
 
     public LiveData<ConfigurationGroup> getGroup(int groupId) {
         return groupDao.get(groupId);
+    }
+
+    public LiveData<ConfigurationGroup> getActiveLive() {
+        return groupDao.getActiveLive();
     }
 
     public LiveData<List<ConfigurationGroup>> getAllGroups() {
@@ -116,6 +121,7 @@ public class ConfigurationGroupRepository {
         }
 
         @Override
+        @Transaction
         protected Void doInBackground(Void... voids) {
             ConfigurationGroup currentActive = dao.getActive();
             List<ConfigurationGroup> updates = new ArrayList<>();
@@ -125,6 +131,13 @@ public class ConfigurationGroupRepository {
             if (changed.isActive() && currentActive != null) {
                 currentActive.setActive(false);
                 updates.add(currentActive);
+                dao.deactivateConfigurationForGroup(currentActive.getId());
+            } else {
+                dao.deactivateConfigurationForGroup(changed.getId());
+            }
+
+            if (changed.isActive()) {
+                dao.activateConfigurationForGroup(changed.getId());
             }
 
             dao.update(updates);
