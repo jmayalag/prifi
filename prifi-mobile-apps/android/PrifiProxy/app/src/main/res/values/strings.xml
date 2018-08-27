@@ -169,6 +169,8 @@
 
     <string name="dialog_delete_configuration_title">Delete Configuration</string>
     <string name="dialog_delete_configuration_msg">Are you sure?</string>
+    <string name="dialog_delete_multiple_configuration_msg">Are you sure you want to delete %1$d configuration(s)?</string>
+
     <string name="input_configuration_name_hint">Name</string>
     <string name="input_configuration_host_hint">Host Address</string>
     <string name="input_configuration_socks_port_hint">Socks port</string>

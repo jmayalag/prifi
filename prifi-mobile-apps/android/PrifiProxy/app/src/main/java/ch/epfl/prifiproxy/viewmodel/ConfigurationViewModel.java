@@ -5,6 +5,7 @@ import android.arch.lifecycle.AndroidViewModel;
 import android.arch.lifecycle.LiveData;
 import android.support.annotation.NonNull;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -19,6 +20,7 @@ public class ConfigurationViewModel extends AndroidViewModel {
 
     private LiveData<ConfigurationGroup> group;
     private LiveData<List<Configuration>> configurations;
+    private List<Configuration> deleteList;
 
     public ConfigurationViewModel(@NonNull Application application) {
         super(application);
@@ -29,6 +31,7 @@ public class ConfigurationViewModel extends AndroidViewModel {
     public void init(int groupId) {
         group = groupRepository.getGroup(groupId);
         configurations = configurationRepository.getConfigurations(groupId);
+        deleteList = new ArrayList<>();
     }
 
     public LiveData<ConfigurationGroup> getGroup() {
@@ -69,5 +72,31 @@ public class ConfigurationViewModel extends AndroidViewModel {
 
     public void delete(ConfigurationGroup group) {
         groupRepository.delete(Collections.singletonList(group));
+    }
+
+    public void toDelete(Configuration item) {
+        deleteList.add(item);
+    }
+
+    /**
+     * Deletes swiped items added {@link ConfigurationViewModel#toDelete(Configuration)} )}
+     */
+    public void performDelete() {
+        configurationRepository.delete(deleteList.toArray(new Configuration[deleteList.size()]));
+    }
+
+    public void updatePriorities(List<Configuration> newOrder) {
+        int priority = 1;
+        for (Configuration configuration : newOrder) {
+            if (deleteList.contains(configuration)) continue; // skip deleted items
+            configuration.setPriority(priority);
+            priority += 1;
+        }
+
+        configurationRepository.update(newOrder);
+    }
+
+    public int willDeleteCount() {
+        return deleteList.size();
     }
 }

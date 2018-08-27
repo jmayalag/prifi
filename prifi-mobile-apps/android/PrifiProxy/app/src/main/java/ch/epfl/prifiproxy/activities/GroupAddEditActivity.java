@@ -12,6 +12,7 @@ import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
+import android.support.v7.widget.helper.ItemTouchHelper;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.Menu;
@@ -28,9 +29,13 @@ import ch.epfl.prifiproxy.listeners.OnItemGestureListener;
 import ch.epfl.prifiproxy.persistence.entity.Configuration;
 import ch.epfl.prifiproxy.persistence.entity.ConfigurationGroup;
 import ch.epfl.prifiproxy.ui.Mode;
+import ch.epfl.prifiproxy.ui.helper.ItemTouchHelperAdapter;
+import ch.epfl.prifiproxy.ui.helper.OnStartDragListener;
+import ch.epfl.prifiproxy.ui.helper.SimpleItemTouchHelperCallback;
 import ch.epfl.prifiproxy.viewmodel.ConfigurationViewModel;
 
-public class GroupAddEditActivity extends AppCompatActivity implements OnItemClickListener<Configuration>, OnItemGestureListener<Configuration> {
+public class GroupAddEditActivity extends AppCompatActivity
+        implements OnItemClickListener<Configuration>, OnItemGestureListener<Configuration>, OnStartDragListener {
     private static final String TAG = "GROUP_ADD_EDIT_ACTIVITY";
     protected static final String EXTRA_GROUP_ID = "groupId";
     private static final String EXTRA_MODE = "mode";
@@ -50,6 +55,8 @@ public class GroupAddEditActivity extends AppCompatActivity implements OnItemCli
     private ConfigurationRecyclerAdapter recyclerAdapter;
     private Toast currentToast;
     private AlertDialog.Builder deleteDialogBuilder;
+    private AlertDialog.Builder deleteConfigurationsDialogBuilder;
+    private ItemTouchHelper mItemTouchHelper;
 
     private static Intent getIntent(Context packageContext) {
         return new Intent(packageContext, GroupAddEditActivity.class);
@@ -95,8 +102,15 @@ public class GroupAddEditActivity extends AppCompatActivity implements OnItemCli
         layoutManager = new LinearLayoutManager(this);
         recyclerView.setLayoutManager(layoutManager);
 
-        recyclerAdapter = new ConfigurationRecyclerAdapter(this, this);
+        boolean editMode = getIntent().getIntExtra(EXTRA_MODE, -1) == Mode.EDIT;
+        recyclerAdapter = new ConfigurationRecyclerAdapter(this, this, this, editMode);
         recyclerView.setAdapter(recyclerAdapter);
+
+        if (editMode) {
+            ItemTouchHelper.Callback callback = new SimpleItemTouchHelperCallback(recyclerAdapter);
+            mItemTouchHelper = new ItemTouchHelper(callback);
+            mItemTouchHelper.attachToRecyclerView(recyclerView);
+        }
 
         configurationViewModel = ViewModelProviders.of(this).get(ConfigurationViewModel.class);
 
@@ -131,6 +145,12 @@ public class GroupAddEditActivity extends AppCompatActivity implements OnItemCli
                 .setCancelable(true)
                 .setNegativeButton(android.R.string.no, null)
                 .setPositiveButton(android.R.string.yes, (dialog, which) -> deleteGroup());
+
+        deleteConfigurationsDialogBuilder = new AlertDialog.Builder(this)
+                .setTitle(R.string.dialog_delete_configuration_title)
+                .setCancelable(true)
+                .setNegativeButton(android.R.string.no, null)
+                .setPositiveButton(android.R.string.yes, (d, w) -> saveGroup());
     }
 
     @Override
@@ -149,7 +169,7 @@ public class GroupAddEditActivity extends AppCompatActivity implements OnItemCli
                 finish(); //TODO: Fix up navigation
                 return true;
             case R.id.save_group:
-                saveGroup();
+                confirmSave();
                 return true;
             case R.id.edit_group:
                 editGroup();
@@ -173,6 +193,16 @@ public class GroupAddEditActivity extends AppCompatActivity implements OnItemCli
         Objects.requireNonNull(getSupportActionBar()).setTitle(group.getName());
     }
 
+    private void confirmSave() {
+        int willDelete = configurationViewModel.willDeleteCount();
+        if (willDelete > 0) {
+            String msg = getString(R.string.dialog_delete_multiple_configuration_msg, willDelete);
+            deleteConfigurationsDialogBuilder.setMessage(msg).show();
+        } else {
+            saveGroup();
+        }
+    }
+
     private void saveGroup() {
         ConfigurationGroup group = this.group;
         if (group == null) {
@@ -187,7 +217,10 @@ public class GroupAddEditActivity extends AppCompatActivity implements OnItemCli
         }
         group.setName(name);
 
+
         configurationViewModel.insertOrUpdate(group);
+        configurationViewModel.performDelete();
+        configurationViewModel.updatePriorities(recyclerAdapter.getDataset());
         finish();
     }
 
@@ -227,5 +260,11 @@ public class GroupAddEditActivity extends AppCompatActivity implements OnItemCli
     @Override
     public void itemSwiped(Configuration item) {
         Log.i(TAG, "Swiped " + item.getName());
+        configurationViewModel.toDelete(item);
+    }
+
+    @Override
+    public void onStartDrag(RecyclerView.ViewHolder viewHolder) {
+        mItemTouchHelper.startDrag(viewHolder);
     }
 }

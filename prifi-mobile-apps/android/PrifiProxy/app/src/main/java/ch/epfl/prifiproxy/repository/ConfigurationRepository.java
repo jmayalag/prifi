@@ -4,7 +4,10 @@ import android.app.Application;
 import android.arch.lifecycle.LiveData;
 import android.os.AsyncTask;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import ch.epfl.prifiproxy.persistence.AppDatabase;
 import ch.epfl.prifiproxy.persistence.dao.ConfigurationDao;
@@ -55,7 +58,7 @@ public class ConfigurationRepository {
                 .execute(configurations.toArray(new Configuration[configurations.size()]));
     }
 
-    public void delete(Configuration configuration) {
+    public void delete(Configuration... configuration) {
         new DeleteAsyncTask(configurationDao).execute(configuration);
     }
 
@@ -68,6 +71,12 @@ public class ConfigurationRepository {
 
         @Override
         protected Void doInBackground(final Configuration... configurations) {
+            if (configurations.length != 1)
+                throw new IllegalArgumentException("Must insert one item at a time");
+
+            int count = dao.countConfigurationsForGroups(configurations[0].getGroupId());
+            configurations[0].setPriority(count + 1);
+
             dao.insert(configurations);
             return null;
         }

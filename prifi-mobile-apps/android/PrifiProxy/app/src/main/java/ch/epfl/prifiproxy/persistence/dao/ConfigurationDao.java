@@ -21,6 +21,10 @@ public interface ConfigurationDao {
     @Query("SELECT * FROM Configuration WHERE groupId = :groupId ORDER BY priority ASC")
     LiveData<List<Configuration>> getForGroup(int groupId);
 
+    @Query("SELECT COUNT(*) FROM Configuration WHERE groupId = :groupId")
+    int countConfigurationsForGroups(int groupId);
+
+
     @Query("SELECT * FROM Configuration WHERE isActive = 1")
     Configuration getActive();
 
